@@ -330,10 +330,14 @@ The game
 2. Carry on down the tree one piece at a time. For each: write the calling code first; build it with tests; then run the checks listed under "A piece is done when".
 3. Be sparing with agents. One overnight run used the account's whole usage limit. Reader tests are cheap (no tools). Do mutation and bad-argument checks in the session.
 4. The plot, and Use and Hit, were built on proposals so that the user can judge them by playing. Their answer is needed before more is built on them: walls, things that cover two tiles, a plot of one's own, and how Hit works on a phone.
-5. First things to prototype on a real phone: the inventory screen by touch; handling and carrying; walking on a moving deck; an intercepted delivery becoming a real object; demonstrating a route by touch; a deck of a few hundred welded pieces.
+5. **Proposed, and to be shown to the user before it is written, because it is shared machinery:** a `World` piece in the rules that holds the plot, the ground items, and each player's state and where they stand, with one function that answers any request and one that runs the step. The server's own checks on placing, using and hitting, and its step, would move into it and be tested as `InventoryRequests` is. The server would be left with reading where characters stand, drawing, and sending. The same piece would let a player's machine apply its own clicks at once, before the server answers, which is the fix for the delay on a real server.
+6. **The first process is the user's to shape.** Recipes and stations are the heart of the game's rule, and Claude has not guessed at them. The question put to the user: should cooking on the stove work as a Minecraft furnace does, with slots for what goes in, for fuel and for what comes out, or in the world, where the fish is set down on the stove and seen to cook?
+7. First things to prototype on a real phone: the inventory screen by touch; handling and carrying; walking on a moving deck; an intercepted delivery becoming a real object; demonstrating a route by touch; a deck of a few hundred welded pieces.
 
 ## Asked of the user, not yet answered
 - To play the build and say what feels wrong.
+- How the first process should work: the stove as a furnace with slots, or cooking that happens in the world. See "Next".
+- A yes or no to the `World` piece described under "Next".
 - Their review of the pieces, the conventions under "How we work", and Claude's calls listed in Status.
 - For saving: to switch on Studio's access to data stores for the place (Game Settings, Security, "Enable Studio Access to API Services"), and to say whether the ProfileStore library may be downloaded or Claude should write the storing itself.
 - Approval to download Roblox's type definitions for luau-lsp (`globalTypes.d.luau`, from the luau-lsp project, a few megabytes), so that `src/server` and `src/client` are type-checked.
