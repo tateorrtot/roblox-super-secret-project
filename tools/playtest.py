@@ -127,6 +127,14 @@ return "none"
 PANEL = 'LocalPlayer.PlayerGui.Inventory.Panel.'
 
 
+# How many items a slot's text stands for: "Log 14" is 14, "Log" is 1, and "" is 0.
+def count_of(text):
+    if text == '':
+        return 0
+    last = text.split(' ')[-1]
+    return int(last) if last.isdigit() else 1
+
+
 class Playtest:
     def __init__(self):
         self.studio = studio_tool.Studio()
@@ -182,6 +190,12 @@ class Playtest:
         self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
             move, {'action': 'wait', 'wait_time_ms': 150},
             {'action': 'mouseButtonClick', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 350}]})
+
+    def double_click(self, where):
+        self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
+            {'action': 'moveTo', 'instance_path': where}, {'action': 'wait', 'wait_time_ms': 150},
+            {'action': 'mouseButtonClick', 'mouse_button': 'left'}, {'action': 'wait', 'wait_time_ms': 80},
+            {'action': 'mouseButtonClick', 'mouse_button': 'left'}, {'action': 'wait', 'wait_time_ms': 350}]})
 
     def hover(self, where):
         self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
@@ -362,6 +376,20 @@ class Playtest:
             check(all(entry['id'] != mine['id'] for entry in world['placed']), 'a right click knocks the crate off the plot')
             check(self.ground('crate') == [1] and self.ground('apple') == [4], 'it lies on the ground as an item, and so does what was in it',
                   world['ground'])
+
+        # A double click gathers a kind: the first click picks a stack up, the second fills it.
+        self.keys('E')
+        before = self.view()['pack']
+        logs = sum(count_of(text) for text in before.values() if text.startswith('Log'))
+        check(before.get('s3', '').startswith('Log') and logs > count_of(before.get('s3', '')),
+              'the pack holds logs in more than one slot', before)
+        self.double_click(PANEL + 'PackSlot3')
+        view = self.view()
+        left = sum(count_of(text) for text in view['pack'].values() if text.startswith('Log'))
+        check(count_of(view['carried']) == min(16, logs) and view['carried'].startswith('Log') and left == logs - min(16, logs),
+              'a double click gathers the logs into the carried stack, up to a full stack',
+              {'carried': view['carried'], 'pack': view['pack']})
+        self.keys('E')
 
         # Out of reach.
         self.walk_to(crate['x'] - 30, crate['z'] + 30)

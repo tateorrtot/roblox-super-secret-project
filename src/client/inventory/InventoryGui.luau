@@ -242,7 +242,7 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	hint.TextColor3 = Color3.fromRGB(165, 166, 175)
 	hint.Text = "Left click: pick up or put down a stack.  Right click: take half, or put one down.\n"
 		.. "Shift and click: send to the other side.  Click outside: drop.  E: close.\n"
-		.. "Over a slot, 1 to 9: swap with that hotbar slot.  Q: drop one."
+		.. "Double click: gather a kind.  Over a slot, 1 to 9: swap with that hotbar slot.  Q: drop one."
 	hint.Parent = panel
 
 	local carriedFrame = Instance.new("Frame")

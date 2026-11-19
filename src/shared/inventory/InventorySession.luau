@@ -20,9 +20,11 @@
 	slot. [method swap] exchanges the carried stack with a slot's.
 	[method quickMove] sends a slot's stack straight to the other inventory.
 	[method swapWithHotbar] exchanges a slot's stack with a hotbar slot's.
+	[method gather] fills the carried stack from every slot that holds its kind.
 	[method drop] hands carried items to the caller, to go on the ground.
 	A touch screen calls these directly, as Minecraft does on phones.
-	[method click] turns a Minecraft left or right mouse click into them.
+	[method click] turns a Minecraft left or right mouse click into them, and
+	[method doubleClick] the second click of a double click.
 
 	An action that moves items returns how many it moved. No action makes or
 	loses an item: what does not fit stays where it was. [method drop] and
@@ -312,6 +314,69 @@ function InventorySession.click(session: InventorySession, side: Side, slot: num
 	end
 	InventorySession.swap(session, side, slot)
 	return true
+end
+
+--[=[
+	Fills the carried stack with items of its kind taken from the slots of
+	the screen, until it is a full stack, and returns how many were gathered.
+
+	Stacks that are not full are taken from first, so that odd lots are
+	tidied away before a full stack is broken into. Within each, the other
+	inventory's slots come before the pack's, lowest slot first.
+
+	Returns 0, and changes nothing, if nothing is carried, if the carried
+	stack is already full, or if no slot holds its kind.
+]=]
+function InventorySession.gather(session: InventorySession): number
+	local carried = session.carried
+	if carried == nil then
+		return 0
+	end
+	local stackSize = carried.count + ItemStack.spaceLeft(carried)
+	local wanted = ItemStack.spaceLeft(carried)
+	local inventories = { session.other, session.pack } :: { Inventory? }
+	for _, fullStacks in { false, true } do
+		for index = 1, 2 do
+			local inventory = inventories[index]
+			if inventory ~= nil then
+				for slot = 1, inventory.slotCount do
+					local there = Inventory.getStack(inventory, slot)
+					local isWanted = there ~= nil
+						and ItemStack.isSameItem(there, carried)
+						and (there.count == stackSize) == fullStacks
+					if isWanted and wanted > 0 then
+						local taken = Inventory.takeFromSlot(inventory, slot, wanted) :: ItemStack
+						wanted -= taken.count
+					end
+				end
+			end
+		end
+	end
+	local gathered = ItemStack.spaceLeft(carried) - wanted
+	if gathered > 0 then
+		carry(session, ItemStack.new(carried.itemId, carried.count + gathered))
+	end
+	return gathered
+end
+
+--[=[
+	Does what the second click of a Minecraft double left click on a slot
+	does, and returns `true` if anything changed.
+
+	If a stack is carried and the slot holds nothing, as when the first click
+	has just picked the slot's stack up, it gathers: the carried stack is
+	filled from every slot that holds its kind, as [method gather] does.
+	Otherwise it is an ordinary left click, as [method click] does.
+
+	Raises an error if `slot` is not one of that inventory's slots, or if
+	`side` is `"other"` and no other inventory is open.
+]=]
+function InventorySession.doubleClick(session: InventorySession, side: Side, slot: number): boolean
+	failIf(slotProblem(session, side, slot), "InventorySession.doubleClick")
+	if session.carried ~= nil and Inventory.getStack(inventoryOn(session, side), slot) == nil then
+		return InventorySession.gather(session) > 0
+	end
+	return InventorySession.click(session, side, slot, "left")
 end
 
 --[=[

@@ -65,6 +65,11 @@ local screenOpen = false
 --- The hotbar slot in hand. The player chooses it here, and the server is told.
 local selectedSlot = 1
 
+--- How soon a second left click on a slot must follow the first to count as a double click, in seconds.
+local DOUBLE_CLICK_SECONDS = 0.3
+--- The last left click on a slot of the inventory screen, to tell a double click by. `nil` after a double click.
+local lastLeftClick: { side: string, slot: number, at: number }? = nil
+
 local hotbarGui: HotbarGui.HotbarGui
 
 local function selectSlot(slot: number)
@@ -88,8 +93,18 @@ hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 
 local inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 	onSlotClicked = function(side, slot, button, shiftHeld)
+		-- A second left click on the same slot soon after the first is a double click, which gathers.
+		local now = os.clock()
+		local isDouble = button == "left"
+			and lastLeftClick ~= nil
+			and lastLeftClick.side == side
+			and lastLeftClick.slot == slot
+			and now - lastLeftClick.at < DOUBLE_CLICK_SECONDS
+		lastLeftClick = if button == "left" and not isDouble then { side = side, slot = slot, at = now } else nil
 		if shiftHeld and button == "left" then
 			remotes.quickMoveSlot:FireServer(side, slot)
+		elseif isDouble then
+			remotes.doubleClickSlot:FireServer(side, slot)
 		else
 			remotes.clickSlot:FireServer(side, slot, button)
 		end

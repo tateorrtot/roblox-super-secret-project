@@ -16,6 +16,7 @@
 	| `openPack` | nothing | open the inventory screen on the player's pack alone |
 	| `closeInventory` | nothing | close the inventory screen |
 	| `clickSlot` | side, slot, button | do a mouse click on a slot of the open screen, as `InventorySession.click` does |
+	| `doubleClickSlot` | side, slot | do the second click of a double left click on a slot, as `InventorySession.doubleClick` does |
 	| `quickMoveSlot` | side, slot | send a slot's stack to the other side, as `InventorySession.quickMove` does |
 	| `swapWithHotbarSlot` | side, slot, hotbar slot | exchange a slot's stack with a hotbar slot's, as `InventorySession.swapWithHotbar` does |
 	| `dropFromSlot` | side, slot, and count or nothing for all | drop items out of a slot of the open screen onto the ground |
@@ -47,6 +48,7 @@ return table.freeze({
 		"openPack",
 		"closeInventory",
 		"clickSlot",
+		"doubleClickSlot",
 		"quickMoveSlot",
 		"swapWithHotbarSlot",
 		"dropFromSlot",

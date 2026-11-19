@@ -287,6 +287,97 @@ do -- quickMove
 	check(contents(alone.pack) == "log 12, -", "quickMove: and nothing moves")
 end
 
+do -- gather: fill the carried stack from the slots that hold its kind
+	local session =
+		InventorySession.open(inventoryOf("log 16, log 3, stone 5, log 2"), inventoryOf("log 4, log 16, stone 1"))
+	local other = session.other :: Inventory.Inventory
+	check(InventorySession.gather(session) == 0, "gather: 0 when nothing is carried")
+	InventorySession.pickUp(session, "pack", 2)
+	check(InventorySession.gather(session) == 13, "gather: returns how many were gathered")
+	check(describe(session.carried) == "log 16", "gather: they join the carried stack, until it is full")
+	check(
+		contents(other) == "-, log 9, stone 1" and contents(session.pack) == "log 16, -, stone 5, -",
+		"gather: odd lots go first, then a full stack is broken into, the other inventory's before the pack's"
+	)
+	check(InventorySession.gather(session) == 0, "gather: 0 when the carried stack is full")
+	check(
+		contents(other) == "-, log 9, stone 1" and contents(session.pack) == "log 16, -, stone 5, -",
+		"gather: and nothing moves"
+	)
+
+	local few = InventorySession.open(inventoryOf("stone 2, log 1, stone 3, stone 16"))
+	InventorySession.pickUp(few, "pack", 1)
+	check(InventorySession.gather(few) == 14, "gather: stops at the stack size")
+	check(describe(few.carried) == "stone 16", "gather: with a full stack carried")
+	check(
+		contents(few.pack) == "-, log 1, -, stone 5",
+		"gather: an odd lot is taken whole before a full stack is broken into, and other items are left"
+	)
+
+	local odd = InventorySession.open(inventoryOf("stone 16, stone 2, stone 3, stone 4"))
+	InventorySession.pickUp(odd, "pack", 2)
+	check(InventorySession.gather(odd) == 14, "gather: fills the stack from odd lots and then a full stack")
+	check(contents(odd.pack) == "stone 9, -, -, -", "gather: every odd lot went before the full stack was touched")
+
+	local lots = InventorySession.open(inventoryOf("stove 1, log 2, log 3, log 4"))
+	InventorySession.pickUp(lots, "pack", 2)
+	check(InventorySession.gather(lots) == 7, "gather: takes every odd lot when they do not fill the stack")
+	check(
+		describe(lots.carried) == "log 9" and contents(lots.pack) == "stove 1, -, -, -",
+		"gather: and the carried stack holds them all"
+	)
+
+	local oneShort = InventorySession.open(inventoryOf("log 15, log 3"))
+	InventorySession.pickUp(oneShort, "pack", 1)
+	check(InventorySession.gather(oneShort) == 1, "gather: takes a single item when that is all the stack lacks")
+	check(
+		describe(oneShort.carried) == "log 16" and contents(oneShort.pack) == "-, log 2",
+		"gather: and that one item is carried, not lost"
+	)
+	local oneThere = InventorySession.open(inventoryOf("log 4, log 1, -"))
+	InventorySession.click(oneThere, "pack", 1, "left")
+	check(InventorySession.doubleClick(oneThere, "pack", 1), "doubleClick: true when it gathered a single item")
+	check(describe(oneThere.carried) == "log 5", "doubleClick: and that item is carried")
+
+	local none = InventorySession.open(inventoryOf("stove 1, log 4"))
+	InventorySession.pickUp(none, "pack", 2)
+	check(InventorySession.gather(none) == 0, "gather: 0 when no slot holds its kind")
+	check(describe(none.carried) == "log 4" and contents(none.pack) == "stove 1, -", "gather: and nothing changes")
+end
+
+do -- doubleClick: the second click of a double left click
+	local session = InventorySession.open(inventoryOf("log 5, log 4, stone 5, -"))
+	InventorySession.click(session, "pack", 1, "left")
+	check(InventorySession.doubleClick(session, "pack", 1), "doubleClick: true when it gathered")
+	check(
+		describe(session.carried) == "log 9" and contents(session.pack) == "-, -, stone 5, -",
+		"doubleClick: on the slot just emptied, gathers the kind that is carried"
+	)
+	check(not InventorySession.doubleClick(session, "pack", 4), "doubleClick: false when there was nothing to gather")
+	check(describe(session.carried) == "log 9", "doubleClick: and the stack is still carried")
+	check(
+		InventorySession.doubleClick(session, "pack", 3),
+		"doubleClick: on a slot that holds something it is a left click"
+	)
+	check(
+		describe(session.carried) == "stone 5" and contents(session.pack) == "-, -, log 9, -",
+		"doubleClick: so a different item is swapped"
+	)
+	InventorySession.click(session, "pack", 4, "left")
+	check(InventorySession.doubleClick(session, "pack", 3), "doubleClick: with nothing carried it is a left click too")
+	check(describe(session.carried) == "log 9", "doubleClick: so the stack is picked up")
+	check(
+		not InventorySession.doubleClick(InventorySession.open(inventoryOf("-")), "pack", 1),
+		"doubleClick: false on nothing at all"
+	)
+	check(
+		raises("InventorySession.doubleClick: slot 5 is out of range; that inventory has slots 1 to 4", function()
+			return InventorySession.doubleClick(session, "pack", 5)
+		end),
+		"doubleClick: refuses a slot the pack lacks"
+	)
+end
+
 do -- swapWithHotbar: a number key over a slot
 	local session = InventorySession.open(inventoryOf("log 12, stone 3, -, stove 1"), inventoryOf("log 5, -"), 2)
 	InventorySession.pickUp(session, "pack", 4)

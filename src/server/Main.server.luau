@@ -214,6 +214,13 @@ onRequest("clickSlot", function(_, state, side, slot, button)
 	end
 end)
 
+onRequest("doubleClickSlot", function(_, state, side, slot)
+	local session = state.session
+	if session ~= nil and InventorySession.hasSlot(session, side, slot) then
+		InventorySession.doubleClick(session, side, slot)
+	end
+end)
+
 onRequest("quickMoveSlot", function(_, state, side, slot)
 	local session = state.session
 	if session ~= nil and InventorySession.hasSlot(session, side, slot) then
