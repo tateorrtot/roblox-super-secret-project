@@ -136,7 +136,8 @@ end
 	Call it often: it keeps the plot stocked however long the game runs.
 ]=]
 function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: GroundItems.GroundItems, now: number)
-	if now < nextRestockAt then
+	-- The play test in tools/playtest.py switches this off, so that it knows exactly what lies on the ground.
+	if now < nextRestockAt or Workspace:GetAttribute("PlaceholderRestock") == false then
 		return
 	end
 	local lying = 0
