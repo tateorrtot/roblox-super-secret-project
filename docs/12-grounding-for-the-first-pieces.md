@@ -39,7 +39,7 @@ Readers were agents given no context, used as test subjects and not as judges: t
 - From names alone: 63 and 64 of 66, with no prediction that was both confident and wrong.
 - Their written answers were more useful than the scores. Both readers who saw the comments said, separately: `put`, `add` and `set` are three near-synonyms and nothing says "one slot" against "anywhere"; `CursorStack` "is not a stack, it is a holder"; `leftClick` and `rightClick` are "named after mouse buttons that the comment then spends a paragraph saying they are not"; `canMerge` is true for two full stacks, so it really means "same item"; a stack's `item` is an id, not an item type; and the header's claim that no function makes or loses an item was wrong for `set` and `clear`.
 
-**Test 3: the same, after the renames.** Three fresh readers predicted 78 calls against the renamed pieces. The result was not in when this file was written.
+**Test 3: the same, after the renames.** Three fresh readers predicted 78 calls against the renamed pieces. The reader who had the comments got 78 of 78. The two who had only the function names and types each got 73, and missed the same five: three on what `addItems` returns (it returned how many did not fit, while every other number meant how many moved), one on merging stacks of different items (it raised an error), and one on counting an item that does not exist (it raised an error). Those five led to a third pass: `addItems` now returns how many were added, `merge` of different items returns both stacks as they were, `countItems` and `hasItems` answer 0 and `false` for an unknown id, and `take`, `place` and `takeCarried` became `pickUp`, `putDown` and `drop`. The third pass has not been put to readers.
 
 ---
 

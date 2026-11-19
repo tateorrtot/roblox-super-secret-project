@@ -73,6 +73,7 @@ An everything-coexists world in the spirit of classic Roblox: pirates, ninjas, z
 - **Helpers may be cheap and a bit dumb.**
 - **Conflict can be added later.**
 - **Shared world state as community goals** at fixed, authored sites is understood and welcome as a later addition.
+- **A stack dropped on the ground vanishes after a few minutes and is never saved.** (The user's choice, 2026-11-19.) Built as five minutes.
 
 ### Proposed, awaiting the user
 - **Spatial model:** plot tile grid for building and for helpers to walk on; authored terrain between plots; things can be set down anywhere, at rest and not simulated; physics only where it is fun (carrying, throwing, vehicles).
@@ -173,21 +174,27 @@ Drawn from Godot's class reference, FoxFabric's template (`adder.gd`, the user's
 | `new`, `open` | Makes one | It |
 | `get` | Reads what is there | It, or `nil` when nothing is there |
 | `set` | Replaces; `nil` removes | Nothing |
-| `add` | Puts in wherever it fits | What did not fit |
-| `put`, `place` | Puts into a named place | What did not fit, or how many went in |
-| `take` | Takes out of a named place for the caller | What was taken |
+| `add` | Puts in wherever it fits | Given a count, how many went in; given a stack, the stack that did not fit |
+| `put` | Puts into a named place | The stack that did not fit |
+| `take` | Takes out of a named place for the caller | The stack taken |
 | `remove` | Takes out wherever it is | How many were removed |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing | `true` or `false` |
 | `clear` | Empties | Nothing |
+| `encode`, `decode` | Turns a thing into plain data, and back | The plain data; the thing, or `nil` and what was wrong |
+| `validate` | Checks a value that came from outside | `nil`, or what is wrong with it, in words |
 
-- **One name for each idea:** `slot` (a slot number, from 1), `itemId`, `count`, `stack`, `inventory`, `session`.
+- **What a number or a stack returned means:** a number is how many items moved. A stack is one the caller now holds: what was taken out, or what is left of the stack that was put in.
+- **Verbs from the game are used where they are plainer:** `pickUp`, `putDown`, `swap`, `drop`, `expire`, `click`.
+
+- **One name for each idea:** `slot` (a slot number, from 1), `itemId`, `count`, `stack`, `inventory`, `session`, `position` (a point in the world, `{ x, y, z }` in studs), `now` (the present time in seconds).
 - **Nothing is `nil`.** No placeholder values and no empty records. How many places a thing has (`slotCount`) and what is in them are separate facts.
 - **Values and things.** A value never changes, and its functions return new values: `ItemStack`, an item type. It is frozen, and its fields are typed `read`. A thing changes in place, through its own module's functions: `Inventory`, `InventorySession`, `Hotbar`. Its fields are typed `read` too, so that only its module assigns them.
 - **Failure.** What can happen in play (no room, nothing there) is a return value. A mistake in the calling code (a slot that does not exist, an unknown item id, a negative count) raises an error that names the function, says what was wrong, shows the bad value and blames the caller. Every check comes before the first change. A count of 0 is allowed and does nothing. Functions do not check that their first argument is the thing itself; the type checker does that.
 - **Moving items.** A function that moves items returns what the caller is left holding, and no item is made or lost.
 - **Comments.** A file opens with one sentence saying what the thing is, then how it works, then a short example with its results. A function's comment starts with its verb ("Returns", "Adds"), says what happens when there is nothing or no room, and ends with "Raises an error if". Private helpers get clear names, not comments.
 - **Tests** are plain scripts in `tests/`, mirroring `src/shared`, using `tests/Check.luau`. A check's message says what should be true. `Check.raises` also requires the error to blame the calling script.
+- **On the Roblox side** (`src/server`, `src/client`): a piece that draws is named for what it draws, ending in `Gui` on a player's machine (`SlotGui`, `HotbarGui`) and `Parts` on the server (`GroundItemParts`). It is told what to show, reports clicks through callbacks it was given, and never changes the game's state. `Main.server.luau` and `Main.client.luau` are the only scripts that run by themselves, and they join the pieces. Anything that is there only until the real thing exists has `Placeholder` in its name.
 - **A piece is done when:** every check passes; a mutation run (`python tools/mutate.py`) leaves only changes no caller could see; arguments that could never be valid raise clean errors; and readers with no context predict its behaviour from its comments.
 
 ### How the code gets built (the user's correction, 2026-11-18)
@@ -225,61 +232,79 @@ After five drafts of an architecture note and three rounds of review by agents, 
 - **Shared machinery is shown to the user before it is written.** A single piece is shown as it is made (see "How the code gets built"). This replaces Claude's earlier commitment to show the whole architecture before any core code.
 - **History stays readable.** The user worries about commits "ballooning into thousands". Claude proposed a short branch per feature squashed into `main`, prefixes by area, a tag per playtest build, and a changelog. Not yet confirmed.
 - All changes to authoritative state go through one code path. Strict Luau typing, Selene and StyLua clean on every commit. Core rules are pure logic with tests that run without a live game. Saves carry a version number and a migration step from the first build. The server is the authority.
-- Nothing has been committed. Commit only when the user asks.
+- The user approved committing as work is done (2026-11-19). Nothing is pushed; push only when the user asks.
 
 ### AI-made art and text (the user's rule)
 - **No AI-generated art reaches the public:** no generated meshes, textures, images, icons, thumbnails or audio in a published build. Generated assets are allowed as placeholders, kept in one tagged place, with a pre-publish check that fails if any remain.
 - **Player-facing words:** Claude drafts, and the user reviews all of it before release.
 
-## Status (2026-11-19, overnight after the second session)
-- **Roblox Studio** is installed. Its MCP server is enabled, and the project has a `.mcp.json` for it (`cmd.exe /c "cd /d %LOCALAPPDATA%\Roblox && .\mcp.bat"`). **The Studio tools have never been loaded;** they need a new session with Studio open on a place. Studio's MCP permission groups were left on Allow.
-- **Roblox account:** `supreme_katrine`, created 2026-11-18, can publish from 2026-11-20. The user made it as a sandbox for this project and said Claude is free to act on it. Claude still asks before any action that spends Robux; passwords and verification stay with the user. Never put the account name in a web request.
-- **Toolchain:** Rokit 1.2.0 in `~/.rokit/bin` (on the user PATH; older shells need it prepended), with Rojo 7.7.1, StyLua 2.6.0, Selene 0.32.0, luau-lsp 1.70.1 and Lune 0.11.1 pinned in `rokit.toml`. The user approved Lune on 2026-11-19. In a non-interactive shell run `rokit trust <tool>` before `rokit add`. Rokit's tools only run from inside the project directory; outside it, call the exe under `~/.rokit/tool-storage/<owner>/<tool>/<version>/`.
-- **Checks:** from the repository root, `lune run tools/check` runs format, lint, strict types and every test. One test alone: `lune run tests/inventory/Inventory.test.luau`. Types are checked with `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true`: no Roblox globals, and the **new solver only**, because read-only fields (`read`) are a syntax error under the old solver. When the place file exists, set `Workspace.UseNewLuauTypeSolver` to Enabled, or Studio's own analysis will report "read keyword is illegal here". `python tools/mutate.py <module> <tests...>` runs mutation testing (needs Python 3).
-- **Project:** `default.project.json` maps `src/shared`, `src/server` and `src/client`. `rojo build` succeeds. `src/server` and `src/client` are empty. Git is initialised on `main` with **nothing committed**; commit only when the user asks.
-- **Rojo's Studio plugin:** `rojo plugin install` could not find Studio, so `Rojo.rbxm` was placed in `%LOCALAPPDATA%\Roblox\Plugins`. Unverified.
-- **The community `roblox-dev` Claude plugin** is enabled. Its skills have not been reviewed.
-- **Code:** five pieces in `src/shared`, all plain Luau with no Roblox calls. Their tests are in `tests/` (348 checks, all passing). **The user has reviewed none of it.**
-  - `items/ItemRegistry`: every kind of item the game has, by id. One registry for the whole game, filled at start. An item type is `{ id, stackSize }`. Functions: `register`, `get` (an unknown id is an error), `has`, `all`.
-  - `items/ItemStack`: some number of one item, `{ itemId = "log", count = 12 }`. A value that never changes. Its count is from 1 to the stack size, and there is no empty stack. Functions: `new`, `spaceLeft`, `isFull`, `isSameItem`, `equals`, `merge`, `split`.
-  - `inventory/Inventory`: slots that hold stacks. A 3-slot inventory with 5 logs in slot 2 is `{ slotCount = 3, slots = { [2] = stack } }`; a slot that holds nothing has no entry. Functions on one slot: `getStack`, `setStack`, `takeFromSlot`, `putInSlot`. On the whole inventory: `addItems` (returns how many did not fit), `addStack`, `removeItems`, `countItems`, `hasItems`, `spaceFor`, `isEmpty`, `clear`.
-  - `inventory/InventorySession`: one player's open inventory screen, rules only: the pack, another inventory if one is open, and `carried`, the stack being moved between slots (`nil` when nothing is carried). Functions named for what they do: `take`, `place`, `swap`, `quickMove` (Minecraft's shift-click), `takeCarried`, `close`. `click(session, side, slot, "left" or "right")` turns a Minecraft mouse click into those.
-  - `inventory/Hotbar`: the first slots of a pack and which one is selected. Functions: `new`, `select`, `selectNext`, `selectPrevious`, `selectedStack`.
-- **How these were checked, 2026-11-19:**
-  - Readers with no context, first test: eight readers said what they expected from each name. Every reader asked expected `{ slotCount = 3, slots = {} }` for an empty inventory, `nil` for an empty slot, the stack size looked up from the item and never passed per call, an error for a slot that does not exist, and no empty stack.
-  - Readers, second test: four readers predicted what 66 calls return. With the comments, both got 66 of 66. From function names alone, 63 and 64. Their written answers led to the present names: `put`, `add` and `set` looked alike, so functions now say whether they work on a slot or the whole inventory; `CursorStack` "is not a stack", so it became a field of `InventorySession`, the name four of five readers gave that thing; `leftClick` and `rightClick` became `take`, `place` and `swap` with `click` on top; `canMerge` became `isSameItem`; a stack's `item` became `itemId`.
-  - Mutation testing: the tests catch 559 of 573 small deliberate bugs. Claude examined the 14 survivors and each changes nothing a caller could see. The run also showed the tests' own random number generator was weak; it was fixed.
-  - Arguments that could never be valid: every slot number, count, item id and stack passed as data is refused with an error naming the function. The only raw errors come from passing something that is not an inventory, stack, session or hotbar as the first argument, which the type checker rejects.
-  - **Not done:** the overnight agents that were to run these checks independently, and to check the research, stopped when the account's usage limit was reached. Claude ran the mutation and bad-argument checks itself. Nobody but Claude has checked the research in docs/12.
+## Status (2026-11-19, the end of the overnight build)
+- **There is a first playable loop.** Press Play in Studio and you appear on a grey plot with a hotbar along the bottom. Stacks of items lie about, and walking over one picks it up. E opens the pack, an inventory screen that works as Minecraft's does. Clicking the crate on the plot opens it above the pack. A left click picks a stack up or puts it down, a right click takes half or puts one down, Shift and a click sends a stack to the other inventory, a click outside the screen drops what is carried, and Q drops one of what is in hand. Walking away from the crate closes it. It is all grey boxes, laid out for a PC.
+- **What Claude checked by playing it,** driving a test character through Studio's connector and looking at pictures: every action in the line above. **Not checked:** a phone or any touch screen; two players at once (the crate is shared and each player is sent its changes, but nobody watched two screens); a real server (in Studio there is no delay; on a real server the screen waits for the server's answer after each click and will feel a little late); a character dying.
+- **Nothing is saved yet.** A player's pack lasts until they leave. Ground items are never saved, by the user's choice.
+- **The user has reviewed none of the code.**
+- **Roblox Studio** is driven from a terminal with `python tools/studio.py`. It starts Studio's own connector (`%LOCALAPPDATA%\Roblox\mcp.bat`) and talks to it directly, so it works in any session while Studio is open on a place with its MCP server enabled. Commands: `state`, `sync`, `run <file> [Server|Client]`, `play`, `stop`, `console`, `shot <file.jpg>`, `key <keys>`, `click <where>`, `tools`, `call <tool> <json>`.
+  - `sync` replaces `ReplicatedStorage.Shared`, `ServerScriptService.Server` and `StarterPlayer.StarterPlayerScripts.Client` with what is in `src/`, as Rojo would. Do it in Edit mode, then `play`.
+  - **Claude has not saved or published the place,** and told the user it would not. The place open on 2026-11-19 is the user's "Untitled Experience", with Studio's baseplate and spawn pad. If Studio has been closed since, open the place and `sync` again, or open `build/game.rbxl` after `rojo build -o build/game.rbxl`. The world is built by code, so the project folder alone is enough.
+  - Claude told the user it would not use Studio's asset uploads, its AI generators, the Open Cloud tool or the feedback tool.
+  - Facts about the connector: the mouse tool takes a GUI object's path (`LocalPlayer.PlayerGui.Inventory.Panel.PackSlot3`) or screen coordinates, not a part's path; for a part, get coordinates from `Camera:WorldToScreenPoint`. Pictures come back as JPEG. `run` works in the Edit, Server or Client data model, but cannot see a script's local variables. In the Bash tool a heredoc turns `\\n` into a real newline, so write scripts that contain backslashes with the Write tool.
+- **Roblox account:** `supreme_katrine`, created 2026-11-18, can publish from 2026-11-20. The user made it as a sandbox for this project and said Claude is free to act on it. Claude still asks before any action that spends Robux; passwords and verification stay with the user. Never put the account name in a web request. It was moderated on the evening of 2026-11-18 and working again by that night; Claude never learned why.
+- **Toolchain:** Rokit 1.2.0 in `~/.rokit/bin` (on the user PATH; older shells need it prepended), with Rojo 7.7.1, StyLua 2.6.0, Selene 0.32.0, luau-lsp 1.70.1 and Lune 0.11.1 pinned in `rokit.toml`. In a non-interactive shell run `rokit trust <tool>` before `rokit add`. Rokit's tools only run from inside the project directory. Python 3 is needed for `tools/studio.py` and `tools/mutate.py`.
+- **Checks:** from the repository root, `lune run tools/check` runs format, lint, strict types and every test (the user's PowerShell may need `~/.rokit/bin/lune`). One test alone: `lune run tests/inventory/Inventory.test.luau`. `python tools/mutate.py <module> <tests...>` runs mutation testing.
+  - `src/shared`, `tests` and `demos` are type-checked with `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true`: no Roblox globals, and the **new solver only**, because read-only fields (`read`) are a syntax error under the old one.
+  - **`src/server` and `src/client` are formatted and linted but not type-checked.** luau-lsp needs Roblox's type definitions file for that, and the download has not been approved. Until it is, mistakes there are found by play tests. The rules refuse bad arguments with errors that name the function, which makes those mistakes loud.
+- **Git:** branch `first-pieces`, committed as work is done (the user, 2026-11-19: "Yes, commit as you go"). `main` has no commits. Nothing is pushed anywhere; push only when the user asks.
+- **The community `roblox-dev` Claude plugin** is enabled. Its skills have not been reviewed. Rojo's Studio plugin file was placed in `%LOCALAPPDATA%\Roblox\Plugins`, unverified and not needed while `tools/studio.py sync` is used.
+- **The rules,** in `src/shared`, plain Luau with no Roblox calls, each with tests in `tests/` (625 checks):
+  - `items/ItemRegistry`: every kind of item, by id. One registry for the whole game. An item definition is `{ id, stackSize }`. Functions: `register`, `get`, `has`, `all`.
+  - `items/ItemStack`: some number of one item, `{ itemId = "log", count = 12 }`. A value that never changes; its count is from 1 to the stack size, and there is no empty stack. Functions: `new`, `validate`, `spaceLeft`, `isFull`, `isSameItem`, `equals`, `merge`, `split`.
+  - `items/ItemDefinitions`: the written rows, one per item. Eight placeholder items so far. `items/ItemLooks`: the name and colour each item is shown with while it has no art. Nothing in the rules reads the looks.
+  - `inventory/Inventory`: slots that hold stacks. `{ slotCount = 3, slots = { [2] = stack } }`; a slot that holds nothing has no entry. One slot: `getStack`, `setStack`, `takeFromSlot`, `putInSlot`. The whole inventory: `addItems` (returns how many were added), `addStack`, `removeItems`, `countItems`, `hasItems`, `spaceFor`, `isEmpty`, `clear`. Plain data for saving and sending: `encode`, `decode`.
+  - `inventory/InventorySession`: one player's open inventory screen, rules only: the pack, another inventory if one is open, and `carried`. Actions: `pickUp`, `putDown`, `swap`, `quickMove` (Minecraft's shift-click), `drop`, `close`; `click` turns a Minecraft mouse click into those; `hasSlot` checks a request before it is acted on.
+  - `inventory/Hotbar`: the first slots of a pack and which one is selected.
+  - `world/GroundItems`: the stacks lying on the ground. `drop` (a stack dropped beside its own kind joins it), `pickUpNear` (a player walking over them: nearest first, as far as the inventory has room), `expire`. A ground item cannot be picked up for 1.5 seconds, is picked up from 4 studs, and is gone after 5 minutes.
+  - `players/PlayerState`: one player: a pack of 36 slots, a hotbar of 9, and the open inventory screen if any. `new`, `openInventory`, `closeInventory`.
+  - `Messages`: the name of every message between a player's machine and the server, with what each is sent with.
+- **The Roblox side,** verified only by play tests:
+  - `src/server/Main.server.luau`: the only Script. Answers the players' requests, checking each, and ten times a second runs the step (pick up, expire, redraw ground items, send changed inventories). `Remotes` makes the RemoteEvents. `world/GroundItemParts` shows ground items as blocks. `world/PlaceholderWorld` builds the grey plot and the crate, and keeps about ten stacks lying on the plot.
+  - `src/client/Main.client.luau`: the only LocalScript. Draws what the server last said and sends keys and clicks as messages; it changes no inventory itself. `inventory/StackIcon`, `SlotGui`, `HotbarGui` and `InventoryGui` draw; `ScreenScale` fits them to the window; `Remotes` finds the RemoteEvents.
+- **How the rules were checked:** tests written beside each piece; mutation testing on every rules module, with each surviving change examined and found to change nothing a caller could see; arguments that could never be valid refused with errors naming the function. Readers with no context were tested three times on the first five pieces (docs/12); the pieces added overnight have not been put to readers.
 - **Claude's calls, for the user to veto:**
-  - Code is grouped by game concept inside the three folders Roblox really has (`src/shared/items`, `src/shared/inventory`, and later the same names under `src/server` and `src/client`), not in the six layers of docs/07. `src/shared` holds the game's rules and no Roblox calls. Tests sit outside it in `tests/`, as FoxFabric keeps tests outside an addon's folder.
-  - One global `ItemRegistry`, as RimWorld's DefDatabase and Minecraft's registries are global, because every reader wrote `ItemRegistry.get("log")`.
-  - A stack holds the item's id as a string, not a reference to the item type, so a stack prints, saves and sends as it is.
-  - The actions on an inventory screen are named for what they do (`take`, `place`, `swap`), not for mouse buttons. Minecraft on phones has no right click: you tap to pick a stack up and tap to put it down, and press and hold to choose an amount. The same actions serve mouse and touch. The research says to decide the remote messages in this form too, before any are written.
-  - An unknown item id is an error even in a pure question such as `countItems`. Readers who saw only the names guessed 0; an error is louder when an id is mistyped.
-  - An inventory's `slots` table must never be handed to a remote or a data store: Roblox drops or re-keys tables with gaps. The plain form for saving and sending is `{ slotCount = 9, stacks = { { slot = 2, itemId = "apple", count = 3 } } }`, converted in one place. Not built yet.
+  - Code is grouped by game concept inside the three folders Roblox really has, not in the six layers of docs/07. `src/shared` holds the rules and no Roblox calls; tests sit outside it in `tests/`.
+  - One global `ItemRegistry`. A stack holds its item's id as a string.
+  - The screen's actions are named for what they do (`pickUp`, `putDown`, `swap`), because Minecraft on phones has no right click. `click` is the PC mouse on top of them.
+  - Asking about an unknown item id (`countItems`, `hasItems`) answers 0 or `false`; adding, removing or making a stack of one is an error.
+  - Pack 36 slots, hotbar 9: Minecraft's numbers.
+  - Ground items: the three numbers above, joining on drop, and that a player keeps their pack when their character dies.
+  - Shift and click with the pack open alone does nothing. Minecraft moves the stack between the hotbar and the rest.
+  - The crate is opened by clicking or tapping it (a ClickDetector). That stands in for the Use action, which is not designed yet.
+  - The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the player's machine. The fix for the delay on a real server is known: apply the same rule locally first, since the rules are shared code.
+  - Keys: E for the pack, 1 to 9 for the hotbar, Q to drop one. The mouse wheel is left to Roblox's camera.
+  - How an item looks (`ItemLooks`) is kept apart from what it is (`ItemDefinitions`).
+  - The eight item rows, every name, the hint on the inventory screen and the label on the crate are placeholders and draft words.
 - **Architecture note:** docs/07 draft 5 is reference only. Three rounds of paper review are recorded in docs/09, 10 and 11.
-- **The user reported the moderation fixed later the same evening** ("Fixed the moderation thing"); Claude has not verified it. Background:
-- **The Roblox account was moderated on 2026-11-18** (evening, local time). Studio could not open any place ("Failed to fetch place info"), and its log shows every request refused with HTTP 403 and the message `User is moderated`. The user's blank experience disappeared for the same reason. Claude has never touched Studio or the account (the Studio tools never loaded) and cannot see the reason. **The user has to sign in at roblox.com to read the moderation notice.** Nothing can be built in Studio on this account until that is resolved. Studio logs are in `%LOCALAPPDATA%\Roblox\logs`.
 
 ## Next
-The game from the top down. Each line is a tangible thing, and the lines indented under it are its parts. The names of things not built yet are the ones readers with no context gave them from plain descriptions (five readers; the count that chose each name is in docs/12).
+The game from the top down. Each line is a tangible thing, and the lines indented under it are its parts.
 
 ```
 The game
   Items: every thing you can hold
     ItemRegistry      every kind of item, by id                        built
     ItemStack         some number of one item                          built
-    ItemDefs          the written rows that say what each item is      not started
+    ItemDefinitions   the written rows that say what each item is      built, 8 placeholder rows
+    ItemLooks         the name and colour each is shown with           built, placeholders
   Inventories: places that hold items
     Inventory         slots that hold stacks                           built
     InventorySession  one player's open inventory screen, rules only   built
     Hotbar            the first slots, and the selected one            built
-    the screen itself draws slots and sends actions                    needs Studio
+    InventoryGui, HotbarGui, SlotGui, StackIcon: the screens           built, PC layout
   The world
-    World             everything in one running copy of the game       not started
-    PlayerState       one player: pack, hotbar, open session, position not started
-    GroundItems       stacks lying on the ground, picked up, dropped   not started
+    GroundItems       stacks lying on the ground, picked up, dropped   built
+    GroundItemParts   the blocks that show them                        built, placeholder blocks
+    PlayerState       one player: pack, hotbar, open screen            built
+    World             everything in one running copy of the game       not needed yet
+  Messages: what crosses between a player's machine and the server     built
   Plots and building
     Plot              a player's grid of tiles                         not started
     PlacedItem        one thing placed on it: item, tile, facing       not started
@@ -288,18 +313,20 @@ The game
     Recipe            inputs become outputs after a time at a station  not started
     Station           a placed thing that runs recipes                 not started
   SaveData: a player's pack and plot as plain data with a version      not started
-  Playing it: movement, Use and Hit, screens, phone first              needs Studio
+  Use and Hit: the two actions, on PC and on a phone                   not designed
   Later: conditions, creatures, people, carriers, places, bodies and needs
 ```
 
-1. Get the user's review of the five pieces, the conventions, and Claude's calls listed in Status.
-2. Carry on down the tree one piece at a time. For each: write the calling code first; ask readers with no context what they expect from the name; build it with tests; then run the checks listed under "A piece is done when".
-3. Be sparing with agents. The overnight run used the account's whole usage limit. Reader tests are cheap (no tools). Do mutation and bad-argument checks in the session.
-4. In a new session, confirm the Studio tools load. Nothing on the Roblox side has been written, because it cannot be run without them.
-5. First things to prototype on a real phone: handling and carrying; walking on a moving deck; an intercepted delivery becoming a real object; demonstrating a route by touch; a deck of a few hundred welded pieces.
+1. Get the user's review: play it, then the pieces, the conventions, and Claude's calls listed in Status.
+2. Carry on down the tree one piece at a time. For each: write the calling code first; build it with tests; then run the checks listed under "A piece is done when".
+3. Be sparing with agents. One overnight run used the account's whole usage limit. Reader tests are cheap (no tools). Do mutation and bad-argument checks in the session.
+4. Before the plot pieces, the user's answer is needed on the spatial model (see "Proposed, awaiting the user"), and before placing and breaking, on how Use and Hit work on a phone.
+5. First things to prototype on a real phone: the inventory screen by touch; handling and carrying; walking on a moving deck; an intercepted delivery becoming a real object; demonstrating a route by touch; a deck of a few hundred welded pieces.
 
 ## Asked of the user, not yet answered
-- Their review of the five pieces in `src/shared`, the conventions under "How we work", and Claude's calls listed in Status.
+- To play the build and say what feels wrong.
+- Their review of the pieces, the conventions under "How we work", and Claude's calls listed in Status.
+- Approval to download Roblox's type definitions for luau-lsp (`globalTypes.d.luau`, from the luau-lsp project, a few megabytes), so that `src/server` and `src/client` are type-checked.
 - For each place or people they picture: what it needs and what it makes.
 - One Blockbench model with a stepped animation, in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.
 - Budget for a small ad test and for the 1,000 Robux fee that lets under-16s see the game later.
@@ -317,6 +344,9 @@ Details and sources are in the docs. Roblox changed these roughly monthly throug
 - **The higher 18+ payout rate** needs R15 avatars, or custom characters with enough joints, or no visible avatar. R6 disqualifies.
 - **No shipped Roblox game keeps every good as a live physics object.** The ones that lasted make goods physical only while handled. The only budget found is roughly 40 to 60 moving assemblies in one player's view, from a community article.
 - **Paid random items** need odds shown and are switched off in some regions.
+- **Roblox's chat window lies over the top left of the screen and takes clicks there even when it has faded from sight** (seen 2026-11-19: 308 by 181 pixels in a small window). A screen of ours that may overlap it turns the chat off while it is open.
+- **The strip along the top of the screen is 58 pixels high.** `UserInputService:GetMouseLocation` counts it, and so does a ScreenGui with `IgnoreGuiInset` on; `Camera:WorldToScreenPoint` and a GUI object's `AbsolutePosition` do not.
+- **`require("@game/ReplicatedStorage/...")` works in Studio** (checked 2026-11-19). The code does not use it: Roblox-side requires go through `game:GetService`, which is what luau-lsp follows with a Rojo sourcemap.
 
 ## Where the research is
 | File | What it is | Caveat |
