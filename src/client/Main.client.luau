@@ -38,6 +38,7 @@ local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local PlayerState = require(Shared.players.PlayerState)
+local SlotClicks = require(Shared.inventory.SlotClicks)
 local Plot = require(Shared.plots.Plot)
 local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
 local RecipeRegistry = require(Shared.stations.RecipeRegistry)
@@ -70,10 +71,8 @@ local screenOpen = false
 --- The hotbar slot in hand. The player chooses it here, and the server is told.
 local selectedSlot = 1
 
---- How soon a second left click on a slot must follow the first to count as a double click, in seconds.
-local DOUBLE_CLICK_SECONDS = 0.4
---- The last left click on a slot of the inventory screen, to tell a double click by. `nil` after a double click.
-local lastLeftClick: { side: string, slot: number, at: number }? = nil
+--- Which clicks on the inventory screen are plain clicks, double clicks, and Shift and clicks.
+local slotClicks = SlotClicks.new()
 
 local hotbarGui: HotbarGui.HotbarGui
 
@@ -98,20 +97,11 @@ hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 
 local inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 	onSlotClicked = function(side, slot, button, shiftHeld)
-		-- A second left click on the same slot soon after the first is a double click, which gathers.
-		local now = os.clock()
-		local isDouble = button == "left"
-			and lastLeftClick ~= nil
-			and lastLeftClick.side == side
-			and lastLeftClick.slot == slot
-			and now - lastLeftClick.at < DOUBLE_CLICK_SECONDS
-		lastLeftClick = if button == "left" and not isDouble then { side = side, slot = slot, at = now } else nil
-		if shiftHeld and button == "left" then
-			remotes.quickMoveSlot:FireServer(side, slot)
-		elseif isDouble then
-			remotes.doubleClickSlot:FireServer(side, slot)
-		else
+		local request = SlotClicks.read(slotClicks, side, slot, button, shiftHeld, os.clock())
+		if request == "clickSlot" then
 			remotes.clickSlot:FireServer(side, slot, button)
+		else
+			remotes[request]:FireServer(side, slot)
 		end
 	end,
 	onOutsideClicked = function(button)
@@ -145,6 +135,7 @@ local function setScreenOpen(open: boolean)
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, not open)
 	if not open then
 		InventoryGui.hide(inventoryGui)
+		SlotClicks.forget(slotClicks)
 	end
 end
 
@@ -272,11 +263,11 @@ UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewher
 		-- As in Minecraft: in the world Q drops one of what is in hand, and over a slot of the open
 		-- screen it drops one from that slot, or the whole stack with Ctrl held.
 		local hovered = inventoryGui.hovered
+		local count = if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then nil else 1
 		if not screenOpen then
-			remotes.dropSelected:FireServer()
+			remotes.dropSelected:FireServer(count)
 		elseif hovered ~= nil then
-			local wholeStack = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-			remotes.dropFromSlot:FireServer(hovered.side, hovered.slot, if wholeStack then nil else 1)
+			remotes.dropFromSlot:FireServer(hovered.side, hovered.slot, count)
 		end
 	elseif digit ~= nil and digit <= PlayerState.HOTBAR_SLOTS then
 		-- As in Minecraft: in the world a number picks the hotbar slot in hand, and over a slot of the

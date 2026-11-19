@@ -181,6 +181,25 @@ do -- many items, and one long step against many short ones
 		"step: with the same fire and the same work done"
 	)
 
+	local whole = stoveWith("fish 1", "log 1", "-")
+	Station.step(whole, 16)
+	local pieces = stoveWith("fish 1", "log 1", "-")
+	for _ = 1, 160 do
+		Station.step(pieces, 0.1)
+	end
+	local thirds = stoveWith("fish 1", "log 1", "-")
+	for _ = 1, 48 do
+		Station.step(thirds, 1 / 3)
+	end
+	check(not Station.isBurning(whole) and whole.burnLeft == 0, "step: a log is burnt out after its sixteen seconds")
+	check(
+		not Station.isBurning(pieces)
+			and pieces.burnLeft == 0
+			and not Station.isBurning(thirds)
+			and thirds.burnLeft == 0,
+		"step: and just as burnt out when the sixteen seconds came in small pieces"
+	)
+
 	local uneven = stoveWith("fish 5", "log 4", "-")
 	for _, seconds in { 3, 0, 9.5, 0.25, 11, 16.25 } do
 		Station.step(uneven, seconds)
@@ -284,6 +303,18 @@ do -- the gauges
 		check(type(key) == "string" and type(value) == "number", "encodeView: the view is plain data")
 	end
 	check(count == 2, "encodeView: two numbers and nothing else")
+	local swapped = stoveWith("fish 2", "log 4", "-")
+	Station.step(swapped, 4)
+	Inventory.setStack(swapped.inventory, INPUT, ItemStack.new("apple", 2))
+	check(
+		Station.encodeView(swapped).working == 0,
+		"encodeView: nothing done on an item that has just been put in the place of another"
+	)
+	Station.step(swapped, 3)
+	check(
+		near(Station.encodeView(swapped).working, 0.5),
+		"encodeView: and after a step, what has been done on that item"
+	)
 	local nearlyOut = stoveWith("fish 2", "log 1", "-")
 	Station.step(nearlyOut, 15.5)
 	check(
@@ -335,7 +366,7 @@ do -- mistakes in the calling code
 	local station = stoveWith("fish 1", "log 1", "-")
 	for _, bad in { -1, 0 / 0, math.huge, "8" } :: { any } do
 		check(
-			raises("Station.step: seconds must be a number, 0 or more; got " .. tostring(bad), function()
+			raises("Station.step: seconds must be a finite number, 0 or more; got " .. tostring(bad), function()
 				Station.step(station, bad)
 			end),
 			"step: refuses " .. tostring(bad) .. " seconds"

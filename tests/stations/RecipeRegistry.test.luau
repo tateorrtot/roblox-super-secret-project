@@ -126,13 +126,13 @@ do -- what register refuses
 	for _, bad in { 0, -2, 0 / 0, math.huge, "8", true } :: { any } do
 		refuses(
 			"seconds = " .. tostring(bad),
-			"seconds must be a number above 0; got " .. tostring(bad),
+			"seconds must be a finite number above 0; got " .. tostring(bad),
 			{ station = "kiln", input = "apple", output = "fish", seconds = bad }
 		)
 	end
 	refuses(
 		"no seconds",
-		"seconds must be a number above 0; got nil",
+		"seconds must be a finite number above 0; got nil",
 		{ station = "kiln", input = "apple", output = "fish" }
 	)
 	refuses(

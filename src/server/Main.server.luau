@@ -14,6 +14,11 @@
 	- It tells each player's machine what that player holds, whenever that
 	  has changed.
 
+	A player's machine is not trusted to be polite, either. However many
+	requests arrive in a frame, the World is drawn and the machines are told
+	once, and a machine that sends more than `REQUESTS_PER_SECOND` in a
+	second has the rest of that second's ignored.
+
 	Reading where a character stands is the one thing here that the rules
 	cannot do, because it means asking Roblox. The World is told the point
 	on the ground under each character, and the point a little in front of
@@ -41,6 +46,10 @@ local Remotes = require(script.Parent.Remotes)
 --- How often the World is stepped, in seconds.
 local STEP_SECONDS = 0.1
 
+--- How many requests one player's machine may make in a second. A person clicking as fast as they
+--- can makes far fewer. The rest of that second's are ignored.
+local REQUESTS_PER_SECOND = 60
+
 --- How far in front of a player a stack they drop lands, in studs. It is beyond
 --- `GroundItems.PICKUP_RADIUS`, so a player standing still does not take it back.
 local DROP_DISTANCE = 6
@@ -60,6 +69,10 @@ local world = World.new(placeholder.plot, plotParts.corner, os.clock())
 
 --- What each player's machine was last told they hold, as text, to tell whether it has changed since.
 local lastSent: { [Player]: string } = {}
+--- How many requests each player's machine has made in the second now passing.
+local requestsThisSecond: { [Player]: number } = {}
+--- Whether anything has happened since the players were last shown the World.
+local needsShow = false
 
 local function toPosition(point: Vector3): Position.Position
 	return { x = point.X, y = point.Y, z = point.Z }
@@ -98,7 +111,8 @@ end
 -- Tells the World where a player's character stands now, and where a stack they drop would land.
 local function tellPosition(player: Player)
 	local root = livingRoot(player)
-	if root == nil then
+	-- A position that is not a real place (not-a-number, or infinitely far) is treated as no character.
+	if root == nil or root.Position ~= root.Position or root.Position.Magnitude == math.huge then
 		World.setPlayerPosition(world, player.UserId, nil)
 		return
 	end
@@ -106,6 +120,15 @@ local function tellPosition(player: Player)
 	local ahead = root.Position + root.CFrame.LookVector * DROP_DISTANCE
 	local dropSpot = groundBelow(ahead + Vector3.new(0, 4, 0)) or standing
 	World.setPlayerPosition(world, player.UserId, toPosition(standing), toPosition(dropSpot))
+end
+
+-- Calls `callback`, and if it raises an error, warns of it and carries on. For the work that is done
+-- for every player in turn, so that a failure for one does not stop it for the rest.
+local function try(doing: string, callback: (...any) -> ...any, ...: any)
+	local ok, problem = pcall(callback, ...)
+	if not ok then
+		warn(string.format("An error while %s: %s", doing, tostring(problem)))
+	end
 end
 
 -- Tells a player's machine what the player holds, unless it is the same as it was last told.
@@ -120,32 +143,43 @@ end
 
 -- Makes what the players see match the World: the blocks in the world, and what each machine has been told.
 local function show()
+	needsShow = false
 	GroundItemParts.update(groundItemParts, world.groundItems)
 	PlotParts.update(plotParts, world.plot, world.stations)
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
-			sendInventory(player)
+			try("telling a player what they hold", sendInventory, player)
 		end
 	end
+end
+
+-- Counts one request from a player's machine. Returns true if it should be answered: the player is in
+-- the World and their machine has not made too many requests this second.
+local function mayAsk(player: Player): boolean
+	if world.players[player.UserId] == nil then
+		return false
+	end
+	local made = (requestsThisSecond[player] or 0) + 1
+	requestsThisSecond[player] = made
+	return made <= REQUESTS_PER_SECOND
 end
 
 -- Every request the World answers is handed to it as it came, with the player's position brought up
 -- to date first. The World checks the request; what a machine sends is not trusted here either.
 for _, name in World.REQUEST_NAMES do
 	remotes[name].OnServerEvent:Connect(function(player: Player, ...: any)
-		if world.players[player.UserId] == nil then
-			return
+		if mayAsk(player) then
+			tellPosition(player)
+			World.answer(world, player.UserId, name, ...)
+			needsShow = true
 		end
-		tellPosition(player)
-		World.answer(world, player.UserId, name, ...)
-		show()
 	end)
 end
 
 remotes.askForInventory.OnServerEvent:Connect(function(player: Player)
-	lastSent[player] = nil
-	if world.players[player.UserId] ~= nil then
-		sendInventory(player)
+	if mayAsk(player) then
+		lastSent[player] = nil
+		needsShow = true
 	end
 end)
 
@@ -160,6 +194,7 @@ end
 local function removePlayer(player: Player)
 	World.removePlayer(world, player.UserId)
 	lastSent[player] = nil
+	requestsThisSecond[player] = nil
 end
 
 Players.PlayerAdded:Connect(addPlayer)
@@ -171,19 +206,27 @@ end
 local function step()
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
-			tellPosition(player)
+			try("reading where a player stands", tellPosition, player)
 		end
 	end
-	World.step(world, os.clock())
-	PlaceholderWorld.restock(placeholder, world.groundItems, world.now)
+	try("stepping the World", World.step, world, os.clock())
+	try("restocking the plot", PlaceholderWorld.restock, placeholder, world.groundItems, world.now)
 	show()
 end
 
 local sinceStep = 0
+local sinceCountsCleared = 0
 RunService.Heartbeat:Connect(function(deltaTime: number)
+	sinceCountsCleared += deltaTime
+	if sinceCountsCleared >= 1 then
+		sinceCountsCleared = 0
+		table.clear(requestsThisSecond)
+	end
 	sinceStep += deltaTime
 	if sinceStep >= STEP_SECONDS then
 		sinceStep = 0
 		step()
+	elseif needsShow then
+		show()
 	end
 end)

@@ -61,7 +61,7 @@ end
 
 	Raises an error if `station`, `input` or `output` is not the id of a
 	registered item, if the station's item is not placeable or does not have
-	exactly three slots, if `seconds` is not a number above 0, if the table
+	exactly three slots, if `seconds` is not a finite number above 0, if the table
 	has any other field, or if that station already has a recipe for that
 	input.
 ]=]
@@ -89,7 +89,7 @@ function RecipeRegistry.register(recipe: Recipe)
 	end
 	local seconds = fields.seconds
 	if type(seconds) ~= "number" or not (seconds > 0) or seconds == math.huge then
-		fail(string.format("seconds must be a number above 0; got %s", tostring(seconds)))
+		fail(string.format("seconds must be a finite number above 0; got %s", tostring(seconds)))
 	end
 	local known = { station = true, input = true, output = true, seconds = true }
 	for field in fields do

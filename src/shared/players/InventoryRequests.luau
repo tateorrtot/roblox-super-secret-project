@@ -29,7 +29,7 @@
 	| `dropFromSlot` | side, slot, count | returns up to `count` items out of the slot, or all of them with no count |
 	| `dropCarried` | count | returns up to `count` of the carried items, or all of them with no count |
 	| `selectHotbarSlot` | slot | selects that hotbar slot |
-	| `dropSelected` | nothing | returns one item out of the selected hotbar slot |
+	| `dropSelected` | count | returns up to `count` items out of the selected hotbar slot, or all of them with no count |
 
 	Every request but the last two and `openPack` needs a screen to be open,
 	and is ignored when none is. A screen opened here knows the hotbar's
@@ -144,8 +144,11 @@ local answers: { [string]: (state: PlayerState, ...any) -> ItemStack? } = {
 		return nil
 	end,
 
-	dropSelected = function(state)
-		return Inventory.takeFromSlot(state.pack, state.hotbar.selectedSlot, 1)
+	dropSelected = function(state, count)
+		if not isCountOrNothing(count) then
+			return nil
+		end
+		return Inventory.takeFromSlot(state.pack, state.hotbar.selectedSlot, count)
 	end,
 }
 

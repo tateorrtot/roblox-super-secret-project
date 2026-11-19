@@ -313,22 +313,22 @@ end
 	Adds a new player to the world, with a pack that holds nothing, and
 	returns their PlayerState.
 
-	They have no character yet, so they stand nowhere. `position` is only
-	where a stack of theirs would be dropped until [method setPlayerPosition]
-	says where they stand.
+	They have no character yet, so they stand nowhere: their `position` is
+	`nil`. `dropPosition` is where a stack of theirs would be dropped until
+	[method setPlayerPosition] says where they stand.
 
 	Raises an error if `playerId` is not a number, if a player with that id
-	is already in the world, or if `position` is not a position.
+	is already in the world, or if `dropPosition` is not a position.
 ]=]
-function World.addPlayer(world: World, playerId: number, position: Position): PlayerState
+function World.addPlayer(world: World, playerId: number, dropPosition: Position): PlayerState
 	failIf(playerIdProblem(playerId), "World.addPlayer")
 	if world.players[playerId] ~= nil then
 		error(string.format("World.addPlayer: player %s is already in the world", tostring(playerId)), 2)
 	end
-	failIf(Position.validate(position), "World.addPlayer")
+	failIf(Position.validate(dropPosition), "World.addPlayer")
 	local state = PlayerState.new()
 	local players = world.players :: any
-	players[playerId] = { state = state, dropPosition = frozenCopy(position) }
+	players[playerId] = { state = state, dropPosition = frozenCopy(dropPosition) }
 	return state
 end
 
@@ -361,8 +361,9 @@ end
 	land where they stand. A player with no character keeps the drop
 	position they had.
 
-	Raises an error if no player has that id, or if `position` or
-	`dropPosition` is given and is not a position.
+	Raises an error if no player has that id, or if `position` is given and
+	it or `dropPosition` is not a position. A `dropPosition` given with no
+	`position` is not looked at.
 ]=]
 function World.setPlayerPosition(world: World, playerId: number, position: Position?, dropPosition: Position?)
 	local player = world.players[playerId]
@@ -404,10 +405,17 @@ end
 	| `hitPlaced` | id | knocks that placed item off the plot, to lie on its tile as an item with what was in it spilled around it |
 
 	Each of the three needs the player's character to stand within
-	`Plot.REACH` of the tile. `placeSelected` also needs the inventory screen
-	to be closed, the tile to hold nothing, the item to be one that can be
-	placed, and no player to be standing on the tile. Before a placed item is
-	knocked off, every player looking into it has their screen closed.
+	`Plot.REACH` of the middle of the tile, along the ground, so a player
+	with no character can do none of them. `placeSelected` also needs the
+	inventory screen to be closed, the tile to hold nothing, the item to be
+	one that can be placed, and no player to be standing on the tile: within
+	three studs of its middle.
+
+	Before a placed item is knocked off, every player looking into it has
+	their screen closed. The item itself then lies on the middle of its tile,
+	and each stack that was in it lies in a place of its own in a ring around
+	that. If it was a station its fire goes out: its entry in `stations` is
+	removed, and the fuel that was burning is gone.
 ]=]
 function World.answer(world: World, playerId: number, name: unknown, ...: unknown)
 	local player = world.players[playerId]
@@ -437,8 +445,8 @@ end
 	they have no character, if they stand more than `World.CLOSES_BEYOND`
 	from it, or if it is no longer on the plot. Every station on the plot
 	burns and works for the time that has passed since the last step, as
-	`Station.step` does. Then the ground items that have lain too long are
-	removed.
+	`Station.step` does; one placed since then is given the whole of that
+	time. Then the ground items that have lain too long are removed.
 
 	Raises an error if `now` is not a number.
 ]=]

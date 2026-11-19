@@ -16,9 +16,10 @@
 	not return a new one.
 
 	Items move between the inventory and the caller, and none is made or lost
-	on the way. A function that is given a count returns how many items it
-	moved. A function that is given a stack returns the stack of what did not
-	fit, and a function that takes a stack out returns that stack. Only
+	on the way. [method addItems] and [method removeItems] are given a count
+	and return how many items they moved. A function that is given a stack
+	returns the stack of what did not fit, and [method takeFromSlot] returns
+	the stack it took out. Only
 	[method setStack] and [method clear] discard what a slot held.
 
 	A full inventory, or a slot that holds nothing, is ordinary: the function

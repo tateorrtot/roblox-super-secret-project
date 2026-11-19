@@ -53,7 +53,7 @@ local definitions: { [string]: ItemDefinition } = {}
 	starting with a letter, if `stackSize` is not a whole number of 1 or more,
 	if `placeable` is given and is not `true`, if `slotCount` is given and is
 	not a whole number of 1 or more, if `slotCount` is given for an item that
-	is not placeable, if `burnSeconds` is given and is not a number above 0,
+	is not placeable, if `burnSeconds` is given and is not a finite number above 0,
 	if the table has any other field, or if an item with that id is already
 	registered.
 ]=]
@@ -124,7 +124,7 @@ function ItemRegistry.register(definition: ItemDefinition)
 		if type(burnSeconds) ~= "number" or not (burnSeconds > 0) or burnSeconds == math.huge then
 			error(
 				string.format(
-					'ItemRegistry.register: burnSeconds of "%s" must be a number above 0, or left out; got %s',
+					'ItemRegistry.register: burnSeconds of "%s" must be a finite number above 0, or left out; got %s',
 					id,
 					tostring(burnSeconds)
 				),

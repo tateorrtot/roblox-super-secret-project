@@ -32,7 +32,9 @@
 	[method click] turns a Minecraft left or right mouse click into them, and
 	[method doubleClick] the second click of a double click.
 
-	An action that moves items returns how many it moved. No action makes or
+	[method pickUp], [method putDown], [method quickMove] and [method gather]
+	return how many items they moved. [method swap], [method click] and
+	[method doubleClick] return `true` if anything changed. No action makes or
 	loses an item: what does not fit stays where it was. [method drop] and
 	[method close] return a stack that is no longer in the session, and the
 	caller must put it on the ground.

@@ -22,7 +22,7 @@
 	| `dropFromSlot` | side, slot, and count or nothing for all | drop items out of a slot of the open screen onto the ground |
 	| `dropCarried` | count, or nothing for all | drop carried items on the ground |
 	| `selectHotbarSlot` | slot | select a hotbar slot |
-	| `dropSelected` | nothing | drop one item from the selected hotbar slot on the ground |
+	| `dropSelected` | count, or nothing for all | drop items from the selected hotbar slot on the ground |
 	| `placeSelected` | x, z | place one of the item in the selected hotbar slot on that tile of the plot |
 	| `usePlaced` | id | use a placed item: open it, if it holds things |
 	| `hitPlaced` | id | hit a placed item: it comes off the plot and lies on the ground as an item, with what was in it |
@@ -35,11 +35,16 @@
 
 	In `inventoryChanged`, `pack` is the player's pack as `Inventory.encode`
 	makes it. `screen` is `nil` when no inventory screen is open. When one is
-	open it is a table of three things, each of which may be `nil`:
+	open it is a table of four things, each of which may be `nil`:
 	- `other`: the other inventory that is open beside the pack, encoded;
 	- `otherItemId`: the id of the item whose inventory that is, such as
 	  `"crate"`;
-	- `carried`: the stack being carried.
+	- `carried`: the stack being carried;
+	- `station`: if what is open is a station, such as a stove, how far its
+	  fire has burnt and its work has got: `{ burning = 0.75, working = 0.5 }`,
+	  each from 0 to 1, as `Station.encodeView` makes it.
+
+	`World.encodeView` makes both.
 ]=]
 
 return table.freeze({

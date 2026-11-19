@@ -32,6 +32,33 @@ function ScreenScale.current(): number
 	return math.clamp(math.min(size.X / DESIGN_WIDTH, size.Y / DESIGN_HEIGHT), SMALLEST, LARGEST)
 end
 
+-- Every UIScale this has made, kept right by the two connections below.
+local uiScales: { UIScale } = {}
+local viewportChanged: RBXScriptConnection? = nil
+
+local function refresh()
+	local scale = ScreenScale.current()
+	for _, uiScale in uiScales do
+		uiScale.Scale = scale
+	end
+end
+
+-- Follows the size of the camera there is now. Called again whenever the camera turns up or is replaced.
+local function followCamera()
+	if viewportChanged ~= nil then
+		viewportChanged:Disconnect()
+		viewportChanged = nil
+	end
+	local camera = Workspace.CurrentCamera
+	if camera ~= nil then
+		viewportChanged = camera:GetPropertyChangedSignal("ViewportSize"):Connect(refresh)
+	end
+	refresh()
+end
+
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(followCamera)
+followCamera()
+
 --[=[
 	Scales `guiObject`, and everything inside it, to fit this window, and
 	keeps it fitted when the window changes size. Returns the UIScale that
@@ -41,12 +68,7 @@ function ScreenScale.apply(guiObject: GuiObject): UIScale
 	local uiScale = Instance.new("UIScale")
 	uiScale.Scale = ScreenScale.current()
 	uiScale.Parent = guiObject
-	local camera = Workspace.CurrentCamera
-	if camera ~= nil then
-		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-			uiScale.Scale = ScreenScale.current()
-		end)
-	end
+	table.insert(uiScales, uiScale)
 	return uiScale
 end
 

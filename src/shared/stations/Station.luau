@@ -21,7 +21,7 @@
 	  has no recipe for what it holds, or if the output slot has no room for
 	  what would be made. Work already done on an item is lost if the fire
 	  goes out for want of fuel, or if a step finds a different item in the
-	  input slot, or none.
+	  input slot, or none, or no room in the output slot.
 
 	A station holds the inventory it is given, which is the placed item's own.
 	Players put things in and take them out through an InventorySession opened
@@ -144,11 +144,11 @@ end
 	One long step ends as many short steps of the same total would. A step of
 	0 does nothing.
 
-	Raises an error if `seconds` is not a number of 0 or more.
+	Raises an error if `seconds` is not a finite number of 0 or more.
 ]=]
 function Station.step(station: Station, seconds: number)
 	if type(seconds) ~= "number" or not (seconds >= 0) or seconds == math.huge then
-		error(string.format("Station.step: seconds must be a number, 0 or more; got %s", tostring(seconds)), 2)
+		error(string.format("Station.step: seconds must be a finite number, 0 or more; got %s", tostring(seconds)), 2)
 	end
 	local writable = station :: any
 	local inventory = station.inventory
@@ -181,7 +181,9 @@ function Station.step(station: Station, seconds: number)
 			advance = math.min(advance, recipe.seconds - station.worked)
 		end
 		left -= advance
-		writable.burnLeft = station.burnLeft - advance
+		-- A fire with next to no time left is out, so that many short steps end as one long one does.
+		local burnLeft = station.burnLeft - advance
+		writable.burnLeft = if burnLeft < SAME_TIME then 0 else burnLeft
 		if recipe ~= nil then
 			writable.worked = station.worked + advance
 			if station.worked >= recipe.seconds - SAME_TIME then
@@ -229,12 +231,16 @@ end
 	Returns what to tell a player's machine about the station, as plain data:
 	how much of the burning fuel is left, and how far the work on the item in
 	the input slot has got, each as a number from 0 to 1.
+
+	If the item in the input slot has been changed since the last step, the
+	work done was on another item, and `working` is 0.
 ]=]
 function Station.encodeView(station: Station): StationView
 	local recipe = Station.recipe(station)
+	local isWorkedOn = recipe ~= nil and recipe.input == station.workingOn
 	return {
 		burning = if station.burnLeft > 0 then station.burnLeft / station.burnTotal else 0,
-		working = if recipe ~= nil then station.worked / recipe.seconds else 0,
+		working = if recipe ~= nil and isWorkedOn then station.worked / recipe.seconds else 0,
 	}
 end
 

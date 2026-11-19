@@ -1,8 +1,9 @@
 --!strict
 --[=[
 	A grey stand-in for the world, to build and test the game's machinery on:
-	a flat plot with a post at each corner, a crate and a stove standing on
-	it, and items that keep turning up on the ground.
+	a flat plot beside the place where players appear, with a post at each
+	corner, a crate and a stove standing on it, and items that keep turning
+	up on the ground.
 
 	None of this is the game's world. It is made by code so that the project
 	folder alone is enough to run the game, and it goes when there is a real
@@ -41,6 +42,7 @@ export type PlaceholderWorld = {
 PlaceholderWorld.PLOT_TILES = 18
 
 local SLAB_HEIGHT = 0.4
+local PLOT_FROM_SPAWN = 12
 local GROUND_ITEMS_KEPT = 10
 local SECONDS_BETWEEN_RESTOCKS = 4
 
@@ -89,8 +91,10 @@ function PlaceholderWorld.build(): PlaceholderWorld
 	end
 	local spawnPoint = (spawnLocation :: SpawnLocation).Position
 
+	-- The plot lies beside the place where players appear, not under it, so that nothing placed on
+	-- the plot can be where a player is about to appear.
 	local side = PlaceholderWorld.PLOT_TILES * Plot.TILE_SIZE
-	local center = Vector3.new(spawnPoint.X, 0, spawnPoint.Z)
+	local center = Vector3.new(spawnPoint.X + side / 2 + PLOT_FROM_SPAWN, 0, spawnPoint.Z)
 	local slab = makeBlock(
 		"Plot",
 		Vector3.new(side, SLAB_HEIGHT, side),
@@ -159,11 +163,9 @@ function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: Gr
 		z = slab.Position.Z - slab.Size.Z / 2,
 	}
 	local spot = Plot.tileCenter(corner, tileX, tileZ)
-	-- Nothing lands where players appear, or on a tile that something stands on: a tile a crate
-	-- could go on is a tile that holds nothing. A spot that will not do is skipped until the next time.
-	local spawnPoint = placeholder.spawnPoint
-	local fromSpawn = Vector3.new(spot.x - spawnPoint.X, 0, spot.z - spawnPoint.Z).Magnitude
-	if fromSpawn < 9 or not Plot.canPlace(plot, "crate", tileX, tileZ) then
+	-- Nothing lands on a tile that something stands on: a tile a crate could go on is a tile that
+	-- holds nothing. A tile that will not do is skipped until the next time.
+	if not Plot.canPlace(plot, "crate", tileX, tileZ) then
 		return
 	end
 

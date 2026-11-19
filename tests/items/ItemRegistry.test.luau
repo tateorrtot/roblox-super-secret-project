@@ -164,9 +164,12 @@ do -- items that burn
 	check(ItemRegistry.get("not_placed").burnSeconds == nil, "register: an item that does not burn has no burnSeconds")
 	for _, bad in { 0, -4, 0 / 0, math.huge, "16", true } :: { any } do
 		check(
-			raises('burnSeconds of "bad_fuel" must be a number above 0, or left out; got ' .. tostring(bad), function()
-				ItemRegistry.register({ id = "bad_fuel", stackSize = 1, burnSeconds = bad })
-			end),
+			raises(
+				'burnSeconds of "bad_fuel" must be a finite number above 0, or left out; got ' .. tostring(bad),
+				function()
+					ItemRegistry.register({ id = "bad_fuel", stackSize = 1, burnSeconds = bad })
+				end
+			),
 			"register: refuses burnSeconds = " .. tostring(bad)
 		)
 	end

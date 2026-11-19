@@ -263,7 +263,7 @@ end
 
 do -- requests about a player's own inventories
 	local world, state = newWorld()
-	answer(world, 1, "dropSelected")
+	answer(world, 1, "dropSelected", 1)
 	check(is(Inventory.getStack(state.pack, 1), "log", 11), "answer: dropSelected takes one out of the hand")
 	local dropped: GroundItems.GroundItem = (world.groundItems.byId :: any)[1]
 	check(dropped ~= nil and is(dropped.stack, "log", 1), "answer: and it lies on the ground")
@@ -285,13 +285,13 @@ do -- requests about a player's own inventories
 	)
 
 	World.setPlayerPosition(world, 1, nil)
-	answer(world, 1, "dropSelected")
+	answer(world, 1, "dropSelected", 1)
 	check(
 		sum(onGround(world, "log")) == 5,
 		"answer: a player with no character can still drop, where their drops last landed"
 	)
 
-	answer(world, 2, "dropSelected")
+	answer(world, 2, "dropSelected", 1)
 	answer(world, 2, "openPack")
 	check(inWorld(world, "log") == 12, "answer: a request from a player who is not in the world is ignored")
 	for _, name in { "askForInventory", "nonsense", "", 7, true, {} } :: { any } do

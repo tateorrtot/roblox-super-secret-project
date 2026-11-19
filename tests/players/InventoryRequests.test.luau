@@ -150,11 +150,11 @@ end
 
 do -- dropping
 	local state = newPlayer()
-	check(is(answer(state, "dropSelected"), "log", 1), "dropSelected: returns one of what is in hand")
+	check(is(answer(state, "dropSelected", 1), "log", 1), "dropSelected: returns one of what is in hand")
 	check(is(Inventory.getStack(state.pack, 1), "log", 11), "dropSelected: and it has left the pack")
 	answer(state, "selectHotbarSlot", 2)
 	check(
-		state.hotbar.selectedSlot == 2 and is(answer(state, "dropSelected"), "fish", 1),
+		state.hotbar.selectedSlot == 2 and is(answer(state, "dropSelected", 1), "fish", 1),
 		"selectHotbarSlot: changes what is in hand"
 	)
 	for _, bad in { 0, 10, -1, 2.5, 0 / 0, math.huge, "3", true, {} } :: { any } do
@@ -167,14 +167,29 @@ do -- dropping
 	answer(state, "selectHotbarSlot", 1)
 	check(state.hotbar.selectedSlot == 1, "selectHotbarSlot: and the first")
 	answer(state, "selectHotbarSlot", 5)
-	check(answer(state, "dropSelected") == nil, "dropSelected: nil when the hand holds nothing")
+	check(answer(state, "dropSelected", 1) == nil, "dropSelected: nil when the hand holds nothing")
+
+	local whole = newPlayer()
+	check(is(answer(whole, "dropSelected"), "log", 12), "dropSelected: with no count, returns the whole stack in hand")
+	check(Inventory.getStack(whole.pack, 1) == nil, "dropSelected: and the hand holds nothing")
+	local some = newPlayer()
+	check(is(answer(some, "dropSelected", 5), "log", 5), "dropSelected: returns as many as were asked for")
+	check(is(answer(some, "dropSelected", 99), "log", 7), "dropSelected: or what there is, when asked for more")
+	local careful = newPlayer()
+	for _, bad in { -1, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
+		check(answer(careful, "dropSelected", bad) == nil, "dropSelected: ignored with the count " .. tostring(bad))
+	end
+	check(
+		answer(careful, "dropSelected", 0) == nil and is(Inventory.getStack(careful.pack, 1), "log", 12),
+		"dropSelected: a count of 0 drops nothing"
+	)
 
 	check(answer(state, "dropCarried") == nil, "dropCarried: nil when no screen is open")
 	check(answer(state, "dropFromSlot", "pack", 1, 1) == nil, "dropFromSlot: nil when no screen is open")
 	answer(state, "openPack")
 	answer(state, "selectHotbarSlot", 1)
 	check(
-		is(answer(state, "dropSelected"), "log", 1) and is(Inventory.getStack(state.pack, 1), "log", 10),
+		is(answer(state, "dropSelected", 1), "log", 1) and is(Inventory.getStack(state.pack, 1), "log", 10),
 		"dropSelected: works while a screen is open too"
 	)
 	answer(state, "selectHotbarSlot", 5)
