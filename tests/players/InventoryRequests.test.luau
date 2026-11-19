@@ -172,13 +172,15 @@ do -- dropping
 	check(answer(state, "dropCarried") == nil, "dropCarried: nil when no screen is open")
 	check(answer(state, "dropFromSlot", "pack", 1, 1) == nil, "dropFromSlot: nil when no screen is open")
 	answer(state, "openPack")
+	answer(state, "selectHotbarSlot", 1)
 	check(
-		answer(state, "dropSelected") == nil and is(Inventory.getStack(state.pack, 1), "log", 11),
-		"dropSelected: ignored while a screen is open"
+		is(answer(state, "dropSelected"), "log", 1) and is(Inventory.getStack(state.pack, 1), "log", 10),
+		"dropSelected: works while a screen is open too"
 	)
+	answer(state, "selectHotbarSlot", 5)
 	check(is(answer(state, "dropFromSlot", "pack", 1, 1), "log", 1), "dropFromSlot: returns that many from the slot")
 	check(
-		is(answer(state, "dropFromSlot", "pack", 1), "log", 10),
+		is(answer(state, "dropFromSlot", "pack", 1), "log", 9),
 		"dropFromSlot: with no count, returns the whole stack"
 	)
 	check(answer(state, "dropFromSlot", "pack", 1) == nil, "dropFromSlot: nil from a slot that holds nothing")

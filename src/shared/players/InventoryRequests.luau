@@ -16,10 +16,28 @@
 	ground. [method answer] returns that stack, and the caller must put it on
 	the ground.
 
-	The requests are named in `InventoryRequests.NAMES`. What each is sent
-	with is listed in Messages. Requests about the world, such as placing an
-	item on a plot, are not answered here: they need more than one player's
-	state.
+	The requests, what each is sent with, and what each does:
+
+	| Name | Sent with | Does |
+	|---|---|---|
+	| `openPack` | nothing | opens the inventory screen on the pack alone, unless a screen is open |
+	| `closeInventory` | nothing | closes the screen; returns what was carried if the pack has no room for it |
+	| `clickSlot` | side, slot, button | a left or right mouse click on a slot, as `InventorySession.click` does |
+	| `doubleClickSlot` | side, slot | the second click of a double click, as `InventorySession.doubleClick` does |
+	| `quickMoveSlot` | side, slot | sends the slot's stack to the other side, as `InventorySession.quickMove` does |
+	| `swapWithHotbarSlot` | side, slot, hotbar slot | exchanges the slot's stack with a hotbar slot's |
+	| `dropFromSlot` | side, slot, count | returns up to `count` items out of the slot, or all of them with no count |
+	| `dropCarried` | count | returns up to `count` of the carried items, or all of them with no count |
+	| `selectHotbarSlot` | slot | selects that hotbar slot |
+	| `dropSelected` | nothing | returns one item out of the selected hotbar slot |
+
+	Every request but the last two and `openPack` needs a screen to be open,
+	and is ignored when none is. A screen opened here knows the hotbar's
+	size, so `quickMoveSlot` and `swapWithHotbarSlot` work on the pack alone.
+
+	Requests about the world, such as placing an item on a plot, are not
+	answered here: they need more than one player's state. Messages lists
+	every request there is.
 
 	```lua
 	InventoryRequests.answer(state, "openPack") --> nil; state.session is now the open screen
@@ -127,9 +145,6 @@ local answers: { [string]: (state: PlayerState, ...any) -> ItemStack? } = {
 	end,
 
 	dropSelected = function(state)
-		if state.session ~= nil then
-			return nil
-		end
 		return Inventory.takeFromSlot(state.pack, state.hotbar.selectedSlot, 1)
 	end,
 }
