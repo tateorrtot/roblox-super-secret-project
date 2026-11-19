@@ -12,7 +12,8 @@
 	  inventory itself.
 
 	Keys: E opens and closes the pack, 1 to 9 pick a hotbar slot, and Q drops
-	one of what is in hand.
+	one of what is in hand. With the inventory screen open, 1 to 9 and Q act
+	on the slot under the pointer instead.
 
 	In the world there are two actions, Use and Hit. Use is a left click or a
 	tap: on a placed item it opens it, and on a bare tile of the plot it
@@ -242,11 +243,24 @@ UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewher
 	if input.KeyCode == Enum.KeyCode.E then
 		togglePack()
 	elseif input.KeyCode == Enum.KeyCode.Q then
+		-- As in Minecraft: in the world Q drops one of what is in hand, and over a slot of the open
+		-- screen it drops one from that slot, or the whole stack with Ctrl held.
+		local hovered = inventoryGui.hovered
 		if not screenOpen then
 			remotes.dropSelected:FireServer()
+		elseif hovered ~= nil then
+			local wholeStack = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+			remotes.dropFromSlot:FireServer(hovered.side, hovered.slot, if wholeStack then nil else 1)
 		end
 	elseif digit ~= nil and digit <= PlayerState.HOTBAR_SLOTS then
-		selectSlot(digit)
+		-- As in Minecraft: in the world a number picks the hotbar slot in hand, and over a slot of the
+		-- open screen it swaps that slot with the hotbar slot of that number.
+		local hovered = inventoryGui.hovered
+		if not screenOpen then
+			selectSlot(digit)
+		elseif hovered ~= nil then
+			remotes.swapWithHotbarSlot:FireServer(hovered.side, hovered.slot, digit)
+		end
 	end
 end)
 

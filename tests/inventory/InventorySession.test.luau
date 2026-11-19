@@ -287,6 +287,75 @@ do -- quickMove
 	check(contents(alone.pack) == "log 12, -", "quickMove: and nothing moves")
 end
 
+do -- swapWithHotbar: a number key over a slot
+	local session = InventorySession.open(inventoryOf("log 12, stone 3, -, stove 1"), inventoryOf("log 5, -"), 2)
+	InventorySession.pickUp(session, "pack", 4)
+	InventorySession.swapWithHotbar(session, "other", 1, 2)
+	check(
+		contents(session.pack) == "log 12, log 5, -, -"
+			and contents(session.other :: Inventory.Inventory) == "stone 3, -",
+		"swapWithHotbar: the crate's stack and the hotbar slot's change places"
+	)
+	InventorySession.swapWithHotbar(session, "other", 2, 1)
+	check(
+		contents(session.pack) == "-, log 5, -, -"
+			and contents(session.other :: Inventory.Inventory) == "stone 3, log 12",
+		"swapWithHotbar: a slot that holds nothing takes the hotbar's stack"
+	)
+	InventorySession.swapWithHotbar(session, "other", 1, 1)
+	check(
+		contents(session.pack) == "stone 3, log 5, -, -"
+			and contents(session.other :: Inventory.Inventory) == "-, log 12",
+		"swapWithHotbar: a hotbar slot that holds nothing takes the slot's stack"
+	)
+	InventorySession.swapWithHotbar(session, "pack", 3, 2)
+	check(contents(session.pack) == "stone 3, -, log 5, -", "swapWithHotbar: a pack slot swaps with a hotbar slot too")
+	InventorySession.swapWithHotbar(session, "pack", 4, 2)
+	check(contents(session.pack) == "stone 3, -, log 5, -", "swapWithHotbar: two slots that hold nothing stay so")
+	InventorySession.swapWithHotbar(session, "pack", 1, 1)
+	check(
+		contents(session.pack) == "stone 3, -, log 5, -",
+		"swapWithHotbar: a hotbar slot swapped with itself is unchanged"
+	)
+	InventorySession.swapWithHotbar(session, "pack", 1, 2)
+	check(contents(session.pack) == "-, stone 3, log 5, -", "swapWithHotbar: two hotbar slots change places")
+	check(describe(session.carried) == "stove 1", "swapWithHotbar: the carried stack is not involved")
+
+	for _, bad in { 0, 3, -1, 1.5, 0 / 0, math.huge } do
+		check(
+			raises(
+				"InventorySession.swapWithHotbar: hotbarSlot "
+					.. tostring(bad)
+					.. " is out of range; the hotbar has slots 1 to 2",
+				function()
+					InventorySession.swapWithHotbar(session, "pack", 3, bad)
+				end
+			),
+			"swapWithHotbar: refuses hotbar slot " .. tostring(bad) .. " of 2"
+		)
+	end
+	check(
+		raises("slot 5 is out of range; that inventory has slots 1 to 4", function()
+			InventorySession.swapWithHotbar(session, "pack", 5, 1)
+		end),
+		"swapWithHotbar: refuses a slot the pack lacks"
+	)
+	local untold = InventorySession.open(inventoryOf("log 12, -"), inventoryOf("-"))
+	check(
+		raises("InventorySession.swapWithHotbar: this session was not told how many slots the hotbar has", function()
+			InventorySession.swapWithHotbar(untold, "other", 1, 1)
+		end),
+		"swapWithHotbar: refuses a session that was not told its hotbar's size"
+	)
+	check(
+		raises('side is "other", but this session has no other inventory open', function()
+			InventorySession.swapWithHotbar(InventorySession.open(inventoryOf("-, -"), nil, 1), "other", 1, 1)
+		end),
+		"swapWithHotbar: refuses the other inventory when the pack is open alone"
+	)
+	check(contents(session.pack) == "-, stone 3, log 5, -", "swapWithHotbar: a refused call changes nothing")
+end
+
 do -- quickMove with the pack open alone: between the hotbar and the rest of the pack
 	local session = InventorySession.open(inventoryOf("log 12, stone 3, -, -, log 10, -"), nil, 2)
 	check(session.hotbarSlotCount == 2, "open: keeps the hotbar size it was told")

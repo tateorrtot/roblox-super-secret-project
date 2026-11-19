@@ -68,6 +68,8 @@ export type InventoryGui = {
 	read carriedFrame: Frame,
 	--- The connection that moves the carried stack each frame while the screen is open.
 	read following: RBXScriptConnection?,
+	--- The slot the pointer is over, or `nil` when it is over none. For keys that act on the slot under the pointer.
+	read hovered: { side: Side, slot: number }?,
 }
 
 local COLUMNS = 9
@@ -75,7 +77,7 @@ local GAP = 4
 local PADDING = 14
 local TITLE_HEIGHT = 26
 local HOTBAR_GAP = 10
-local HINT_HEIGHT = 34
+local HINT_HEIGHT = 46
 local PACK_NAME = "Pack"
 
 local function isShiftHeld(): boolean
@@ -91,6 +93,15 @@ local function makeSlot(inventoryGui: InventoryGui, side: Side, slot: number): S
 	end)
 	slotGui.button.MouseButton2Click:Connect(function()
 		inventoryGui.callbacks.onSlotClicked(side, slot, "right", isShiftHeld())
+	end)
+	slotGui.button.MouseEnter:Connect(function()
+		(inventoryGui :: any).hovered = { side = side, slot = slot }
+	end)
+	slotGui.button.MouseLeave:Connect(function()
+		local hovered = inventoryGui.hovered
+		if hovered ~= nil and hovered.side == side and hovered.slot == slot then
+			(inventoryGui :: any).hovered = nil
+		end
 	end)
 	return slotGui
 end
@@ -230,7 +241,8 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	hint.TextYAlignment = Enum.TextYAlignment.Bottom
 	hint.TextColor3 = Color3.fromRGB(165, 166, 175)
 	hint.Text = "Left click: pick up or put down a stack.  Right click: take half, or put one down.\n"
-		.. "Shift and click: send to the other side.  Click outside: drop.  E: close."
+		.. "Shift and click: send to the other side.  Click outside: drop.  E: close.\n"
+		.. "Over a slot, 1 to 9: swap with that hotbar slot.  Q: drop one."
 	hint.Parent = panel
 
 	local carriedFrame = Instance.new("Frame")
@@ -308,6 +320,7 @@ end
 ]=]
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
+	(inventoryGui :: any).hovered = nil
 	local following = inventoryGui.following
 	if following ~= nil then
 		following:Disconnect();

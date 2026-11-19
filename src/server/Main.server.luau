@@ -221,6 +221,27 @@ onRequest("quickMoveSlot", function(_, state, side, slot)
 	end
 end)
 
+onRequest("swapWithHotbarSlot", function(_, state, side, slot, hotbarSlot)
+	local session = state.session
+	if session == nil or not InventorySession.hasSlot(session, side, slot) then
+		return
+	end
+	if isWholeNumber(hotbarSlot) and hotbarSlot >= 1 and hotbarSlot <= state.hotbar.slotCount then
+		InventorySession.swapWithHotbar(session, side, slot, hotbarSlot)
+	end
+end)
+
+onRequest("dropFromSlot", function(player, state, side, slot, count)
+	local session = state.session
+	if session == nil or not InventorySession.hasSlot(session, side, slot) then
+		return
+	end
+	if count == nil or (isWholeNumber(count) and count >= 0) then
+		local inventory = if side == "pack" then session.pack else session.other :: Inventory.Inventory
+		dropFor(player, Inventory.takeFromSlot(inventory, slot, count))
+	end
+end)
+
 onRequest("dropCarried", function(player, state, count)
 	local session = state.session
 	if session == nil then

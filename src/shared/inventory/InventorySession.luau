@@ -19,6 +19,7 @@
 	of a slot and carries them. [method putDown] puts carried items into a
 	slot. [method swap] exchanges the carried stack with a slot's.
 	[method quickMove] sends a slot's stack straight to the other inventory.
+	[method swapWithHotbar] exchanges a slot's stack with a hotbar slot's.
 	[method drop] hands carried items to the caller, to go on the ground.
 	A touch screen calls these directly, as Minecraft does on phones.
 	[method click] turns a Minecraft left or right mouse click into them.
@@ -231,6 +232,40 @@ function InventorySession.swap(session: InventorySession, side: Side, slot: numb
 	local there = Inventory.getStack(inventory, slot)
 	Inventory.setStack(inventory, slot, session.carried)
 	carry(session, there)
+end
+
+--[=[
+	Exchanges the stack in a slot with the stack in a hotbar slot of the pack.
+	Either may be nothing. This is Minecraft's number key pressed over a slot:
+	what the pointer is over goes to that hotbar slot, and what was there
+	comes back. The carried stack is not involved. Naming the hotbar slot
+	itself as the slot changes nothing.
+
+	Raises an error if `slot` is not one of that inventory's slots, if `side`
+	is `"other"` and no other inventory is open, if the session was not told
+	how many slots the hotbar has, or if `hotbarSlot` is not a whole number
+	from 1 to that many.
+]=]
+function InventorySession.swapWithHotbar(session: InventorySession, side: Side, slot: number, hotbarSlot: number)
+	failIf(slotProblem(session, side, slot), "InventorySession.swapWithHotbar")
+	local hotbarSlotCount = session.hotbarSlotCount
+	if hotbarSlotCount == nil then
+		error("InventorySession.swapWithHotbar: this session was not told how many slots the hotbar has", 2)
+	end
+	if not isWholeNumber(hotbarSlot) or hotbarSlot < 1 or hotbarSlot > hotbarSlotCount then
+		error(
+			string.format(
+				"InventorySession.swapWithHotbar: hotbarSlot %s is out of range; the hotbar has slots 1 to %d",
+				tostring(hotbarSlot),
+				hotbarSlotCount
+			),
+			2
+		)
+	end
+	local inventory = inventoryOn(session, side)
+	local there = Inventory.getStack(inventory, slot)
+	Inventory.setStack(inventory, slot, Inventory.getStack(session.pack, hotbarSlot))
+	Inventory.setStack(session.pack, hotbarSlot, there)
 end
 
 --[=[

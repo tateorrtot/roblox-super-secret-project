@@ -183,6 +183,10 @@ class Playtest:
             move, {'action': 'wait', 'wait_time_ms': 150},
             {'action': 'mouseButtonClick', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 350}]})
 
+    def hover(self, where):
+        self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
+            {'action': 'moveTo', 'instance_path': where}, {'action': 'wait', 'wait_time_ms': 250}]})
+
     def walk_to(self, x, z):
         self.studio.call('character_navigation', {'datamodel_type': 'Client', 'x': x, 'y': 1, 'z': z, 'speed_multiplier': 2})
 
@@ -249,6 +253,14 @@ class Playtest:
         self.hold('LeftShift', False)
         view = self.view()
         check(view['pack'].get('s1') == 'Apple 4' and view['pack'].get('s10') == '', 'and sends it back to the hotbar', view['pack'])
+        self.hover(PANEL + 'PackSlot2')
+        self.keys('Five')
+        view = self.view()
+        check(view['pack'].get('s5') == 'Log 16' and view['pack'].get('s2') == '',
+              'a number key over a slot swaps it with that hotbar slot', view['pack'])
+        self.keys('Five')
+        view = self.view()
+        check(view['pack'].get('s2') == 'Log 16' and view['pack'].get('s5') == '', 'and again swaps it back', view['pack'])
         self.click(PANEL + 'PackSlot2')
         view = self.view()
         check(view['carried'] == 'Log 16' and view['pack'].get('s2') == '', 'a left click picks up the whole stack')
@@ -270,6 +282,10 @@ class Playtest:
         view = self.view()
         check(view['pack'].get('s1') == 'Apple 4' and view['pack'].get('s3') == 'Log 4' and view['carried'] == '',
               'swapped back, and a stack put on its own kind tops it up', view['pack'])
+        self.hover(PANEL + 'PackSlot3')
+        self.keys('Q')
+        check(self.view()['pack'].get('s3') == 'Log 3' and self.ground('log') == [1], 'Q over a slot drops one from it',
+              self.world()['ground'])
         self.click(PANEL + 'PackSlot1', 'right')
 
         # Dropping from the screen.
@@ -287,8 +303,8 @@ class Playtest:
         # The hotbar, dropping with Q, and picking up by walking.
         self.keys('Three', 'Q')
         view = self.view()
-        check(view['held'] == 'Log' and view['hotbar'].get('s3') == 'Log 3', 'Q drops one of what is in hand', view['hotbar'])
-        check(self.ground('log') == [1], 'and it lies on the ground')
+        check(view['held'] == 'Log' and view['hotbar'].get('s3') == 'Log 2', 'Q drops one of what is in hand', view['hotbar'])
+        check(self.ground('log') == [2], 'and it joins the log already on the ground')
         apples = [entry for entry in self.world()['ground'] if entry['item'] == 'apple'][0]
         time.sleep(1.6)
         self.walk_to(apples['x'], apples['z'])
