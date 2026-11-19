@@ -36,6 +36,9 @@ export type ItemDefinition = {
 	--- How many inventory slots the item has inside it once it is placed, as a crate does: a whole
 	--- number, 1 or more. Left out for an item that holds nothing. Only a placeable item may have it.
 	read slotCount: number?,
+	--- How long one of this item burns as fuel, in seconds: a number above 0. Left out for an item
+	--- that does not burn.
+	read burnSeconds: number?,
 }
 
 local definitions: { [string]: ItemDefinition } = {}
@@ -50,8 +53,9 @@ local definitions: { [string]: ItemDefinition } = {}
 	starting with a letter, if `stackSize` is not a whole number of 1 or more,
 	if `placeable` is given and is not `true`, if `slotCount` is given and is
 	not a whole number of 1 or more, if `slotCount` is given for an item that
-	is not placeable, if the table has any other field, or if an item with
-	that id is already registered.
+	is not placeable, if `burnSeconds` is given and is not a number above 0,
+	if the table has any other field, or if an item with that id is already
+	registered.
 ]=]
 function ItemRegistry.register(definition: ItemDefinition)
 	if type(definition) ~= "table" then
@@ -115,8 +119,22 @@ function ItemRegistry.register(definition: ItemDefinition)
 			)
 		end
 	end
+	local burnSeconds = fields.burnSeconds
+	if burnSeconds ~= nil then
+		if type(burnSeconds) ~= "number" or not (burnSeconds > 0) or burnSeconds == math.huge then
+			error(
+				string.format(
+					'ItemRegistry.register: burnSeconds of "%s" must be a number above 0, or left out; got %s',
+					id,
+					tostring(burnSeconds)
+				),
+				2
+			)
+		end
+	end
+	local known = { id = true, stackSize = true, placeable = true, slotCount = true, burnSeconds = true }
 	for field in fields do
-		if field ~= "id" and field ~= "stackSize" and field ~= "placeable" and field ~= "slotCount" then
+		if known[field :: any] ~= true then
 			error(
 				string.format(
 					'ItemRegistry.register: "%s" has a field item definitions do not have: %s',
@@ -135,6 +153,7 @@ function ItemRegistry.register(definition: ItemDefinition)
 		stackSize = stackSize,
 		placeable = placeable :: boolean?,
 		slotCount = slotCount :: number?,
+		burnSeconds = burnSeconds :: number?,
 	})
 end
 
