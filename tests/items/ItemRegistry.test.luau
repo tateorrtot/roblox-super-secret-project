@@ -110,6 +110,52 @@ do -- what register refuses
 	check(#ItemRegistry.all() == 3, "register: the registry still has only the three good item types")
 end
 
+do -- items that can be placed, and that hold things
+	ItemRegistry.register({ id = "placed_plain", stackSize = 1, placeable = true })
+	ItemRegistry.register({ id = "placed_holder", stackSize = 1, placeable = true, slotCount = 27 })
+	ItemRegistry.register({ id = "not_placed", stackSize = 8 })
+	check(ItemRegistry.get("placed_plain").placeable == true, "register: keeps placeable")
+	check(ItemRegistry.get("placed_plain").slotCount == nil, "register: a placeable item need not hold things")
+	check(ItemRegistry.get("placed_holder").slotCount == 27, "register: keeps slotCount")
+	ItemRegistry.register({ id = "placed_one_slot", stackSize = 1, placeable = true, slotCount = 1 })
+	check(ItemRegistry.get("placed_one_slot").slotCount == 1, "register: 1 is the fewest slots")
+	check(
+		ItemRegistry.get("not_placed").placeable == nil and ItemRegistry.get("not_placed").slotCount == nil,
+		"register: an item that cannot be placed has neither field"
+	)
+	for _, bad in { false, "yes", 1, {} } :: { any } do
+		check(
+			raises('placeable of "bad_placeable" must be true, or left out; got ' .. tostring(bad), function()
+				ItemRegistry.register({ id = "bad_placeable", stackSize = 1, placeable = bad })
+			end),
+			"register: refuses placeable = " .. tostring(bad)
+		)
+	end
+	for _, bad in { 0, -3, 1.5, 0 / 0, math.huge, "9", true } :: { any } do
+		check(
+			raises(
+				'slotCount of "bad_slots" must be a whole number, 1 or more, or left out; got ' .. tostring(bad),
+				function()
+					ItemRegistry.register({ id = "bad_slots", stackSize = 1, placeable = true, slotCount = bad })
+				end
+			),
+			"register: refuses slotCount = " .. tostring(bad)
+		)
+	end
+	check(
+		raises('"loose_slots" has a slotCount but is not placeable', function()
+			ItemRegistry.register({ id = "loose_slots", stackSize = 1, slotCount = 9 })
+		end),
+		"register: refuses slots on an item that cannot be placed"
+	)
+	check(
+		not ItemRegistry.has("bad_placeable")
+			and not ItemRegistry.has("bad_slots")
+			and not ItemRegistry.has("loose_slots"),
+		"register: a refused definition is not registered"
+	)
+end
+
 do -- ids that are fine
 	ItemRegistry.register({ id = "iron_ore", stackSize = 32 })
 	ItemRegistry.register({ id = "tier2_pickaxe", stackSize = 1 })

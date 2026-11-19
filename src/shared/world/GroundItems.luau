@@ -139,7 +139,7 @@ end
 	of `position`, and its stack has room for all of `stack`, the stack joins
 	it: that ground item holds more, stays where it lies, and counts as
 	dropped at `now`. With several such ground items it joins the nearest,
-	and of two equally near, the one dropped first. Otherwise a new ground
+	and of two equally near, the one with the lower id. Otherwise a new ground
 	item is made at `position`.
 
 	The stack is now on the ground: the caller must not also keep it somewhere
@@ -197,7 +197,7 @@ end
 	A ground item is near if it lies within `GroundItems.PICKUP_RADIUS` of
 	`position`, measured in a straight line, and was dropped at least
 	`GroundItems.PICKUP_DELAY` seconds before `now`. The nearest is picked up
-	first, and of two equally near, the one dropped first.
+	first, and of two equally near, the one with the lower id.
 
 	Items go into the inventory as `Inventory.addItems` puts them. When only
 	part of a ground item fits, the rest stays on the ground where it was,

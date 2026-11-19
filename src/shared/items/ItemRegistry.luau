@@ -11,8 +11,10 @@
 
 	```lua
 	ItemRegistry.register({ id = "log", stackSize = 16 })
+	ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
 
 	ItemRegistry.get("log").stackSize --> 16
+	ItemRegistry.get("log").placeable --> nil: a log cannot be placed
 	ItemRegistry.has("anvil") --> false
 	ItemRegistry.get("anvil") --> error: no item has the id "anvil"
 	```
@@ -28,6 +30,12 @@ export type ItemDefinition = {
 	--- The most of this item that one inventory slot can hold: a whole number, 1 or more.
 	--- 1 for an item that does not stack.
 	read stackSize: number,
+	--- `true` for an item that can be placed on a plot, where it stands as a thing in the world.
+	--- Left out for an item that cannot.
+	read placeable: boolean?,
+	--- How many inventory slots the item has inside it once it is placed, as a crate does: a whole
+	--- number, 1 or more. Left out for an item that holds nothing. Only a placeable item may have it.
+	read slotCount: number?,
 }
 
 local definitions: { [string]: ItemDefinition } = {}
@@ -40,8 +48,10 @@ local definitions: { [string]: ItemDefinition } = {}
 
 	Raises an error if `id` is not lowercase letters, digits and underscores
 	starting with a letter, if `stackSize` is not a whole number of 1 or more,
-	if the table has any other field, or if an item with that id is already
-	registered.
+	if `placeable` is given and is not `true`, if `slotCount` is given and is
+	not a whole number of 1 or more, if `slotCount` is given for an item that
+	is not placeable, if the table has any other field, or if an item with
+	that id is already registered.
 ]=]
 function ItemRegistry.register(definition: ItemDefinition)
 	if type(definition) ~= "table" then
@@ -68,8 +78,45 @@ function ItemRegistry.register(definition: ItemDefinition)
 			2
 		)
 	end
+	local placeable, slotCount = fields.placeable, fields.slotCount
+	if placeable ~= nil and placeable ~= true then
+		error(
+			string.format(
+				'ItemRegistry.register: placeable of "%s" must be true, or left out; got %s',
+				id,
+				tostring(placeable)
+			),
+			2
+		)
+	end
+	if slotCount ~= nil then
+		if
+			type(slotCount) ~= "number"
+			or slotCount < 1
+			or slotCount == math.huge
+			or slotCount ~= math.floor(slotCount)
+		then
+			error(
+				string.format(
+					'ItemRegistry.register: slotCount of "%s" must be a whole number, 1 or more, or left out; got %s',
+					id,
+					tostring(slotCount)
+				),
+				2
+			)
+		end
+		if placeable ~= true then
+			error(
+				string.format(
+					'ItemRegistry.register: "%s" has a slotCount but is not placeable; only an item that can be placed holds things',
+					id
+				),
+				2
+			)
+		end
+	end
 	for field in fields do
-		if field ~= "id" and field ~= "stackSize" then
+		if field ~= "id" and field ~= "stackSize" and field ~= "placeable" and field ~= "slotCount" then
 			error(
 				string.format(
 					'ItemRegistry.register: "%s" has a field item definitions do not have: %s',
@@ -83,7 +130,12 @@ function ItemRegistry.register(definition: ItemDefinition)
 	if definitions[id] ~= nil then
 		error(string.format('ItemRegistry.register: there is already an item with the id "%s"', id), 2)
 	end
-	definitions[id] = table.freeze({ id = id, stackSize = stackSize })
+	definitions[id] = table.freeze({
+		id = id,
+		stackSize = stackSize,
+		placeable = placeable :: boolean?,
+		slotCount = slotCount :: number?,
+	})
 end
 
 --[=[

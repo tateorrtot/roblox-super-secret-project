@@ -2,9 +2,10 @@
 --[=[
 	The written definition of every item in the game, one row each.
 
-	A row says what the rules need to know about an item: its id, and how many
-	of it fit in one stack. Bulky things stack small, and a thing that is
-	placed whole, such as a stove, does not stack at all.
+	A row says what the rules need to know about an item: its id, how many of
+	it fit in one stack, whether it can be placed on a plot, and how many
+	slots it has inside it once placed. Bulky things stack small, and a thing
+	that is placed whole, such as a stove, does not stack at all.
 
 	When the game starts, on the server and on each player's machine, every
 	row is given to `ItemRegistry.register`. How an item looks is not here: see
@@ -28,8 +29,8 @@ local definitions: { ItemRegistry.ItemDefinition } = {
 	{ id = "apple", stackSize = 16 },
 	{ id = "fish", stackSize = 8 },
 	{ id = "cheese", stackSize = 8 },
-	{ id = "stove", stackSize = 1 },
-	{ id = "crate", stackSize = 1 },
+	{ id = "stove", stackSize = 1, placeable = true },
+	{ id = "crate", stackSize = 1, placeable = true, slotCount = 27 },
 }
 
 return table.freeze(definitions)
