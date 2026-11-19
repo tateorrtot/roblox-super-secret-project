@@ -29,9 +29,11 @@
 
 	In `inventoryChanged`, `pack` is the player's pack as `Inventory.encode`
 	makes it. `screen` is `nil` when no inventory screen is open. When one is
-	open it is `{ other = <an encoded inventory, or nil>, carried = <a stack,
-	or nil> }`: the other inventory that is open beside the pack, and the
-	stack being carried.
+	open it is a table of three things, each of which may be `nil`:
+	- `other`: the other inventory that is open beside the pack, encoded;
+	- `otherItemId`: the id of the item whose inventory that is, such as
+	  `"crate"`;
+	- `carried`: the stack being carried.
 ]=]
 
 return table.freeze({

@@ -9,7 +9,10 @@ Needs Python 3, and Roblox Studio open on a place with its MCP server enabled
     python tools/studio.py run <file> Server     the same, in the running game's server (or Client)
     python tools/studio.py play | stop           start or stop a play test
     python tools/studio.py console               the Output window
-    python tools/studio.py shot <file.png>       save a picture of the viewport
+    python tools/studio.py shot <file.jpg>       save a picture of the viewport (Studio sends a JPEG)
+    python tools/studio.py key E Q One           press keys in the running game, in order
+    python tools/studio.py click <where> [right] click in the running game; <where> is x,y on the
+                                                 screen, or a path such as LocalPlayer.PlayerGui.Hotbar.Row.Slot3
     python tools/studio.py tools                 list every tool the connector offers
     python tools/studio.py call <tool> <json>    call any of them
 
@@ -230,6 +233,21 @@ def main():
                 print('saved', sys.argv[2])
             else:
                 print('no picture came back:', '\n'.join(texts)[:500])
+        elif command == 'key':
+            actions = []
+            for key in sys.argv[2:]:
+                actions += [{'action': 'keyPress', 'key_code': key}, {'action': 'wait', 'wait_time_ms': 150}]
+            print(' '.join(studio.call('user_keyboard_input', {'datamodel_type': 'Client', 'actions': actions})))
+        elif command == 'click':
+            where, button = sys.argv[2], (sys.argv[3] if len(sys.argv) > 3 else 'left')
+            move = {'action': 'moveTo'}
+            if where.replace(',', '').replace('.', '').isdigit():
+                move['x'], move['y'] = [float(part) for part in where.split(',')]
+            else:
+                move['instance_path'] = where
+            actions = [move, {'action': 'wait', 'wait_time_ms': 100},
+                       {'action': 'mouseButtonClick', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 150}]
+            print(' '.join(studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': actions})))
         elif command == 'call':
             arguments = json.loads(sys.argv[3]) if len(sys.argv) > 3 else {}
             print('\n'.join(studio.call(sys.argv[2], arguments, needs_studio=sys.argv[2] != 'list_roblox_studios')))

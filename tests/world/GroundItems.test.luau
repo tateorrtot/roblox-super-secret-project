@@ -17,6 +17,7 @@ ItemRegistry.register({ id = "stove", stackSize = 1 })
 local DELAY = GroundItems.PICKUP_DELAY
 local RADIUS = GroundItems.PICKUP_RADIUS
 local LIFETIME = GroundItems.LIFETIME
+local MERGE = GroundItems.MERGE_RADIUS
 
 local function at(x: number, y: number, z: number): GroundItems.Position
 	return { x = x, y = y, z = z }
@@ -52,6 +53,7 @@ do -- the rules as numbers
 	check(LIFETIME == 300, "a ground item lies for five minutes")
 	check(DELAY == 1.5, "a ground item cannot be picked up for its first second and a half")
 	check(RADIUS == 4, "a ground item is picked up from 4 studs away")
+	check(MERGE == 1.5, "a stack dropped within a stud and a half of its own kind joins it")
 end
 
 do -- nothing on the ground
@@ -93,6 +95,81 @@ do -- dropping
 		holds(ground, third, "log", 3) and table.isfrozen(ground.byId[third].stack),
 		"drop: a stack written by hand is stored as a real stack"
 	)
+end
+
+do -- a stack dropped beside its own kind joins it
+	local ground = GroundItems.new()
+	local first = GroundItems.drop(ground, ItemStack.new("log", 5), at(10, 0, 0), 100)
+	local joined = GroundItems.drop(ground, ItemStack.new("log", 3), at(10 + MERGE, 0, 0), 130)
+	check(joined == first, "drop: returns the id of the ground item the stack joined")
+	check(groundItemCount(ground) == 1 and holds(ground, first, "log", 8), "drop: the ground item holds both stacks")
+	check(ground.nextId == 2, "drop: joining uses no new id")
+	check(ground.byId[first].position.x == 10, "drop: the ground item stays where it lay")
+	check(ground.byId[first].droppedAt == 130, "drop: and counts as dropped when the second stack was")
+	check(table.isfrozen(ground.byId[first]), "drop: the joined ground item is a frozen value")
+
+	local beyond = GroundItems.drop(ground, ItemStack.new("log", 1), at(10 + MERGE + 0.01, 0, 0), 130)
+	check(beyond == 2 and holds(ground, first, "log", 8), "drop: a stack dropped just beyond the radius lies apart")
+	local above = GroundItems.drop(ground, ItemStack.new("log", 1), at(10, MERGE + 0.01, 0), 130)
+	check(above == 3 and holds(ground, first, "log", 8), "drop: height counts towards the distance")
+
+	local other = GroundItems.drop(ground, ItemStack.new("fish", 2), at(10, 0, 0), 130)
+	check(other == 4 and holds(ground, first, "log", 8), "drop: a different item does not join")
+
+	local full = GroundItems.new()
+	GroundItems.drop(full, ItemStack.new("log", 12), at(0, 0, 0), 0)
+	local apart = GroundItems.drop(full, ItemStack.new("log", 5), at(0, 0, 0), 0)
+	check(
+		apart == 2 and holds(full, 1, "log", 12) and holds(full, 2, "log", 5),
+		"drop: a stack that does not wholly fit lies apart"
+	)
+	check(
+		GroundItems.drop(full, ItemStack.new("log", 4), at(0, 0, 0), 0) == 1,
+		"drop: a stack that exactly fills joins"
+	)
+	check(holds(full, 1, "log", 16), "drop: and the ground item is a full stack")
+	check(GroundItems.drop(full, ItemStack.new("stove", 1), at(5, 0, 0), 0) == 3, "drop: a stove lies on the ground")
+	check(
+		GroundItems.drop(full, ItemStack.new("stove", 1), at(5, 0, 0), 0) == 4,
+		"drop: an item that does not stack never joins"
+	)
+
+	local choice = GroundItems.new()
+	local farther = GroundItems.drop(choice, ItemStack.new("log", 1), at(-1.2, 0, 0), 0)
+	local nearer = GroundItems.drop(choice, ItemStack.new("log", 1), at(0.5, 0, 0), 0)
+	check(GroundItems.drop(choice, ItemStack.new("log", 1), at(0, 0, 0), 0) == nearer, "drop: joins the nearest of two")
+	check(
+		holds(choice, farther, "log", 1) and holds(choice, nearer, "log", 2),
+		"drop: and leaves the farther as it was"
+	)
+
+	local tied = GroundItems.new()
+	for index = 1, 60 do
+		GroundItems.drop(tied, ItemStack.new("fish", 1), at(index * 10, 0, 500), 0)
+	end
+	GroundItems.expire(tied, LIFETIME)
+	local allFirst = true
+	for round = 1, 20 do
+		local x = round * 100
+		local left = GroundItems.drop(tied, ItemStack.new("log", 1), at(x - 1, 0, 0), LIFETIME)
+		GroundItems.drop(tied, ItemStack.new("log", 1), at(x + 1, 0, 0), LIFETIME)
+		if GroundItems.drop(tied, ItemStack.new("log", 1), at(x, 0, 0), LIFETIME) ~= left then
+			allFirst = false
+		end
+	end
+	check(allFirst, "drop: of two equally near, joins the one dropped first, whatever their ids")
+
+	local delayed = GroundItems.new()
+	local pack = Inventory.new(3)
+	GroundItems.drop(delayed, ItemStack.new("log", 5), at(0, 0, 0), 0)
+	GroundItems.drop(delayed, ItemStack.new("log", 1), at(0, 0, 0), 100)
+	check(
+		GroundItems.pickUpNear(delayed, at(1, 0, 0), pack, 100 + DELAY - 0.01) == 0,
+		"drop: a ground item that was joined cannot be picked up straight away"
+	)
+	GroundItems.expire(delayed, LIFETIME + 50)
+	check(holds(delayed, 1, "log", 6), "drop: a ground item that was joined lasts from when it was joined")
+	check(GroundItems.pickUpNear(delayed, at(1, 0, 0), pack, 100 + DELAY) == 6, "drop: and is picked up whole")
 end
 
 do -- walking over a ground item
@@ -140,8 +217,8 @@ end
 
 do -- equally near ground items are picked up in the order they were dropped, whatever their ids
 	local ground = GroundItems.new()
-	for _ = 1, 100 do
-		GroundItems.drop(ground, ItemStack.new("log", 1), at(500, 0, 500), 0)
+	for index = 1, 100 do
+		GroundItems.drop(ground, ItemStack.new("log", 1), at(500 + index * 10, 0, 500), 0)
 	end
 	GroundItems.expire(ground, LIFETIME)
 	for _ = 1, 40 do
@@ -165,7 +242,7 @@ do -- the edge of the radius, and several at once
 	GroundItems.drop(ground, ItemStack.new("log", 4), at(RADIUS, 0, 0), 0)
 	GroundItems.drop(ground, ItemStack.new("fish", 2), at(0, 0, -RADIUS), 0)
 	GroundItems.drop(ground, ItemStack.new("stove", 1), at(0, -RADIUS, 0), 0)
-	GroundItems.drop(ground, ItemStack.new("log", 7), at(RADIUS + 1, 0, 0), 0)
+	GroundItems.drop(ground, ItemStack.new("log", 7), at(RADIUS + 3, 0, 0), 0)
 	check(GroundItems.pickUpNear(ground, at(0, 0, 0), pack, 10) == 7, "pickUpNear: everything exactly at the radius")
 	check(
 		Inventory.countItems(pack, "log") == 4

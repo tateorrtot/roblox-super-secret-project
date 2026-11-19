@@ -11,6 +11,10 @@
 
 	and with nothing on the ground `byId` is empty.
 
+	A stack dropped right beside a ground item of the same item joins it, if
+	that ground item's stack has room for all of it. So dropping one log at a
+	time in one spot makes one ground item, not a heap of them.
+
 	Three things happen to a ground item:
 	- A player who comes within `GroundItems.PICKUP_RADIUS` of it picks it up,
 	  as far as their inventory has room. See [method pickUpNear].
@@ -75,6 +79,9 @@ GroundItems.PICKUP_DELAY = 1.5
 --- How near a position must be to a ground item for [method pickUpNear] to pick it up, in studs.
 GroundItems.PICKUP_RADIUS = 4
 
+--- How near a stack must be dropped to a ground item of the same item to join it, in studs.
+GroundItems.MERGE_RADIUS = 1.5
+
 type NearGroundItem = { id: number, distance: number }
 
 -- True for a number that is not infinite and not NaN.
@@ -126,7 +133,14 @@ end
 
 --[=[
 	Puts `stack` on the ground at `position`, dropped at the time `now`, and
-	returns the id of the ground item made.
+	returns the id of the ground item that holds it.
+
+	If a ground item of the same item lies within `GroundItems.MERGE_RADIUS`
+	of `position`, and its stack has room for all of `stack`, the stack joins
+	it: that ground item holds more, stays where it lies, and counts as
+	dropped at `now`. With several such ground items it joins the nearest,
+	and of two equally near, the one dropped first. Otherwise a new ground
+	item is made at `position`.
 
 	The stack is now on the ground: the caller must not also keep it somewhere
 	else, or the items are doubled.
@@ -139,8 +153,33 @@ function GroundItems.drop(groundItems: GroundItems, stack: ItemStack, position: 
 	failIf(ItemStack.validate(stack), "GroundItems.drop")
 	failIf(positionProblem(position), "GroundItems.drop")
 	failIf(timeProblem(now), "GroundItems.drop")
+	local byId = writableById(groundItems)
+
+	local joinedId: number? = nil
+	local joinedDistance = math.huge
+	for id, groundItem in byId do
+		if ItemStack.isSameItem(groundItem.stack, stack) and ItemStack.spaceLeft(groundItem.stack) >= stack.count then
+			local distance = distanceBetween(position, groundItem.position)
+			local isNearer = distance < joinedDistance
+				or (distance == joinedDistance and joinedId ~= nil and id < joinedId)
+			if distance <= GroundItems.MERGE_RADIUS and isNearer then
+				joinedId = id
+				joinedDistance = distance
+			end
+		end
+	end
+	if joinedId ~= nil then
+		local joined = byId[joinedId]
+		byId[joinedId] = table.freeze({
+			stack = ItemStack.new(stack.itemId, joined.stack.count + stack.count),
+			position = joined.position,
+			droppedAt = now,
+		})
+		return joinedId
+	end
+
 	local id = groundItems.nextId
-	writableById(groundItems)[id] = table.freeze({
+	byId[id] = table.freeze({
 		stack = ItemStack.new(stack.itemId, stack.count),
 		position = table.freeze({ x = position.x, y = position.y, z = position.z }),
 		droppedAt = now,
