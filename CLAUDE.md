@@ -76,7 +76,7 @@ An everything-coexists world in the spirit of classic Roblox: pirates, ninjas, z
 - **A stack dropped on the ground vanishes after a few minutes and is never saved.** (The user's choice, 2026-11-19.) Built as five minutes.
 
 ### Proposed, awaiting the user
-- **Spatial model:** plot tile grid for building and for helpers to walk on; authored terrain between plots; things can be set down anywhere, at rest and not simulated; physics only where it is fun (carrying, throwing, vehicles).
+- **Spatial model** (a first tile grid is built, so the user can judge it by playing; see Status): plot tile grid for building and for helpers to walk on; authored terrain between plots; things can be set down anywhere, at rest and not simulated; physics only where it is fun (carrying, throwing, vehicles).
 - **Interface:** world verbs wherever one held thing meets one target (apply, take, work, set down), and one consistent panel anchored to the object for contents, moving stacks and choosing recipes. A fixed-camera station mode in the style of the Hands-On Delight mod for a couple of flagship stations later. See docs/06.
 - **Processes are spatial,** as in Create: a station acts on what is in, on or next to it.
 - **Conditions come from places, weather and running stations,** and each people, creature and material has its own table of responses. Marks carry enchantments, meal effects, protection and race.
@@ -239,7 +239,7 @@ After five drafts of an architecture note and three rounds of review by agents, 
 - **Player-facing words:** Claude drafts, and the user reviews all of it before release.
 
 ## Status (2026-11-19, the end of the overnight build)
-- **There is a first playable loop.** Press Play in Studio and you appear on a grey plot with a hotbar along the bottom. Stacks of items lie about, and walking over one picks it up. E opens the pack, an inventory screen that works as Minecraft's does. Clicking the crate on the plot opens it above the pack. A left click picks a stack up or puts it down, a right click takes half or puts one down, Shift and a click sends a stack to the other inventory, a click outside the screen drops what is carried, and Q drops one of what is in hand. Walking away from the crate closes it. It is all grey boxes, laid out for a PC.
+- **There is a first playable loop.** Press Play in Studio and you appear on a grey plot with a hotbar along the bottom. Stacks of items lie about, and walking over one picks it up. E opens the pack, an inventory screen that works as Minecraft's does. Clicking the crate on the plot opens it above the pack. A left click picks a stack up or puts it down, a right click takes half or puts one down, Shift and a click sends a stack to the other inventory, a click outside the screen drops what is carried, and Q drops one of what is in hand. Walking away from the crate closes it. With a crate or a stove in hand, a faint block shows the tile it would stand on, and a left click places it there. A short right click on a placed thing knocks it off the plot: it lies on the ground as an item again, and what was in a crate spills around it. It is all grey boxes, laid out for a PC.
 - **What Claude checked by playing it,** driving a test character through Studio's connector and looking at pictures: every action in the line above. **Not checked:** a phone or any touch screen; two players at once (the crate is shared and each player is sent its changes, but nobody watched two screens); a real server (in Studio there is no delay; on a real server the screen waits for the server's answer after each click and will feel a little late); a character dying.
 - **Nothing is saved yet.** A player's pack lasts until they leave. Ground items are never saved, by the user's choice.
 - **The user has reviewed none of the code.**
@@ -255,8 +255,8 @@ After five drafts of an architecture note and three rounds of review by agents, 
   - **`src/server` and `src/client` are formatted and linted but not type-checked.** luau-lsp needs Roblox's type definitions file for that, and the download has not been approved. Until it is, mistakes there are found by play tests. The rules refuse bad arguments with errors that name the function, which makes those mistakes loud.
 - **Git:** branch `first-pieces`, committed as work is done (the user, 2026-11-19: "Yes, commit as you go"). `main` has no commits. Nothing is pushed anywhere; push only when the user asks.
 - **The community `roblox-dev` Claude plugin** is enabled. Its skills have not been reviewed. Rojo's Studio plugin file was placed in `%LOCALAPPDATA%\Roblox\Plugins`, unverified and not needed while `tools/studio.py sync` is used.
-- **The rules,** in `src/shared`, plain Luau with no Roblox calls, each with tests in `tests/` (625 checks):
-  - `items/ItemRegistry`: every kind of item, by id. One registry for the whole game. An item definition is `{ id, stackSize }`. Functions: `register`, `get`, `has`, `all`.
+- **The rules,** in `src/shared`, plain Luau with no Roblox calls, each with tests in `tests/` (742 checks):
+  - `items/ItemRegistry`: every kind of item, by id. One registry for the whole game. An item definition is `{ id, stackSize }`, with `placeable = true` for an item that can stand on a plot and `slotCount` for one that holds things once placed. Functions: `register`, `get`, `has`, `all`.
   - `items/ItemStack`: some number of one item, `{ itemId = "log", count = 12 }`. A value that never changes; its count is from 1 to the stack size, and there is no empty stack. Functions: `new`, `validate`, `spaceLeft`, `isFull`, `isSameItem`, `equals`, `merge`, `split`.
   - `items/ItemDefinitions`: the written rows, one per item. Eight placeholder items so far. `items/ItemLooks`: the name and colour each item is shown with while it has no art. Nothing in the rules reads the looks.
   - `inventory/Inventory`: slots that hold stacks. `{ slotCount = 3, slots = { [2] = stack } }`; a slot that holds nothing has no entry. One slot: `getStack`, `setStack`, `takeFromSlot`, `putInSlot`. The whole inventory: `addItems` (returns how many were added), `addStack`, `removeItems`, `countItems`, `hasItems`, `spaceFor`, `isEmpty`, `clear`. Plain data for saving and sending: `encode`, `decode`.
@@ -264,11 +264,12 @@ After five drafts of an architecture note and three rounds of review by agents, 
   - `inventory/Hotbar`: the first slots of a pack and which one is selected.
   - `world/GroundItems`: the stacks lying on the ground. `drop` (a stack dropped beside its own kind joins it), `pickUpNear` (a player walking over them: nearest first, as far as the inventory has room), `expire`. A ground item cannot be picked up for 1.5 seconds, is picked up from 4 studs, and is gone after 5 minutes.
   - `players/PlayerState`: one player: a pack of 36 slots, a hotbar of 9, and the open inventory screen if any. `new`, `openInventory`, `closeInventory`.
+  - `plots/Plot`: a grid of tiles and the items standing on them, one to a tile. `{ width, depth, nextId, placedById = { [id] = { itemId, x, z, inventory } } }`. `place` (returns the new id, or `nil` if the tile is taken or the item cannot be placed), `canPlace`, `remove` (returns the placed item, inventory and all), `hasTile`; `tileAt` and `tileCenter` turn a position in the world into a tile and back. A tile is 4 studs.
   - `Messages`: the name of every message between a player's machine and the server, with what each is sent with.
 - **The Roblox side,** verified only by play tests:
-  - `src/server/Main.server.luau`: the only Script. Answers the players' requests, checking each, and ten times a second runs the step (pick up, expire, redraw ground items, send changed inventories). `Remotes` makes the RemoteEvents. `world/GroundItemParts` shows ground items as blocks. `world/PlaceholderWorld` builds the grey plot and the crate, and keeps about ten stacks lying on the plot.
-  - `src/client/Main.client.luau`: the only LocalScript. Draws what the server last said and sends keys and clicks as messages; it changes no inventory itself. `inventory/StackIcon`, `SlotGui`, `HotbarGui` and `InventoryGui` draw; `ScreenScale` fits them to the window; `Remotes` finds the RemoteEvents.
-- **How the rules were checked:** tests written beside each piece; mutation testing on every rules module, with each surviving change examined and found to change nothing a caller could see; arguments that could never be valid refused with errors naming the function. Readers with no context were tested three times on the first five pieces (docs/12); the pieces added overnight have not been put to readers.
+  - `src/server/Main.server.luau`: the only Script. Answers the players' requests, checking each, and ten times a second runs the step (pick up, expire, redraw ground items, send changed inventories). `Remotes` makes the RemoteEvents. `world/GroundItemParts` shows ground items as blocks, and `world/PlotParts` shows placed items as blocks a tile wide. `world/PlaceholderWorld` builds the grey plot with a crate and a stove on it, and keeps about ten stacks lying on the plot.
+  - `src/client/Main.client.luau`: the only LocalScript. Draws what the server last said and sends keys and clicks as messages; it changes no inventory itself. `inventory/StackIcon`, `SlotGui`, `HotbarGui` and `InventoryGui` draw; `ScreenScale` fits them to the window; `Remotes` finds the RemoteEvents. `world/PlotPointer` works out what the pointer is over, a placed item or a bare tile, and `world/PlacementGhost` is the faint block.
+- **How the rules were checked:** tests written beside each piece; mutation testing on every rules module, with each surviving change examined and found to change nothing a caller could see; arguments that could never be valid refused with errors naming the function. Readers with no context were tested three times on the first five pieces, and once on GroundItems and PlayerState: with the comments a reader predicted 35 of 35 calls, and from names and types alone 31 of 35 (docs/12). Plot has not been put to readers.
 - **Claude's calls, for the user to veto:**
   - Code is grouped by game concept inside the three folders Roblox really has, not in the six layers of docs/07. `src/shared` holds the rules and no Roblox calls; tests sit outside it in `tests/`.
   - One global `ItemRegistry`. A stack holds its item's id as a string.
@@ -277,7 +278,9 @@ After five drafts of an architecture note and three rounds of review by agents, 
   - Pack 36 slots, hotbar 9: Minecraft's numbers.
   - Ground items: the three numbers above, joining on drop, and that a player keeps their pack when their character dies.
   - Shift and click with the pack open alone does nothing. Minecraft moves the stack between the hotbar and the rest.
-  - The crate is opened by clicking or tapping it (a ClickDetector). That stands in for the Use action, which is not designed yet.
+  - **Use and Hit, first version:** Use is a left click or a tap, and Hit is a short right click (holding the right button turns Roblox's camera, so only a quick press that did not turn it counts). This follows the user's own sentence, "left click to place/interact. right click to swing or break". Hit has no touch control yet, and a tap was never tried on a touch screen. How these feel is the user's to judge.
+  - **The plot is a grid of 4-stud tiles with one item to a tile,** built on the spatial model that is still only proposed. There is one plot, shared by every player, and nobody owns what stands on it: anyone can open or break anything. Reach is 16 studs. A thing cannot be placed on a tile a player stands on.
+  - **A crate knocked off the plot spills what was in it,** as a Minecraft chest does. Claude's restatement under "Consistency rule" says a crate keeps its contents; that needs an item that carries an inventory, which does not exist yet.
   - The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the player's machine. The fix for the delay on a real server is known: apply the same rule locally first, since the rules are shared code.
   - Keys: E for the pack, 1 to 9 for the hotbar, Q to drop one. The mouse wheel is left to Roblox's camera.
   - How an item looks (`ItemLooks`) is kept apart from what it is (`ItemDefinitions`).
@@ -306,21 +309,23 @@ The game
     World             everything in one running copy of the game       not needed yet
   Messages: what crosses between a player's machine and the server     built
   Plots and building
-    Plot              a player's grid of tiles                         not started
-    PlacedItem        one thing placed on it: item, tile, facing       not started
-    Footprint         the tiles a kind of item covers, and turning it  not started
+    Plot              a grid of tiles and the items placed on it       built: one shared plot, one item to a tile
+    PlotParts, PlotPointer, PlacementGhost: showing and pointing       built, placeholder blocks
+    Footprint         the tiles a kind of item covers, and turning it  not needed until an item covers two tiles
+    a plot of one's own, saved and loaded into a plot spot             not started
+    walls, floors and ceilings                                         not started
   Stations and recipes
     Recipe            inputs become outputs after a time at a station  not started
     Station           a placed thing that runs recipes                 not started
   SaveData: a player's pack and plot as plain data with a version      not started
-  Use and Hit: the two actions, on PC and on a phone                   not designed
+  Use and Hit: the two actions                                         first version on PC; no Hit on a phone
   Later: conditions, creatures, people, carriers, places, bodies and needs
 ```
 
 1. Get the user's review: play it, then the pieces, the conventions, and Claude's calls listed in Status.
 2. Carry on down the tree one piece at a time. For each: write the calling code first; build it with tests; then run the checks listed under "A piece is done when".
 3. Be sparing with agents. One overnight run used the account's whole usage limit. Reader tests are cheap (no tools). Do mutation and bad-argument checks in the session.
-4. Before the plot pieces, the user's answer is needed on the spatial model (see "Proposed, awaiting the user"), and before placing and breaking, on how Use and Hit work on a phone.
+4. The plot, and Use and Hit, were built on proposals so that the user can judge them by playing. Their answer is needed before more is built on them: walls, things that cover two tiles, a plot of one's own, and how Hit works on a phone.
 5. First things to prototype on a real phone: the inventory screen by touch; handling and carrying; walking on a moving deck; an intercepted delivery becoming a real object; demonstrating a route by touch; a deck of a few hundred welded pieces.
 
 ## Asked of the user, not yet answered
