@@ -699,6 +699,151 @@ do -- no action ever makes or loses an item
 	)
 end
 
+do -- slots that take only some items
+	-- The other inventory is like a stove: slot 1 takes only stone, slot 2 only logs, and slot 3 nothing.
+	local rules: InventorySession.SlotRules = { [1] = { stone = true }, [2] = { log = true }, [3] = {} }
+	local function stoveSession(pack: string, stove: string): InventorySession.InventorySession
+		return InventorySession.open(inventoryOf(pack), inventoryOf(stove), 2, rules)
+	end
+
+	local session = stoveSession("log 12, stone 5, stove 1, -", "-, -, -")
+	local stove = session.other :: Inventory.Inventory
+	check(session.otherSlotRules == rules, "open: keeps the slot rules it was given")
+	check(
+		InventorySession.open(inventoryOf("-")).otherSlotRules == nil,
+		"open: a session that was given none has no slot rules"
+	)
+	check(InventorySession.canPut(session, "other", 1, "stone"), "canPut: a slot takes an item its rules name")
+	check(not InventorySession.canPut(session, "other", 1, "log"), "canPut: and not one they leave out")
+	check(InventorySession.canPut(session, "other", 2, "log"), "canPut: each slot has rules of its own")
+	check(not InventorySession.canPut(session, "other", 3, "log"), "canPut: a slot with empty rules takes nothing")
+	check(InventorySession.canPut(session, "pack", 4, "stove"), "canPut: every slot of the pack takes anything")
+	local open = InventorySession.open(inventoryOf("-"), inventoryOf("-, -"), nil, { [1] = { log = true } })
+	check(InventorySession.canPut(open, "other", 2, "stove"), "canPut: a slot with no rules takes anything")
+	check(
+		InventorySession.canPut(InventorySession.open(inventoryOf("-"), inventoryOf("-")), "other", 1, "stove"),
+		"canPut: with no slot rules at all, every slot does"
+	)
+	check(
+		raises("InventorySession.canPut: slot 4 is out of range; that inventory has slots 1 to 3", function()
+			return InventorySession.canPut(session, "other", 4, "log")
+		end),
+		"canPut: refuses a slot the other inventory lacks"
+	)
+
+	InventorySession.pickUp(session, "pack", 1)
+	check(InventorySession.putDown(session, "other", 1) == 0, "putDown: 0 into a slot that does not take the item")
+	check(InventorySession.putDown(session, "other", 3) == 0, "putDown: 0 into a slot that takes nothing")
+	check(
+		not InventorySession.click(session, "other", 3, "left"),
+		"click: a left click on a slot that does not take the item does nothing"
+	)
+	check(not InventorySession.click(session, "other", 1, "right"), "click: nor does a right click")
+	check(
+		describe(session.carried) == "log 12" and contents(stove) == "-, -, -",
+		"putDown: and the stack is still carried"
+	)
+	check(InventorySession.putDown(session, "other", 2, 5) == 5, "putDown: into the slot that takes the item")
+	check(InventorySession.click(session, "other", 2, "left"), "click: a left click puts the rest there")
+	check(
+		contents(stove) == "-, log 12, -" and session.carried == nil,
+		"putDown: the stack is in the slot meant for it"
+	)
+
+	InventorySession.pickUp(session, "pack", 3)
+	check(not InventorySession.swap(session, "other", 2), "swap: false when the slot does not take what is carried")
+	check(
+		not InventorySession.click(session, "other", 2, "left"),
+		"click: so a click on another item there does nothing"
+	)
+	check(describe(session.carried) == "stove 1" and contents(stove) == "-, log 12, -", "swap: and nothing changes")
+	check(InventorySession.swap(session, "pack", 3), "swap: true when it put the carried stack down")
+	check(not InventorySession.swap(session, "pack", 4), "swap: false with nothing carried and nothing in the slot")
+	check(
+		InventorySession.swap(session, "other", 2),
+		"swap: with nothing carried, takes the stack out whatever the rules"
+	)
+	check(describe(session.carried) == "log 12" and contents(stove) == "-, -, -", "swap: so the logs are carried again")
+	InventorySession.putDown(session, "pack", 1)
+
+	-- What comes out of a stove sits in the slot that takes nothing, and can always be taken out.
+	local cooked = stoveSession("-, -, -, -", "-, -, stove 1")
+	check(InventorySession.pickUp(cooked, "other", 3) == 1, "pickUp: takes a stack out of a slot that takes nothing")
+	check(describe(cooked.carried) == "stove 1", "pickUp: and it is carried")
+	check(InventorySession.putDown(cooked, "other", 3) == 0, "putDown: but it cannot be put back there")
+	check(
+		InventorySession.close(cooked) == nil and contents(cooked.pack) == "stove 1, -, -, -",
+		"close: it goes into the pack"
+	)
+
+	local gathering = stoveSession("log 2, -, -, -", "-, log 5, log 3")
+	InventorySession.pickUp(gathering, "pack", 1)
+	check(InventorySession.gather(gathering) == 8, "gather: takes from slots whatever their rules")
+	check(describe(gathering.carried) == "log 10", "gather: into the carried stack")
+
+	-- Shift-click: a stack goes to the slots that take it and to no others.
+	local moving = stoveSession("log 12, stone 5, stove 1, log 10", "-, -, -")
+	local movingStove = moving.other :: Inventory.Inventory
+	check(InventorySession.quickMove(moving, "pack", 1) == 12, "quickMove: a stack goes to the slot that takes it")
+	check(contents(movingStove) == "-, log 12, -", "quickMove: past the slot that does not")
+	check(InventorySession.quickMove(moving, "pack", 2) == 5, "quickMove: each item to its own slot")
+	check(contents(movingStove) == "stone 5, log 12, -", "quickMove: so stone lands in slot 1")
+	check(InventorySession.quickMove(moving, "pack", 3) == 0, "quickMove: 0 for an item that no slot takes")
+	check(contents(moving.pack) == "-, -, stove 1, log 10", "quickMove: and it stays in the pack")
+	check(InventorySession.quickMove(moving, "pack", 4) == 4, "quickMove: tops up the stack in the slot that takes it")
+	check(
+		contents(movingStove) == "stone 5, log 16, -" and contents(moving.pack) == "-, -, stove 1, log 6",
+		"quickMove: and what does not fit stays in the pack"
+	)
+	check(InventorySession.quickMove(moving, "pack", 4) == 0, "quickMove: 0 when that slot is full")
+	check(
+		InventorySession.quickMove(moving, "other", 2) == 16,
+		"quickMove: out of the other inventory, the rules do not apply"
+	)
+	check(
+		contents(moving.pack) == "log 6, -, stove 1, log 16",
+		"quickMove: the stack is in the pack, topping up the logs there first"
+	)
+
+	local unruled = InventorySession.open(inventoryOf("log 4, -"), inventoryOf("stove 1, log 14, -"), 1, { [1] = {} })
+	check(InventorySession.quickMove(unruled, "pack", 1) == 4, "quickMove: a slot with no rules is used like any other")
+	check(
+		contents(unruled.other :: Inventory.Inventory) == "stove 1, log 16, log 2",
+		"quickMove: topping up first, then the slot that holds nothing"
+	)
+
+	local order = InventorySession.open(inventoryOf("log 4, -"), inventoryOf("-, log 14, -"), 1, { [3] = {} })
+	InventorySession.quickMove(order, "pack", 1)
+	check(
+		contents(order.other :: Inventory.Inventory) == "log 2, log 16, -",
+		"quickMove: a stack of the same item is topped up before an empty slot that comes earlier is used"
+	)
+
+	-- A number key over a slot.
+	local keys = stoveSession("log 12, stone 5, -, -", "-, -, stove 1")
+	local keysStove = keys.other :: Inventory.Inventory
+	InventorySession.swapWithHotbar(keys, "other", 1, 1)
+	check(
+		contents(keysStove) == "-, -, stove 1" and contents(keys.pack) == "log 12, stone 5, -, -",
+		"swapWithHotbar: nothing changes when the slot does not take the hotbar's item"
+	)
+	InventorySession.swapWithHotbar(keys, "other", 1, 2)
+	check(
+		contents(keysStove) == "stone 5, -, stove 1" and contents(keys.pack) == "log 12, -, -, -",
+		"swapWithHotbar: the hotbar's stack goes into a slot that takes it"
+	)
+	InventorySession.swapWithHotbar(keys, "other", 3, 2)
+	check(
+		contents(keysStove) == "stone 5, -, -" and contents(keys.pack) == "log 12, stove 1, -, -",
+		"swapWithHotbar: an empty hotbar slot takes a stack out whatever the rules"
+	)
+	InventorySession.swapWithHotbar(keys, "other", 1, 2)
+	check(
+		contents(keysStove) == "stone 5, -, -" and contents(keys.pack) == "log 12, stove 1, -, -",
+		"swapWithHotbar: and a swap that would put the wrong item in is refused whole"
+	)
+end
+
 do -- hasSlot
 	local pack = Inventory.new(4)
 	local alone = InventorySession.open(pack)

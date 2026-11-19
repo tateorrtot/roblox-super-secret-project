@@ -8,6 +8,12 @@
 	crate, is shown beside it when one is open. When a player has no screen
 	open they have no session at all.
 
+	The other inventory may have slots that take only some items, as a
+	stove's fuel slot takes only what burns, and the slot its cooking comes
+	out of takes nothing. A session is told so with slot rules when it is
+	opened. The rules stop a player putting the wrong thing into a slot; they
+	never stop one taking a thing out. [method canPut] asks.
+
 	A session may be told how many of the pack's first slots are its hotbar.
 	That is only for [method quickMove], which sends a stack between the
 	hotbar and the rest of the pack when the pack is open alone.
@@ -63,6 +69,11 @@ export type Side = "pack" | "other"
 --- A mouse button, for [method click].
 export type Button = "left" | "right"
 
+--- Which items each slot of an inventory takes, by slot number. A slot with no entry takes any
+--- item. A slot with an entry takes only the items whose ids are in it, and nothing at all if it
+--- is empty: `{ [2] = { log = true }, [3] = {} }` leaves slot 1 open to anything.
+export type SlotRules = { read [number]: { read [string]: boolean } }
+
 --- `read` means code outside this module cannot assign the field. The actions below change `carried`.
 export type InventorySession = {
 	--- The player's own inventory.
@@ -73,6 +84,8 @@ export type InventorySession = {
 	read carried: ItemStack?,
 	--- How many of the pack's slots, counting from slot 1, are its hotbar. `nil` if the session was not told.
 	read hotbarSlotCount: number?,
+	--- Which items each slot of the other inventory takes, or `nil` if every slot takes anything.
+	read otherSlotRules: SlotRules?,
 }
 
 local function isWholeNumber(value: unknown): boolean
@@ -115,8 +128,38 @@ local function countProblem(count: number?): string?
 	return string.format("count must be a whole number, 0 or more; got %s", tostring(count))
 end
 
+-- True if the slot takes the item. Every slot of the pack takes anything, and so does a slot of the
+-- other inventory unless the session's slot rules have an entry for it that leaves the item out.
+local function takes(session: InventorySession, side: Side, slot: number, itemId: string): boolean
+	local rules = session.otherSlotRules
+	if side == "pack" or rules == nil then
+		return true
+	end
+	local taken = rules[slot]
+	return taken == nil or taken[itemId] == true
+end
+
 local function inventoryOn(session: InventorySession, side: Side): Inventory
 	return if side == "pack" then session.pack else session.other :: Inventory
+end
+
+-- Adds a stack to the other inventory, using only the slots that take its item: stacks of the same
+-- item are topped up first, then slots that hold nothing are filled. Returns the stack of what did
+-- not fit, or nil.
+local function addToOther(session: InventorySession, other: Inventory, stack: ItemStack): ItemStack?
+	local left: ItemStack? = stack
+	for _, toppingUp in { true, false } do
+		for slot = 1, other.slotCount do
+			if left == nil then
+				return nil
+			end
+			local holdsSomething = Inventory.getStack(other, slot) ~= nil
+			if holdsSomething == toppingUp and takes(session, "other", slot, left.itemId) then
+				left = Inventory.putInSlot(other, slot, left)
+			end
+		end
+	end
+	return left
 end
 
 --[=[
@@ -125,12 +168,18 @@ end
 
 	The session holds the inventories it is given, not copies of them.
 	`hotbarSlotCount` says how many of the pack's first slots are its hotbar,
-	and may be left out.
+	and may be left out. `otherSlotRules` says which items each slot of the
+	other inventory takes, and may be left out if every slot takes anything.
 
 	Raises an error if `hotbarSlotCount` is given and is not a whole number
 	from 1 to the number of slots the pack has.
 ]=]
-function InventorySession.open(pack: Inventory, other: Inventory?, hotbarSlotCount: number?): InventorySession
+function InventorySession.open(
+	pack: Inventory,
+	other: Inventory?,
+	hotbarSlotCount: number?,
+	otherSlotRules: SlotRules?
+): InventorySession
 	if hotbarSlotCount ~= nil then
 		if not isWholeNumber(hotbarSlotCount) or hotbarSlotCount < 1 or hotbarSlotCount > pack.slotCount then
 			error(
@@ -143,7 +192,22 @@ function InventorySession.open(pack: Inventory, other: Inventory?, hotbarSlotCou
 			)
 		end
 	end
-	return { pack = pack, other = other, hotbarSlotCount = hotbarSlotCount }
+	return { pack = pack, other = other, hotbarSlotCount = hotbarSlotCount, otherSlotRules = otherSlotRules }
+end
+
+--[=[
+	Returns `true` if a slot takes the item with the id `itemId`: whether a
+	stack of it may be put there, leaving aside whether there is room.
+
+	Every slot of the pack takes any item. A slot of the other inventory takes
+	any item unless the session was opened with slot rules that say otherwise.
+
+	Raises an error if `slot` is not one of that inventory's slots, or if
+	`side` is `"other"` and no other inventory is open.
+]=]
+function InventorySession.canPut(session: InventorySession, side: Side, slot: number, itemId: string): boolean
+	failIf(slotProblem(session, side, slot), "InventorySession.canPut")
+	return takes(session, side, slot, itemId)
 end
 
 --[=[
@@ -195,8 +259,8 @@ end
 	Leaving out `count` puts down the whole carried stack. A slot that holds
 	nothing takes them. A slot holding the same item is topped up to that
 	item's stack size. What does not fit stays carried. Returns 0, and changes
-	nothing, if nothing is carried, if the slot holds a different item, or if
-	the slot is full.
+	nothing, if nothing is carried, if the slot holds a different item, if
+	the slot is full, or if the slot does not take the carried item.
 
 	Raises an error if `slot` is not one of that inventory's slots, if `side`
 	is `"other"` and no other inventory is open, or if `count` is not a whole
@@ -206,7 +270,7 @@ function InventorySession.putDown(session: InventorySession, side: Side, slot: n
 	failIf(slotProblem(session, side, slot), "InventorySession.putDown")
 	failIf(countProblem(count), "InventorySession.putDown")
 	local carried = session.carried
-	if carried == nil then
+	if carried == nil or not takes(session, side, slot, carried.itemId) then
 		return 0
 	end
 	local amount = math.min(count or carried.count, carried.count)
@@ -221,19 +285,28 @@ function InventorySession.putDown(session: InventorySession, side: Side, slot: n
 end
 
 --[=[
-	Exchanges the carried stack with the stack in a slot. Either may be
-	nothing: swapping with a slot that holds nothing puts the carried stack
-	down, and swapping while carrying nothing picks the slot's stack up.
+	Exchanges the carried stack with the stack in a slot, and returns `true`
+	if anything changed. Either may be nothing: swapping with a slot that
+	holds nothing puts the carried stack down, and swapping while carrying
+	nothing picks the slot's stack up.
+
+	Returns `false`, and changes nothing, if the slot does not take the
+	carried item, or if nothing is carried and the slot holds nothing.
 
 	Raises an error if `slot` is not one of that inventory's slots, or if
 	`side` is `"other"` and no other inventory is open.
 ]=]
-function InventorySession.swap(session: InventorySession, side: Side, slot: number)
+function InventorySession.swap(session: InventorySession, side: Side, slot: number): boolean
 	failIf(slotProblem(session, side, slot), "InventorySession.swap")
 	local inventory = inventoryOn(session, side)
 	local there = Inventory.getStack(inventory, slot)
-	Inventory.setStack(inventory, slot, session.carried)
+	local carried = session.carried
+	if carried ~= nil and not takes(session, side, slot, carried.itemId) then
+		return false
+	end
+	Inventory.setStack(inventory, slot, carried)
 	carry(session, there)
+	return there ~= nil or carried ~= nil
 end
 
 --[=[
@@ -241,7 +314,8 @@ end
 	Either may be nothing. This is Minecraft's number key pressed over a slot:
 	what the pointer is over goes to that hotbar slot, and what was there
 	comes back. The carried stack is not involved. Naming the hotbar slot
-	itself as the slot changes nothing.
+	itself as the slot changes nothing, and nor does a slot that does not
+	take the item in the hotbar slot.
 
 	Raises an error if `slot` is not one of that inventory's slots, if `side`
 	is `"other"` and no other inventory is open, if the session was not told
@@ -266,7 +340,11 @@ function InventorySession.swapWithHotbar(session: InventorySession, side: Side, 
 	end
 	local inventory = inventoryOn(session, side)
 	local there = Inventory.getStack(inventory, slot)
-	Inventory.setStack(inventory, slot, Inventory.getStack(session.pack, hotbarSlot))
+	local inHotbar = Inventory.getStack(session.pack, hotbarSlot)
+	if inHotbar ~= nil and not takes(session, side, slot, inHotbar.itemId) then
+		return
+	end
+	Inventory.setStack(inventory, slot, inHotbar)
 	Inventory.setStack(session.pack, hotbarSlot, there)
 end
 
@@ -284,7 +362,8 @@ end
 	- a left click puts the whole stack down, and what does not fit stays carried;
 	- a right click puts one item down;
 	- either click on a slot holding a different item swaps the two stacks;
-	- either click on a full stack of the same item does nothing.
+	- either click on a full stack of the same item does nothing;
+	- either click on a slot that does not take the carried item does nothing.
 
 	Raises an error if `slot` is not one of that inventory's slots, if `side`
 	is `"other"` and no other inventory is open, or if `button` is not
@@ -312,8 +391,7 @@ function InventorySession.click(session: InventorySession, side: Side, slot: num
 	if there == nil or ItemStack.isSameItem(there, carried) then
 		return InventorySession.putDown(session, side, slot, if button == "left" then carried.count else 1) > 0
 	end
-	InventorySession.swap(session, side, slot)
-	return true
+	return InventorySession.swap(session, side, slot)
 end
 
 --[=[
@@ -389,8 +467,9 @@ end
 	and a stack in the rest of the pack goes to the hotbar.
 
 	Stacks of the same item are topped up first, then slots that hold nothing
-	are filled. What does not fit stays in its slot. The carried stack is not
-	involved.
+	are filled. Only slots that take the item are used, so a stack sent to a
+	stove lands in the slot meant for it. What does not fit stays in its slot.
+	The carried stack is not involved.
 
 	Returns 0 if the slot holds nothing. With the pack open alone it also
 	returns 0 if the session was not told the hotbar's size, or if the hotbar
@@ -422,7 +501,12 @@ function InventorySession.quickMove(session: InventorySession, side: Side, slot:
 	if stack == nil then
 		return 0
 	end
-	local leftover = Inventory.addStack(to, stack, firstSlot, lastSlot)
+	local leftover: ItemStack?
+	if across ~= nil and side == "pack" then
+		leftover = addToOther(session, across, stack)
+	else
+		leftover = Inventory.addStack(to, stack, firstSlot, lastSlot)
+	end
 	if leftover == nil then
 		return stack.count
 	end
