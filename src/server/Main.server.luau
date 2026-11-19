@@ -7,12 +7,13 @@
 
 	After that it does two things:
 	- It answers the requests that players' machines send, which are listed
-	  in Messages. Every request is checked first, and one that makes no sense
-	  is ignored.
+	  in Messages: moving stacks about an open inventory screen, dropping
+	  things, and placing, opening and breaking things on the plot. Every
+	  request is checked first, and one that makes no sense is ignored.
 	- Ten times a second it runs a step. Players pick up what lies near them,
 	  ground items that have lain too long go, the blocks that show the ground
-	  items are made to match, and each player whose inventories changed is
-	  sent them.
+	  items and the placed items are made to match, and each player whose
+	  inventories changed is sent them.
 
 	The rules are all in ReplicatedStorage.Shared. This script only joins them
 	to Roblox: it reads where characters stand and hands the rules plain
@@ -33,9 +34,11 @@ local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local PlayerState = require(Shared.players.PlayerState)
+local Plot = require(Shared.plots.Plot)
 
 local GroundItemParts = require(script.Parent.world.GroundItemParts)
 local PlaceholderWorld = require(script.Parent.world.PlaceholderWorld)
+local PlotParts = require(script.Parent.world.PlotParts)
 local Remotes = require(script.Parent.Remotes)
 
 type PlayerState = PlayerState.PlayerState
@@ -48,8 +51,12 @@ local STEP_SECONDS = 0.1
 --- `GroundItems.PICKUP_RADIUS`, so a player standing still does not take it back.
 local DROP_DISTANCE = 6
 
---- How far a player may walk from a crate they have open before its screen closes, in studs.
-local CRATE_CLOSES_BEYOND = PlaceholderWorld.CRATE_REACH + 4
+--- How far from a tile a player may stand and still place an item on it, or use or hit what stands
+--- on it, in studs along the ground.
+local REACH = 16
+
+--- How far a player may walk from a thing they have open before its screen closes, in studs along the ground.
+local CLOSES_BEYOND = REACH + 4
 
 for _, definition in ItemDefinitions do
 	ItemRegistry.register(definition)
@@ -59,13 +66,17 @@ local remotes = Remotes.create()
 local groundItems = GroundItems.new()
 local groundItemParts = GroundItemParts.new(Workspace)
 local placeholder = PlaceholderWorld.build()
+--- The one plot there is for now, shared by every player.
+local plot = placeholder.plot
+local plotParts = PlotParts.new(placeholder.slab, plot)
+PlotParts.update(plotParts, plot)
 
 --- The rules' record of each player who is in the game.
 local playerStates: { [Player]: PlayerState } = {}
 --- Where each player last stood. A stack dropped by a player with no character lands here.
 local lastPositions: { [Player]: Position } = {}
 --- For each player who has a thing in the world open, such as a crate: the id of its item, and where it is.
-local openedThings: { [Player]: { itemId: string, position: Vector3 } } = {}
+local openedThings: { [Player]: { itemId: string, position: Vector3, placedId: number } } = {}
 --- The inventories last sent to each player, as text, to tell whether they have changed since.
 local lastSent: { [Player]: string } = {}
 
@@ -236,15 +247,96 @@ onRequest("dropSelected", function(player, state)
 	end
 end)
 
-placeholder.crateClicks.MouseClick:Connect(function(player: Player)
-	local state = playerStates[player]
-	if state == nil or livingRoot(player) == nil then
+-- Returns the middle of a tile of the plot, as a point in the world.
+local function tilePoint(x: number, z: number): Vector3
+	local center = Plot.tileCenter(plotParts.corner, x, z)
+	return Vector3.new(center.x, center.y, center.z)
+end
+
+-- Returns true if a player's living character stands within `distance` studs of `point`, along the ground.
+local function isNear(player: Player, point: Vector3, distance: number): boolean
+	local root = livingRoot(player)
+	if root == nil then
+		return false
+	end
+	return Vector3.new(root.Position.X - point.X, 0, root.Position.Z - point.Z).Magnitude <= distance
+end
+
+-- Returns true if any player's living character stands on the tile, so that a thing placed there would hit them.
+local function isTileStoodOn(x: number, z: number): boolean
+	local point = tilePoint(x, z)
+	for _, player in Players:GetPlayers() do
+		if isNear(player, point, Plot.TILE_SIZE * 0.75) then
+			return true
+		end
+	end
+	return false
+end
+
+onRequest("placeSelected", function(player, state, x, z)
+	local stack = Hotbar.selectedStack(state.hotbar)
+	if stack == nil or state.session ~= nil or not Plot.hasTile(plot, x, z) then
 		return
 	end
-	closeInventoryFor(player, state)
-	PlayerState.openInventory(state, placeholder.crateInventory)
-	openedThings[player] = { itemId = "crate", position = placeholder.cratePart.Position }
-	sendInventory(player)
+	if not isNear(player, tilePoint(x, z), REACH) or isTileStoodOn(x, z) then
+		return
+	end
+	if Plot.canPlace(plot, stack.itemId, x, z) then
+		Inventory.takeFromSlot(state.pack, state.hotbar.selectedSlot, 1)
+		Plot.place(plot, stack.itemId, x, z)
+		PlotParts.update(plotParts, plot)
+	end
+end)
+
+onRequest("usePlaced", function(player, state, id)
+	local placedItem = if isWholeNumber(id) then plot.placedById[id] else nil
+	if placedItem == nil or placedItem.inventory == nil then
+		return
+	end
+	local point = tilePoint(placedItem.x, placedItem.z)
+	if isNear(player, point, REACH) then
+		closeInventoryFor(player, state)
+		PlayerState.openInventory(state, placedItem.inventory)
+		openedThings[player] = { itemId = placedItem.itemId, position = point, placedId = id }
+	end
+end)
+
+onRequest("hitPlaced", function(player, _, id)
+	local placedItem = if isWholeNumber(id) then plot.placedById[id] else nil
+	if placedItem == nil or not isNear(player, tilePoint(placedItem.x, placedItem.z), REACH) then
+		return
+	end
+	-- Anyone looking into it stops first, so that what they were carrying is back in their pack.
+	for other, opened in openedThings do
+		local otherState = playerStates[other]
+		if opened.placedId == id and otherState ~= nil then
+			closeInventoryFor(other, otherState)
+			sendInventory(other)
+		end
+	end
+	Plot.remove(plot, id)
+	PlotParts.update(plotParts, plot)
+
+	-- It lies on its tile as an item again, and what was in it is spilled around it.
+	local center = Plot.tileCenter(plotParts.corner, placedItem.x, placedItem.z)
+	local droppedAt = now()
+	GroundItems.drop(groundItems, ItemStack.new(placedItem.itemId, 1), center, droppedAt)
+	local inside = placedItem.inventory
+	if inside ~= nil then
+		local spilled = 0
+		for slot = 1, inside.slotCount do
+			local stack = Inventory.takeFromSlot(inside, slot)
+			if stack ~= nil then
+				spilled += 1
+				local angle = spilled * 2.4
+				GroundItems.drop(groundItems, stack, {
+					x = center.x + math.cos(angle) * 1.7,
+					y = center.y,
+					z = center.z + math.sin(angle) * 1.7,
+				}, droppedAt)
+			end
+		end
+	end
 end)
 
 local function addPlayer(player: Player)
@@ -277,8 +369,7 @@ local function step()
 		end
 		local opened = openedThings[player]
 		if opened ~= nil then
-			local root = livingRoot(player)
-			if root == nil or (root.Position - opened.position).Magnitude > CRATE_CLOSES_BEYOND then
+			if not isNear(player, opened.position, CLOSES_BEYOND) then
 				closeInventoryFor(player, state)
 			end
 		end
@@ -286,6 +377,7 @@ local function step()
 	GroundItems.expire(groundItems, stepTime)
 	PlaceholderWorld.restock(placeholder, groundItems, stepTime)
 	GroundItemParts.update(groundItemParts, groundItems)
+	PlotParts.update(plotParts, plot)
 	for player in playerStates do
 		sendInventory(player)
 	end

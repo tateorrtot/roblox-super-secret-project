@@ -1,8 +1,8 @@
 --!strict
 --[=[
 	A grey stand-in for the world, to build and test the game's machinery on:
-	a flat plot with a post at each corner, one crate with a few things in it,
-	and items that keep turning up on the ground.
+	a flat plot with a post at each corner, a crate and a stove standing on
+	it, and items that keep turning up on the ground.
 
 	None of this is the game's world. It is made by code so that the project
 	folder alone is enough to run the game, and it goes when there is a real
@@ -11,7 +11,8 @@
 
 	```lua
 	local placeholder = PlaceholderWorld.build()
-	placeholder.crateClicks.MouseClick:Connect(function(player) end) -- a player used the crate
+	placeholder.plot -- the plot's rules: a crate with things in it, and a stove
+	placeholder.slab -- the part the plot lies on
 	PlaceholderWorld.restock(placeholder, groundItems, now) -- call often; it drops something now and then
 	```
 ]=]
@@ -21,32 +22,25 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GroundItems = require(Shared.world.GroundItems)
 local Inventory = require(Shared.inventory.Inventory)
-local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
+local Plot = require(Shared.plots.Plot)
 
 local PlaceholderWorld = {}
 
 export type PlaceholderWorld = {
-	--- The grey slab players walk on.
-	read plot: Part,
-	--- The crate in the world.
-	read cratePart: Part,
-	--- What is in the crate.
-	read crateInventory: Inventory.Inventory,
-	--- Fires `MouseClick` with the player when a player clicks or taps the crate from near enough.
-	read crateClicks: ClickDetector,
+	--- The grey slab players walk on. The plot lies on its top.
+	read slab: Part,
+	--- The one plot, shared by everyone for now: what stands on which tile.
+	read plot: Plot.Plot,
 	--- A point on the ground where players appear.
 	read spawnPoint: Vector3,
 }
 
---- How long the side of the square plot is, in studs.
-PlaceholderWorld.PLOT_SIDE = 72
+--- How many tiles the square plot has along each side.
+PlaceholderWorld.PLOT_TILES = 18
 
---- How near a player must be to the crate to open it, in studs.
-PlaceholderWorld.CRATE_REACH = 14
-
-local PLOT_HEIGHT = 0.4
+local SLAB_HEIGHT = 0.4
 local GROUND_ITEMS_KEPT = 10
 local SECONDS_BETWEEN_RESTOCKS = 4
 
@@ -64,25 +58,6 @@ local function makeBlock(name: string, size: Vector3, position: Vector3, color: 
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	return part
-end
-
-local function makeLabel(text: string, studsAbove: number): BillboardGui
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(240, 28)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, studsAbove, 0)
-	billboard.MaxDistance = 80
-	local label = Instance.new("TextLabel")
-	label.Name = "Text"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 18
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.2
-	label.Text = text
-	label.Parent = billboard
-	return billboard
 end
 
 --[=[
@@ -114,52 +89,36 @@ function PlaceholderWorld.build(): PlaceholderWorld
 	end
 	local spawnPoint = (spawnLocation :: SpawnLocation).Position
 
-	local side = PlaceholderWorld.PLOT_SIDE
+	local side = PlaceholderWorld.PLOT_TILES * Plot.TILE_SIZE
 	local center = Vector3.new(spawnPoint.X, 0, spawnPoint.Z)
-	local plot = makeBlock(
+	local slab = makeBlock(
 		"Plot",
-		Vector3.new(side, PLOT_HEIGHT, side),
-		center + Vector3.new(0, PLOT_HEIGHT / 2, 0),
+		Vector3.new(side, SLAB_HEIGHT, side),
+		center + Vector3.new(0, SLAB_HEIGHT / 2, 0),
 		Color3.fromRGB(150, 151, 156)
 	)
-	plot.Parent = folder
+	slab.Parent = folder
 	for _, corner in { Vector3.new(1, 0, 1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(-1, 0, -1) } do
 		local post = makeBlock(
 			"Post",
 			Vector3.new(1.5, 5, 1.5),
-			center + corner * (side / 2 - 0.75) + Vector3.new(0, PLOT_HEIGHT + 2.5, 0),
+			center + corner * (side / 2 + 0.75) + Vector3.new(0, 2.5, 0),
 			Color3.fromRGB(70, 71, 78)
 		)
 		post.Parent = folder
 	end
 
-	local crateColor = ItemLooks.crate.color
-	local cratePart = makeBlock(
-		"Crate",
-		Vector3.new(4, 4, 4),
-		center + Vector3.new(12, PLOT_HEIGHT + 2, -10),
-		Color3.fromRGB(crateColor[1], crateColor[2], crateColor[3])
-	)
-	makeLabel(ItemLooks.crate.name .. " (click to open)", 3.4).Parent = cratePart
-	local crateClicks = Instance.new("ClickDetector")
-	crateClicks.MaxActivationDistance = PlaceholderWorld.CRATE_REACH
-	crateClicks.Parent = cratePart
-	cratePart.Parent = folder
-
-	local crateInventory = Inventory.new(27)
-	Inventory.addItems(crateInventory, "cheese", 8)
-	Inventory.addItems(crateInventory, "fish", 5)
-	Inventory.addItems(crateInventory, "crystal", 40)
-	Inventory.addItems(crateInventory, "stove", 1)
+	local plot = Plot.new(PlaceholderWorld.PLOT_TILES, PlaceholderWorld.PLOT_TILES)
+	local crateId = Plot.place(plot, "crate", 13, 7) :: number
+	local inCrate = plot.placedById[crateId].inventory :: Inventory.Inventory
+	Inventory.addItems(inCrate, "cheese", 8)
+	Inventory.addItems(inCrate, "fish", 5)
+	Inventory.addItems(inCrate, "crystal", 40)
+	Inventory.addItems(inCrate, "crate", 1)
+	Plot.place(plot, "stove", 6, 13)
 
 	folder.Parent = Workspace
-	return {
-		plot = plot,
-		cratePart = cratePart,
-		crateInventory = crateInventory,
-		crateClicks = crateClicks,
-		spawnPoint = spawnPoint,
-	}
+	return { slab = slab, plot = plot, spawnPoint = spawnPoint }
 end
 
 --[=[
@@ -168,10 +127,11 @@ end
 function PlaceholderWorld.fillPack(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "apple", 4)
 	Inventory.addItems(pack, "log", 20)
+	Inventory.addItems(pack, "crate", 1)
 end
 
 --[=[
-	Drops a stack of some item at a random spot on the plot, if fewer than a
+	Drops a stack of some item on a random tile of the plot, if fewer than a
 	handful of ground items lie about and one was not dropped a moment ago.
 	Call it often: it keeps the plot stocked however long the game runs.
 ]=]
@@ -188,23 +148,28 @@ function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: Gr
 	end
 	nextRestockAt = now + SECONDS_BETWEEN_RESTOCKS
 
+	local plot = placeholder.plot
+	local slab = placeholder.slab
+	local tileX = random:NextInteger(1, plot.width)
+	local tileZ = random:NextInteger(1, plot.depth)
+	local corner = {
+		x = slab.Position.X - slab.Size.X / 2,
+		y = slab.Position.Y + slab.Size.Y / 2,
+		z = slab.Position.Z - slab.Size.Z / 2,
+	}
+	local spot = Plot.tileCenter(corner, tileX, tileZ)
+	-- Nothing lands where players appear, or on a tile that something stands on: a tile a crate
+	-- could go on is a tile that holds nothing. A spot that will not do is skipped until the next time.
+	local spawnPoint = placeholder.spawnPoint
+	local fromSpawn = Vector3.new(spot.x - spawnPoint.X, 0, spot.z - spawnPoint.Z).Magnitude
+	if fromSpawn < 9 or not Plot.canPlace(plot, "crate", tileX, tileZ) then
+		return
+	end
+
 	local definitions = ItemRegistry.all()
 	local definition = definitions[random:NextInteger(1, #definitions)]
 	local count = random:NextInteger(1, definition.stackSize)
-	local reach = PlaceholderWorld.PLOT_SIDE / 2 - 4
-	local plot = placeholder.plot
-	local spot = Vector3.new(
-		plot.Position.X + random:NextNumber(-reach, reach),
-		plot.Position.Y + plot.Size.Y / 2,
-		plot.Position.Z + random:NextNumber(-reach, reach)
-	)
-	-- Nothing lands on the crate or where players appear. A spot that would is skipped until the next time.
-	for _, keepClear in { placeholder.cratePart.Position, placeholder.spawnPoint } do
-		if (Vector3.new(spot.X, 0, spot.Z) - Vector3.new(keepClear.X, 0, keepClear.Z)).Magnitude < 9 then
-			return
-		end
-	end
-	GroundItems.drop(groundItems, ItemStack.new(definition.id, count), { x = spot.X, y = spot.Y, z = spot.Z }, now)
+	GroundItems.drop(groundItems, ItemStack.new(definition.id, count), spot, now)
 end
 
 return PlaceholderWorld

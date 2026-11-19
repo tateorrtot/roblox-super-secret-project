@@ -13,11 +13,20 @@
 
 	Keys: E opens and closes the pack, 1 to 9 pick a hotbar slot, and Q drops
 	one of what is in hand.
+
+	In the world there are two actions, Use and Hit. Use is a left click or a
+	tap: on a placed item it opens it, and on a bare tile of the plot it
+	places the item in hand, if that item can be placed. Hit is a short right
+	click: on a placed item it knocks it off the plot, to lie on the ground as
+	an item. Hit has no touch control yet.
 ]=]
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Inventory = require(Shared.inventory.Inventory)
@@ -31,6 +40,9 @@ local inventoryFolder = script.Parent:WaitForChild("inventory")
 local HotbarGui = require(inventoryFolder:WaitForChild("HotbarGui"))
 local InventoryGui = require(inventoryFolder:WaitForChild("InventoryGui"))
 local Remotes = require(script.Parent:WaitForChild("Remotes"))
+local worldFolder = script.Parent:WaitForChild("world")
+local PlacementGhost = require(worldFolder:WaitForChild("PlacementGhost"))
+local PlotPointer = require(worldFolder:WaitForChild("PlotPointer"))
 
 for _, definition in ItemDefinitions do
 	ItemRegistry.register(definition)
@@ -141,8 +153,62 @@ local digitKeys: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Nine] = 9,
 }
 
-UserInputService.InputBegan:Connect(function(input: InputObject, typingElsewhere: boolean)
-	if typingElsewhere then
+-- Returns the id of the item in hand if it is one that can be placed, or nil.
+local function placeableInHand(): string?
+	local held = Inventory.getStack(pack, selectedSlot)
+	if held ~= nil and ItemRegistry.get(held.itemId).placeable == true then
+		return held.itemId
+	end
+	return nil
+end
+
+-- The Use action on what a point on the screen is over: opens a placed item, or places the item in hand on a bare tile.
+local function use(pointed: PlotPointer.Pointed?)
+	if pointed == nil or screenOpen then
+		return
+	end
+	if pointed.kind == "placedItem" then
+		remotes.usePlaced:FireServer(pointed.id)
+	elseif placeableInHand() ~= nil then
+		remotes.placeSelected:FireServer(pointed.x, pointed.z)
+	end
+end
+
+-- The Hit action on what a point on the screen is over: knocks a placed item off the plot.
+local function hit(pointed: PlotPointer.Pointed?)
+	if pointed ~= nil and not screenOpen and pointed.kind == "placedItem" then
+		remotes.hitPlaced:FireServer(pointed.id)
+	end
+end
+
+-- With a mouse, a faint block shows where the item in hand would stand.
+local ghost = PlacementGhost.new()
+RunService.RenderStepped:Connect(function()
+	local itemId = if screenOpen or not UserInputService.MouseEnabled then nil else placeableInHand()
+	local pointed = if itemId ~= nil then PlotPointer.at(UserInputService:GetMouseLocation()) else nil
+	if itemId ~= nil and pointed ~= nil and pointed.kind == "tile" then
+		PlacementGhost.show(ghost, itemId, pointed.center)
+	else
+		PlacementGhost.hide(ghost)
+	end
+end)
+
+-- Holding the right button turns Roblox's camera, so only a short press that did not turn it is a Hit.
+local rightPressedAt: number? = nil
+local lookWhenPressed = Vector3.zero
+
+UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewhere: boolean)
+	-- Typing in the chat, or a click on a button, is not for the game.
+	if handledElsewhere then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		use(PlotPointer.at(UserInputService:GetMouseLocation()))
+		return
+	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+		local camera = Workspace.CurrentCamera
+		rightPressedAt = os.clock()
+		lookWhenPressed = if camera ~= nil then camera.CFrame.LookVector else Vector3.zero
 		return
 	end
 	local digit = digitKeys[input.KeyCode]
@@ -154,5 +220,26 @@ UserInputService.InputBegan:Connect(function(input: InputObject, typingElsewhere
 		end
 	elseif digit ~= nil and digit <= PlayerState.HOTBAR_SLOTS then
 		selectSlot(digit)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input: InputObject)
+	if input.UserInputType ~= Enum.UserInputType.MouseButton2 or rightPressedAt == nil then
+		return
+	end
+	local camera = Workspace.CurrentCamera
+	local heldFor = os.clock() - rightPressedAt
+	local turned = camera ~= nil and camera.CFrame.LookVector:Dot(lookWhenPressed) < 0.9995
+	rightPressedAt = nil
+	if heldFor < 0.35 and not turned then
+		hit(PlotPointer.at(UserInputService:GetMouseLocation()))
+	end
+end)
+
+-- A tap on the world is Use. Roblox gives the tap's place measured from under the strip along the
+-- top of the screen, and PlotPointer wants it from the top of the window, so the strip is added back.
+UserInputService.TouchTapInWorld:Connect(function(position: Vector2, handledElsewhere: boolean)
+	if not handledElsewhere then
+		use(PlotPointer.at(position + GuiService:GetGuiInset()))
 	end
 end)

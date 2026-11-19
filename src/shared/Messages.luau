@@ -20,6 +20,9 @@
 	| `dropCarried` | count, or nothing for all | drop carried items on the ground |
 	| `selectHotbarSlot` | slot | select a hotbar slot |
 	| `dropSelected` | nothing | drop one item from the selected hotbar slot on the ground |
+	| `placeSelected` | x, z | place one of the item in the selected hotbar slot on that tile of the plot |
+	| `usePlaced` | id | use a placed item: open it, if it holds things |
+	| `hitPlaced` | id | hit a placed item: it comes off the plot and lies on the ground as an item, with what was in it |
 
 	From the server to one player's machine (`toClient`):
 
@@ -46,6 +49,9 @@ return table.freeze({
 		"dropCarried",
 		"selectHotbarSlot",
 		"dropSelected",
+		"placeSelected",
+		"usePlaced",
+		"hitPlaced",
 	}),
 	toClient = table.freeze({
 		"inventoryChanged",
