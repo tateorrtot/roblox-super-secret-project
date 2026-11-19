@@ -672,6 +672,12 @@ do -- a station on the plot
 	)
 	World.step(world, 107)
 	check(
+		world.stations[ovenId].worked == 0,
+		"step: no time has passed for a station when the time given is earlier than the last"
+	)
+	World.step(world, 107)
+	check(world.stations[ovenId].worked == 0, "step: nor when it is the same")
+	check(
 		is(Inventory.getStack(inside, Station.OUTPUT_SLOT), "cooked_fish", 1),
 		"step: a time earlier than the last does nothing to a station"
 	)

@@ -163,18 +163,17 @@ local function tileCenter(world: World, x: number, z: number): Position
 end
 
 -- Returns the station that a placed item is, making its record if this is the first anyone has asked.
--- Returns nil for a placed item that is not a station, or an id that is not on the plot.
-local function stationOf(world: World, placedId: number): Station.Station?
+-- Returns nil for a placed item that is not a station.
+local function stationOf(world: World, placedId: number, placedItem: Plot.PlacedItem): Station.Station?
 	local station = world.stations[placedId]
 	if station ~= nil then
 		return station
 	end
-	local placedItem = world.plot.placedById[placedId]
-	local inventory = if placedItem ~= nil then placedItem.inventory else nil
-	if placedItem == nil or inventory == nil or not RecipeRegistry.isStation(placedItem.itemId) then
+	if not RecipeRegistry.isStation(placedItem.itemId) then
 		return nil
 	end
-	local made = Station.new(placedItem.itemId, inventory)
+	-- A station's item always has slots, so a placed one always has an inventory.
+	local made = Station.new(placedItem.itemId, placedItem.inventory :: Inventory)
 	local stations = world.stations :: any
 	stations[placedId] = made
 	return made
@@ -238,7 +237,9 @@ local function usePlaced(world: World, player: WorldPlayer, id: unknown)
 	end
 	closeInventoryOf(world, player)
 	-- A station's slots each take only what belongs in them.
-	local slotRules = if stationOf(world, placedId) ~= nil then Station.slotRules(placedItem.itemId) else nil
+	local slotRules = if stationOf(world, placedId, placedItem) ~= nil
+		then Station.slotRules(placedItem.itemId)
+		else nil
 	PlayerState.openInventory(player.state, placedItem.inventory, slotRules);
 	(player :: any).openedPlacedId = placedId
 end
@@ -463,13 +464,8 @@ function World.step(world: World, now: number)
 			end
 		end
 	end
-	local placedIds = {}
-	for placedId in world.plot.placedById do
-		table.insert(placedIds, placedId)
-	end
-	table.sort(placedIds)
-	for _, placedId in placedIds do
-		local station = stationOf(world, placedId)
+	for placedId, placedItem in world.plot.placedById do
+		local station = stationOf(world, placedId, placedItem)
 		if station ~= nil then
 			Station.step(station, elapsed)
 		end
