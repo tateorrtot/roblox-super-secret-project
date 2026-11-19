@@ -228,6 +228,13 @@ end
 	`corner` is the outer corner of tile x 1, z 1: the plot reaches from it
 	towards greater x and greater z. The tile returned may be off the plot,
 	with a number below 1 or above the plot's size: ask [method hasTile].
+
+	```lua
+	local corner = { x = 100, y = 0, z = 200 }
+	Plot.tileAt(corner, { x = 101, y = 0, z = 203 }) --> 1, 1: within 4 studs of the corner both ways
+	Plot.tileAt(corner, { x = 109, y = 0, z = 204 }) --> 3, 2
+	Plot.tileAt(corner, { x = 99, y = 0, z = 200 }) --> 0, 1: off the plot
+	```
 ]=]
 function Plot.tileAt(corner: Position, position: Position): (number, number)
 	return math.floor((position.x - corner.x) / Plot.TILE_SIZE) + 1,
@@ -237,6 +244,10 @@ end
 --[=[
 	Returns the position of the middle of the tile `x`, `z`, at the height of
 	the plot's corner, for a plot whose corner is at `corner`.
+
+	```lua
+	Plot.tileCenter({ x = 100, y = 0, z = 200 }, 1, 1) --> { x = 102, y = 0, z = 202 }
+	```
 ]=]
 function Plot.tileCenter(corner: Position, x: number, z: number): Position
 	return table.freeze({
