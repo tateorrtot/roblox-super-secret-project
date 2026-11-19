@@ -358,6 +358,12 @@ class Playtest:
         self.keys('Q')
         check(self.view()['pack'].get('s3') == 'Log 3' and self.ground('log') == [1], 'Q over a slot drops one from it',
               self.world()['ground'])
+        self.hover(PANEL + 'PackSlot12')
+        self.hold('LeftControl', True)
+        self.keys('Q')
+        self.hold('LeftControl', False)
+        check(self.view()['pack'].get('s12') == '' and self.ground('log') == [3],
+              'Ctrl and Q over a slot drops the whole stack from it, and it joins the log on the ground', self.world()['ground'])
         self.click(PANEL + 'PackSlot1', 'right')
 
         # Dropping from the screen.
@@ -376,13 +382,13 @@ class Playtest:
         self.keys('Three', 'Q')
         view = self.view()
         check(view['held'] == 'Log' and view['hotbar'].get('s3') == 'Log 2', 'Q drops one of what is in hand', view['hotbar'])
-        check(self.ground('log') == [2], 'and it joins the log already on the ground')
+        check(self.ground('log') == [4], 'and it joins the logs already on the ground')
         apples = [entry for entry in self.world()['ground'] if entry['item'] == 'apple'][0]
         time.sleep(1.6)
         self.walk_to(apples['x'], apples['z'])
         time.sleep(0.6)
         view = self.view()
-        check(view['hotbar'].get('s1') == 'Apple 4' and view['hotbar'].get('s3') == 'Log 4',
+        check(view['hotbar'].get('s1') == 'Apple 4' and view['hotbar'].get('s3') == 'Log 6',
               'walking over them picks the stacks up, into the stacks of their kind', view['hotbar'])
         check(self.world()['ground'] == [], 'and nothing is left on the ground')
 
