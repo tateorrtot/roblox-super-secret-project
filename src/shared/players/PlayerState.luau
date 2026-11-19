@@ -65,16 +65,22 @@ end
 	Opens the player's inventory screen and returns its session.
 
 	The screen shows the pack. If `other` is given, such as a crate's
-	inventory, it shows that beside the pack.
+	inventory, it shows that beside the pack. `otherSlotRules` says which
+	items each slot of `other` takes, as a stove's slots do, and may be left
+	out if every slot takes anything.
 
 	Raises an error if a screen is already open: close it first with
 	[method closeInventory].
 ]=]
-function PlayerState.openInventory(state: PlayerState, other: Inventory?): InventorySession
+function PlayerState.openInventory(
+	state: PlayerState,
+	other: Inventory?,
+	otherSlotRules: InventorySession.SlotRules?
+): InventorySession
 	if state.session ~= nil then
 		error("PlayerState.openInventory: an inventory screen is already open; close it first", 2)
 	end
-	local session = InventorySession.open(state.pack, other, state.hotbar.slotCount)
+	local session = InventorySession.open(state.pack, other, state.hotbar.slotCount, otherSlotRules)
 	setSession(state, session)
 	return session
 end

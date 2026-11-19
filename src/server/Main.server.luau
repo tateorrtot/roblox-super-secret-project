@@ -4,8 +4,8 @@
 
 	The game's rules are in ReplicatedStorage.Shared, and one World holds the
 	whole game. This script has no rules of its own. It does four things:
-	- When the server starts, it registers every item, makes the remotes,
-	  builds the placeholder world and makes the World.
+	- When the server starts, it registers every item and recipe, makes the
+	  remotes, builds the placeholder world and makes the World.
 	- It tells the World what happens: a player joins or leaves, where each
 	  character stands, a request arrives from a player's machine, and, ten
 	  times a second, that time has passed.
@@ -29,6 +29,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local Position = require(Shared.world.Position)
+local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
+local RecipeRegistry = require(Shared.stations.RecipeRegistry)
 local World = require(Shared.world.World)
 
 local GroundItemParts = require(script.Parent.world.GroundItemParts)
@@ -45,6 +47,9 @@ local DROP_DISTANCE = 6
 
 for _, definition in ItemDefinitions do
 	ItemRegistry.register(definition)
+end
+for _, recipe in RecipeDefinitions do
+	RecipeRegistry.register(recipe)
 end
 
 local remotes = Remotes.create()
@@ -116,7 +121,7 @@ end
 -- Makes what the players see match the World: the blocks in the world, and what each machine has been told.
 local function show()
 	GroundItemParts.update(groundItemParts, world.groundItems)
-	PlotParts.update(plotParts, world.plot)
+	PlotParts.update(plotParts, world.plot, world.stations)
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
 			sendInventory(player)

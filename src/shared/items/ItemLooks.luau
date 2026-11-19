@@ -29,6 +29,8 @@ local looks: { [string]: ItemLook } = {
 	apple = { name = "Apple", color = { 200, 50, 50 } },
 	fish = { name = "Fish", color = { 90, 150, 200 } },
 	cheese = { name = "Cheese", color = { 235, 200, 80 } },
+	cooked_fish = { name = "Cooked fish", color = { 205, 140, 85 } },
+	baked_apple = { name = "Baked apple", color = { 165, 85, 45 } },
 	stove = { name = "Stove", color = { 60, 60, 70 } },
 	crate = { name = "Crate", color = { 170, 130, 80 } },
 }

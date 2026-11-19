@@ -7,7 +7,7 @@ Run it from the repository root, with Studio open on the place and in Edit mode:
 
 It copies src/ into the place, starts a play test, and drives the test character with keys, clicks
 and walking: the hotbar, the inventory screen, dropping and picking up, the crate, and placing,
-using and hitting on the plot. After each step it looks at what a player would see (the slots on
+using and hitting on the plot, and baking an apple in the stove. After each step it looks at what a player would see (the slots on
 the screen) and at what is in the world (the blocks on the ground and on the plot). It prints one
 line for each thing that should be true, and exits with code 1 if any was not.
 
@@ -44,6 +44,9 @@ local view = {
 	held = hotbarGui.Row.Held.Text,
 	title = panel.Title.Text,
 	carried = iconText(inventoryGui.Carried:FindFirstChild("StackIcon")),
+	stationShown = panel.FireGauge.Visible,
+	fire = panel.FireGauge.Fill.Size.Y.Scale,
+	work = panel.WorkGauge.Fill.Size.X.Scale,
 	outsideX = math.max(8, panel.AbsolutePosition.X - 40),
 	outsideY = panel.AbsolutePosition.Y + 120,
 	hotbar = {},
@@ -82,7 +85,7 @@ if placedFolder then
 	for _, part in placedFolder:GetChildren() do
 		local id = part:GetAttribute("placedId")
 		if id ~= nil then
-			table.insert(world.placed, { item = part.Name, id = id, x = part.Position.X, y = part.Position.Y, z = part.Position.Z })
+			table.insert(world.placed, { item = part.Name, id = id, x = part.Position.X, y = part.Position.Y, z = part.Position.Z, burning = part:GetAttribute("burning") })
 		end
 	end
 end
@@ -431,6 +434,45 @@ class Playtest:
         if on_screen:
             self.click(point)
             check(not self.view()['open'], 'a click on a crate that is out of reach does nothing')
+
+        # The stove works as a furnace. The apples that spilled from the broken crate are picked up to bake.
+        apples = [entry for entry in self.world()['ground'] if entry['item'] == 'apple']
+        if apples:
+            self.walk_to(apples[0]['x'], apples[0]['z'])
+            time.sleep(0.6)
+        stove = [entry for entry in self.world()['placed'] if entry['item'] == 'stove'][0]
+        self.walk_to(stove['x'] + 5, stove['z'] + 8)
+        point, on_screen = self.screen_point(stove['x'], stove['y'], stove['z'])
+        check(on_screen, 'the stove is in view from beside it', point)
+        self.click(point)
+        view = self.view()
+        check(view['open'] and view['title'] == 'Stove' and len(view['other']) == 3 and view['stationShown'],
+              'a click on the stove opens its three slots, laid out as a furnace', {'title': view['title'], 'other': view['other']})
+        apple_slot = next((slot for slot, text in view['pack'].items() if text.startswith('Apple')), None)
+        log_slot = next((slot for slot, text in view['pack'].items() if text.startswith('Log')), None)
+        check(apple_slot is not None and log_slot is not None, 'the pack holds apples to bake and logs to burn', view['pack'])
+        if apple_slot is None or log_slot is None:
+            return
+        self.hold('LeftShift', True)
+        self.click(PANEL + 'PackSlot' + apple_slot[1:])
+        self.click(PANEL + 'PackSlot' + log_slot[1:])
+        self.hold('LeftShift', False)
+        view = self.view()
+        check(view['other'].get('s1', '').startswith('Apple') and view['other'].get('s2', '').startswith('Log'),
+              'Shift and a click sends the apples to the top slot and the logs to the fuel slot', view['other'])
+        time.sleep(7)
+        view = self.view()
+        check(view['other'].get('s3', '').startswith('Baked apple'), 'in a few seconds the stove turns out a baked apple', view['other'])
+        check(view['fire'] > 0, 'its fire gauge shows fuel burning', view.get('fire'))
+        lit = [entry for entry in self.world()['placed'] if entry['id'] == stove['id']][0]
+        check(lit.get('burning') is True, 'and the stove in the world shows that it is lit', lit)
+        self.click(PANEL + 'OtherSlot3')
+        time.sleep(0.6)
+        self.click(PANEL + 'OtherSlot3')
+        carried = self.view()['carried']
+        check(carried.startswith('Baked apple'), 'what it made can be taken out, and cannot be put back', carried)
+        self.keys('E')
+        check(not self.view()['open'], 'E closes the stove')
 
 
 if __name__ == '__main__':

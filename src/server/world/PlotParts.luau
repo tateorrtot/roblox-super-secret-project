@@ -18,6 +18,9 @@
 
 	The plot must lie square to the world's x and z, not turned.
 
+	A station whose fire is burning glows, and its block has the attribute
+	`burning` set to true.
+
 	The blocks are placeholders. They stand in until items have models.
 
 	```lua
@@ -32,6 +35,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ItemLooks = require(Shared.items.ItemLooks)
 local Plot = require(Shared.plots.Plot)
+local Station = require(Shared.stations.Station)
 
 local PlotParts = {}
 
@@ -139,10 +143,31 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	return { slab = slab, corner = corner, folder = folder, partsById = {} }
 end
 
+-- Makes a station's block glow while its fire burns, and look as it did before when the fire is out.
+local function showFire(part: Part, burning: boolean)
+	local color = ItemLooks[part.Name].color
+	local unlit = Color3.fromRGB(color[1], color[2], color[3])
+	part.Color = if burning then unlit:Lerp(Color3.fromRGB(255, 140, 40), 0.6) else unlit
+	part.Material = if burning then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	local light = part:FindFirstChild("Fire")
+	if burning and light == nil then
+		local fire = Instance.new("PointLight")
+		fire.Name = "Fire"
+		fire.Color = Color3.fromRGB(255, 160, 70)
+		fire.Range = 14
+		fire.Brightness = 1.5
+		fire.Parent = part
+	elseif not burning and light ~= nil then
+		light:Destroy()
+	end
+end
+
 --[=[
-	Makes the blocks match what is placed on `plot` now.
+	Makes the blocks match what is placed on `plot` now, and makes each
+	station in `stations` glow if its fire is burning. `stations` is the
+	World's record of them, by placed item id.
 ]=]
-function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot)
+function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, stations: { [number]: Station.Station })
 	local partsById = plotParts.partsById
 	for id, placedItem in plot.placedById do
 		if partsById[id] == nil then
@@ -156,6 +181,13 @@ function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot)
 		if plot.placedById[id] == nil then
 			part:Destroy()
 			partsById[id] = nil
+		else
+			local station = stations[id]
+			local burning = station ~= nil and Station.isBurning(station)
+			if part:GetAttribute("burning") ~= burning then
+				part:SetAttribute("burning", burning)
+				showFire(part, burning)
+			end
 		end
 	end
 end

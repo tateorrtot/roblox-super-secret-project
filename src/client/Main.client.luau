@@ -39,6 +39,8 @@ local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local PlayerState = require(Shared.players.PlayerState)
 local Plot = require(Shared.plots.Plot)
+local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
+local RecipeRegistry = require(Shared.stations.RecipeRegistry)
 
 local inventoryFolder = script.Parent:WaitForChild("inventory")
 local HotbarGui = require(inventoryFolder:WaitForChild("HotbarGui"))
@@ -50,6 +52,9 @@ local PlotPointer = require(worldFolder:WaitForChild("PlotPointer"))
 
 for _, definition in ItemDefinitions do
 	ItemRegistry.register(definition)
+end
+for _, recipe in RecipeDefinitions do
+	RecipeRegistry.register(recipe)
 end
 
 local remotes = Remotes.find()
@@ -143,7 +148,12 @@ local function setScreenOpen(open: boolean)
 	end
 end
 
-type ScreenMessage = { other: unknown, otherItemId: string?, carried: { itemId: string, count: number }? }
+type ScreenMessage = {
+	other: unknown,
+	otherItemId: string?,
+	carried: { itemId: string, count: number }?,
+	station: { burning: number, working: number }?,
+}
 
 remotes.inventoryChanged.OnClientEvent:Connect(function(encodedPack: unknown, screen: ScreenMessage?)
 	pack = decode(encodedPack)
@@ -155,7 +165,8 @@ remotes.inventoryChanged.OnClientEvent:Connect(function(encodedPack: unknown, sc
 		local carried = if screen.carried ~= nil
 			then ItemStack.new(screen.carried.itemId, screen.carried.count)
 			else nil
-		InventoryGui.show(inventoryGui, pack, other, if otherLook ~= nil then otherLook.name else "", carried)
+		local otherName = if otherLook ~= nil then otherLook.name else ""
+		InventoryGui.show(inventoryGui, pack, other, otherName, carried, screen.station)
 	end
 end)
 remotes.askForInventory:FireServer()

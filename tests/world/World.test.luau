@@ -10,18 +10,23 @@ local Messages = require("../../src/shared/Messages")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/world/Position")
+local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
+local Station = require("../../src/shared/stations/Station")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
 local raises = Check.raises
 local answer = World.answer :: (world: World.World, playerId: number, name: any, ...any) -> ()
 
-ItemRegistry.register({ id = "log", stackSize = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
 ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
 ItemRegistry.register({ id = "post", stackSize = 8, placeable = true })
+ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
+ItemRegistry.register({ id = "oven", stackSize = 1, placeable = true, slotCount = 3 })
+RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fish", seconds = 8 })
 
 local itemIds = { "log", "fish", "apple", "stove", "crate", "post" }
 local at = Position.new
@@ -610,6 +615,120 @@ do -- time passing
 		)
 	end
 	check(world.now == 120 + GroundItems.LIFETIME, "step: a refused step leaves the time as it was")
+end
+
+do -- a station on the plot
+	local plot = Plot.new(6, 6)
+	local ovenId = Plot.place(plot, "oven", 2, 2) :: number
+	local crateId = Plot.place(plot, "crate", 3, 2) :: number
+	local inside = plot.placedById[ovenId].inventory :: Inventory.Inventory
+	local world = World.new(plot, at(0, 0, 0), 100)
+	local state = World.addPlayer(world, 1, at(0, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	Inventory.setStack(state.pack, 1, ItemStack.new("fish", 3))
+	Inventory.setStack(state.pack, 2, ItemStack.new("log", 4))
+	check(next(world.stations :: any) == nil, "new: a station has no record until it is stepped or used")
+
+	answer(world, 1, "usePlaced", crateId)
+	local _, crateScreen = World.encodeView(world, 1)
+	check((state.session :: any).otherSlotRules == nil, "usePlaced: a crate's slots take anything")
+	check(crateScreen ~= nil and crateScreen.station == nil, "encodeView: and a crate has no gauges")
+	check(world.stations[crateId] == nil, "usePlaced: a crate is not a station")
+
+	answer(world, 1, "usePlaced", ovenId)
+	check((state.session :: any).otherSlotRules ~= nil, "usePlaced: a station opens with rules for its slots")
+	check(world.stations[ovenId] ~= nil, "usePlaced: and has a record from then on")
+	local _, screen = World.encodeView(world, 1)
+	local gauges = if screen ~= nil then screen.station else nil
+	check(
+		gauges ~= nil and gauges.burning == 0 and gauges.working == 0,
+		"encodeView: a station's gauges are sent, at nothing before it is lit"
+	)
+	check(
+		screen ~= nil and screen.otherItemId == "oven" and isPlain(screen),
+		"encodeView: with what kind of thing it is, all as plain data"
+	)
+
+	answer(world, 1, "quickMoveSlot", "pack", 2)
+	answer(world, 1, "quickMoveSlot", "pack", 1)
+	check(
+		is(Inventory.getStack(inside, Station.INPUT_SLOT), "fish", 3)
+			and is(Inventory.getStack(inside, Station.FUEL_SLOT), "log", 4),
+		"quickMoveSlot: each thing goes to the slot of the station that is meant for it"
+	)
+	World.step(world, 104)
+	local _, cooking = World.encodeView(world, 1)
+	local cookingGauges = (cooking :: any).station
+	check(
+		math.abs(cookingGauges.burning - 0.75) < 1e-6 and math.abs(cookingGauges.working - 0.5) < 1e-6,
+		"step: a station burns and works for the time that passed since the last step"
+	)
+	check(is(Inventory.getStack(inside, Station.FUEL_SLOT), "log", 3), "step: lighting it used a log")
+	World.step(world, 108)
+	check(
+		is(Inventory.getStack(inside, Station.OUTPUT_SLOT), "cooked_fish", 1)
+			and is(Inventory.getStack(inside, Station.INPUT_SLOT), "fish", 2),
+		"step: and in time turns a fish into a cooked fish"
+	)
+	World.step(world, 107)
+	check(
+		is(Inventory.getStack(inside, Station.OUTPUT_SLOT), "cooked_fish", 1),
+		"step: a time earlier than the last does nothing to a station"
+	)
+
+	answer(world, 1, "hitPlaced", ovenId)
+	check(
+		world.stations[ovenId] == nil and state.session == nil,
+		"hitPlaced: a station's record goes with it, and its screen closes"
+	)
+	check(
+		sum(onGround(world, "oven")) == 1
+			and sum(onGround(world, "fish")) == 2
+			and sum(onGround(world, "cooked_fish")) == 1
+			and sum(onGround(world, "log")) == 3,
+		"hitPlaced: what was in it is spilled, and the log that was burning is gone"
+	)
+
+	local idle = Plot.new(3, 3)
+	local idleOven = Plot.place(idle, "oven", 1, 1) :: number
+	local idleInside = idle.placedById[idleOven].inventory :: Inventory.Inventory
+	Inventory.setStack(idleInside, Station.INPUT_SLOT, ItemStack.new("fish", 2))
+	Inventory.setStack(idleInside, Station.FUEL_SLOT, ItemStack.new("log", 1))
+	local idleWorld = World.new(idle, at(0, 0, 0), 0)
+	World.step(idleWorld, 0)
+	World.step(idleWorld, 16)
+	check(
+		is(Inventory.getStack(idleInside, Station.OUTPUT_SLOT), "cooked_fish", 2),
+		"step: a station works with no player in the world at all"
+	)
+	check(
+		idleWorld.stations[idleOven] ~= nil and not Station.isBurning(idleWorld.stations[idleOven]),
+		"step: and its fire is out when the log has burnt"
+	)
+
+	local two = Plot.new(3, 3)
+	local first = Plot.place(two, "oven", 1, 1) :: number
+	local second = Plot.place(two, "oven", 2, 1) :: number
+	for _, id in { first, second } do
+		local oven = two.placedById[id].inventory :: Inventory.Inventory
+		Inventory.setStack(oven, Station.INPUT_SLOT, ItemStack.new("fish", 1))
+		Inventory.setStack(oven, Station.FUEL_SLOT, ItemStack.new("log", 1))
+	end
+	local twoWorld = World.new(two, at(0, 0, 0), 0)
+	World.step(twoWorld, 8)
+	check(
+		is(
+			Inventory.getStack(two.placedById[first].inventory :: Inventory.Inventory, Station.OUTPUT_SLOT),
+			"cooked_fish",
+			1
+		)
+			and is(
+				Inventory.getStack(two.placedById[second].inventory :: Inventory.Inventory, Station.OUTPUT_SLOT),
+				"cooked_fish",
+				1
+			),
+		"step: every station on the plot works, each on its own"
+	)
 end
 
 do -- a player leaves

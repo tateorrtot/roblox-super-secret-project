@@ -8,6 +8,12 @@
 	it is the pack, with its hotbar slots as the bottom row, a little apart
 	from the rest.
 
+	When the other inventory is a station's, such as a stove's, its three
+	slots are laid out as a Minecraft furnace's are: what goes in above the
+	fuel, with a gauge between them for how much of the burning fuel is
+	left, and what comes out to the right, past a gauge for how far the work
+	has got.
+
 	It draws what it is shown and reports what the player clicks. It changes
 	nothing itself: the code that made it decides what a click does, and shows
 	the screen again when the inventories have changed.
@@ -19,6 +25,7 @@
 		onCloseClicked = function() end, -- a click on the screen's close button
 	})
 	InventoryGui.show(inventoryGui, pack, crate, "Crate", carried) -- the screen opens, or redraws if it was open
+	InventoryGui.show(inventoryGui, pack, stove, "Stove", carried, { burning = 0.5, working = 0.25 }) -- as a furnace
 	InventoryGui.hide(inventoryGui)
 	```
 ]=]
@@ -70,7 +77,14 @@ export type InventoryGui = {
 	read following: RBXScriptConnection?,
 	--- The slot the pointer is over, or `nil` when it is over none. For keys that act on the slot under the pointer.
 	read hovered: { side: Side, slot: number }?,
+	--- Whether the other inventory is laid out as a station's.
+	read showsStation: boolean,
+	--- The parts that are only there for a station: the fill of its two gauges, and the words beside its slots.
+	read stationParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
 }
+
+--- How far a station's fire has burnt and its work has got, each from 0 to 1, as the server sends it.
+export type StationGauges = { burning: number, working: number }
 
 local COLUMNS = 9
 local GAP = 4
@@ -79,6 +93,8 @@ local TITLE_HEIGHT = 26
 local HOTBAR_GAP = 10
 local HINT_HEIGHT = 46
 local PACK_NAME = "Pack"
+local FIRE_GAUGE_SIZE = Vector2.new(14, 40)
+local WORK_GAUGE_HEIGHT = 12
 
 local function isShiftHeld(): boolean
 	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
@@ -130,6 +146,39 @@ local function placeRows(slots: { SlotGui.SlotGui }, first: number, count: numbe
 	return if rows > 0 then rows * step - GAP else 0
 end
 
+-- Places a station's three slots as a furnace's are, with its gauges and words, from `top` downwards.
+-- What goes in is above the fuel, and what comes out is to the right. Returns the height it takes.
+local function placeStation(inventoryGui: InventoryGui, top: number): number
+	local step = SlotGui.SIZE + GAP
+	local function cell(column: number, row: number): Vector2
+		return Vector2.new(PADDING + (column - 1) * step, top + (row - 1) * step)
+	end
+	local slots = inventoryGui.otherSlots
+	local parts = inventoryGui.stationParts
+	local input, fuel, output = cell(3, 1), cell(3, 3), cell(7, 2)
+	slots[1].button.Position = UDim2.fromOffset(input.X, input.Y)
+	slots[2].button.Position = UDim2.fromOffset(fuel.X, fuel.Y)
+	slots[3].button.Position = UDim2.fromOffset(output.X, output.Y)
+
+	local between = cell(3, 2)
+	local fireGauge = parts.fireFill.Parent :: Frame
+	fireGauge.Position = UDim2.fromOffset(
+		between.X + (SlotGui.SIZE - FIRE_GAUGE_SIZE.X) / 2,
+		between.Y + (SlotGui.SIZE - FIRE_GAUGE_SIZE.Y) / 2
+	)
+	local workGauge = parts.workFill.Parent :: Frame
+	local workLeft = cell(4, 2).X + 6
+	workGauge.Position = UDim2.fromOffset(workLeft, between.Y + (SlotGui.SIZE - WORK_GAUGE_HEIGHT) / 2)
+	workGauge.Size = UDim2.fromOffset(output.X - 10 - workLeft, WORK_GAUGE_HEIGHT)
+
+	-- The words: to the left of what goes in and of the fuel, and to the right of what comes out.
+	local words = { parts.all[3], parts.all[4], parts.all[5] }
+	words[1].Position = UDim2.fromOffset(cell(1, 1).X, input.Y)
+	words[2].Position = UDim2.fromOffset(cell(1, 3).X, fuel.Y)
+	words[3].Position = UDim2.fromOffset(cell(8, 2).X + 4, output.Y)
+	return 3 * step - GAP
+end
+
 -- Lays the panel out for the slots there are now: the other inventory, then the pack, then the pack's hotbar.
 local function layOut(inventoryGui: InventoryGui)
 	local packSlots = inventoryGui.packSlots
@@ -137,7 +186,14 @@ local function layOut(inventoryGui: InventoryGui)
 	local hotbarSlotCount = math.min(inventoryGui.hotbarSlotCount, #packSlots)
 	local top = PADDING + TITLE_HEIGHT
 	inventoryGui.packTitle.Visible = #otherSlots > 0
-	if #otherSlots > 0 then
+	for _, part in inventoryGui.stationParts.all do
+		part.Visible = inventoryGui.showsStation
+	end
+	if inventoryGui.showsStation then
+		top += placeStation(inventoryGui, top) + HOTBAR_GAP
+		inventoryGui.packTitle.Position = UDim2.fromOffset(PADDING, top)
+		top += TITLE_HEIGHT
+	elseif #otherSlots > 0 then
 		top += placeRows(otherSlots, 1, #otherSlots, top) + HOTBAR_GAP
 		inventoryGui.packTitle.Position = UDim2.fromOffset(PADDING, top)
 		top += TITLE_HEIGHT
@@ -245,6 +301,49 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 		.. "Double click: gather a kind.  Over a slot, 1 to 9: swap with that hotbar slot.  Q: drop one."
 	hint.Parent = panel
 
+	-- What is only there for a station: two gauges, and a word beside each of its slots.
+	local function makeGauge(name: string, fill: Color3): (Frame, Frame)
+		local gauge = Instance.new("Frame")
+		gauge.Name = name
+		gauge.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+		gauge.BorderSizePixel = 0
+		gauge.Visible = false
+		gauge.Parent = panel
+		local gaugeFill = Instance.new("Frame")
+		gaugeFill.Name = "Fill"
+		gaugeFill.BackgroundColor3 = fill
+		gaugeFill.BorderSizePixel = 0
+		gaugeFill.Parent = gauge
+		return gauge, gaugeFill
+	end
+	local fireGauge, fireFill = makeGauge("FireGauge", Color3.fromRGB(255, 150, 50))
+	fireGauge.Size = UDim2.fromOffset(FIRE_GAUGE_SIZE.X, FIRE_GAUGE_SIZE.Y)
+	fireFill.AnchorPoint = Vector2.new(0, 1)
+	fireFill.Position = UDim2.fromScale(0, 1)
+	fireFill.Size = UDim2.fromScale(1, 0)
+	local workGauge, workFill = makeGauge("WorkGauge", Color3.fromRGB(225, 225, 230))
+	workFill.Size = UDim2.fromScale(0, 1)
+	local stationParts: { GuiObject } = { fireGauge, workGauge }
+	local slotWords = {
+		{ "In", Enum.TextXAlignment.Right },
+		{ "Fuel", Enum.TextXAlignment.Right },
+		{ "Out", Enum.TextXAlignment.Left },
+	}
+	for _, word in slotWords do
+		local label = Instance.new("TextLabel")
+		label.Name = word[1] .. "Word"
+		label.Size = UDim2.fromOffset(2 * (SlotGui.SIZE + GAP) - 12, SlotGui.SIZE)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamMedium
+		label.TextSize = 13
+		label.TextXAlignment = word[2] :: Enum.TextXAlignment
+		label.TextColor3 = Color3.fromRGB(165, 166, 175)
+		label.Text = word[1] :: string
+		label.Visible = false
+		label.Parent = panel
+		table.insert(stationParts, label)
+	end
+
 	local carriedFrame = Instance.new("Frame")
 	carriedFrame.Name = "Carried"
 	carriedFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -270,6 +369,8 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 		otherSlots = {},
 		carriedIcon = carriedIcon,
 		carriedFrame = carriedFrame,
+		showsStation = false,
+		stationParts = { fireFill = fireFill, workFill = workFill, all = stationParts },
 	}
 end
 
@@ -278,17 +379,32 @@ end
 	inventory above it if one is given, and the `carried` stack at the pointer
 	if there is one. `otherName` is written over the other inventory, and is
 	not used when there is none.
+
+	If the other inventory is a station's, give its gauges as `station`: its
+	three slots are then laid out as a furnace's, with the gauges filled as
+	far as `station` says.
 ]=]
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
 	other: Inventory.Inventory?,
 	otherName: string,
-	carried: ItemStack.ItemStack?
+	carried: ItemStack.ItemStack?,
+	station: StationGauges?
 )
 	inventoryGui.title.Text = if other ~= nil then otherName else PACK_NAME
 	local otherSlotCount = if other ~= nil then other.slotCount else 0
-	if #inventoryGui.packSlots ~= pack.slotCount or #inventoryGui.otherSlots ~= otherSlotCount then
+	local showsStation = station ~= nil and otherSlotCount == 3
+	if station ~= nil and showsStation then
+		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(station.burning, 0, 1))
+		inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(station.working, 0, 1), 1)
+	end
+	if
+		#inventoryGui.packSlots ~= pack.slotCount
+		or #inventoryGui.otherSlots ~= otherSlotCount
+		or inventoryGui.showsStation ~= showsStation
+	then
+		(inventoryGui :: any).showsStation = showsStation
 		resizeSlots(inventoryGui, inventoryGui.packSlots, "pack", pack.slotCount)
 		resizeSlots(inventoryGui, inventoryGui.otherSlots, "other", otherSlotCount)
 		layOut(inventoryGui)

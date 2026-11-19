@@ -11,8 +11,8 @@
 	- A player's machine sends a request. [method answer] checks it and
 	  carries it out, if it makes sense.
 	- Time passes. [method step] lets players pick up what lies near them,
-	  closes what a player has walked away from, and clears ground items
-	  that have lain too long.
+	  closes what a player has walked away from, lets every station on the
+	  plot burn and work, and clears ground items that have lain too long.
 
 	Everything that may change the game goes through these, so the server
 	has no rules of its own. It tells the world what happened, then draws
@@ -44,6 +44,8 @@ local ItemStack = require("../items/ItemStack")
 local PlayerState = require("../players/PlayerState")
 local Plot = require("../plots/Plot")
 local Position = require("./Position")
+local RecipeRegistry = require("../stations/RecipeRegistry")
+local Station = require("../stations/Station")
 
 local World = {}
 
@@ -75,6 +77,9 @@ export type World = {
 	read groundItems: GroundItems.GroundItems,
 	--- Every player in the world, by id.
 	read players: { read [number]: WorldPlayer },
+	--- The fire and the work of each placed item that is a station, by the placed item's id.
+	--- A station has an entry from the first step after it is placed, or from when it is first used.
+	read stations: { read [number]: Station.Station },
 	--- The time [method step] was last given, in seconds.
 	read now: number,
 }
@@ -87,6 +92,8 @@ export type ScreenView = {
 	otherItemId: string?,
 	--- The stack being carried, or `nil`.
 	carried: ItemStack?,
+	--- If what is open is a station: how far its fire has burnt and its work has got, as `Station.encodeView` makes it.
+	station: Station.StationView?,
 }
 
 --- How far a player may walk from a placed item they have open before its screen closes, in studs along the ground.
@@ -155,6 +162,24 @@ local function tileCenter(world: World, x: number, z: number): Position
 	return Plot.tileCenter(world.plotCorner, x, z)
 end
 
+-- Returns the station that a placed item is, making its record if this is the first anyone has asked.
+-- Returns nil for a placed item that is not a station, or an id that is not on the plot.
+local function stationOf(world: World, placedId: number): Station.Station?
+	local station = world.stations[placedId]
+	if station ~= nil then
+		return station
+	end
+	local placedItem = world.plot.placedById[placedId]
+	local inventory = if placedItem ~= nil then placedItem.inventory else nil
+	if placedItem == nil or inventory == nil or not RecipeRegistry.isStation(placedItem.itemId) then
+		return nil
+	end
+	local made = Station.new(placedItem.itemId, inventory)
+	local stations = world.stations :: any
+	stations[placedId] = made
+	return made
+end
+
 -- Puts a stack that has left a player's inventories on the ground where their drops land. Does nothing given nil.
 local function dropFor(world: World, player: WorldPlayer, stack: ItemStack?)
 	if stack ~= nil then
@@ -212,7 +237,9 @@ local function usePlaced(world: World, player: WorldPlayer, id: unknown)
 		return
 	end
 	closeInventoryOf(world, player)
-	PlayerState.openInventory(player.state, placedItem.inventory);
+	-- A station's slots each take only what belongs in them.
+	local slotRules = if stationOf(world, placedId) ~= nil then Station.slotRules(placedItem.itemId) else nil
+	PlayerState.openInventory(player.state, placedItem.inventory, slotRules);
 	(player :: any).openedPlacedId = placedId
 end
 
@@ -232,6 +259,9 @@ local function hitPlaced(world: World, player: WorldPlayer, id: unknown)
 		end
 	end
 	Plot.remove(world.plot, placedId)
+	-- A station's fire goes out with it. The fuel that was burning is gone.
+	local stations = world.stations :: any
+	stations[placedId] = nil
 
 	local center = tileCenter(world, placedItem.x, placedItem.z)
 	GroundItems.drop(world.groundItems, ItemStack.new(placedItem.itemId, 1), center, world.now)
@@ -273,6 +303,7 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 		plotCorner = frozenCopy(plotCorner),
 		groundItems = GroundItems.new(),
 		players = {},
+		stations = {},
 		now = now,
 	}
 end
@@ -403,13 +434,16 @@ end
 	near them, as `GroundItems.pickUpNear` does, the player with the lowest
 	id first. A player who has a placed item open has its screen closed if
 	they have no character, if they stand more than `World.CLOSES_BEYOND`
-	from it, or if it is no longer on the plot. Then the ground items that
-	have lain too long are removed.
+	from it, or if it is no longer on the plot. Every station on the plot
+	burns and works for the time that has passed since the last step, as
+	`Station.step` does. Then the ground items that have lain too long are
+	removed.
 
 	Raises an error if `now` is not a number.
 ]=]
 function World.step(world: World, now: number)
-	failIf(timeProblem(now), "World.step");
+	failIf(timeProblem(now), "World.step")
+	local elapsed = math.max(now - world.now, 0);
 	(world :: any).now = now
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
@@ -427,6 +461,17 @@ function World.step(world: World, now: number)
 			if not isInReach then
 				closeInventoryOf(world, player)
 			end
+		end
+	end
+	local placedIds = {}
+	for placedId in world.plot.placedById do
+		table.insert(placedIds, placedId)
+	end
+	table.sort(placedIds)
+	for _, placedId in placedIds do
+		local station = stationOf(world, placedId)
+		if station ~= nil then
+			Station.step(station, elapsed)
 		end
 	end
 	GroundItems.expire(world.groundItems, now)
@@ -451,11 +496,13 @@ function World.encodeView(world: World, playerId: number): (Inventory.EncodedInv
 	end
 	local openedId = player.openedPlacedId
 	local placedItem = if openedId ~= nil then world.plot.placedById[openedId] else nil
+	local station = if openedId ~= nil then world.stations[openedId] else nil
 	return Inventory.encode(state.pack),
 		{
 			other = if session.other ~= nil then Inventory.encode(session.other) else nil,
 			otherItemId = if placedItem ~= nil then placedItem.itemId else nil,
 			carried = session.carried,
+			station = if station ~= nil then Station.encodeView(station) else nil,
 		}
 end
 
