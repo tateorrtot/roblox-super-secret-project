@@ -124,6 +124,29 @@ end
 return "none"
 '''
 
+# Sends every request there is with nonsense, as a tampered machine might, and says how many were sent.
+JUNK_REQUESTS = '''
+local remotes = game:GetService("ReplicatedStorage").Remotes
+local Messages = require(game:GetService("ReplicatedStorage").Shared.Messages)
+local junk = { 0, -1, 0.5, 1e300, 0 / 0, math.huge, "", "pack", "other", "left", true, false, {}, { 1, 2 }, { side = "pack" } }
+local sent = 0
+for _, name in Messages.toServer do
+	local remote = remotes[name]
+	remote:FireServer()
+	sent += 1
+	for first = 1, #junk do
+		remote:FireServer(junk[first], junk[(first * 7) % #junk + 1], junk[(first * 3) % #junk + 1])
+		sent += 1
+	end
+	for id = 1, 6 do
+		remote:FireServer(id * 1000, id * 1000, id)
+		sent += 1
+	end
+end
+task.wait(1)
+return tostring(sent)
+'''
+
 PANEL = 'LocalPlayer.PlayerGui.Inventory.Panel.'
 
 
@@ -389,6 +412,17 @@ class Playtest:
         check(count_of(view['carried']) == min(16, logs) and view['carried'].startswith('Log') and left == logs - min(16, logs),
               'a double click gathers the logs into the carried stack, up to a full stack',
               {'carried': view['carried'], 'pack': view['pack']})
+        self.keys('E')
+
+        # Nonsense from a tampered machine.
+        before = self.world()
+        sent = self.studio.luau(JUNK_REQUESTS, 'Client').strip()
+        after = self.world()
+        check(sent.isdigit() and int(sent) > 200, 'every request is sent with nonsense, ' + sent + ' times in all', sent)
+        check(sorted(entry['id'] for entry in before['placed']) == sorted(entry['id'] for entry in after['placed']),
+              'and nothing on the plot has changed', after['placed'])
+        self.keys('E')
+        check(self.view().get('ready') and self.view()['open'], 'and the game still answers: E opens the pack', self.view())
         self.keys('E')
 
         # Out of reach.
