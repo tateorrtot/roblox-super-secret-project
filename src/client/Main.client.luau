@@ -18,7 +18,9 @@
 	tap: on a placed item it opens it, and on a bare tile of the plot it
 	places the item in hand, if that item can be placed. Hit is a short right
 	click: on a placed item it knocks it off the plot, to lie on the ground as
-	an item. Hit has no touch control yet.
+	an item. Hit has no touch control yet. Both reach `Plot.REACH` studs from
+	the player's character, and with a mouse the thing in reach under the
+	pointer is marked: a faint block on a tile, a white outline on a placed item.
 ]=]
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -35,6 +37,7 @@ local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local PlayerState = require(Shared.players.PlayerState)
+local Plot = require(Shared.plots.Plot)
 
 local inventoryFolder = script.Parent:WaitForChild("inventory")
 local HotbarGui = require(inventoryFolder:WaitForChild("HotbarGui"))
@@ -162,6 +165,21 @@ local function placeableInHand(): string?
 	return nil
 end
 
+-- Returns what a point on the screen is over, if the player's character stands near enough to reach it.
+local function pointedInReach(viewportPoint: Vector2): PlotPointer.Pointed?
+	local pointed = PlotPointer.at(viewportPoint)
+	local character = Players.LocalPlayer.Character
+	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+	if pointed == nil or root == nil or not root:IsA("BasePart") then
+		return nil
+	end
+	local away = pointed.center - root.Position
+	if Vector3.new(away.X, 0, away.Z).Magnitude > Plot.REACH then
+		return nil
+	end
+	return pointed
+end
+
 -- The Use action on what a point on the screen is over: opens a placed item, or places the item in hand on a bare tile.
 local function use(pointed: PlotPointer.Pointed?)
 	if pointed == nil or screenOpen then
@@ -181,16 +199,25 @@ local function hit(pointed: PlotPointer.Pointed?)
 	end
 end
 
--- With a mouse, a faint block shows where the item in hand would stand.
+-- With a mouse, what is in reach under the pointer is marked: a faint block where the item in hand
+-- would stand, or a white outline on the placed item that a click would open or knock off.
 local ghost = PlacementGhost.new()
+local outline = Instance.new("SelectionBox")
+outline.Name = "PointerOutline"
+outline.LineThickness = 0.05
+outline.Color3 = Color3.new(1, 1, 1)
+outline.Parent = Workspace
 RunService.RenderStepped:Connect(function()
-	local itemId = if screenOpen or not UserInputService.MouseEnabled then nil else placeableInHand()
-	local pointed = if itemId ~= nil then PlotPointer.at(UserInputService:GetMouseLocation()) else nil
-	if itemId ~= nil and pointed ~= nil and pointed.kind == "tile" then
+	local pointed = if screenOpen or not UserInputService.MouseEnabled
+		then nil
+		else pointedInReach(UserInputService:GetMouseLocation())
+	local itemId = placeableInHand()
+	if pointed ~= nil and pointed.kind == "tile" and itemId ~= nil then
 		PlacementGhost.show(ghost, itemId, pointed.center)
 	else
 		PlacementGhost.hide(ghost)
 	end
+	outline.Adornee = if pointed ~= nil and pointed.kind == "placedItem" then pointed.part else nil
 end)
 
 -- Holding the right button turns Roblox's camera, so only a short press that did not turn it is a Hit.
@@ -203,7 +230,7 @@ UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewher
 		return
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		use(PlotPointer.at(UserInputService:GetMouseLocation()))
+		use(pointedInReach(UserInputService:GetMouseLocation()))
 		return
 	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
 		local camera = Workspace.CurrentCamera
@@ -232,7 +259,7 @@ UserInputService.InputEnded:Connect(function(input: InputObject)
 	local turned = camera ~= nil and camera.CFrame.LookVector:Dot(lookWhenPressed) < 0.9995
 	rightPressedAt = nil
 	if heldFor < 0.35 and not turned then
-		hit(PlotPointer.at(UserInputService:GetMouseLocation()))
+		hit(pointedInReach(UserInputService:GetMouseLocation()))
 	end
 end)
 
@@ -240,6 +267,6 @@ end)
 -- top of the screen, and PlotPointer wants it from the top of the window, so the strip is added back.
 UserInputService.TouchTapInWorld:Connect(function(position: Vector2, handledElsewhere: boolean)
 	if not handledElsewhere then
-		use(PlotPointer.at(position + GuiService:GetGuiInset()))
+		use(pointedInReach(position + GuiService:GetGuiInset()))
 	end
 end)

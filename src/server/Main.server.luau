@@ -51,12 +51,8 @@ local STEP_SECONDS = 0.1
 --- `GroundItems.PICKUP_RADIUS`, so a player standing still does not take it back.
 local DROP_DISTANCE = 6
 
---- How far from a tile a player may stand and still place an item on it, or use or hit what stands
---- on it, in studs along the ground.
-local REACH = 16
-
 --- How far a player may walk from a thing they have open before its screen closes, in studs along the ground.
-local CLOSES_BEYOND = REACH + 4
+local CLOSES_BEYOND = Plot.REACH + 4
 
 for _, definition in ItemDefinitions do
 	ItemRegistry.register(definition)
@@ -278,7 +274,7 @@ onRequest("placeSelected", function(player, state, x, z)
 	if stack == nil or state.session ~= nil or not Plot.hasTile(plot, x, z) then
 		return
 	end
-	if not isNear(player, tilePoint(x, z), REACH) or isTileStoodOn(x, z) then
+	if not isNear(player, tilePoint(x, z), Plot.REACH) or isTileStoodOn(x, z) then
 		return
 	end
 	if Plot.canPlace(plot, stack.itemId, x, z) then
@@ -294,7 +290,7 @@ onRequest("usePlaced", function(player, state, id)
 		return
 	end
 	local point = tilePoint(placedItem.x, placedItem.z)
-	if isNear(player, point, REACH) then
+	if isNear(player, point, Plot.REACH) then
 		closeInventoryFor(player, state)
 		PlayerState.openInventory(state, placedItem.inventory)
 		openedThings[player] = { itemId = placedItem.itemId, position = point, placedId = id }
@@ -303,7 +299,7 @@ end)
 
 onRequest("hitPlaced", function(player, _, id)
 	local placedItem = if isWholeNumber(id) then plot.placedById[id] else nil
-	if placedItem == nil or not isNear(player, tilePoint(placedItem.x, placedItem.z), REACH) then
+	if placedItem == nil or not isNear(player, tilePoint(placedItem.x, placedItem.z), Plot.REACH) then
 		return
 	end
 	-- Anyone looking into it stops first, so that what they were carrying is back in their pack.
@@ -347,6 +343,12 @@ local function addPlayer(player: Player)
 end
 
 local function removePlayer(player: Player)
+	-- What the player was carrying goes into their pack, or onto the ground where they last stood,
+	-- so that a stack taken out of a crate is not lost with them.
+	local state = playerStates[player]
+	if state ~= nil then
+		closeInventoryFor(player, state)
+	end
 	playerStates[player] = nil
 	lastPositions[player] = nil
 	openedThings[player] = nil

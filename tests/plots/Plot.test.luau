@@ -25,6 +25,7 @@ end
 
 do -- the rules as numbers
 	check(Plot.TILE_SIZE == 4, "a tile is 4 studs on a side")
+	check(Plot.REACH == 16, "a player reaches a tile from 16 studs, which is four tiles")
 end
 
 do -- a new plot

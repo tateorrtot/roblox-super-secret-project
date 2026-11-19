@@ -1,8 +1,8 @@
 --!strict
 --[=[
-	Shows a plot's placed items in the world: one plain block, a tile wide,
-	for each item standing on the plot, in the colour of its item and with its
-	name above it.
+	Shows a plot in the world: thin lines on its slab that mark the tiles, and
+	one plain block, a tile wide, for each item standing on the plot, in the
+	colour of its item and with its name above it.
 
 	The rules in Plot know nothing of this. [method update] reads them and
 	makes the blocks match: a new block for each newly placed item, and no
@@ -40,7 +40,7 @@ export type PlotParts = {
 	read slab: Part,
 	--- The position of the plot's corner: the outer corner of tile x 1, z 1, on the slab's top.
 	read corner: Plot.Position,
-	--- The folder that holds the blocks.
+	--- The folder that holds the blocks, and the lines between the tiles.
 	read folder: Folder,
 	--- The block that shows each placed item, by the placed item's id.
 	read partsById: { [number]: Part },
@@ -79,10 +79,41 @@ local function makePart(itemId: string, id: number, center: Plot.Position): Part
 	return part
 end
 
+-- Draws the lines between a plot's tiles as thin strips lying on the slab. They are only to be looked at:
+-- nothing collides with them, and a pointer goes through them to the slab.
+local function makeTileLines(folder: Folder, corner: Plot.Position, plot: Plot.Plot, color: Color3)
+	local side = Plot.TILE_SIZE
+	local function makeLine(size: Vector3, position: Vector3)
+		local line = Instance.new("Part")
+		line.Name = "TileLine"
+		line.Anchored = true
+		line.CanCollide = false
+		line.CanQuery = false
+		line.CanTouch = false
+		line.CastShadow = false
+		line.Material = Enum.Material.SmoothPlastic
+		line.Color = color
+		line.Size = size
+		line.Position = position
+		line.Parent = folder
+	end
+	local length = plot.depth * side
+	for index = 0, plot.width do
+		makeLine(Vector3.new(0.12, 0.04, length), Vector3.new(corner.x + index * side, corner.y, corner.z + length / 2))
+	end
+	local breadth = plot.width * side
+	for index = 0, plot.depth do
+		makeLine(
+			Vector3.new(breadth, 0.04, 0.12),
+			Vector3.new(corner.x + breadth / 2, corner.y, corner.z + index * side)
+		)
+	end
+end
+
 --[=[
 	Returns a new set of blocks for the plot that lies on `slab`, with none
-	made yet. The blocks will be kept in a folder called `PlacedItems` beside
-	the slab.
+	made yet, and draws the lines between the plot's tiles. The blocks and the
+	lines are kept in a folder called `PlacedItems` beside the slab.
 
 	`plot` is read once, for its size. The slab's top must be at least as
 	large as the plot's tiles; the plot starts at the slab's corner of least
@@ -103,6 +134,7 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 
 	local folder = Instance.new("Folder")
 	folder.Name = "PlacedItems"
+	makeTileLines(folder, corner, plot, slab.Color:Lerp(Color3.new(0, 0, 0), 0.18))
 	folder.Parent = slab.Parent
 	return { slab = slab, corner = corner, folder = folder, partsById = {} }
 end

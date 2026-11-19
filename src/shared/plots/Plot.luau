@@ -75,6 +75,10 @@ export type Plot = {
 --- The length of a tile's side, in studs.
 Plot.TILE_SIZE = 4
 
+--- How far from the middle of a tile a player may stand and still place an item on it, or use or hit
+--- what stands on it, in studs along the ground.
+Plot.REACH = 16
+
 local function isWholeNumber(value: unknown): boolean
 	return type(value) == "number" and value == math.floor(value) and value ~= math.huge and value ~= -math.huge
 end

@@ -10,7 +10,7 @@
 	```lua
 	local pointed = PlotPointer.at(UserInputService:GetMouseLocation())
 	-- nil: the pointer is over neither
-	-- { kind = "placedItem", id = 7 }: it is over the placed item with the id 7
+	-- { kind = "placedItem", id = 7, part = <its block>, center = <where> }: it is over the placed item with the id 7
 	-- { kind = "tile", x = 3, z = 5, center = <where> }: it is over the bare tile x 3, z 5
 	```
 ]=]
@@ -24,8 +24,11 @@ local Plot = require(Shared.plots.Plot)
 
 local PlotPointer = {}
 
---- What a point on the screen is over.
-export type Pointed = { kind: "placedItem", id: number } | { kind: "tile", x: number, z: number, center: Vector3 }
+--- What a point on the screen is over. `center` is where the thing is: the middle of the bare tile,
+--- or the middle of the placed item's block.
+export type Pointed =
+	{ kind: "placedItem", id: number, part: BasePart, center: Vector3 }
+	| { kind: "tile", x: number, z: number, center: Vector3 }
 
 --- How far from the camera a thing may be and still be pointed at, in studs.
 local FARTHEST = 500
@@ -57,7 +60,7 @@ function PlotPointer.at(viewportPoint: Vector2): Pointed?
 	local part = hit.Instance
 	local placedId = part:GetAttribute("placedId")
 	if type(placedId) == "number" then
-		return { kind = "placedItem", id = placedId }
+		return { kind = "placedItem", id = placedId, part = part, center = part.Position }
 	end
 	-- Only the top of a plot's slab is its surface. Its sides are not tiles.
 	if hit.Normal.Y > 0.9 and CollectionService:HasTag(part, "Plot") then
