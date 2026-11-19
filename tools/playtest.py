@@ -52,6 +52,7 @@ local view = {
 	hotbar = {},
 	pack = {},
 	other = {},
+	marked = {},
 }
 for _, child in hotbarGui.Row:GetChildren() do
 	local slot = string.match(child.Name, "^Slot(%d+)$")
@@ -65,6 +66,11 @@ for _, child in panel:GetChildren() do
 		view.pack["s" .. slot] = iconText(child:FindFirstChild("StackIcon"))
 	elseif side == "Other" then
 		view.other["s" .. slot] = iconText(child:FindFirstChild("StackIcon"))
+	end
+	-- A slot with the bright, thick edge is one that is marked, as the slots of a drag are.
+	local edge = child:FindFirstChildOfClass("UIStroke")
+	if side ~= nil and edge ~= nil and edge.Thickness == 3 then
+		table.insert(view.marked, child.Name)
 	end
 end
 return HttpService:JSONEncode(view)
@@ -234,6 +240,20 @@ class Playtest:
             {'action': 'moveTo', 'instance_path': where}, {'action': 'wait', 'wait_time_ms': 150},
             {'action': 'mouseButtonClick', 'mouse_button': 'left'},
             {'action': 'mouseButtonClick', 'mouse_button': 'left'}, {'action': 'wait', 'wait_time_ms': 350}]})
+
+    # Presses a mouse button on the first of some slots and moves the pointer onto the others with it held.
+    def press_and_drag(self, slots, button='left'):
+        actions = [{'action': 'moveTo', 'instance_path': PANEL + slots[0]}, {'action': 'wait', 'wait_time_ms': 150},
+                   {'action': 'mouseButtonDown', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 150}]
+        for slot in slots[1:]:
+            actions += [{'action': 'moveTo', 'instance_path': PANEL + slot}, {'action': 'wait', 'wait_time_ms': 150}]
+        self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': actions})
+
+    # Lets the mouse button go over a slot. The mouse tool wants to be told where the pointer is first.
+    def let_go(self, slot, button='left'):
+        self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
+            {'action': 'moveTo', 'instance_path': PANEL + slot}, {'action': 'wait', 'wait_time_ms': 100},
+            {'action': 'mouseButtonUp', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 350}]})
 
     def hover(self, where):
         self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
@@ -427,6 +447,36 @@ class Playtest:
         check(count_of(view['carried']) == min(16, logs) and view['carried'].startswith('Log') and left == logs - min(16, logs),
               'a double click gathers the logs into the carried stack, up to a full stack',
               {'carried': view['carried'], 'pack': view['pack']})
+
+        # A drag spreads the carried stack: one in each slot with the right button, equal shares with the left.
+        carried = count_of(view['carried'])
+        slots = ['s28', 's29', 's30']
+        names = ['PackSlot28', 'PackSlot29', 'PackSlot30']
+        check(carried >= 8 and all(view['pack'].get(slot) == '' for slot in slots + ['s31', 's32']),
+              'logs are carried, and five slots of the pack hold nothing', {'carried': view['carried'], 'pack': view['pack']})
+        # A drag that ends on the slot it began on is also a click there, as Roblox sees it. The click must do nothing more.
+        self.press_and_drag(['PackSlot31', 'PackSlot32', 'PackSlot31'], 'right')
+        self.let_go('PackSlot31', 'right')
+        view = self.view()
+        check(view['pack'].get('s31') == 'Log' and view['pack'].get('s32') == 'Log' and count_of(view['carried']) == carried - 2,
+              'a right drag that ends on the slot it began on puts one in each slot, and no more',
+              {'carried': view['carried'], 's31': view['pack'].get('s31'), 's32': view['pack'].get('s32')})
+        carried = count_of(view['carried'])
+        self.press_and_drag(names, 'right')
+        marked = self.view().get('marked')
+        check(isinstance(marked, list) and sorted(marked) == names, 'the slots dragged over are marked while the button is down', marked)
+        self.let_go(names[-1], 'right')
+        view = self.view()
+        check(all(view['pack'].get(slot) == 'Log' for slot in slots) and count_of(view['carried']) == carried - 3,
+              'a right drag puts one in each slot', {'carried': view['carried'], 'pack': view['pack']})
+        check(not view.get('marked'), 'and the marks go when the button comes up', view.get('marked'))
+        self.press_and_drag(names, 'left')
+        self.let_go(names[-1], 'left')
+        view = self.view()
+        share, left_over = (carried - 3) // 3, (carried - 3) % 3
+        check(all(count_of(view['pack'].get(slot, '')) == 1 + share for slot in slots) and count_of(view['carried']) == left_over,
+              'a left drag spreads the rest in equal shares, and what is left over stays carried',
+              {'carried': view['carried'], 'pack': view['pack']})
         self.keys('E')
 
         # Nonsense from a tampered machine.
@@ -472,8 +522,11 @@ class Playtest:
         check(view['open'] and view['title'] == 'Stove' and len(view['other']) == 3 and view['stationShown'],
               'a click on the stove opens its three slots, laid out as a furnace', {'title': view['title'], 'other': view['other']})
         apple_slot = next((slot for slot, text in view['pack'].items() if text.startswith('Apple')), None)
-        log_slot = next((slot for slot, text in view['pack'].items() if text.startswith('Log')), None)
-        check(apple_slot is not None and log_slot is not None, 'the pack holds apples to bake and logs to burn', view['pack'])
+        # The biggest stack of logs: the stove takes one log into its fire at once, and the rest must still show as fuel.
+        log_slots = [slot for slot, text in view['pack'].items() if text.startswith('Log')]
+        log_slot = max(log_slots, key=lambda slot: count_of(view['pack'][slot])) if log_slots else None
+        check(apple_slot is not None and log_slot is not None and count_of(view['pack'][log_slot]) >= 2,
+              'the pack holds apples to bake and logs to burn', view['pack'])
         if apple_slot is None or log_slot is None:
             return
         self.hold('LeftShift', True)

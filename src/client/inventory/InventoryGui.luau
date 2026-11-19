@@ -14,18 +14,22 @@
 	left, and what comes out to the right, past a gauge for how far the work
 	has got.
 
-	It draws what it is shown and reports what the player clicks. It changes
-	nothing itself: the code that made it decides what a click does, and shows
-	the screen again when the inventories have changed.
+	It draws what it is shown and reports what the player's mouse does on its
+	slots. It changes nothing itself: the code that made it decides what a
+	click or a drag does, and shows the screen again when the inventories
+	have changed.
 
 	```lua
 	local inventoryGui = InventoryGui.new(playerGui, 9, {
 		onSlotClicked = function(side, slot, button, shiftHeld) end, -- side is "pack" or "other", button "left" or "right"
+		onSlotPressed = function(side, slot, button) end, -- a button went down on a slot
+		onSlotDraggedOver = function(side, slot) end, -- the pointer came onto a slot with a button down
 		onOutsideClicked = function(button) end, -- a click on the dimmed world around the screen
 		onCloseClicked = function() end, -- a click on the screen's close button
 	})
 	InventoryGui.show(inventoryGui, pack, crate, "Crate", carried) -- the screen opens, or redraws if it was open
 	InventoryGui.show(inventoryGui, pack, stove, "Stove", carried, { burning = 0.5, working = 0.25 }) -- as a furnace
+	InventoryGui.markSlots(inventoryGui, { { side = "pack", slot = 3 } }) -- a bright edge on those slots and no others
 	InventoryGui.hide(inventoryGui)
 	```
 ]=]
@@ -47,8 +51,13 @@ export type Side = "pack" | "other"
 export type Button = "left" | "right"
 
 export type Callbacks = {
-	--- Called when the player clicks a slot. `shiftHeld` is `true` if a Shift key was down.
+	--- Called when the player clicks a slot: a button goes down and comes up on it. `shiftHeld` is
+	--- `true` if a Shift key was down.
 	onSlotClicked: (side: Side, slot: number, button: Button, shiftHeld: boolean) -> (),
+	--- Called when a mouse button goes down on a slot.
+	onSlotPressed: (side: Side, slot: number, button: Button) -> (),
+	--- Called when the pointer comes onto a slot while a mouse button is down.
+	onSlotDraggedOver: (side: Side, slot: number) -> (),
 	--- Called when the player clicks outside the screen, on the dimmed world.
 	onOutsideClicked: (button: Button) -> (),
 	--- Called when the player clicks the screen's close button.
@@ -100,7 +109,12 @@ local function isShiftHeld(): boolean
 	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
 end
 
--- Makes one slot on the panel and connects its clicks.
+local function isMouseButtonDown(): boolean
+	return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
+		or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+end
+
+-- Makes one slot on the panel and connects what the mouse does on it.
 local function makeSlot(inventoryGui: InventoryGui, side: Side, slot: number): SlotGui.SlotGui
 	local slotGui = SlotGui.new(inventoryGui.panel)
 	slotGui.button.Name = (if side == "pack" then "PackSlot" else "OtherSlot") .. slot
@@ -110,8 +124,17 @@ local function makeSlot(inventoryGui: InventoryGui, side: Side, slot: number): S
 	slotGui.button.MouseButton2Click:Connect(function()
 		inventoryGui.callbacks.onSlotClicked(side, slot, "right", isShiftHeld())
 	end)
+	slotGui.button.MouseButton1Down:Connect(function()
+		inventoryGui.callbacks.onSlotPressed(side, slot, "left")
+	end)
+	slotGui.button.MouseButton2Down:Connect(function()
+		inventoryGui.callbacks.onSlotPressed(side, slot, "right")
+	end)
 	slotGui.button.MouseEnter:Connect(function()
 		(inventoryGui :: any).hovered = { side = side, slot = slot }
+		if isMouseButtonDown() then
+			inventoryGui.callbacks.onSlotDraggedOver(side, slot)
+		end
 	end)
 	slotGui.button.MouseLeave:Connect(function()
 		local hovered = inventoryGui.hovered
@@ -297,7 +320,7 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	hint.TextYAlignment = Enum.TextYAlignment.Bottom
 	hint.TextColor3 = Color3.fromRGB(165, 166, 175)
 	hint.Text = "Left click: pick up or put down a stack.  Right click: take half, or put one down.\n"
-		.. "Shift and click: send to the other side.  Click outside: drop.  E: close.\n"
+		.. "Shift and click: send across.  Drag: spread a stack.  Click outside: drop.  E: close.\n"
 		.. "Double click: gather a kind.  Over a slot, 1 to 9: swap with that hotbar slot.  Q: drop one."
 	hint.Parent = panel
 
@@ -432,10 +455,32 @@ function InventoryGui.show(
 end
 
 --[=[
+	Gives the slots named in `screenSlots` a bright edge, and every other slot
+	its plain edge. A list of none clears the marks. It is how the slots of a
+	drag in progress are shown.
+]=]
+function InventoryGui.markSlots(inventoryGui: InventoryGui, screenSlots: { { read side: string, read slot: number } })
+	local marked: { [SlotGui.SlotGui]: boolean } = {}
+	for _, screenSlot in screenSlots do
+		local slots = if screenSlot.side == "pack" then inventoryGui.packSlots else inventoryGui.otherSlots
+		local slotGui = slots[screenSlot.slot]
+		if slotGui ~= nil then
+			marked[slotGui] = true
+		end
+	end
+	for _, slots in { inventoryGui.packSlots, inventoryGui.otherSlots } do
+		for _, slotGui in slots do
+			SlotGui.setSelected(slotGui, marked[slotGui] == true)
+		end
+	end
+end
+
+--[=[
 	Closes the screen. Does nothing if it is closed already.
 ]=]
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
+	InventoryGui.markSlots(inventoryGui, {});
 	(inventoryGui :: any).hovered = nil
 	local following = inventoryGui.following
 	if following ~= nil then

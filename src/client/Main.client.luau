@@ -13,7 +13,8 @@
 
 	Keys: E opens and closes the pack, 1 to 9 pick a hotbar slot, and Q drops
 	one of what is in hand. With the inventory screen open, 1 to 9 and Q act
-	on the slot under the pointer instead.
+	on the slot under the pointer instead, and a stack carried across slots
+	with a mouse button held is spread over them when the button comes up.
 
 	In the world there are two actions, Use and Hit. Use is a left click or a
 	tap: on a placed item it opens it, and on a bare tile of the plot it
@@ -38,7 +39,7 @@ local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local PlayerState = require(Shared.players.PlayerState)
-local SlotClicks = require(Shared.inventory.SlotClicks)
+local SlotMouse = require(Shared.inventory.SlotMouse)
 local Plot = require(Shared.plots.Plot)
 local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
 local RecipeRegistry = require(Shared.stations.RecipeRegistry)
@@ -71,10 +72,15 @@ local screenOpen = false
 --- The hotbar slot in hand. The player chooses it here, and the server is told.
 local selectedSlot = 1
 
---- Which clicks on the inventory screen are plain clicks, double clicks, and Shift and clicks.
-local slotClicks = SlotClicks.new()
+--- Whether the server last said a stack is being carried on the inventory screen.
+local carrying = false
+
+--- What the mouse has lately done on the slots of the inventory screen: it tells clicks, double
+--- clicks, Shift and clicks, and drags across slots apart.
+local slotMouse = SlotMouse.new()
 
 local hotbarGui: HotbarGui.HotbarGui
+local inventoryGui: InventoryGui.InventoryGui
 
 local function selectSlot(slot: number)
 	selectedSlot = slot
@@ -95,14 +101,23 @@ hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 	onPackClicked = togglePack,
 })
 
-local inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
+inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 	onSlotClicked = function(side, slot, button, shiftHeld)
-		local request = SlotClicks.read(slotClicks, side, slot, button, shiftHeld, os.clock())
+		local request = SlotMouse.click(slotMouse, side, slot, button, shiftHeld, os.clock())
 		if request == "clickSlot" then
 			remotes.clickSlot:FireServer(side, slot, button)
-		else
+		elseif request ~= nil then
 			remotes[request]:FireServer(side, slot)
 		end
+	end,
+	onSlotPressed = function(side, slot, button)
+		SlotMouse.press(slotMouse, side, slot, button, carrying)
+	end,
+	onSlotDraggedOver = function(side, slot)
+		-- As in Minecraft: a stack carried across slots with a button held is spread over them when
+		-- the button comes up. Until then the slots are marked.
+		SlotMouse.enter(slotMouse, side, slot)
+		InventoryGui.markSlots(inventoryGui, SlotMouse.getDraggedSlots(slotMouse))
 	end,
 	onOutsideClicked = function(button)
 		-- As in Minecraft: a left click outside drops everything carried, and a right click drops one.
@@ -135,7 +150,7 @@ local function setScreenOpen(open: boolean)
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, not open)
 	if not open then
 		InventoryGui.hide(inventoryGui)
-		SlotClicks.forget(slotClicks)
+		SlotMouse.forget(slotMouse)
 	end
 end
 
@@ -148,6 +163,7 @@ type ScreenMessage = {
 
 remotes.inventoryChanged.OnClientEvent:Connect(function(encodedPack: unknown, screen: ScreenMessage?)
 	pack = decode(encodedPack)
+	carrying = screen ~= nil and screen.carried ~= nil
 	HotbarGui.show(hotbarGui, pack, selectedSlot)
 	setScreenOpen(screen ~= nil)
 	if screen ~= nil then
@@ -281,7 +297,21 @@ UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewher
 	end
 end)
 
+local mouseButtons: { [Enum.UserInputType]: string } = {
+	[Enum.UserInputType.MouseButton1] = "left",
+	[Enum.UserInputType.MouseButton2] = "right",
+}
+
 UserInputService.InputEnded:Connect(function(input: InputObject)
+	-- A mouse button coming up ends a drag across the slots of the inventory screen, if there was one.
+	local button = mouseButtons[input.UserInputType]
+	if button ~= nil then
+		local dragged = SlotMouse.release(slotMouse, button, inventoryGui.hovered)
+		InventoryGui.markSlots(inventoryGui, SlotMouse.getDraggedSlots(slotMouse))
+		if dragged ~= nil then
+			remotes.dragOverSlots:FireServer(dragged, button)
+		end
+	end
 	if input.UserInputType ~= Enum.UserInputType.MouseButton2 or rightPressedAt == nil then
 		return
 	end

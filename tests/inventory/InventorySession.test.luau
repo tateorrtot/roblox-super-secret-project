@@ -626,7 +626,55 @@ do -- mistakes in the calling code
 			end),
 			"drop: refuses a count of " .. tostring(badCount)
 		)
+		check(
+			raises("InventorySession.spread: count must be a whole number, 0 or more", function()
+				return InventorySession.spread(session, { { side = "pack", slot = 1 } }, badCount)
+			end),
+			"spread: refuses a count of " .. tostring(badCount)
+		)
 	end
+	check(
+		raises(
+			"InventorySession.spread: screenSlots[2]: slot 3 is out of range; that inventory has slots 1 to 2",
+			function()
+				return InventorySession.spread(session, { { side = "pack", slot = 1 }, { side = "pack", slot = 3 } })
+			end
+		),
+		"spread: refuses a list that names a slot the pack does not have, and says which entry"
+	)
+	check(
+		raises("InventorySession.spread: screenSlots[2] must be a table with a side and a slot; got pack", function()
+			return InventorySession.spread(session, { { side = "pack", slot = 1 }, "pack" } :: any)
+		end),
+		"spread: refuses a list with an entry that is not a slot"
+	)
+	check(
+		raises("InventorySession.spread: screenSlots must be a list of slots; got pack", function()
+			return InventorySession.spread(session, "pack" :: any)
+		end),
+		"spread: refuses what is not a list"
+	)
+	check(
+		raises("InventorySession.spread: screenSlots must be a list of slots, numbered from 1", function()
+			return InventorySession.spread(session, { side = "pack", slot = 1 } :: any)
+		end),
+		"spread: refuses one slot given where a list of slots is wanted"
+	)
+	check(
+		raises(
+			'InventorySession.drag: screenSlots[1]: side is "other", but this session has no other inventory open',
+			function()
+				return InventorySession.drag(alone, { { side = "other", slot = 1 } }, "left")
+			end
+		),
+		"drag: refuses the other inventory when the pack is open alone"
+	)
+	check(
+		raises('InventorySession.drag: button must be "left" or "right"; got middle', function()
+			return InventorySession.drag(session, {}, "middle" :: any)
+		end),
+		"drag: refuses a button that is neither left nor right"
+	)
 	check(session.carried == nil and contents(session.pack) == "log 5, -", "nothing refused changed the session")
 end
 
@@ -652,8 +700,18 @@ do -- no action ever makes or loses an item
 	for step = 1, 30000 do
 		local side = sides[random(2)]
 		local slot = random(4)
-		local action = random(12)
-		if action <= 3 then
+		local action = random(14)
+		if action >= 13 then
+			local screenSlots: { InventorySession.ScreenSlot } = {}
+			for _ = 1, random(5) do
+				table.insert(screenSlots, { side = sides[random(2)], slot = random(4) })
+			end
+			if action == 13 then
+				InventorySession.spread(session, screenSlots, if random(2) == 1 then nil else random(4) - 1)
+			else
+				InventorySession.drag(session, screenSlots, if random(2) == 1 then "left" else "right")
+			end
+		elseif action <= 3 then
 			InventorySession.click(session, side, slot, "left")
 		elseif action <= 6 then
 			InventorySession.click(session, side, slot, "right")
@@ -842,6 +900,214 @@ do -- slots that take only some items
 		contents(keysStove) == "stone 5, -, -" and contents(keys.pack) == "log 12, stove 1, -, -",
 		"swapWithHotbar: and a swap that would put the wrong item in is refused whole"
 	)
+end
+
+-- Names a slot of the screen, for a list of them.
+local function at(side: InventorySession.Side, slot: number): InventorySession.ScreenSlot
+	return { side = side, slot = slot }
+end
+
+do -- spread: putting the carried stack down across several slots
+	local session = sessionWith("log 7", "-, -, -, -")
+	check(
+		InventorySession.spread(session, { at("pack", 1), at("pack", 2) }) == 6,
+		"spread: returns how many items were put down"
+	)
+	check(contents(session.pack) == "log 3, log 3, -, -", "spread: each slot gets an equal share, rounded down")
+	check(describe(session.carried) == "log 1", "spread: and what is left over stays carried")
+
+	local exact = sessionWith("log 12", "-, -, -, -")
+	check(
+		InventorySession.spread(exact, { at("pack", 4), at("pack", 1), at("pack", 2) }) == 12,
+		"spread: a stack that divides exactly is all put down"
+	)
+	check(
+		contents(exact.pack) == "log 4, log 4, -, log 4" and exact.carried == nil,
+		"spread: into the slots named and no others, and nothing is carried"
+	)
+
+	local topping = sessionWith("log 12", "log 14, -, log 3")
+	check(
+		InventorySession.spread(topping, { at("pack", 1), at("pack", 2), at("pack", 3) }) == 10,
+		"spread: a slot takes only as much as it has room for"
+	)
+	check(
+		contents(topping.pack) == "log 16, log 4, log 7" and describe(topping.carried) == "log 2",
+		"spread: stacks of the carried item are topped up, and what found no room stays carried"
+	)
+
+	local mixed = sessionWith("log 8", "stone 5, -, -")
+	check(
+		InventorySession.spread(mixed, { at("pack", 1), at("pack", 2), at("pack", 3) }) == 8,
+		"spread: a slot holding a different item is passed over"
+	)
+	check(
+		contents(mixed.pack) == "stone 5, log 4, log 4" and mixed.carried == nil,
+		"spread: and the share is worked out without it"
+	)
+
+	local full = sessionWith("log 9", "log 16, -, -")
+	check(
+		InventorySession.spread(full, { at("pack", 1), at("pack", 2), at("pack", 3) }) == 6,
+		"spread: a full stack of the carried item takes part, and gets nothing"
+	)
+	check(
+		contents(full.pack) == "log 16, log 3, log 3" and describe(full.carried) == "log 3",
+		"spread: so its share stays carried"
+	)
+
+	local twice = sessionWith("log 8", "-, -")
+	check(
+		InventorySession.spread(twice, { at("pack", 1), at("pack", 1), at("pack", 2), at("pack", 1) }) == 8,
+		"spread: a slot named twice counts once"
+	)
+	check(contents(twice.pack) == "log 4, log 4", "spread: so two slots get half each")
+
+	local few = sessionWith("log 2", "-, -, -, -")
+	check(
+		InventorySession.spread(few, { at("pack", 3), at("pack", 1), at("pack", 2), at("pack", 4) }) == 2,
+		"spread: no more slots take part than there are items carried"
+	)
+	check(contents(few.pack) == "log 1, -, log 1, -", "spread: the first ones named do, and get one each")
+	check(few.carried == nil, "spread: and nothing is left carried")
+
+	local passedOver = sessionWith("log 2", "stone 1, -, -, -")
+	InventorySession.spread(passedOver, { at("pack", 1), at("pack", 2), at("pack", 3), at("pack", 4) })
+	check(
+		contents(passedOver.pack) == "stone 1, log 1, log 1, -",
+		"spread: a slot that is passed over does not count towards that number"
+	)
+
+	local ones = sessionWith("log 5", "-, -, -")
+	check(
+		InventorySession.spread(ones, { at("pack", 1), at("pack", 2), at("pack", 3) }, 1) == 3,
+		"spread: with a count, each slot gets that many"
+	)
+	check(
+		contents(ones.pack) == "log 1, log 1, log 1" and describe(ones.carried) == "log 2",
+		"spread: and the rest stays carried"
+	)
+	local twos = sessionWith("log 5", "-, -, -")
+	check(
+		InventorySession.spread(twos, { at("pack", 1), at("pack", 2), at("pack", 3) }, 2) == 5,
+		"spread: a count is given out for as long as the carried stack lasts"
+	)
+	check(contents(twos.pack) == "log 2, log 2, log 1" and twos.carried == nil, "spread: so the last slot may get less")
+	local zero = sessionWith("log 5", "-, -")
+	check(
+		InventorySession.spread(zero, { at("pack", 1), at("pack", 2) }, 0) == 0,
+		"spread: a count of 0 puts nothing down"
+	)
+	check(contents(zero.pack) == "-, -" and describe(zero.carried) == "log 5", "spread: and changes nothing")
+
+	local both = InventorySession.open(inventoryOf("log 6, -"), inventoryOf("-, -"))
+	InventorySession.pickUp(both, "pack", 1)
+	check(
+		InventorySession.spread(both, { at("other", 2), at("pack", 2), at("other", 1) }) == 6,
+		"spread: the slots may be in both inventories"
+	)
+	check(
+		contents(both.pack) == "-, log 2" and contents(both.other :: Inventory.Inventory) == "log 2, log 2",
+		"spread: each gets its share"
+	)
+
+	-- The other inventory is like a stove: slot 1 takes only stone, slot 2 only logs, and slot 3 nothing.
+	local rules: InventorySession.SlotRules = { [1] = { stone = true }, [2] = { log = true }, [3] = {} }
+	local stove = InventorySession.open(inventoryOf("log 6, -"), inventoryOf("-, -, -"), nil, rules)
+	InventorySession.pickUp(stove, "pack", 1)
+	check(
+		InventorySession.spread(stove, { at("other", 1), at("other", 2), at("other", 3), at("pack", 2) }) == 6,
+		"spread: a slot that does not take the carried item is passed over"
+	)
+	check(
+		contents(stove.other :: Inventory.Inventory) == "-, log 3, -" and contents(stove.pack) == "-, log 3",
+		"spread: so the logs go to the slot meant for them and to the pack"
+	)
+
+	local single = sessionWith("log 6", "log 12, -")
+	check(InventorySession.spread(single, { at("pack", 1) }) == 4, "spread: over one slot, it is a putting down")
+	check(
+		contents(single.pack) == "log 16, -" and describe(single.carried) == "log 2",
+		"spread: as far as there is room"
+	)
+
+	local none = InventorySession.open(inventoryOf("log 6, -"))
+	check(InventorySession.spread(none, { at("pack", 2) }) == 0, "spread: 0 with nothing carried")
+	check(contents(none.pack) == "log 6, -", "spread: and nothing changes")
+	local blocked = sessionWith("log 6", "stone 1, stone 2")
+	check(
+		InventorySession.spread(blocked, { at("pack", 1), at("pack", 2) }) == 0,
+		"spread: 0 when no slot named takes part"
+	)
+	check(InventorySession.spread(blocked, {}) == 0, "spread: 0 over no slots at all")
+	check(
+		contents(blocked.pack) == "stone 1, stone 2" and describe(blocked.carried) == "log 6",
+		"spread: and the stack is still carried"
+	)
+end
+
+do -- drag: a mouse drag across slots
+	local slots = { at("pack", 1), at("pack", 2), at("pack", 3) }
+	local left = sessionWith("log 7", "-, -, -")
+	check(InventorySession.drag(left, slots, "left"), "drag: true when a left drag put something down")
+	check(
+		contents(left.pack) == "log 2, log 2, log 2" and describe(left.carried) == "log 1",
+		"drag: a left drag spreads the carried stack in equal shares"
+	)
+	local right = sessionWith("log 7", "-, log 16, -")
+	check(InventorySession.drag(right, slots, "right"), "drag: true when a right drag put something down")
+	check(
+		contents(right.pack) == "log 1, log 16, log 1" and describe(right.carried) == "log 5",
+		"drag: a right drag puts one in each slot that has room"
+	)
+	local alone = InventorySession.open(inventoryOf("log 6, -, -"))
+	check(not InventorySession.drag(alone, slots, "left"), "drag: false with nothing carried")
+	check(contents(alone.pack) == "log 6, -, -", "drag: and nothing changes")
+	local blocked = sessionWith("log 6", "stone 1, stone 2, log 16")
+	check(not InventorySession.drag(blocked, slots, "left"), "drag: false when nothing could be put down")
+	check(not InventorySession.drag(blocked, slots, "right"), "drag: with either button")
+	check(not InventorySession.drag(blocked, {}, "left"), "drag: false over no slots")
+	local one = sessionWith("log 6", "-")
+	check(InventorySession.drag(one, { at("pack", 1) }, "right"), "drag: over one slot, a right drag puts one down")
+	check(contents(one.pack) == "log 1" and describe(one.carried) == "log 5", "drag: as a right click does")
+	check(InventorySession.drag(one, { at("pack", 1) }, "left"), "drag: and a left drag puts the stack down")
+	check(contents(one.pack) == "log 6" and one.carried == nil, "drag: as a left click does")
+end
+
+do -- hasSlots
+	local alone = InventorySession.open(Inventory.new(4))
+	local withCrate = InventorySession.open(Inventory.new(4), Inventory.new(2))
+	check(InventorySession.hasSlots(withCrate, {}), "hasSlots: a list of none")
+	check(
+		InventorySession.hasSlots(withCrate, { at("pack", 4), at("other", 2), at("pack", 4) }),
+		"hasSlots: slots of both inventories, even one named twice"
+	)
+	check(
+		not InventorySession.hasSlots(withCrate, { at("pack", 4), at("other", 3) }),
+		"hasSlots: not if one of them is not a slot"
+	)
+	check(
+		not InventorySession.hasSlots(alone, { at("other", 1) }),
+		"hasSlots: not the other side when the pack is open alone"
+	)
+	check(not InventorySession.hasSlots(withCrate, nil), "hasSlots: not nothing at all")
+	for _, notList in { "pack", 7, true } :: { any } do
+		check(not InventorySession.hasSlots(withCrate, notList), "hasSlots: not " .. tostring(notList))
+	end
+	check(not InventorySession.hasSlots(withCrate, { "pack" }), "hasSlots: not a list of something else")
+	check(not InventorySession.hasSlots(withCrate, { {} }), "hasSlots: not a list with an entry that names no slot")
+	check(not InventorySession.hasSlots(withCrate, { { side = "pack" } }), "hasSlots: not an entry with no slot number")
+	check(
+		not InventorySession.hasSlots(withCrate, { at("pack", 1), 5 }),
+		"hasSlots: not a list whose second entry is not a slot"
+	)
+	check(
+		not InventorySession.hasSlots(withCrate, { side = "pack", slot = 1 }),
+		"hasSlots: not one slot given where a list is wanted"
+	)
+	local withOtherKeys: any = { at("pack", 1) }
+	withOtherKeys.extra = at("pack", 2)
+	check(not InventorySession.hasSlots(withCrate, withOtherKeys), "hasSlots: not a list with other keys as well")
 end
 
 do -- hasSlot

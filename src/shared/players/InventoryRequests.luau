@@ -24,6 +24,7 @@
 	| `closeInventory` | nothing | closes the screen; returns what was carried if the pack has no room for it |
 	| `clickSlot` | side, slot, button | a left or right mouse click on a slot, as `InventorySession.click` does |
 	| `doubleClickSlot` | side, slot | the second click of a double click, as `InventorySession.doubleClick` does |
+	| `dragOverSlots` | slots, button | a drag across several slots with a mouse button held, as `InventorySession.drag` does |
 	| `quickMoveSlot` | side, slot | sends the slot's stack to the other side, as `InventorySession.quickMove` does |
 	| `swapWithHotbarSlot` | side, slot, hotbar slot | exchanges the slot's stack with a hotbar slot's |
 	| `dropFromSlot` | side, slot, count | returns up to `count` items out of the slot, or all of them with no count |
@@ -34,6 +35,11 @@
 	Every request but the last two and `openPack` needs a screen to be open,
 	and is ignored when none is. A screen opened here knows the hotbar's
 	size, so `quickMoveSlot` and `swapWithHotbarSlot` work on the pack alone.
+
+	The slots of `dragOverSlots` are a list of tables, each naming one slot
+	with a `side` and a `slot`: `{ { side = "pack", slot = 3 }, { side = "pack", slot = 4 } }`.
+	A list longer than the number of slots on the screen is ignored, since
+	no drag could name so many.
 
 	Requests about the world, such as placing an item on a plot, are not
 	answered here: they need more than one player's state. Messages lists
@@ -67,6 +73,17 @@ local function isCountOrNothing(value: unknown): boolean
 	return value == nil or (isWholeNumber(value) and (value :: number) >= 0)
 end
 
+-- True if `value` could be the slots of a drag across the open screen: a list of slots that the
+-- screen shows, no longer than the number of slots it has.
+local function isDragOnScreen(session: InventorySession.InventorySession, value: unknown): boolean
+	if type(value) ~= "table" then
+		return false
+	end
+	local other = session.other
+	local slotsOnScreen = session.pack.slotCount + (if other ~= nil then other.slotCount else 0)
+	return #(value :: { unknown }) <= slotsOnScreen and InventorySession.hasSlots(session, value)
+end
+
 -- What each request does, given the player's state and whatever the request was sent with.
 -- Each returns the stack that must go on the ground, or nil.
 local answers: { [string]: (state: PlayerState, ...any) -> ItemStack? } = {
@@ -97,6 +114,14 @@ local answers: { [string]: (state: PlayerState, ...any) -> ItemStack? } = {
 		local session = state.session
 		if session ~= nil and InventorySession.hasSlot(session, side, slot) then
 			InventorySession.doubleClick(session, side, slot)
+		end
+		return nil
+	end,
+
+	dragOverSlots = function(state, screenSlots, button)
+		local session = state.session
+		if session ~= nil and isDragOnScreen(session, screenSlots) and (button == "left" or button == "right") then
+			InventorySession.drag(session, screenSlots, button)
 		end
 		return nil
 	end,
@@ -158,6 +183,7 @@ InventoryRequests.NAMES = table.freeze({
 	"closeInventory",
 	"clickSlot",
 	"doubleClickSlot",
+	"dragOverSlots",
 	"quickMoveSlot",
 	"swapWithHotbarSlot",
 	"dropFromSlot",

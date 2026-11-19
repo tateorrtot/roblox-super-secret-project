@@ -27,23 +27,25 @@
 	[method quickMove] sends a slot's stack straight to the other inventory.
 	[method swapWithHotbar] exchanges a slot's stack with a hotbar slot's.
 	[method gather] fills the carried stack from every slot that holds its kind.
+	[method spread] puts the carried stack down across several slots.
 	[method drop] hands carried items to the caller, to go on the ground.
 	A touch screen calls these directly, as Minecraft does on phones.
-	[method click] turns a Minecraft left or right mouse click into them, and
-	[method doubleClick] the second click of a double click.
+	[method click] turns a Minecraft left or right mouse click into them,
+	[method doubleClick] the second click of a double click, and
+	[method drag] a drag across several slots with a button held.
 
-	[method pickUp], [method putDown], [method quickMove] and [method gather]
-	return how many items they moved. [method swap], [method click] and
-	[method doubleClick] return `true` if anything changed. No action makes or
-	loses an item: what does not fit stays where it was. [method drop] and
-	[method close] return a stack that is no longer in the session, and the
-	caller must put it on the ground.
+	[method pickUp], [method putDown], [method quickMove], [method gather] and
+	[method spread] return how many items they moved. [method swap],
+	[method click], [method doubleClick] and [method drag] return `true` if
+	anything changed. No action makes or loses an item: what does not fit
+	stays where it was. [method drop] and [method close] return a stack that
+	is no longer in the session, and the caller must put it on the ground.
 
 	An action changes the session and the inventories it is given. Naming a
 	slot that does not exist, or the other inventory when none is open, is a
 	mistake in the calling code and raises an error. Code acting on a request
 	from somewhere it does not trust, such as a player's own machine, asks
-	[method hasSlot] first.
+	[method hasSlot] first, or [method hasSlots] for a list of slots.
 
 	This is the rules only. It draws nothing and reads no input.
 
@@ -68,8 +70,11 @@ type Inventory = Inventory.Inventory
 --- the second one that is open, such as a crate's.
 export type Side = "pack" | "other"
 
---- A mouse button, for [method click].
+--- A mouse button, for [method click] and [method drag].
 export type Button = "left" | "right"
+
+--- One slot of the screen: which of the two inventories it is in, and its slot number there.
+export type ScreenSlot = { read side: Side, read slot: number }
 
 --- Which items each slot of an inventory takes, by slot number. A slot with no entry takes any
 --- item. A slot with an entry takes only the items whose ids are in it, and nothing at all if it
@@ -128,6 +133,37 @@ local function countProblem(count: number?): string?
 		return nil
 	end
 	return string.format("count must be a whole number, 0 or more; got %s", tostring(count))
+end
+
+-- Returns what is wrong with `screenSlots` as a list of slots this session shows, or nil if nothing is.
+local function screenSlotsProblem(session: InventorySession, screenSlots: unknown): string?
+	if type(screenSlots) ~= "table" then
+		return string.format("screenSlots must be a list of slots; got %s", tostring(screenSlots))
+	end
+	local list = screenSlots :: { unknown }
+	local entries = 0
+	for _ in list do
+		entries += 1
+		if entries > #list then
+			return "screenSlots must be a list of slots, numbered from 1; this table has other keys"
+		end
+	end
+	for index = 1, #list do
+		local screenSlot = list[index]
+		if type(screenSlot) ~= "table" then
+			return string.format(
+				"screenSlots[%d] must be a table with a side and a slot; got %s",
+				index,
+				tostring(screenSlot)
+			)
+		end
+		local named = screenSlot :: { side: Side, slot: number }
+		local problem = slotProblem(session, named.side, named.slot)
+		if problem ~= nil then
+			return string.format("screenSlots[%d]: %s", index, problem)
+		end
+	end
+	return nil
 end
 
 -- True if the slot takes the item. Every slot of the pack takes anything, and so does a slot of the
@@ -222,6 +258,19 @@ end
 ]=]
 function InventorySession.hasSlot(session: InventorySession, side: unknown, slot: unknown): boolean
 	return slotProblem(session, side :: any, slot :: any) == nil
+end
+
+--[=[
+	Returns `true` if `screenSlots` is a list of slots this session shows:
+	a list of tables, each with a `side` and a `slot` that [method hasSlot]
+	would say yes to. A list of none is one.
+
+	`screenSlots` may be any value at all, and nothing raises an error.
+	[method spread] and [method drag] will not refuse a list that passes this
+	check.
+]=]
+function InventorySession.hasSlots(session: InventorySession, screenSlots: unknown): boolean
+	return screenSlotsProblem(session, screenSlots) == nil
 end
 
 --[=[
@@ -457,6 +506,98 @@ function InventorySession.doubleClick(session: InventorySession, side: Side, slo
 		return InventorySession.gather(session) > 0
 	end
 	return InventorySession.click(session, side, slot, "left")
+end
+
+-- Returns the slots among `screenSlots` that a spread of the `carried` stack takes in, in the order
+-- they are named: those that hold nothing or hold the carried item, and that take it. A slot named
+-- twice counts once, and no more slots take part than there are items carried.
+local function slotsToSpreadOver(
+	session: InventorySession,
+	carried: ItemStack,
+	screenSlots: { ScreenSlot }
+): { ScreenSlot }
+	local takingPart: { ScreenSlot } = {}
+	local isTakingPart: { [string]: boolean } = {}
+	for index = 1, #screenSlots do
+		local screenSlot = screenSlots[index]
+		local name = screenSlot.side .. screenSlot.slot
+		local there = Inventory.getStack(inventoryOn(session, screenSlot.side), screenSlot.slot)
+		if
+			#takingPart < carried.count
+			and not isTakingPart[name]
+			and (there == nil or ItemStack.isSameItem(there, carried))
+			and takes(session, screenSlot.side, screenSlot.slot, carried.itemId)
+		then
+			isTakingPart[name] = true
+			table.insert(takingPart, screenSlot)
+		end
+	end
+	return takingPart
+end
+
+--[=[
+	Puts the carried stack down across several slots, and returns how many
+	items were put down. This is what dragging a carried stack across slots
+	does in Minecraft.
+
+	Each slot gets an equal share: the carried count divided by the number of
+	slots taking part, rounded down. If `count` is given, each slot gets
+	`count` items instead, for as long as the carried stack lasts. A slot
+	takes only as much as it has room for. What is not put down stays carried.
+
+	The slots that take part are those that hold nothing or hold the carried
+	item, and that take it. The others are passed over, and a slot named twice
+	counts once. No more slots take part than there are items carried: the
+	first ones named do. A full stack of the carried item takes part, and
+	gets nothing.
+
+	Returns 0, and changes nothing, if nothing is carried or no slot takes part.
+
+	Raises an error if `screenSlots` is not a list of slots this session
+	shows, or if `count` is not a whole number of 0 or more.
+
+	```lua
+	-- Carrying 7 logs:
+	InventorySession.spread(session, { { side = "pack", slot = 1 }, { side = "pack", slot = 2 } }) --> 6
+	-- Each of the two slots got 3, and 1 log is still carried.
+	```
+]=]
+function InventorySession.spread(session: InventorySession, screenSlots: { ScreenSlot }, count: number?): number
+	failIf(screenSlotsProblem(session, screenSlots), "InventorySession.spread")
+	failIf(countProblem(count), "InventorySession.spread")
+	local carried = session.carried
+	if carried == nil then
+		return 0
+	end
+	local takingPart = slotsToSpreadOver(session, carried, screenSlots)
+	if #takingPart == 0 then
+		return 0
+	end
+	local each = count or math.floor(carried.count / #takingPart)
+	local moved = 0
+	for _, screenSlot in takingPart do
+		moved += InventorySession.putDown(session, screenSlot.side, screenSlot.slot, each)
+	end
+	return moved
+end
+
+--[=[
+	Does what dragging the mouse across slots with a button held does in
+	Minecraft, and returns `true` if anything changed.
+
+	With a stack carried, a left drag spreads it across the slots in equal
+	shares, and a right drag puts one item in each, as [method spread] does.
+	With nothing carried it does nothing.
+
+	Raises an error if `screenSlots` is not a list of slots this session
+	shows, or if `button` is not `"left"` or `"right"`.
+]=]
+function InventorySession.drag(session: InventorySession, screenSlots: { ScreenSlot }, button: Button): boolean
+	failIf(screenSlotsProblem(session, screenSlots), "InventorySession.drag")
+	if button ~= "left" and button ~= "right" then
+		error(string.format('InventorySession.drag: button must be "left" or "right"; got %s', tostring(button)), 2)
+	end
+	return InventorySession.spread(session, screenSlots, if button == "left" then nil else 1) > 0
 end
 
 --[=[

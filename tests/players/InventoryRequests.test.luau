@@ -53,7 +53,7 @@ do -- the names
 	for _, name in InventoryRequests.NAMES do
 		check(sent[name] == true, '"' .. name .. "\" is a message a player's machine sends, listed in Messages")
 	end
-	check(#InventoryRequests.NAMES == 10, "ten requests are answered here")
+	check(#InventoryRequests.NAMES == 11, "eleven requests are answered here")
 end
 
 do -- the screen
@@ -126,6 +126,82 @@ do -- clicks
 	check(
 		is(Inventory.getStack(state.pack, 9), "log", 16),
 		"swapWithHotbarSlot: ignored for a hotbar slot or a slot that is not there"
+	)
+end
+
+do -- dragging across slots
+	local function at(side: string, slot: number): { side: string, slot: number }
+		return { side = side, slot = slot }
+	end
+	local function inSlot(state: PlayerState.PlayerState, slot: number): ItemStack.ItemStack?
+		return Inventory.getStack(state.pack, slot)
+	end
+
+	local state = newPlayer()
+	answer(state, "dragOverSlots", { at("pack", 3), at("pack", 4) }, "left")
+	check(inSlot(state, 3) == nil, "dragOverSlots: ignored when no screen is open")
+	answer(state, "openPack")
+	local session = state.session :: any
+	answer(state, "dragOverSlots", { at("pack", 3), at("pack", 4) }, "left")
+	check(
+		inSlot(state, 3) == nil and is(inSlot(state, 1), "log", 12),
+		"dragOverSlots: does nothing with nothing carried"
+	)
+	answer(state, "clickSlot", "pack", 1, "left")
+	answer(state, "dragOverSlots", { at("pack", 3), at("pack", 4), at("pack", 5) }, "right")
+	check(
+		is(inSlot(state, 3), "log", 1) and is(inSlot(state, 4), "log", 1) and is(inSlot(state, 5), "log", 1),
+		"dragOverSlots: a right drag puts one of the carried stack in each slot"
+	)
+	check(is(session.carried, "log", 9), "dragOverSlots: and the rest stays carried")
+	answer(state, "dragOverSlots", { at("pack", 6), at("pack", 7) }, "left")
+	check(
+		is(inSlot(state, 6), "log", 4) and is(inSlot(state, 7), "log", 4) and is(session.carried, "log", 1),
+		"dragOverSlots: a left drag spreads the carried stack in equal shares"
+	)
+
+	answer(state, "dragOverSlots", { at("pack", 8), at("pack", 37) }, "left")
+	answer(state, "dragOverSlots", { at("pack", 8), at("other", 1) }, "left")
+	answer(state, "dragOverSlots", { at("pack", 8) }, "middle")
+	answer(state, "dragOverSlots", { at("pack", 8) })
+	answer(state, "dragOverSlots", "pack", "left")
+	answer(state, "dragOverSlots", at("pack", 8), "left")
+	answer(state, "dragOverSlots", { at("pack", 8), 5 }, "left")
+	answer(state, "dragOverSlots", nil, "left")
+	answer(state, "dragOverSlots")
+	check(
+		inSlot(state, 8) == nil and is(session.carried, "log", 1),
+		"dragOverSlots: ignored with a slot that is not there, a bad button, or what is not a list of slots"
+	)
+
+	local tooMany = {}
+	for _ = 1, PlayerState.PACK_SLOTS + 1 do
+		table.insert(tooMany, at("pack", 8))
+	end
+	answer(state, "dragOverSlots", tooMany, "left")
+	check(inSlot(state, 8) == nil, "dragOverSlots: ignored with more slots than the screen has")
+	table.remove(tooMany)
+	answer(state, "dragOverSlots", tooMany, "left")
+	check(
+		is(inSlot(state, 8), "log", 1) and session.carried == nil,
+		"dragOverSlots: but as many as the screen has is a drag"
+	)
+
+	local withCrate = newPlayer()
+	local crate = Inventory.new(3)
+	PlayerState.openInventory(withCrate, crate)
+	answer(withCrate, "clickSlot", "pack", 2, "left")
+	local long = {}
+	for _ = 1, PlayerState.PACK_SLOTS + 4 do
+		table.insert(long, at("other", 2))
+	end
+	answer(withCrate, "dragOverSlots", long, "left")
+	check(Inventory.isEmpty(crate), "dragOverSlots: with a crate open, ignored with more slots than the two have")
+	table.remove(long)
+	answer(withCrate, "dragOverSlots", long, "left")
+	check(
+		is(Inventory.getStack(crate, 2), "fish", 5),
+		"dragOverSlots: but as many as the pack and the crate have is a drag, here into the crate"
 	)
 end
 
@@ -270,6 +346,14 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			return if random(2) == 1 then "left" else "right"
 		elseif kind == 8 then
 			return nil
+		elseif kind == 9 then
+			-- The slots of a drag: mostly ones a screen might have, now and then with junk among them.
+			local screenSlots: { any } = {}
+			for _ = 1, random(5) do
+				local screenSlot: any = { side = if random(4) == 1 then "other" else "pack", slot = random(40) }
+				table.insert(screenSlots, if random(8) == 1 then junk[random(#junk)] else screenSlot)
+			end
+			return screenSlots
 		end
 		return junk[random(#junk)]
 	end

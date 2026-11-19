@@ -785,6 +785,14 @@ do -- whatever players' machines send, and wherever they go, nothing raises an e
 			return if random(2) == 1 then "left" else "right"
 		elseif kind == 8 then
 			return nil
+		elseif kind == 9 then
+			-- The slots of a drag: mostly ones a screen might have, now and then with junk among them.
+			local screenSlots: { any } = {}
+			for _ = 1, random(5) do
+				local screenSlot: any = { side = if random(4) == 1 then "other" else "pack", slot = random(9) }
+				table.insert(screenSlots, if random(8) == 1 then junk[random(#junk)] else screenSlot)
+			end
+			return screenSlots
 		end
 		return junk[random(#junk)]
 	end
