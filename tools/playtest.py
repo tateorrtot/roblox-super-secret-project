@@ -150,6 +150,13 @@ task.wait(1)
 return tostring(sent)
 '''
 
+# Asks the server outright to use or to hit a placed item, whatever the player's own machine thinks of it.
+ASK_OUTRIGHT = '''
+game:GetService("ReplicatedStorage").Remotes.%s:FireServer(%d)
+task.wait(0.5)
+return "asked"
+'''
+
 PANEL = 'LocalPlayer.PlayerGui.Inventory.Panel.'
 
 
@@ -196,6 +203,11 @@ class Playtest:
 
     def ground(self, item):
         return sorted(entry['count'] for entry in self.world()['ground'] if entry['item'] == item)
+
+    # How far the test character stands from a placed item, along the ground, in studs.
+    def distance_to(self, placed):
+        player = self.world()['players'][0]
+        return ((player['x'] - placed['x']) ** 2 + (player['z'] - placed['z']) ** 2) ** 0.5
 
     def keys(self, *keys):
         actions = []
@@ -428,12 +440,23 @@ class Playtest:
         check(self.view().get('ready') and self.view()['open'], 'and the game still answers: E opens the pack', self.view())
         self.keys('E')
 
-        # Out of reach.
-        self.walk_to(crate['x'] - 30, crate['z'] + 30)
+        # Out of reach. The crate is in view from about 20 studs away, and reach is 16.
+        self.walk_to(crate['x'], crate['z'] + 20)
+        away = self.distance_to(crate)
         point, on_screen = self.screen_point(crate['x'], crate['y'], crate['z'])
-        if on_screen:
-            self.click(point)
-            check(not self.view()['open'], 'a click on a crate that is out of reach does nothing')
+        check(on_screen and away > 16.5, 'the crate is in view from out of reach', {'studs away': away, 'at': point})
+        self.click(point)
+        check(not self.view()['open'], 'a click on it from there opens nothing')
+        self.studio.luau(ASK_OUTRIGHT % ('usePlaced', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('hitPlaced', crate['id']), 'Client')
+        check(not self.view()['open'] and any(entry['id'] == crate['id'] for entry in self.world()['placed']),
+              'and nor does asking the server outright to use it and to hit it, as a tampered machine might')
+        self.walk_to(crate['x'] - 7, crate['z'] + 5)
+        self.studio.luau(ASK_OUTRIGHT % ('usePlaced', crate['id']), 'Client')
+        view = self.view()
+        check(view['open'] and view['title'] == 'Crate', 'the same request from within reach opens it',
+              {'studs away': self.distance_to(crate), 'title': view['title']})
+        self.keys('E')
 
         # The stove works as a furnace. The apples that spilled from the broken crate are picked up to bake.
         apples = [entry for entry in self.world()['ground'] if entry['item'] == 'apple']
