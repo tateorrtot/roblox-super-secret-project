@@ -43,7 +43,7 @@ local InventoryRequests = require("../players/InventoryRequests")
 local ItemStack = require("../items/ItemStack")
 local PlayerState = require("../players/PlayerState")
 local Plot = require("../plots/Plot")
-local Position = require("./Position")
+local Position = require("../Position")
 local RecipeRegistry = require("../stations/RecipeRegistry")
 local Station = require("../stations/Station")
 

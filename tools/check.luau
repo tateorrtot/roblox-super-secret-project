@@ -14,9 +14,12 @@
 	   game's rules free of engine calls. The check uses Luau's new type
 	   solver, because only the new solver understands read-only fields, which
 	   this code uses for values that never change.
-	4. Tests: every file in `tests` whose name ends in `.test.luau` runs and
+	4. Requires: `tools/requires` finds that what requires what in `src` runs
+	   one way only. The rules require nothing from the server or the client,
+	   and no folder or module requires itself through others.
+	5. Tests: every file in `tests` whose name ends in `.test.luau` runs and
 	   exits without an error.
-	5. Demos: every file in `demos` runs and exits without an error.
+	6. Demos: every file in `demos` runs and exits without an error.
 
 	The process exits with code 1 if any check failed.
 
@@ -85,6 +88,8 @@ if #plain > 0 then
 else
 	print("skip  types: nothing in src/shared or tests yet")
 end
+
+run("requires", "lune", { "run", "tools/requires" })
 
 local tests = findFiles("tests", ".test.luau")
 for _, test in tests do

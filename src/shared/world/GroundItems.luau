@@ -42,7 +42,7 @@
 ]=]
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
-local Position = require("./Position")
+local Position = require("../Position")
 
 local GroundItems = {}
 

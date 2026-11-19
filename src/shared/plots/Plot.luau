@@ -40,7 +40,7 @@
 ]=]
 local Inventory = require("../inventory/Inventory")
 local ItemRegistry = require("../items/ItemRegistry")
-local Position = require("../world/Position")
+local Position = require("../Position")
 
 local Plot = {}
 

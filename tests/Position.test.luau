@@ -1,8 +1,8 @@
 --!strict
--- Tests for Position. Run from the repository root: lune run tests/world/Position.test.luau
+-- Tests for Position. Run from the repository root: lune run tests/Position.test.luau
 
-local Check = require("../Check")
-local Position = require("../../src/shared/world/Position")
+local Check = require("./Check")
+local Position = require("../src/shared/Position")
 
 local check = Check.that
 local raises = Check.raises
