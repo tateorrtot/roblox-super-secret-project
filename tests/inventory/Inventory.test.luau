@@ -204,6 +204,70 @@ do -- addStack
 	)
 end
 
+do -- addItems and addStack into a run of slots
+	local pack = inventoryOf("log 10, -, -, log 14, -, -")
+	check(Inventory.addItems(pack, "log", 20, 3, 5) == 20, "addItems: into slots 3 to 5 only, returns how many went in")
+	check(
+		contents(pack) == "log 10, -, log 16, log 16, log 2, -",
+		"addItems: tops up within the run, then fills it; the rest is left alone"
+	)
+	check(Inventory.addItems(pack, "log", 40, 3, 5) == 14, "addItems: returns only what fitted in the run")
+	check(
+		contents(pack) == "log 10, -, log 16, log 16, log 16, -",
+		"addItems: a full run leaves the slots outside it as they were"
+	)
+	check(Inventory.addItems(pack, "log", 5, 2, 2) == 5, "addItems: a run may be one slot")
+	check(contents(pack) == "log 10, log 5, log 16, log 16, log 16, -", "addItems: and only that slot is used")
+	check(Inventory.addItems(pack, "log", 3, 6, 6) == 3, "addItems: the last slot can be a run")
+	check(Inventory.addItems(pack, "log", 9, 1, 6) == 9, "addItems: the whole inventory can be a run")
+	check(
+		contents(pack) == "log 16, log 8, log 16, log 16, log 16, log 3",
+		"addItems: and then it fills as it does with no run given"
+	)
+
+	local other = inventoryOf("stone 2, -, -, stone 16")
+	check(
+		Inventory.addStack(other, ItemStack.new("stone", 16), 3, 4) == nil,
+		"addStack: nil when the stack fitted in the run"
+	)
+	check(
+		contents(other) == "stone 2, -, stone 16, stone 16",
+		"addStack: it went into the run, not the slots before it"
+	)
+	local leftover = Inventory.addStack(other, ItemStack.new("stone", 5), 3, 4)
+	check(is(leftover, "stone", 5), "addStack: returns the whole stack when the run has no room")
+	leftover = Inventory.addStack(other, ItemStack.new("log", 12), 1, 2)
+	check(
+		leftover == nil and contents(other) == "stone 2, log 12, stone 16, stone 16",
+		"addStack: a different item takes the run's empty slot"
+	)
+	leftover = Inventory.addStack(other, ItemStack.new("stone", 16), 1, 2)
+	check(is(leftover, "stone", 2), "addStack: returns the stack of what did not fit in the run")
+	check(contents(other) == "stone 16, log 12, stone 16, stone 16", "addStack: after topping up what it could")
+
+	local runs = { { 0, 3 }, { 2, 7 }, { 4, 3 }, { 1.5, 3 }, { 2, 2.5 }, { 2 }, { nil, 3 }, { "1", 3 } } :: { { any } }
+	for _, run in runs do
+		local message = string.format(
+			"slots %s to %s are not a run of this inventory's slots; it has slots 1 to 6",
+			tostring(run[1]),
+			tostring(run[2])
+		)
+		check(
+			raises("Inventory.addItems: " .. message, function()
+				return Inventory.addItems(pack, "log", 1, run[1], run[2])
+			end),
+			"addItems: refuses the run " .. tostring(run[1]) .. " to " .. tostring(run[2])
+		)
+		check(
+			raises("Inventory.addStack: " .. message, function()
+				return Inventory.addStack(pack, ItemStack.new("log", 1), run[1], run[2])
+			end),
+			"addStack: refuses the run " .. tostring(run[1]) .. " to " .. tostring(run[2])
+		)
+	end
+	check(contents(pack) == "log 16, log 8, log 16, log 16, log 16, log 3", "a refused run changes nothing")
+end
+
 do -- removeItems
 	local pack = inventoryOf("log 16, log 3, log 1")
 	check(Inventory.removeItems(pack, "log", 10) == 10, "removeItems: returns how many were removed")

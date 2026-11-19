@@ -42,6 +42,7 @@ do -- opening and closing the pack alone
 	check(state.session == session, "openInventory: returns the session, and it is the player's session")
 	check(session.pack == state.pack, "openInventory: the screen shows the pack")
 	check(session.other == nil and session.carried == nil, "openInventory: no other inventory, and nothing carried")
+	check(session.hotbarSlotCount == 9, "openInventory: the screen knows which slots are the hotbar")
 	check(PlayerState.closeInventory(state) == nil, "closeInventory: nil when nothing was carried")
 	check(state.session == nil, "closeInventory: no screen is open afterwards")
 	check(PlayerState.closeInventory(state) == nil, "closeInventory: nil when no screen was open")

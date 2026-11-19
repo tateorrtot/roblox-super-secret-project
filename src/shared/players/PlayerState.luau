@@ -74,7 +74,7 @@ function PlayerState.openInventory(state: PlayerState, other: Inventory?): Inven
 	if state.session ~= nil then
 		error("PlayerState.openInventory: an inventory screen is already open; close it first", 2)
 	end
-	local session = InventorySession.open(state.pack, other)
+	local session = InventorySession.open(state.pack, other, state.hotbar.slotCount)
 	setSession(state, session)
 	return session
 end

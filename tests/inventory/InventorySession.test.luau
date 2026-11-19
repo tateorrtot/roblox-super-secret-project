@@ -282,8 +282,63 @@ do -- quickMove
 	)
 
 	local alone = InventorySession.open(inventoryOf("log 12, -"))
-	check(InventorySession.quickMove(alone, "pack", 1) == 0, "quickMove: 0 when the pack is open alone")
-	check(contents(alone.pack) == "log 12, -", "quickMove: with the pack alone, nothing moves")
+	check(alone.hotbarSlotCount == nil, "open: a session that was not told has no hotbar size")
+	check(InventorySession.quickMove(alone, "pack", 1) == 0, "quickMove: 0 with the pack alone and no hotbar size")
+	check(contents(alone.pack) == "log 12, -", "quickMove: and nothing moves")
+end
+
+do -- quickMove with the pack open alone: between the hotbar and the rest of the pack
+	local session = InventorySession.open(inventoryOf("log 12, stone 3, -, -, log 10, -"), nil, 2)
+	check(session.hotbarSlotCount == 2, "open: keeps the hotbar size it was told")
+	check(InventorySession.quickMove(session, "pack", 1) == 12, "quickMove: from the hotbar, returns how many moved")
+	check(
+		contents(session.pack) == "-, stone 3, log 6, -, log 16, -",
+		"quickMove: from the hotbar it tops up the rest of the pack, then uses its lowest slot that holds nothing"
+	)
+	check(
+		InventorySession.quickMove(session, "pack", 5) == 16,
+		"quickMove: from the rest of the pack it goes to the hotbar"
+	)
+	check(
+		contents(session.pack) == "log 16, stone 3, log 6, -, -, -",
+		"quickMove: into the hotbar slot that holds nothing"
+	)
+	check(InventorySession.quickMove(session, "pack", 3) == 0, "quickMove: 0 when the hotbar has no room")
+	check(contents(session.pack) == "log 16, stone 3, log 6, -, -, -", "quickMove: and the stack stays in its slot")
+	check(InventorySession.quickMove(session, "pack", 4) == 0, "quickMove: 0 from a slot that holds nothing")
+	check(session.carried == nil, "quickMove: the carried stack is not involved")
+
+	local part = InventorySession.open(inventoryOf("log 10, -, log 12"), nil, 1)
+	check(InventorySession.quickMove(part, "pack", 3) == 6, "quickMove: moves what fits in the hotbar")
+	check(contents(part.pack) == "log 16, -, log 6", "quickMove: what does not fit stays in its slot")
+	check(
+		InventorySession.quickMove(part, "pack", 1) == 16,
+		"quickMove: the hotbar's stack goes past a slot it came from"
+	)
+	check(
+		contents(part.pack) == "-, log 6, log 16",
+		"quickMove: it tops up the rest of the pack and never lands back in the hotbar"
+	)
+
+	local allHotbar = InventorySession.open(inventoryOf("log 12, -"), nil, 2)
+	check(InventorySession.quickMove(allHotbar, "pack", 1) == 0, "quickMove: 0 when the hotbar is the whole pack")
+	check(contents(allHotbar.pack) == "log 12, -", "quickMove: and nothing moves")
+
+	local withCrate = InventorySession.open(inventoryOf("log 12, -, -"), inventoryOf("-"), 1)
+	check(
+		InventorySession.quickMove(withCrate, "pack", 1) == 12,
+		"quickMove: with another inventory open, the stack goes there"
+	)
+	check(contents(withCrate.pack) == "-, -, -", "quickMove: not to the rest of the pack")
+
+	for _, bad in { 0, 4, -1, 1.5, 0 / 0, math.huge } do
+		check(
+			raises("InventorySession.open: hotbarSlotCount must be a whole number from 1 to 3", function()
+				return InventorySession.open(inventoryOf("-, -, -"), nil, bad)
+			end),
+			"open: refuses a hotbar of " .. tostring(bad) .. " slots over a pack of 3"
+		)
+	end
 end
 
 do -- drop: handing carried items to the caller, to put on the ground

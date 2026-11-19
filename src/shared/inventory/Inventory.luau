@@ -102,6 +102,26 @@ local function countProblem(count: number): string?
 	return string.format("count must be a whole number, 0 or more; got %s", tostring(count))
 end
 
+local function rangeProblem(inventory: Inventory, firstSlot: number?, lastSlot: number?): string?
+	if firstSlot == nil and lastSlot == nil then
+		return nil
+	end
+	local isRange = isWholeNumber(firstSlot)
+		and isWholeNumber(lastSlot)
+		and (firstSlot :: number) >= 1
+		and (lastSlot :: number) <= inventory.slotCount
+		and (firstSlot :: number) <= (lastSlot :: number)
+	if isRange then
+		return nil
+	end
+	return string.format(
+		"slots %s to %s are not a run of this inventory's slots; it has slots 1 to %d",
+		tostring(firstSlot),
+		tostring(lastSlot),
+		inventory.slotCount
+	)
+end
+
 local function itemProblem(itemId: string): string?
 	if type(itemId) == "string" and ItemRegistry.has(itemId) then
 		return nil
@@ -222,16 +242,31 @@ end
 	that hold nothing are filled, lowest slot first. What fits is added even
 	when the rest does not; ask [method spaceFor] first if it must be all or nothing.
 
-	Raises an error if no item has the id `itemId`, or if `count` is not a
-	whole number of 0 or more.
+	Given `firstSlot` and `lastSlot`, only the slots from the one to the other
+	are used, and the rest of the inventory is left alone: that is how items
+	are sent to a hotbar and nowhere else. Leave both out to use every slot.
+
+	Raises an error if no item has the id `itemId`, if `count` is not a whole
+	number of 0 or more, or if `firstSlot` and `lastSlot` are given and are
+	not two of this inventory's slots with `firstSlot` no greater than
+	`lastSlot`.
 ]=]
-function Inventory.addItems(inventory: Inventory, itemId: string, count: number): number
+function Inventory.addItems(
+	inventory: Inventory,
+	itemId: string,
+	count: number,
+	firstSlot: number?,
+	lastSlot: number?
+): number
 	failIf(itemProblem(itemId), "Inventory.addItems")
 	failIf(countProblem(count), "Inventory.addItems")
+	failIf(rangeProblem(inventory, firstSlot, lastSlot), "Inventory.addItems")
+	local first = firstSlot or 1
+	local last = lastSlot or inventory.slotCount
 	local stackSize = ItemRegistry.get(itemId).stackSize
 	local slots = writableSlots(inventory)
 	local left = count
-	for slot = 1, inventory.slotCount do
+	for slot = first, last do
 		if left == 0 then
 			break
 		end
@@ -242,7 +277,7 @@ function Inventory.addItems(inventory: Inventory, itemId: string, count: number)
 			left -= added
 		end
 	end
-	for slot = 1, inventory.slotCount do
+	for slot = first, last do
 		if left == 0 then
 			break
 		end
@@ -260,13 +295,18 @@ end
 	what did not fit, or `nil` if all of it went in.
 
 	This is [method addItems] for a caller that is holding a stack. The items
-	go in the same order: stacks of the same item first, then slots that hold nothing.
+	go in the same order: stacks of the same item first, then slots that hold
+	nothing. Given `firstSlot` and `lastSlot`, only the slots from the one to
+	the other are used.
 
-	Raises an error if `stack` is not a stack that `ItemStack.new` could have made.
+	Raises an error if `stack` is not a stack that `ItemStack.new` could have
+	made, or if `firstSlot` and `lastSlot` are given and are not two of this
+	inventory's slots with `firstSlot` no greater than `lastSlot`.
 ]=]
-function Inventory.addStack(inventory: Inventory, stack: ItemStack): ItemStack?
+function Inventory.addStack(inventory: Inventory, stack: ItemStack, firstSlot: number?, lastSlot: number?): ItemStack?
 	failIf(ItemStack.validate(stack), "Inventory.addStack")
-	local added = Inventory.addItems(inventory, stack.itemId, stack.count)
+	failIf(rangeProblem(inventory, firstSlot, lastSlot), "Inventory.addStack")
+	local added = Inventory.addItems(inventory, stack.itemId, stack.count, firstSlot, lastSlot)
 	if added == stack.count then
 		return nil
 	end

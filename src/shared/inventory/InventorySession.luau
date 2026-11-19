@@ -8,6 +8,10 @@
 	crate, is shown beside it when one is open. When a player has no screen
 	open they have no session at all.
 
+	A session may be told how many of the pack's first slots are its hotbar.
+	That is only for [method quickMove], which sends a stack between the
+	hotbar and the rest of the pack when the pack is open alone.
+
 	The stack being carried is `session.carried`, or `nil` when nothing is
 	carried. It belongs to the session, not to either inventory.
 
@@ -64,6 +68,8 @@ export type InventorySession = {
 	read other: Inventory?,
 	--- The stack being carried between slots, or `nil` when nothing is carried.
 	read carried: ItemStack?,
+	--- How many of the pack's slots, counting from slot 1, are its hotbar. `nil` if the session was not told.
+	read hotbarSlotCount: number?,
 }
 
 local function isWholeNumber(value: unknown): boolean
@@ -115,9 +121,26 @@ end
 	given, with nothing carried.
 
 	The session holds the inventories it is given, not copies of them.
+	`hotbarSlotCount` says how many of the pack's first slots are its hotbar,
+	and may be left out.
+
+	Raises an error if `hotbarSlotCount` is given and is not a whole number
+	from 1 to the number of slots the pack has.
 ]=]
-function InventorySession.open(pack: Inventory, other: Inventory?): InventorySession
-	return { pack = pack, other = other }
+function InventorySession.open(pack: Inventory, other: Inventory?, hotbarSlotCount: number?): InventorySession
+	if hotbarSlotCount ~= nil then
+		if not isWholeNumber(hotbarSlotCount) or hotbarSlotCount < 1 or hotbarSlotCount > pack.slotCount then
+			error(
+				string.format(
+					"InventorySession.open: hotbarSlotCount must be a whole number from 1 to %d, the number of slots the pack has; got %s",
+					pack.slotCount,
+					tostring(hotbarSlotCount)
+				),
+				2
+			)
+		end
+	end
+	return { pack = pack, other = other, hotbarSlotCount = hotbarSlotCount }
 end
 
 --[=[
@@ -257,17 +280,21 @@ function InventorySession.click(session: InventorySession, side: Side, slot: num
 end
 
 --[=[
-	Sends the stack in a slot straight to the other inventory, wherever it
-	fits there, and returns how many items moved. This is Minecraft's
-	shift-click.
+	Sends the stack in a slot straight to the other side, wherever it fits
+	there, and returns how many items moved. This is Minecraft's shift-click.
 
-	From the pack the stack goes to the other inventory, and from the other
-	inventory it goes to the pack. Stacks of the same item are topped up
-	first, then slots that hold nothing are filled. What does not fit stays in
-	its slot. The carried stack is not involved.
+	With another inventory open, a stack in the pack goes to the other
+	inventory, and a stack in the other inventory goes to the pack. With the
+	pack open alone, a stack in a hotbar slot goes to the rest of the pack,
+	and a stack in the rest of the pack goes to the hotbar.
 
-	Returns 0 if the slot holds nothing, or if the pack is open alone, since
-	there is then nowhere to send it.
+	Stacks of the same item are topped up first, then slots that hold nothing
+	are filled. What does not fit stays in its slot. The carried stack is not
+	involved.
+
+	Returns 0 if the slot holds nothing. With the pack open alone it also
+	returns 0 if the session was not told the hotbar's size, or if the hotbar
+	is the whole pack, since there is then nowhere to send the stack.
 
 	Raises an error if `slot` is not one of that inventory's slots, or if
 	`side` is `"other"` and no other inventory is open.
@@ -275,15 +302,27 @@ end
 function InventorySession.quickMove(session: InventorySession, side: Side, slot: number): number
 	failIf(slotProblem(session, side, slot), "InventorySession.quickMove")
 	local from = inventoryOn(session, side)
-	local to = if side == "pack" then session.other else session.pack
-	if to == nil then
-		return 0
+	local across = if side == "pack" then session.other else session.pack
+	local to = from
+	local firstSlot: number?, lastSlot: number? = nil, nil
+	if across ~= nil then
+		to = across
+	else
+		local hotbarSlotCount = session.hotbarSlotCount
+		if hotbarSlotCount == nil or hotbarSlotCount == from.slotCount then
+			return 0
+		end
+		if slot <= hotbarSlotCount then
+			firstSlot, lastSlot = hotbarSlotCount + 1, from.slotCount
+		else
+			firstSlot, lastSlot = 1, hotbarSlotCount
+		end
 	end
 	local stack = Inventory.takeFromSlot(from, slot)
 	if stack == nil then
 		return 0
 	end
-	local leftover = Inventory.addStack(to, stack)
+	local leftover = Inventory.addStack(to, stack, firstSlot, lastSlot)
 	if leftover == nil then
 		return stack.count
 	end

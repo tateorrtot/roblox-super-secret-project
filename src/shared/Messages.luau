@@ -16,7 +16,7 @@
 	| `openPack` | nothing | open the inventory screen on the player's pack alone |
 	| `closeInventory` | nothing | close the inventory screen |
 	| `clickSlot` | side, slot, button | do a mouse click on a slot of the open screen, as `InventorySession.click` does |
-	| `quickMoveSlot` | side, slot | send a slot's stack to the other inventory, as `InventorySession.quickMove` does |
+	| `quickMoveSlot` | side, slot | send a slot's stack to the other side, as `InventorySession.quickMove` does |
 	| `dropCarried` | count, or nothing for all | drop carried items on the ground |
 	| `selectHotbarSlot` | slot | select a hotbar slot |
 	| `dropSelected` | nothing | drop one item from the selected hotbar slot on the ground |
