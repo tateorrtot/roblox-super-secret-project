@@ -484,4 +484,26 @@ do -- no action ever makes or loses an item
 	)
 end
 
+do -- hasSlot
+	local pack = Inventory.new(4)
+	local alone = InventorySession.open(pack)
+	local withCrate = InventorySession.open(pack, Inventory.new(2))
+	check(InventorySession.hasSlot(alone, "pack", 1), "hasSlot: the first slot of the pack")
+	check(InventorySession.hasSlot(alone, "pack", 4), "hasSlot: the last slot of the pack")
+	check(not InventorySession.hasSlot(alone, "pack", 5), "hasSlot: not a slot past the last")
+	check(not InventorySession.hasSlot(alone, "pack", 0), "hasSlot: not slot 0")
+	check(not InventorySession.hasSlot(alone, "other", 1), "hasSlot: not the other side when the pack is open alone")
+	check(InventorySession.hasSlot(withCrate, "other", 2), "hasSlot: the last slot of the other inventory")
+	check(not InventorySession.hasSlot(withCrate, "other", 3), "hasSlot: not a slot the other inventory lacks")
+	check(InventorySession.hasSlot(withCrate, "pack", 4), "hasSlot: the pack, when another inventory is open too")
+	for _, badSide in { "crate", "", 1, true, {} } :: { any } do
+		check(not InventorySession.hasSlot(withCrate, badSide, 1), "hasSlot: not the side " .. tostring(badSide))
+	end
+	check(not InventorySession.hasSlot(withCrate, nil, 1), "hasSlot: not without a side")
+	for _, badSlot in { 1.5, -1, 0 / 0, math.huge, "1", true, {} } :: { any } do
+		check(not InventorySession.hasSlot(withCrate, "pack", badSlot), "hasSlot: not the slot " .. tostring(badSlot))
+	end
+	check(not InventorySession.hasSlot(withCrate, "pack", nil), "hasSlot: not without a slot")
+end
+
 Check.finish("InventorySession")

@@ -26,7 +26,9 @@
 
 	An action changes the session and the inventories it is given. Naming a
 	slot that does not exist, or the other inventory when none is open, is a
-	mistake in the calling code and raises an error.
+	mistake in the calling code and raises an error. Code acting on a request
+	from somewhere it does not trust, such as a player's own machine, asks
+	[method hasSlot] first.
 
 	This is the rules only. It draws nothing and reads no input.
 
@@ -116,6 +118,18 @@ end
 ]=]
 function InventorySession.open(pack: Inventory, other: Inventory?): InventorySession
 	return { pack = pack, other = other }
+end
+
+--[=[
+	Returns `true` if `side` and `slot` name a slot this session shows: `side`
+	is `"pack"`, or `"other"` when another inventory is open, and `slot` is
+	one of that inventory's slot numbers.
+
+	`side` and `slot` may be any values at all, and nothing raises an error.
+	An action given a side and slot that pass this check will not refuse them.
+]=]
+function InventorySession.hasSlot(session: InventorySession, side: unknown, slot: unknown): boolean
+	return slotProblem(session, side :: any, slot :: any) == nil
 end
 
 --[=[

@@ -37,6 +37,22 @@ local function isWholeNumber(value: unknown): boolean
 	return type(value) == "number" and value == math.floor(value) and value ~= math.huge and value ~= -math.huge
 end
 
+-- Returns what is wrong with `value` as a stack, or nil if it is one that `ItemStack.new` could have made.
+local function stackProblem(value: unknown): string?
+	if type(value) ~= "table" then
+		return "a stack is a table, not a " .. type(value)
+	end
+	local stack = (value :: any) :: ItemStack
+	if type(stack.itemId) ~= "string" or not ItemRegistry.has(stack.itemId) then
+		return string.format('no item has the id "%s"', tostring(stack.itemId))
+	end
+	local stackSize = ItemRegistry.get(stack.itemId).stackSize
+	if isWholeNumber(stack.count) and stack.count >= 1 and stack.count <= stackSize then
+		return nil
+	end
+	return string.format('a stack of "%s" holds 1 to %d, not %s', stack.itemId, stackSize, tostring(stack.count))
+end
+
 --[=[
 	Returns a stack of `count` of the item with the id `itemId`.
 
@@ -44,17 +60,29 @@ end
 	number from 1 up to that item's stack size.
 ]=]
 function ItemStack.new(itemId: string, count: number): ItemStack
-	if not ItemRegistry.has(itemId) then
-		error(string.format('ItemStack.new: no item has the id "%s"', tostring(itemId)), 2)
+	local stack = { itemId = itemId, count = count }
+	local problem = stackProblem(stack)
+	if problem ~= nil then
+		error("ItemStack.new: " .. problem, 2)
 	end
-	local stackSize = ItemRegistry.get(itemId).stackSize
-	if not isWholeNumber(count) or count < 1 or count > stackSize then
-		error(
-			string.format('ItemStack.new: a stack of "%s" holds 1 to %d, not %s', itemId, stackSize, tostring(count)),
-			2
-		)
-	end
-	return table.freeze({ itemId = itemId, count = count })
+	return table.freeze(stack)
+end
+
+--[=[
+	Returns what is wrong with `value` as a stack, in words, or `nil` if
+	nothing is: it is a table with the `itemId` of an item that exists and a
+	`count` that is a whole number from 1 up to that item's stack size.
+
+	`value` may be anything at all. This is the check for a stack that was
+	written out by hand or arrived from outside, before it is trusted.
+
+	```lua
+	ItemStack.validate({ itemId = "log", count = 40 }) --> 'a stack of "log" holds 1 to 16, not 40'
+	ItemStack.validate(ItemStack.new("log", 12)) --> nil
+	```
+]=]
+function ItemStack.validate(value: unknown): string?
+	return stackProblem(value)
 end
 
 --[=[

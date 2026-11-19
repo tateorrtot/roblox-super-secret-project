@@ -76,6 +76,37 @@ do -- spaceLeft and isFull
 	check(ItemStack.isFull(ItemStack.new("stove", 1)), "isFull: one of an item that does not stack is full")
 end
 
+do -- validate
+	check(ItemStack.validate(ItemStack.new("log", 12)) == nil, "validate: nothing is wrong with a stack new made")
+	check(ItemStack.validate({ itemId = "log", count = 16 }) == nil, "validate: nor with one written by hand")
+	check(ItemStack.validate({ itemId = "stove", count = 1 }) == nil, "validate: nor with a stack of 1")
+	check(
+		ItemStack.validate({ itemId = "log", count = 40 }) == 'a stack of "log" holds 1 to 16, not 40',
+		"validate: says when the count is over the stack size"
+	)
+	check(
+		ItemStack.validate({ itemId = "log", count = 0 }) == 'a stack of "log" holds 1 to 16, not 0',
+		"validate: says when the count is 0"
+	)
+	check(
+		ItemStack.validate({ itemId = "log", count = 2.5 }) == 'a stack of "log" holds 1 to 16, not 2.5',
+		"validate: says when the count is not whole"
+	)
+	check(
+		ItemStack.validate({ itemId = "log" }) == 'a stack of "log" holds 1 to 16, not nil',
+		"validate: says when there is no count"
+	)
+	check(
+		ItemStack.validate({ itemId = "anvil", count = 1 }) == 'no item has the id "anvil"',
+		"validate: says when the item does not exist"
+	)
+	check(ItemStack.validate({ itemId = 7, count = 1 }) == 'no item has the id "7"', "validate: an id is a string")
+	check(ItemStack.validate({ count = 1 }) == 'no item has the id "nil"', "validate: says when there is no item id")
+	check(ItemStack.validate(nil) == "a stack is a table, not a nil", "validate: nothing is not a stack")
+	check(ItemStack.validate("log") == "a stack is a table, not a string", "validate: a string is not a stack")
+	check(ItemStack.validate(12) == "a stack is a table, not a number", "validate: a number is not a stack")
+end
+
 do -- equals and isSameItem
 	local a = ItemStack.new("log", 5)
 	check(ItemStack.equals(a, ItemStack.new("log", 5)), "equals: the same item and count")

@@ -109,21 +109,6 @@ local function itemProblem(itemId: string): string?
 	return string.format('no item has the id "%s"', tostring(itemId))
 end
 
-local function stackProblem(stack: ItemStack): string?
-	if type(stack) ~= "table" then
-		return "a stack is a table, not a " .. type(stack)
-	end
-	local problem = itemProblem(stack.itemId)
-	if problem ~= nil then
-		return problem
-	end
-	local stackSize = ItemRegistry.get(stack.itemId).stackSize
-	if isWholeNumber(stack.count) and stack.count >= 1 and stack.count <= stackSize then
-		return nil
-	end
-	return string.format('a stack of "%s" holds 1 to %d, not %s', stack.itemId, stackSize, tostring(stack.count))
-end
-
 --[=[
 	Returns a new inventory with `slotCount` slots, all holding nothing.
 
@@ -171,7 +156,7 @@ function Inventory.setStack(inventory: Inventory, slot: number, stack: ItemStack
 		writableSlots(inventory)[slot] = nil
 		return
 	end
-	failIf(stackProblem(stack), "Inventory.setStack")
+	failIf(ItemStack.validate(stack), "Inventory.setStack")
 	writableSlots(inventory)[slot] = ItemStack.new(stack.itemId, stack.count)
 end
 
@@ -217,7 +202,7 @@ end
 ]=]
 function Inventory.putInSlot(inventory: Inventory, slot: number, stack: ItemStack): ItemStack?
 	failIf(slotProblem(inventory, slot), "Inventory.putInSlot")
-	failIf(stackProblem(stack), "Inventory.putInSlot")
+	failIf(ItemStack.validate(stack), "Inventory.putInSlot")
 	local slots = writableSlots(inventory)
 	local there = slots[slot]
 	if there == nil then
@@ -280,7 +265,7 @@ end
 	Raises an error if `stack` is not a stack that `ItemStack.new` could have made.
 ]=]
 function Inventory.addStack(inventory: Inventory, stack: ItemStack): ItemStack?
-	failIf(stackProblem(stack), "Inventory.addStack")
+	failIf(ItemStack.validate(stack), "Inventory.addStack")
 	local added = Inventory.addItems(inventory, stack.itemId, stack.count)
 	if added == stack.count then
 		return nil
