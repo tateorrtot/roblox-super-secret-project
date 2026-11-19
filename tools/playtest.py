@@ -194,7 +194,7 @@ class Playtest:
     def double_click(self, where):
         self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
             {'action': 'moveTo', 'instance_path': where}, {'action': 'wait', 'wait_time_ms': 150},
-            {'action': 'mouseButtonClick', 'mouse_button': 'left'}, {'action': 'wait', 'wait_time_ms': 80},
+            {'action': 'mouseButtonClick', 'mouse_button': 'left'},
             {'action': 'mouseButtonClick', 'mouse_button': 'left'}, {'action': 'wait', 'wait_time_ms': 350}]})
 
     def hover(self, where):

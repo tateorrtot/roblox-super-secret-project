@@ -7,9 +7,11 @@
 
 	After that it does two things:
 	- It answers the requests that players' machines send, which are listed
-	  in Messages: moving stacks about an open inventory screen, dropping
-	  things, and placing, opening and breaking things on the plot. Every
-	  request is checked first, and one that makes no sense is ignored.
+	  in Messages. Requests about a player's own inventories are handed to
+	  InventoryRequests, in the rules, which checks each one and ignores one
+	  that makes no sense. Requests about the plot (placing, using and
+	  hitting) are checked here, because they also depend on where characters
+	  stand.
 	- Ten times a second it runs a step. Players pick up what lies near them,
 	  ground items that have lain too long go, the blocks that show the ground
 	  items and the placed items are made to match, and each player whose
@@ -29,10 +31,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GroundItems = require(Shared.world.GroundItems)
 local Hotbar = require(Shared.inventory.Hotbar)
 local Inventory = require(Shared.inventory.Inventory)
-local InventorySession = require(Shared.inventory.InventorySession)
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
+local InventoryRequests = require(Shared.players.InventoryRequests)
 local PlayerState = require(Shared.players.PlayerState)
 local Plot = require(Shared.plots.Plot)
 
@@ -194,82 +196,16 @@ onRequest("askForInventory", function(player)
 	lastSent[player] = nil
 end)
 
-onRequest("openPack", function(_, state)
-	if state.session == nil then
-		PlayerState.openInventory(state)
-	end
-end)
-
-onRequest("closeInventory", function(player, state)
-	closeInventoryFor(player, state)
-end)
-
-onRequest("clickSlot", function(_, state, side, slot, button)
-	local session = state.session
-	if session == nil or not InventorySession.hasSlot(session, side, slot) then
-		return
-	end
-	if button == "left" or button == "right" then
-		InventorySession.click(session, side, slot, button)
-	end
-end)
-
-onRequest("doubleClickSlot", function(_, state, side, slot)
-	local session = state.session
-	if session ~= nil and InventorySession.hasSlot(session, side, slot) then
-		InventorySession.doubleClick(session, side, slot)
-	end
-end)
-
-onRequest("quickMoveSlot", function(_, state, side, slot)
-	local session = state.session
-	if session ~= nil and InventorySession.hasSlot(session, side, slot) then
-		InventorySession.quickMove(session, side, slot)
-	end
-end)
-
-onRequest("swapWithHotbarSlot", function(_, state, side, slot, hotbarSlot)
-	local session = state.session
-	if session == nil or not InventorySession.hasSlot(session, side, slot) then
-		return
-	end
-	if isWholeNumber(hotbarSlot) and hotbarSlot >= 1 and hotbarSlot <= state.hotbar.slotCount then
-		InventorySession.swapWithHotbar(session, side, slot, hotbarSlot)
-	end
-end)
-
-onRequest("dropFromSlot", function(player, state, side, slot, count)
-	local session = state.session
-	if session == nil or not InventorySession.hasSlot(session, side, slot) then
-		return
-	end
-	if count == nil or (isWholeNumber(count) and count >= 0) then
-		local inventory = if side == "pack" then session.pack else session.other :: Inventory.Inventory
-		dropFor(player, Inventory.takeFromSlot(inventory, slot, count))
-	end
-end)
-
-onRequest("dropCarried", function(player, state, count)
-	local session = state.session
-	if session == nil then
-		return
-	end
-	if count == nil or (isWholeNumber(count) and count >= 0) then
-		dropFor(player, InventorySession.drop(session, count))
-	end
-end)
-
-onRequest("selectHotbarSlot", function(_, state, slot)
-	if isWholeNumber(slot) and slot >= 1 and slot <= state.hotbar.slotCount then
-		Hotbar.select(state.hotbar, slot)
-	end
-end)
-
-onRequest("dropSelected", function(player, state)
-	if state.session == nil then
-		dropFor(player, Inventory.takeFromSlot(state.pack, state.hotbar.selectedSlot, 1))
-	end
-end)
+-- The requests about a player's own inventories are checked and carried out by the rules. A stack
+-- that comes back has left the player's inventories, and goes on the ground in front of them.
+for _, name in InventoryRequests.NAMES do
+	onRequest(name, function(player, state, ...)
+		dropFor(player, InventoryRequests.answer(state, name, ...))
+		if state.session == nil then
+			openedThings[player] = nil
+		end
+	end)
+end
 
 -- Returns the middle of a tile of the plot, as a point in the world.
 local function tilePoint(x: number, z: number): Vector3

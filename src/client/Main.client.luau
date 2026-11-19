@@ -66,7 +66,7 @@ local screenOpen = false
 local selectedSlot = 1
 
 --- How soon a second left click on a slot must follow the first to count as a double click, in seconds.
-local DOUBLE_CLICK_SECONDS = 0.3
+local DOUBLE_CLICK_SECONDS = 0.4
 --- The last left click on a slot of the inventory screen, to tell a double click by. `nil` after a double click.
 local lastLeftClick: { side: string, slot: number, at: number }? = nil
 
