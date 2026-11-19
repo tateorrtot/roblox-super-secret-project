@@ -42,14 +42,15 @@
 ]=]
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
+local Position = require("./Position")
 
 local GroundItems = {}
 
 type ItemStack = ItemStack.ItemStack
 type Inventory = Inventory.Inventory
 
---- A point in the world, in studs. `y` is height.
-export type Position = { read x: number, read y: number, read z: number }
+--- A point in the world, in studs. See Position.
+export type Position = Position.Position
 
 --- One stack lying on the ground. It is a value and never changes: when part of it is picked up,
 --- a new ground item with the smaller stack takes its place under the same id.
@@ -100,28 +101,11 @@ local function failIf(problem: string?, functionName: string)
 	end
 end
 
-local function positionProblem(position: Position): string?
-	if type(position) ~= "table" then
-		return "a position is a table with x, y and z, not a " .. type(position)
-	end
-	for _, axis in { "x", "y", "z" } do
-		local value = (position :: any)[axis]
-		if not isOrdinaryNumber(value) then
-			return string.format("position.%s must be a number; got %s", axis, tostring(value))
-		end
-	end
-	return nil
-end
-
 local function timeProblem(now: number): string?
 	if isOrdinaryNumber(now) then
 		return nil
 	end
 	return string.format("now must be a number of seconds; got %s", tostring(now))
-end
-
-local function distanceBetween(a: Position, b: Position): number
-	return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 end
 
 --[=[
@@ -151,7 +135,7 @@ end
 ]=]
 function GroundItems.drop(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
 	failIf(ItemStack.validate(stack), "GroundItems.drop")
-	failIf(positionProblem(position), "GroundItems.drop")
+	failIf(Position.validate(position), "GroundItems.drop")
 	failIf(timeProblem(now), "GroundItems.drop")
 	local byId = writableById(groundItems)
 
@@ -159,7 +143,7 @@ function GroundItems.drop(groundItems: GroundItems, stack: ItemStack, position: 
 	local joinedDistance = math.huge
 	for id, groundItem in byId do
 		if ItemStack.isSameItem(groundItem.stack, stack) and ItemStack.spaceLeft(groundItem.stack) >= stack.count then
-			local distance = distanceBetween(position, groundItem.position)
+			local distance = Position.distance(position, groundItem.position)
 			local isNearer = distance < joinedDistance
 				or (distance == joinedDistance and joinedId ~= nil and id < joinedId)
 			if distance <= GroundItems.MERGE_RADIUS and isNearer then
@@ -208,13 +192,13 @@ end
 	and `z`, or if `now` is not a number.
 ]=]
 function GroundItems.pickUpNear(groundItems: GroundItems, position: Position, inventory: Inventory, now: number): number
-	failIf(positionProblem(position), "GroundItems.pickUpNear")
+	failIf(Position.validate(position), "GroundItems.pickUpNear")
 	failIf(timeProblem(now), "GroundItems.pickUpNear")
 	local byId = writableById(groundItems)
 	local near: { NearGroundItem } = {}
 	for id, groundItem in byId do
 		if now - groundItem.droppedAt >= GroundItems.PICKUP_DELAY then
-			local distance = distanceBetween(position, groundItem.position)
+			local distance = Position.distance(position, groundItem.position)
 			if distance <= GroundItems.PICKUP_RADIUS then
 				table.insert(near, { id = id, distance = distance })
 			end

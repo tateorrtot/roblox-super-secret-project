@@ -40,13 +40,14 @@
 ]=]
 local Inventory = require("../inventory/Inventory")
 local ItemRegistry = require("../items/ItemRegistry")
+local Position = require("../world/Position")
 
 local Plot = {}
 
 type Inventory = Inventory.Inventory
 
---- A point in the world, in studs. `y` is height.
-export type Position = { read x: number, read y: number, read z: number }
+--- A point in the world, in studs. See Position.
+export type Position = Position.Position
 
 --- One item standing on a tile. The record never changes; what is in its inventory does.
 export type PlacedItem = {
