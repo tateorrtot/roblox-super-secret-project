@@ -170,7 +170,7 @@ do -- closeScreen
 	openPlaced(placedWorld, placedState, "crate")
 	send("closeScreen", placedWorld, placedState)
 	check(
-		placedState.screen == nil and placedState.openedPlacedObjectId == nil,
+		placedState.screen == nil and World.getOpenedPlacedObjectId(placedWorld, placedState) == nil,
 		"closeScreen: a player who had a crate open has nothing open any more"
 	)
 end

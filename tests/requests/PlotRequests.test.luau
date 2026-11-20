@@ -139,7 +139,7 @@ do -- placeSelectedItem
 	check(world.plot.nextId == placedObjectId + 1, "placeSelectedItem: not with an empty hand")
 
 	Hotbar.selectSlot(state.hotbar, 3)
-	PlayerState.openPackScreen(state)
+	PlayerState.openScreen(state)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(
 		is(Inventory.getStack(state.pack, 3), "oven", 1) and world.plot.nextId == placedObjectId + 1,
@@ -209,7 +209,7 @@ do -- usePlacedObject
 			and screen.pack == state.pack,
 		"usePlacedObject: opens the crate's inventory on the player's screen, beside their pack"
 	)
-	check(state.openedPlacedObjectId == crateId, "usePlacedObject: and the player has that crate open")
+	check(World.getOpenedPlacedObjectId(world, state) == crateId, "usePlacedObject: and the player has that crate open")
 	check(
 		screen ~= nil and screen.otherSlotAcceptsItem == nil,
 		"usePlacedObject: every slot of a crate accepts every item"
@@ -229,7 +229,7 @@ do -- usePlacedObject
 	check(
 		(state.screen :: InventoryScreen.InventoryScreen).otherInventory
 				== world.plot.placedObjectsById[crateId].inventory
-			and state.openedPlacedObjectId == crateId,
+			and World.getOpenedPlacedObjectId(world, state) == crateId,
 		"usePlacedObject: ignored for a placed object that holds nothing, even in reach, and what was open stays open"
 	)
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
@@ -237,7 +237,10 @@ do -- usePlacedObject
 		send("usePlacedObject", world, state, bad)
 	end
 	send("usePlacedObject", world, state)
-	check(state.openedPlacedObjectId == crateId, "usePlacedObject: ignored for an id that is not a placed object")
+	check(
+		World.getOpenedPlacedObjectId(world, state) == crateId,
+		"usePlacedObject: ignored for an id that is not a placed object"
+	)
 	World.closeScreen(world, state)
 
 	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
@@ -308,7 +311,7 @@ do -- hitPlacedObject
 	send("hitPlacedObject", world, state, crateId)
 	check(world.plot.placedObjectsById[crateId] == nil, "hitPlacedObject: the crate is off the plot")
 	check(
-		other.screen == nil and other.openedPlacedObjectId == nil,
+		other.screen == nil and World.getOpenedPlacedObjectId(world, other) == nil,
 		"hitPlacedObject: the player who was looking into it is not any more"
 	)
 	check(Inventory.countItems(other.pack, "fish") == 3, "hitPlacedObject: what they carried is in their pack")
@@ -443,7 +446,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			-- Players change what is in hand, and open a screen, as other requests would.
 			Hotbar.selectSlot(player.hotbar, random(9))
 			if random(10) == 1 and PlayerState.canOpenScreen(player) then
-				PlayerState.openPackScreen(player)
+				PlayerState.openScreen(player)
 			end
 			local name = names[random(#names)]
 			local ok, result = pcall(send, name, world, player, argument(), argument(), argument())

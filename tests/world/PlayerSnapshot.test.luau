@@ -128,7 +128,7 @@ end
 do -- the pack open alone
 	local world = newWorld()
 	local state = world.players[1]
-	PlayerState.openPackScreen(state)
+	PlayerState.openScreen(state)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(encoded.screen ~= nil, "encode: a player with the pack open has a screen in their view")
 	local screen = encoded.screen
@@ -165,7 +165,7 @@ end
 do -- the pack open alone, with a stack carried
 	local world = newWorld()
 	local state = world.players[1]
-	PlayerState.openPackScreen(state)
+	PlayerState.openScreen(state)
 	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "pack", 7, 3)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local encodedScreen = encoded.screen

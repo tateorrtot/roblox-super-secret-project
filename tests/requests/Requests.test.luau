@@ -189,7 +189,7 @@ do -- carryOut
 	)
 	carryOut(world, 2, "usePlacedObject", crateId)
 	check(
-		second.openedPlacedObjectId == crateId and first.openedPlacedObjectId == nil,
+		World.getOpenedPlacedObjectId(world, second) == crateId and World.getOpenedPlacedObjectId(world, first) == nil,
 		"carryOut: carries out a plot request for the player who asked"
 	)
 	carryOut(world, 2, "selectHotbarSlot", 4)
@@ -332,7 +332,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			end
 			someTakenOff = someTakenOff or world.plot.placedObjectsById[crateId] == nil
 			for _, state in world.players do
-				someOpened = someOpened or state.openedPlacedObjectId ~= nil
+				someOpened = someOpened or World.getOpenedPlacedObjectId(world, state) ~= nil
 			end
 			now += 0.5
 			World.advanceTo(world, now)

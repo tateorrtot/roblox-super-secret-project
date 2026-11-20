@@ -206,7 +206,10 @@ do -- players come and go
 	check(world.players[7] == state, "addPlayer: returns the player now in the world")
 	check(Inventory.isEmpty(state.pack), "addPlayer: with no pack given, the pack holds nothing")
 	check(state.pack.slotCount == PlayerState.PACK_SLOT_COUNT, "addPlayer: and has the slots of any pack")
-	check(state.screen == nil and state.openedPlacedObjectId == nil, "addPlayer: a new player has no screen open")
+	check(
+		state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
+		"addPlayer: a new player has no screen open"
+	)
 	check(state.character == nil, "addPlayer: and has no character yet")
 	local second = World.addPlayer(world, -3)
 	check(
@@ -279,7 +282,7 @@ do -- a player's character
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
 	World.removeCharacter(full, 1)
 	check(
-		fullState.screen == nil and fullState.openedPlacedObjectId == nil and fullState.character == nil,
+		fullState.screen == nil and World.getOpenedPlacedObjectId(full, fullState) == nil and fullState.character == nil,
 		"removeCharacter: a player who loses their character has their screen closed"
 	)
 	local fish = groundStacks(full, "fish")
@@ -461,7 +464,7 @@ do -- closing a player's screen
 		"closeScreen: does nothing if no screen is open"
 	)
 
-	PlayerState.openPackScreen(state)
+	PlayerState.openScreen(state)
 	World.closeScreen(world, state)
 	check(state.screen == nil, "closeScreen: the screen is gone")
 
@@ -472,7 +475,10 @@ do -- closing a player's screen
 		"closeScreen: (set up) the player carries the fish out of the crate"
 	)
 	World.closeScreen(world, state)
-	check(state.screen == nil and state.openedPlacedObjectId == nil, "closeScreen: nothing is open afterwards")
+	check(
+		state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
+		"closeScreen: nothing is open afterwards"
+	)
 	check(Inventory.countItems(state.pack, "fish") == 5, "closeScreen: what was carried goes back into the pack")
 	check(Inventory.isEmpty(insideOf(world, ids.crate)), "closeScreen: and not into the crate")
 	check(
@@ -514,17 +520,36 @@ do -- closing a player's screen
 	)
 
 	-- A screen with nothing carried puts nothing anywhere.
-	local world3, state3 = newWorld()
-	PlayerState.openPackScreen(state3)
+	local world3, state3, ids3 = newWorld()
+	PlayerState.openScreen(state3)
 	World.closeScreen(world3, state3)
 	check(
 		Inventory.countItems(state3.pack, "log") == 12 and next(world3.groundItems.itemsById) == nil,
 		"closeScreen: a screen with nothing carried changes nothing else"
 	)
+
+	-- A screen closed behind the world's back leaves nothing that a later screen could be taken for.
+	World.openPlacedObjectScreen(world3, state3, ids3.crate)
+	PlayerState.closeScreen(state3)
+	PlayerState.openScreen(state3)
+	check(
+		World.getOpenedPlacedObjectId(world3, state3) == nil,
+		"getOpenedPlacedObjectId: nil for a pack opened after a placed object's screen was closed by PlayerState.closeScreen"
+	)
 end
 
 do -- opening a placed object
 	local world, state, ids = newWorld()
+	check(
+		World.getOpenedPlacedObjectId(world, state) == nil,
+		"getOpenedPlacedObjectId: nil for a player with no screen open"
+	)
+	PlayerState.openScreen(state)
+	check(
+		World.getOpenedPlacedObjectId(world, state) == nil,
+		"getOpenedPlacedObjectId: nil while the player's pack is open alone"
+	)
+	World.closeScreen(world, state)
 	check(
 		World.canOpenPlacedObjectScreen(world, state, ids.crate),
 		"canOpenPlacedObjectScreen: true for a crate on the plot and a player with a character"
@@ -536,7 +561,10 @@ do -- opening a placed object
 		screen ~= nil and screen.otherInventory == insideOf(world, ids.crate),
 		"openPlacedObjectScreen: and the crate's own inventory beside it"
 	)
-	check(state.openedPlacedObjectId == ids.crate, "openPlacedObjectScreen: and the player has that placed object open")
+	check(
+		World.getOpenedPlacedObjectId(world, state) == ids.crate,
+		"openPlacedObjectScreen: and the player has that placed object open"
+	)
 	check(screen ~= nil and screen.otherSlotAcceptsItem == nil, "openPlacedObjectScreen: a crate's slots take anything")
 
 	local first = state.screen
@@ -550,12 +578,15 @@ do -- opening a placed object
 	-- Another screen is closed first, as closeScreen does.
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	World.openPlacedObjectScreen(world, state, ids.oven)
-	check(state.openedPlacedObjectId == ids.oven, "openPlacedObjectScreen: an oven opens")
+	check(World.getOpenedPlacedObjectId(world, state) == ids.oven, "openPlacedObjectScreen: an oven opens")
 	check(
 		Inventory.countItems(state.pack, "fish") == 5 and onGround(world, "fish") == 0,
 		"openPlacedObjectScreen: what was carried on the screen it replaces is back in the pack"
 	)
-	check(state.openedPlacedObjectId == ids.oven, "openPlacedObjectScreen: and the oven is what the player has open")
+	check(
+		World.getOpenedPlacedObjectId(world, state) == ids.oven,
+		"openPlacedObjectScreen: and the oven is what the player has open"
+	)
 	local ovenScreen = state.screen :: InventoryScreen.InventoryScreen
 	check(
 		ovenScreen.otherInventory == insideOf(world, ids.oven),
@@ -605,7 +636,7 @@ do -- opening a placed object
 		"openPlacedObjectScreen: fails for a placed object whose screen cannot be opened"
 	)
 	check(
-		state.screen == before and state.openedPlacedObjectId == ids.oven,
+		state.screen == before and World.getOpenedPlacedObjectId(world, state) == ids.oven,
 		"openPlacedObjectScreen: and changes nothing then, the screen that was open stays open"
 	)
 	local other = World.addPlayer(world, 2)
@@ -616,7 +647,8 @@ do -- opening a placed object
 	World.setCharacterPosition(world, 2, at(14, 0, 6))
 	World.openPlacedObjectScreen(world, other, ids.oven)
 	check(
-		other.openedPlacedObjectId == ids.oven and state.openedPlacedObjectId == ids.oven,
+		World.getOpenedPlacedObjectId(world, other) == ids.oven
+			and World.getOpenedPlacedObjectId(world, state) == ids.oven,
 		"openPlacedObjectScreen: two players may have the same oven open"
 	)
 	check(
@@ -770,9 +802,9 @@ do -- taking a placed object off
 	)
 	check(
 		state.screen == nil
-			and state.openedPlacedObjectId == nil
+			and World.getOpenedPlacedObjectId(world, state) == nil
 			and other.screen == nil
-			and other.openedPlacedObjectId == nil,
+			and World.getOpenedPlacedObjectId(world, other) == nil,
 		"Plot.removePlacedObject on the world's plot: every screen open on it is closed"
 	)
 	check(
@@ -907,7 +939,7 @@ do -- taking a placed object off
 	World.openPlacedObjectScreen(keep, keepState, keepIds.crate)
 	knockOff(keep, keepIds.oven)
 	check(
-		keepState.screen ~= nil and keepState.openedPlacedObjectId == keepIds.crate,
+		keepState.screen ~= nil and World.getOpenedPlacedObjectId(keep, keepState) == keepIds.crate,
 		"Plot.removePlacedObject on the world's plot: a screen open on another placed object stays open"
 	)
 end
@@ -1031,7 +1063,7 @@ do -- time passing: screens close
 	World.setCharacterPosition(world, 1, at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND))
 	World.advanceTo(world, 102)
 	check(
-		state.screen == nil and state.openedPlacedObjectId == nil,
+		state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
 		"advanceTo: and closes once the player is beyond it"
 	)
 
@@ -1050,7 +1082,7 @@ do -- time passing: screens close
 	World.openPlacedObjectScreen(world, state, ids.crate)
 	Plot.removePlacedObject(world.plot, ids.crate)
 	check(
-		state.screen == nil and state.openedPlacedObjectId == nil,
+		state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
 		"Plot.removePlacedObject on the world's plot: a screen open on the placed object closes at once"
 	)
 	World.advanceTo(world, 104)
@@ -1061,7 +1093,7 @@ do -- time passing: screens close
 	check(state.screen ~= nil, "advanceTo: a screen stays open for a player who stays near")
 
 	World.closeScreen(world, state)
-	PlayerState.openPackScreen(state)
+	PlayerState.openScreen(state)
 	World.setCharacterPosition(world, 1, at(500, 0, 500))
 	World.advanceTo(world, 106)
 	check(state.screen ~= nil, "advanceTo: the pack open alone stays open wherever the player goes")
@@ -1315,13 +1347,13 @@ do -- several players, several things at once, and no item is made or lost
 					local ids = placedIds(world)
 					run(function()
 						local id = if #ids > 0 and random(5) > 1 then ids[random(#ids)] else random(40)
-						local openedBefore = state.openedPlacedObjectId
+						local openedBefore = World.getOpenedPlacedObjectId(world, state)
 						local canOpen = World.canOpenPlacedObjectScreen(world, state, id)
 						if canOpen then
 							World.openPlacedObjectScreen(world, state, id)
 						end
 						expect(
-							state.openedPlacedObjectId == (if canOpen then id else openedBefore),
+							World.getOpenedPlacedObjectId(world, state) == (if canOpen then id else openedBefore),
 							"openPlacedObjectScreen opens the placed object that canOpenPlacedObjectScreen allowed"
 						)
 					end)
@@ -1331,14 +1363,14 @@ do -- several players, several things at once, and no item is made or lost
 					run(function()
 						World.closeScreen(world, state)
 						expect(
-							state.screen == nil and state.openedPlacedObjectId == nil,
+							state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
 							"closeScreen leaves nothing open"
 						)
 					end)
 				end
 			elseif action == 15 then
 				if state ~= nil and PlayerState.canOpenScreen(state) then
-					PlayerState.openPackScreen(state)
+					PlayerState.openScreen(state)
 				end
 			elseif action <= 20 then
 				-- What a player does with an open screen.
@@ -1409,7 +1441,7 @@ do -- several players, several things at once, and no item is made or lost
 			end
 
 			for _, other in world.players do
-				local placedObjectId = other.openedPlacedObjectId
+				local placedObjectId = World.getOpenedPlacedObjectId(world, other)
 				expect(
 					placedObjectId == nil
 						or (other.screen ~= nil and world.plot.placedObjectsById[placedObjectId] ~= nil),

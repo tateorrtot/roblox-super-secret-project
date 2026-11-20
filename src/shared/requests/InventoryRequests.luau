@@ -61,7 +61,7 @@ end
 --- open or have no character.
 function InventoryRequests.openPack(_world: World, player: PlayerState)
 	if PlayerState.canOpenScreen(player) then
-		PlayerState.openPackScreen(player)
+		PlayerState.openScreen(player)
 	end
 end
 

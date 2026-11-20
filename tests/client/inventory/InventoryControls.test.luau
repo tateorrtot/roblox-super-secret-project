@@ -411,9 +411,9 @@ local function openedWorld(otherSlotCount: number?): (World.World, PlayerState.P
 	local state = World.addPlayer(world, 1)
 	World.setCharacterPosition(world, 1, DROP_AT)
 	if otherSlotCount ~= nil then
-		PlayerState.openPlacedObjectScreen(state, 1, Inventory.new(otherSlotCount))
+		PlayerState.openScreen(state, Inventory.new(otherSlotCount))
 	else
-		PlayerState.openPackScreen(state)
+		PlayerState.openScreen(state)
 	end
 	return world, state
 end

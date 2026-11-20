@@ -52,7 +52,7 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 	if screen == nil then
 		return { pack = Inventory.encode(player.pack), selectedHotbarSlot = selectedHotbarSlot }
 	end
-	local placedObjectId = player.openedPlacedObjectId
+	local placedObjectId = World.getOpenedPlacedObjectId(world, player)
 	local placedObject = if placedObjectId then world.plot.placedObjectsById[placedObjectId] else nil
 	local station = if placedObjectId then world.stations[placedObjectId] else nil
 	local carried = screen.carriedStack

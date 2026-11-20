@@ -15,6 +15,7 @@
 local Direction = require("../Direction")
 local GroundItems = require("./GroundItems")
 local Inventory = require("../inventory/Inventory")
+local InventoryScreen = require("../inventory/InventoryScreen")
 local ItemStack = require("../items/ItemStack")
 local PlayerState = require("../players/PlayerState")
 local Plot = require("../plots/Plot")
@@ -28,6 +29,7 @@ local World = {}
 
 type ItemStack = ItemStack.ItemStack
 type Inventory = Inventory.Inventory
+type InventoryScreen = InventoryScreen.InventoryScreen
 type PlayerState = PlayerState.PlayerState
 type Position = Position.Position
 type Direction = Direction.Direction
@@ -44,6 +46,9 @@ export type World = {
 	--- The station that each placed object which is one works as, by the placed object's id. A
 	--- placed object that is not a station has no entry.
 	read stations: { [number]: Station.Station },
+	--- The id of the placed object that each open inventory screen was opened on, by the screen. A
+	--- screen that is open on a pack alone has no entry.
+	read placedObjectIdsByScreen: { [InventoryScreen]: number },
 	--- The time `advanceTo` was last given, in seconds.
 	now: number,
 }
@@ -104,7 +109,7 @@ end
 local function closeScreensOn(world: World, placedObjectId: number)
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
-		if player.openedPlacedObjectId == placedObjectId then
+		if World.getOpenedPlacedObjectId(world, player) == placedObjectId then
 			World.closeScreen(world, player)
 		end
 	end
@@ -147,6 +152,7 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 		groundItems = GroundItems.new(),
 		players = {},
 		stations = {},
+		placedObjectIdsByScreen = {},
 		now = now,
 	}
 	for placedObjectId, placedObject in plot.placedObjectsById do
@@ -222,6 +228,11 @@ end
 --- and what does not fit is dropped: it spawns `CHARACTER_THROW_START_HEIGHT` above their
 --- character's feet, not moving. Does nothing if they have no screen open.
 function World.closeScreen(world: World, player: PlayerState)
+	local screen = player.screen
+	if screen == nil then
+		return
+	end
+	world.placedObjectIdsByScreen[screen] = nil
 	local leftover = PlayerState.closeScreen(player)
 	if leftover ~= nil then
 		local character = assert(player.character, "a player who had a screen open has a character")
@@ -269,12 +280,15 @@ function World.openPlacedObjectScreen(world: World, player: PlayerState, placedO
 		return Station.slotAcceptsItem(itemId, slot, putItemId)
 	end
 	local isStation = world.stations[placedObjectId] ~= nil
-	PlayerState.openPlacedObjectScreen(
-		player,
-		placedObjectId,
-		placedObject.inventory :: Inventory,
-		if isStation then stationSlotAcceptsItem else nil
-	)
+	PlayerState.openScreen(player, placedObject.inventory, if isStation then stationSlotAcceptsItem else nil)
+	world.placedObjectIdsByScreen[player.screen :: InventoryScreen] = placedObjectId
+end
+
+--- Returns the id of the placed object that a player's screen was opened on. Returns `nil` if
+--- their screen is open on their pack alone, or if they have no screen open.
+function World.getOpenedPlacedObjectId(world: World, player: PlayerState): number?
+	local screen = player.screen
+	return if screen ~= nil then world.placedObjectIdsByScreen[screen] else nil
 end
 
 --- Returns `true` if a player's character stands within `World.REACH` of the middle of a tile,
@@ -348,7 +362,7 @@ local function pickUpNearbyStacks(world: World, player: PlayerState)
 end
 
 local function closeScreenIfOutOfReach(world: World, player: PlayerState)
-	local placedObjectId = player.openedPlacedObjectId
+	local placedObjectId = World.getOpenedPlacedObjectId(world, player)
 	local character = player.character
 	if placedObjectId == nil or character == nil then
 		return
