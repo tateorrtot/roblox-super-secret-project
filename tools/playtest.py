@@ -163,6 +163,25 @@ task.wait(0.5)
 return "asked"
 '''
 
+# Counts, on the player's machine, how many times the server tells it what the player holds in the
+# next %d seconds, and leaves the count as the attribute SnapshotsCounted on the player.
+COUNT_SNAPSHOTS = '''
+local player = game:GetService("Players").LocalPlayer
+local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("snapshotChanged")
+local count = 0
+local connection = remote.OnClientEvent:Connect(function()
+	count += 1
+end)
+player:SetAttribute("SnapshotsCounted", nil)
+task.delay(%d, function()
+	connection:Disconnect()
+	player:SetAttribute("SnapshotsCounted", count)
+end)
+return "counting"
+'''
+
+READ_SNAPSHOTS_COUNTED = 'return tostring(game:GetService("Players").LocalPlayer:GetAttribute("SnapshotsCounted") or -1)'
+
 PANEL = 'LocalPlayer.PlayerGui.Inventory.Panel.'
 
 
@@ -548,6 +567,16 @@ class Playtest:
         check(view['fire'] > 0, 'its fire gauge shows fuel burning', view.get('fire'))
         lit = [entry for entry in self.world()['placed'] if entry['id'] == stove['id']][0]
         check(lit.get('burning') is True, 'and the stove in the world shows that it is lit', lit)
+        # A stove that only burns and works is drawn from the times in the last snapshot, so the
+        # server has nothing to send. In three seconds at most one apple is done and one log is lit.
+        before = self.view()
+        self.studio.luau(COUNT_SNAPSHOTS % 3, 'Client')
+        time.sleep(3.6)
+        told = int(self.studio.luau(READ_SNAPSHOTS_COUNTED, 'Client'))
+        after = self.view()
+        check(0 <= told <= 3, 'while the stove burns for three seconds, the player is told what they hold no more than three times', told)
+        check(after['fire'] != before['fire'] or after['work'] != before['work'], 'and its gauges move all the same',
+              {'before': [before['fire'], before['work']], 'after': [after['fire'], after['work']]})
         self.click(PANEL + 'OtherSlot3')
         time.sleep(0.6)
         self.click(PANEL + 'OtherSlot3')

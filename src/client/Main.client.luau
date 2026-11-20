@@ -10,6 +10,7 @@
 --- open, 1 to 9 and Q act on the slot under the pointer instead.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
@@ -21,6 +22,7 @@ local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local PlayerState = require(Shared.players.PlayerState)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
+local StationProgress = require(Shared.stations.StationProgress)
 
 local HotbarGui = require(script.Parent.inventory.HotbarGui)
 local InventoryControls = require(script.Parent.inventory.InventoryControls)
@@ -38,6 +40,8 @@ local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 --- What the server last said the player holds.
 local snapshot: PlayerSnapshot.PlayerSnapshot = { pack = Inventory.new(PlayerState.PACK_SLOT_COUNT) }
+--- How far the world's clock is ahead of this machine's own, in seconds, as of the last snapshot.
+local worldClockLead = 0
 --- The hotbar slot in the player's hand.
 local selectedSlot = 1
 local gestures = SlotGestures.new()
@@ -134,9 +138,10 @@ local function onScreenOpenedOrClosed(open: boolean)
 	end
 end
 
-remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.EncodedSnapshot)
+remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.EncodedSnapshot, sentAt: number)
 	local wasOpen = snapshot.screen ~= nil
 	snapshot = PlayerSnapshot.decode(encoded)
+	worldClockLead = sentAt - os.clock()
 	local screen = snapshot.screen
 	HotbarGui.update(hotbarGui, snapshot.pack, selectedSlot)
 	if (screen ~= nil) ~= wasOpen then
@@ -151,7 +156,21 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 			screen.otherInventory,
 			otherName,
 			screen.carriedStack,
-			snapshot.stationProgress
+			snapshot.stationProgress ~= nil
+		)
+	end
+end)
+
+-- A station's gauges move with time alone, so they are drawn here every frame from the times in
+-- the snapshot, and the server sends nothing while a station only burns and works.
+RunService.RenderStepped:Connect(function()
+	local progress = snapshot.stationProgress
+	if progress ~= nil then
+		local now = os.clock() + worldClockLead
+		InventoryGui.setStationGauges(
+			inventoryGui,
+			StationProgress.getFuelLeftRatio(progress, now),
+			StationProgress.getWorkDoneRatio(progress, now)
 		)
 	end
 end)

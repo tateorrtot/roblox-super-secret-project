@@ -137,20 +137,4 @@ function Station.advance(station: Station, seconds: number)
 	end
 end
 
---- Returns how much of the fuel now burning is left, as a number from 1, when it was just lit, down
---- to 0, when the fire is out.
-function Station.getFuelLeftRatio(station: Station): number
-	return if Station.isBurning(station) then station.burnSecondsLeft / station.burnSecondsTotal else 0
-end
-
---- Returns how far the work on the item in the input slot has got, as a number from 0, when it has
---- not begun, up to 1, when it is done. Returns 0 while `getWorkableRecipe` returns `nil`.
-function Station.getWorkDoneRatio(station: Station): number
-	local recipe = Station.getWorkableRecipe(station)
-	if recipe == nil or recipe.input ~= station.workingOnItemId then
-		return 0
-	end
-	return station.workedSeconds / recipe.seconds
-end
-
 return Station

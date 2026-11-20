@@ -12,6 +12,7 @@ local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Station = require("../../src/shared/stations/Station")
+local StationProgress = require("../../src/shared/stations/StationProgress")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -702,10 +703,10 @@ do -- time passing: stations
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
 	World.advanceTo(world, 104)
-	local ovenStation = world.stations[ids.oven]
+	local progress = StationProgress.new(world.stations[ids.oven], 104)
 	check(
-		math.abs(Station.getFuelLeftRatio(ovenStation) - 0.75) < 1e-6
-			and math.abs(Station.getWorkDoneRatio(ovenStation) - 0.5) < 1e-6,
+		math.abs(StationProgress.getFuelLeftRatio(progress, 104) - 0.75) < 1e-6
+			and math.abs(StationProgress.getWorkDoneRatio(progress, 104) - 0.5) < 1e-6,
 		"advanceTo: a station burns and works for the time that has passed since the world was last advanced"
 	)
 	check(is(Inventory.getStack(inside, Station.FUEL_SLOT), "log", 3), "advanceTo: lighting it used a log")

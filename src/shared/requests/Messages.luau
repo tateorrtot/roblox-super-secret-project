@@ -12,7 +12,7 @@ table.insert(toServer, "askForSnapshot")
 Messages.toServer = table.freeze(toServer)
 
 --- The messages the server sends: `snapshotChanged`, with what `PlayerSnapshot.encode` returns for
---- the player it is sent to.
+--- the player it is sent to, and then the time on the world's clock when it was sent, in seconds.
 Messages.toClient = table.freeze({ "snapshotChanged" })
 
 return Messages

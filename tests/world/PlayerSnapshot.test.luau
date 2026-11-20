@@ -11,6 +11,7 @@ local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Station = require("../../src/shared/stations/Station")
+local StationProgress = require("../../src/shared/stations/StationProgress")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -239,9 +240,9 @@ do -- an oven open
 	check(
 		idle.screen ~= nil
 			and idle.screen.stationProgress ~= nil
-			and idle.screen.stationProgress.fuelLeftRatio == 0
-			and idle.screen.stationProgress.workDoneRatio == 0,
-		"encode: an oven that has not been lit has progress of nothing"
+			and idle.screen.stationProgress.fuelBurnsOutAt == nil
+			and idle.screen.stationProgress.workDoneAt == nil,
+		"encode: an oven that has not been lit has a progress with no fire and no work"
 	)
 
 	World.advanceTo(world, 4)
@@ -251,9 +252,16 @@ do -- an oven open
 	check(
 		screen ~= nil
 			and screen.stationProgress ~= nil
-			and math.abs(screen.stationProgress.fuelLeftRatio - 0.75) < 1e-6
-			and math.abs(screen.stationProgress.workDoneRatio - 0.5) < 1e-6,
-		"encode: with how far the fire and the work have got"
+			and screen.stationProgress.fuelBurnsOutAt == 16
+			and screen.stationProgress.workDoneAt == 8,
+		"encode: with the times at which the log burns out and the fish is done"
+	)
+	check(
+		screen ~= nil
+			and screen.stationProgress ~= nil
+			and math.abs(StationProgress.getFuelLeftRatio(screen.stationProgress, 4) - 0.75) < 1e-6
+			and math.abs(StationProgress.getWorkDoneRatio(screen.stationProgress, 4) - 0.5) < 1e-6,
+		"encode: from which the fire is three quarters left and the fish half done"
 	)
 	check(
 		screen ~= nil and screen.otherInventory ~= nil and #screen.otherInventory.stacks == 2,
@@ -265,8 +273,10 @@ do -- an oven open
 	check(view.otherInventoryItemId == "oven", "decode: knows it is an oven")
 	check(
 		view.stationProgress ~= nil
-			and math.abs(view.stationProgress.fuelLeftRatio - 0.75) < 1e-6
-			and math.abs(view.stationProgress.workDoneRatio - 0.5) < 1e-6,
+			and view.stationProgress.fuelBurnsOutAt == 16
+			and view.stationProgress.fuelBurnSeconds == 16
+			and view.stationProgress.workDoneAt == 8
+			and view.stationProgress.workSeconds == 8,
 		"decode: gives back the progress"
 	)
 	check(
@@ -284,6 +294,58 @@ do -- an oven open
 			and both.otherInventoryItemId == "oven",
 		"decode: an oven open and a stack carried come back together"
 	)
+end
+
+do -- a player watching a lit oven is told again only when something happens
+	-- Describes any plain value as text, the same text for the same value.
+	local function describe(value: any): string
+		if type(value) ~= "table" then
+			return tostring(value)
+		end
+		local keys = {}
+		for key in value do
+			table.insert(keys, tostring(key))
+		end
+		table.sort(keys)
+		local parts = {}
+		for _, key in keys do
+			local child = value[key]
+			if child == nil then
+				child = value[tonumber(key) :: number]
+			end
+			table.insert(parts, key .. "=" .. describe(child))
+		end
+		return "{" .. table.concat(parts, ",") .. "}"
+	end
+
+	local world, _, ovenId = newWorld()
+	local inside = world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory
+	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
+	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
+	World.openPlacedItem(world, world.players[1], ovenId)
+
+	local told = describe(PlayerSnapshot.encode(world, 1))
+	World.advanceTo(world, 0.1)
+	local lit = describe(PlayerSnapshot.encode(world, 1))
+	check(lit ~= told, "encode: what a player is told changes when the oven is lit")
+
+	local changes = 0
+	told = lit
+	for tick = 2, 79 do
+		World.advanceTo(world, tick / 10)
+		local now = describe(PlayerSnapshot.encode(world, 1))
+		if now ~= told then
+			changes += 1
+			told = now
+		end
+	end
+	check(
+		changes == 0,
+		`encode: what a player is told does not change while the oven only burns and works; it changed {changes} times in 78 tenths of a second`
+	)
+
+	World.advanceTo(world, 8.1)
+	check(describe(PlayerSnapshot.encode(world, 1)) ~= told, "encode: and changes again when a fish is done")
 end
 
 do -- the placed item is not on the plot any more

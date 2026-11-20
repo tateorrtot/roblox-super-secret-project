@@ -291,41 +291,6 @@ do -- the output slot filling up
 	)
 end
 
-do -- getFuelLeftRatio and getWorkDoneRatio
-	local station = stoveWith("fish 2", "log 4", "-")
-	check(Station.getFuelLeftRatio(station) == 0, "getFuelLeftRatio: 0 before the fire is lit")
-	check(Station.getWorkDoneRatio(station) == 0, "getWorkDoneRatio: 0 before any work is done")
-	Station.advance(station, 4)
-	check(near(Station.getFuelLeftRatio(station), 0.75), "getFuelLeftRatio: three quarters of the log is left")
-	check(near(Station.getWorkDoneRatio(station), 0.5), "getWorkDoneRatio: the fish is half done")
-	Station.advance(station, 12)
-	check(Station.getFuelLeftRatio(station) == 0, "getFuelLeftRatio: 0 when the log has burnt out")
-	check(Station.getWorkDoneRatio(station) == 0, "getWorkDoneRatio: 0 when the second fish is done")
-	check(contents(station) == "-, log 3, cooked_fish 2", "the log lasted exactly two fish")
-	local swapped = stoveWith("fish 2", "log 4", "-")
-	Station.advance(swapped, 4)
-	Inventory.setStack(swapped.inventory, INPUT, ItemStack.new("apple", 2))
-	check(
-		Station.getWorkDoneRatio(swapped) == 0,
-		"getWorkDoneRatio: 0 for an item that has just been put in the place of another"
-	)
-	Station.advance(swapped, 3)
-	check(near(Station.getWorkDoneRatio(swapped), 0.5), "getWorkDoneRatio: and then what has been done on that item")
-	local nearlyOut = stoveWith("fish 2", "log 1", "-")
-	Station.advance(nearlyOut, 15.5)
-	check(
-		near(Station.getFuelLeftRatio(nearlyOut), 0.5 / 16),
-		"getFuelLeftRatio: above 0 for a fire with half a second left"
-	)
-	local burningDown = stoveWith("fish 1", "log 1", "-")
-	Station.advance(burningDown, 10)
-	check(
-		near(Station.getFuelLeftRatio(burningDown), 6 / 16),
-		"getFuelLeftRatio: a fire burns on with nothing to work on"
-	)
-	check(Station.getWorkDoneRatio(burningDown) == 0, "getWorkDoneRatio: 0 with nothing to work on")
-end
-
 do -- which items each slot takes
 	check(
 		Station.slotAcceptsItem("stove", INPUT, "fish") and Station.slotAcceptsItem("stove", INPUT, "apple"),

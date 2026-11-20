@@ -6,8 +6,9 @@
 --- its bottom row, a little apart from the rest. The carried stack follows the pointer. When the
 --- other inventory is a station's, its first slot is drawn above its second, with a fire gauge
 --- between them, and its third slot to the right, past a work gauge. `show` draws,
---- `setHighlightedSlots` brightens slots and `hide` closes the screen. The screen changes no
---- inventory: it reports what the player does on its slots through its `callbacks`.
+--- `setStationGauges` fills the two gauges, `setHighlightedSlots` brightens slots and `hide` closes
+--- the screen. The screen changes no inventory: it reports what the player does on its slots through
+--- its `callbacks`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -72,9 +73,6 @@ export type InventoryGui = {
 	--- and output slots.
 	read stationParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
 }
-
---- How far a station's fire has burnt down and how far its work has got, each from 0 to 1.
-export type StationGauges = { fuelLeftRatio: number, workDoneRatio: number }
 
 local COLUMNS = 9
 local GAP = 4
@@ -424,24 +422,20 @@ end
 
 --- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
 --- there is one, and `otherInventory` above the pack if there is one. `otherInventoryName` is
---- written over the other inventory and is not used when there is none. If `gauges` is given and
---- `otherInventory` has three slots, they are drawn as a station's input, fuel and output, and the
---- gauges are filled as far as `gauges` says.
+--- written over the other inventory and is not used when there is none. If `otherIsStation` is
+--- `true` and `otherInventory` has three slots, they are drawn as a station's input, fuel and
+--- output, with the two gauges, which `setStationGauges` fills.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
 	otherInventory: Inventory.Inventory?,
 	otherInventoryName: string,
 	carriedStack: ItemStack.ItemStack?,
-	gauges: StationGauges?
+	otherIsStation: boolean
 )
 	inventoryGui.title.Text = if otherInventory ~= nil then otherInventoryName else PACK_NAME
 	local otherSlotCount = if otherInventory ~= nil then otherInventory.slotCount else 0
-	local showsStation = gauges ~= nil and otherSlotCount == 3
-	if gauges ~= nil and showsStation then
-		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(gauges.fuelLeftRatio, 0, 1))
-		inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(gauges.workDoneRatio, 0, 1), 1)
-	end
+	local showsStation = otherIsStation and otherSlotCount == 3
 	if
 		#inventoryGui.packSlots ~= pack.slotCount
 		or #inventoryGui.otherSlots ~= otherSlotCount
@@ -463,6 +457,14 @@ function InventoryGui.show(
 	StackIcon.setStack(inventoryGui.carriedIcon, carriedStack)
 	followPointer(inventoryGui)
 	inventoryGui.screenGui.Enabled = true
+end
+
+--- Fills the fire gauge as far as `fuelLeftRatio` says and the work gauge as far as `workDoneRatio`
+--- says, each a number from 0, which is empty, to 1, which is full. The gauges are seen only while
+--- the other inventory is drawn as a station's.
+function InventoryGui.setStationGauges(inventoryGui: InventoryGui, fuelLeftRatio: number, workDoneRatio: number)
+	inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(fuelLeftRatio, 0, 1))
+	inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(workDoneRatio, 0, 1), 1)
 end
 
 --- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An

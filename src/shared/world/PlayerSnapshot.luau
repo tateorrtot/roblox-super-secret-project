@@ -6,19 +6,10 @@
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
 local ItemStack = require("../items/ItemStack")
-local Station = require("../stations/Station")
+local StationProgress = require("../stations/StationProgress")
 local World = require("./World")
 
 local PlayerSnapshot = {}
-
---- How far a station's fire and work have got.
-export type StationProgress = {
-	--- What `Station.getFuelLeftRatio` returns: 1 when the fuel was just lit, 0 when the fire is
-	--- out.
-	fuelLeftRatio: number,
-	--- What `Station.getWorkDoneRatio` returns: 0 when the work has not begun, 1 when it is done.
-	workDoneRatio: number,
-}
 
 export type EncodedSnapshot = {
 	pack: Inventory.EncodedInventory,
@@ -30,9 +21,9 @@ export type EncodedSnapshot = {
 		--- when the pack is open alone.
 		otherInventoryItemId: string?,
 		carriedStack: { itemId: string, count: number }?,
-		--- How far the fire and the work have got. `nil` unless `otherInventory` is a station's
-		--- inventory.
-		stationProgress: StationProgress?,
+		--- How far the fire and the work have got, as times on the world's clock. `nil` unless
+		--- `otherInventory` is a station's inventory.
+		stationProgress: StationProgress.StationProgress?,
 	}?,
 }
 
@@ -43,16 +34,10 @@ export type PlayerSnapshot = {
 	--- The item id of the placed item whose inventory is shown beside the pack, such as `"crate"`.
 	--- `nil` when the pack is open alone.
 	otherInventoryItemId: string?,
-	--- How far the fire and the work have got. `nil` unless that placed item is a station.
-	stationProgress: StationProgress?,
+	--- How far the fire and the work have got, as times on the world's clock. `nil` unless that
+	--- placed item is a station.
+	stationProgress: StationProgress.StationProgress?,
 }
-
-local function stationProgressOf(station: Station.Station): StationProgress
-	return {
-		fuelLeftRatio = Station.getFuelLeftRatio(station),
-		workDoneRatio = Station.getWorkDoneRatio(station),
-	}
-end
 
 --- Returns what to tell the machine of the player with the id `playerId`, as plain data. Fails if
 --- no player has that id.
@@ -72,7 +57,7 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 			otherInventory = if screen.otherInventory then Inventory.encode(screen.otherInventory) else nil,
 			otherInventoryItemId = if placedItem then placedItem.itemId else nil,
 			carriedStack = if carried then { itemId = carried.itemId, count = carried.count } else nil,
-			stationProgress = if station then stationProgressOf(station) else nil,
+			stationProgress = if station then StationProgress.new(station, world.now) else nil,
 		},
 	}
 end
