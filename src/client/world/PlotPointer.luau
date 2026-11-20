@@ -28,6 +28,11 @@ local FARTHEST = 500
 --- The surface is flat enough to be a plot's top when its upward direction is above this.
 local FLAT = 0.9
 
+local function isOnScreen(camera: Camera, viewportPoint: Vector2): boolean
+	local size = camera.ViewportSize
+	return viewportPoint.X >= 0 and viewportPoint.Y >= 0 and viewportPoint.X <= size.X and viewportPoint.Y <= size.Y
+end
+
 local function raycastThroughPoint(camera: Camera, viewportPoint: Vector2): RaycastResult?
 	local ray = camera:ViewportPointToRay(viewportPoint.X, viewportPoint.Y)
 	local params = RaycastParams.new()
@@ -56,13 +61,14 @@ end
 
 --- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed object
 --- nor a bare tile of a plot. The player's own character is looked through. Anything else in the
---- way hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides.
+--- way hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides. A
+--- point that is not on the screen is over nothing.
 ---
 --- Note: `viewportPoint` is in pixels from the top left of the whole window, which includes the
 --- strip along the top of the screen.
 function PlotPointer.getTargetAt(viewportPoint: Vector2): Target?
 	local camera = Workspace.CurrentCamera
-	if camera == nil then
+	if camera == nil or not isOnScreen(camera, viewportPoint) then
 		return nil
 	end
 	local hit = raycastThroughPoint(camera, viewportPoint)

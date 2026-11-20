@@ -43,10 +43,10 @@
 <text x="368" y="396" font-size="12" fill="#5f5e5a">StackIcon</text>
 <rect x="32" y="272" width="126" height="104" rx="5" fill="#e1f5ee" stroke="#1d9e75"/>
 <text x="46" y="292" font-size="14" font-weight="600" fill="#2c2c2a">client/world</text>
-<text x="46" y="316" font-size="12" fill="#5f5e5a">LocalCharacter</text>
-<text x="46" y="332" font-size="12" fill="#5f5e5a">PlacementGhost</text>
-<text x="46" y="348" font-size="12" fill="#5f5e5a">PlotPointer</text>
-<text x="46" y="364" font-size="12" fill="#5f5e5a">UseAndHit</text>
+<text x="46" y="316" font-size="12" fill="#5f5e5a">BreakClick</text>
+<text x="46" y="332" font-size="12" fill="#5f5e5a">LocalCharacter</text>
+<text x="46" y="348" font-size="12" fill="#5f5e5a">PlacementGhost</text>
+<text x="46" y="364" font-size="12" fill="#5f5e5a">PlotPointer</text>
 <rect x="406" y="472" width="77" height="56" rx="5" fill="#e6f1fb" stroke="#378add"/>
 <text x="420" y="492" font-size="14" font-weight="600" fill="#2c2c2a">server</text>
 <text x="420" y="516" font-size="12" fill="#5f5e5a">Remotes</text>

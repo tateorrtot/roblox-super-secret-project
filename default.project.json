@@ -5,6 +5,36 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "Inputs": {
+        "$className": "Folder",
+        "World": {
+          "$className": "InputContext",
+          "Interact": {
+            "$className": "InputAction",
+            "$properties": { "Type": "Bool" },
+            "MouseLeftButton": {
+              "$className": "InputBinding",
+              "$properties": { "KeyCode": "MouseLeftButton" }
+            }
+          },
+          "Break": {
+            "$className": "InputAction",
+            "$properties": { "Type": "Bool" },
+            "MouseRightButton": {
+              "$className": "InputBinding",
+              "$properties": { "KeyCode": "MouseRightButton" }
+            }
+          },
+          "PointerPosition": {
+            "$className": "InputAction",
+            "$properties": { "Type": "ViewportPosition" },
+            "MousePosition": {
+              "$className": "InputBinding",
+              "$properties": { "KeyCode": "MousePosition" }
+            }
+          }
+        }
       }
     },
     "ServerScriptService": {

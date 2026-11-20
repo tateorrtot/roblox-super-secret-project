@@ -16,11 +16,12 @@ Needs Python 3, and Roblox Studio open on a place with its MCP server enabled
     python tools/studio.py tools                 list every tool the connector offers
     python tools/studio.py call <tool> <json>    call any of them
 
-`sync` mirrors the project file: src/shared goes to ReplicatedStorage.Shared, src/server to
-ServerScriptService.Server, and src/client to StarterPlayer.StarterPlayerScripts.Client. A folder
-becomes a Folder, `Name.luau` a ModuleScript, `Name.server.luau` a Script and `Name.client.luau` a
-LocalScript. Everything under those three places is replaced, so the project folder stays the
-only source of the code.
+`sync` does what default.project.json says, as Rojo would. Where the file gives a `$path`, that
+folder of src/ is copied to that place: a folder becomes a Folder, `Name.luau` a ModuleScript,
+`Name.server.luau` a Script and `Name.client.luau` a LocalScript. Where it gives a `$className`
+with no `$path`, an instance of that class is made there, with the properties and the children the
+file lists for it: that is how the input actions under ReplicatedStorage.Inputs come to be.
+Everything at those places is replaced, so the project folder stays the only source of both.
 """
 import base64, io, json, os, queue, subprocess, sys, threading, time
 
@@ -29,11 +30,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAT = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Roblox', 'mcp.bat')
 TIMEOUT = float(os.environ.get('STUDIO_TIMEOUT', '120'))
 ATTACH_SECONDS = 10  # how long to wait for Studio to attach to a connector that has just started
-MAPPING = [
-    ('src/shared', ['ReplicatedStorage', 'Shared']),
-    ('src/server', ['ServerScriptService', 'Server']),
-    ('src/client', ['StarterPlayer', 'StarterPlayerScripts', 'Client']),
-]
+PROJECT_FILE = 'default.project.json'
 
 
 class Studio:
@@ -127,6 +124,28 @@ class Studio:
             pass
 
 
+def read_project():
+    """Returns what the project file says goes where in the place, as two lists. The folders of
+    scripts, each as (folder of the repository, path in the place). The instances the file declares
+    outright, each as (path of its parent in the place, its name, what the file says of it)."""
+    tree = json.load(io.open(os.path.join(REPO, PROJECT_FILE), encoding='utf-8'))['tree']
+    folders, declared = [], []
+
+    def walk(node, place_path):
+        for name, child in node.items():
+            if name.startswith('$'):
+                continue
+            if '$path' in child:
+                folders.append((child['$path'], place_path + [name]))
+            elif '$className' in child:
+                declared.append((place_path, name, child))
+            else:
+                walk(child, place_path + [name])
+
+    walk(tree, [])
+    return folders, declared
+
+
 def collect(directory):
     """Returns every file to sync under one mapped directory, as (path parts, class name, source)."""
     found = []
@@ -192,6 +211,37 @@ return made
 '''
 
 
+DECLARED_LUAU = '''
+local HttpService = game:GetService("HttpService")
+local job = HttpService:JSONDecode(%s)
+local parent = game:GetService(job.parent[1])
+for index = 2, #job.parent do
+	parent = parent:FindFirstChild(job.parent[index]) or error("missing " .. job.parent[index])
+end
+local made = 0
+local function make(name, node)
+	local instance = Instance.new(node["$className"])
+	instance.Name = name
+	for property, value in node["$properties"] or {} do
+		instance[property] = value
+	end
+	for childName, child in node do
+		if string.sub(childName, 1, 1) ~= "$" then
+			make(childName, child).Parent = instance
+		end
+	end
+	made += 1
+	return instance
+end
+local old = parent:FindFirstChild(job.name)
+if old then
+	old:Destroy()
+end
+make(job.name, job.node).Parent = parent
+return made
+'''
+
+
 def long_string(text):
     """A Luau long string literal holding `text` exactly."""
     level = 3
@@ -202,7 +252,8 @@ def long_string(text):
 
 def sync(studio):
     total = 0
-    for directory, target in MAPPING:
+    folders, declared = read_project()
+    for directory, target in folders:
         files = collect(directory)
         batches = [files[i:i + 6] for i in range(0, len(files), 6)] or [[]]
         for number, batch in enumerate(batches):
@@ -212,6 +263,10 @@ def sync(studio):
             total += int(float(made or 0))
         print('%-12s -> %s: %d scripts' % (directory, '.'.join(target), len(files)))
     print('synced %d scripts into the open place' % total)
+    for parent, name, node in declared:
+        job = {'parent': parent, 'name': name, 'node': node}
+        made = int(float(studio.luau(DECLARED_LUAU % long_string(json.dumps(job))) or 0))
+        print('%-12s -> %s: %d instances' % (PROJECT_FILE, '.'.join(parent + [name]), made))
 
 
 def main():

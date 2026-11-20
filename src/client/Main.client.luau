@@ -4,9 +4,14 @@
 --- It draws what the server says the player holds, and turns what the player does with the keys
 --- and the mouse into requests to the server. It decides nothing about the game by itself.
 ---
+--- The world: the player interacts with what the pointer is over, and breaks it. Those two are
+--- Roblox's input actions `Interact` and `Break`, under ReplicatedStorage.Inputs.World, and which
+--- button each is bound to is written there and not here. A tap on a touch screen interacts.
+---
 --- Keys: E opens the pack or closes the inventory screen, 1 to 9 select a hotbar slot, and Q drops
 --- one of what is in hand, or all of it with the left Ctrl key held. With the inventory screen
 --- open, 1 to 9 and Q act on the slot under the pointer instead.
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -26,15 +31,16 @@ local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
 local StationProgress = require(Shared.stations.StationProgress)
 local StoveItem = require(Shared.content.StoveItem)
 
+local BreakClick = require(script.Parent.world.BreakClick)
 local CrateItemGhost = require(script.Parent.content.CrateItemGhost)
 local HotbarGui = require(script.Parent.inventory.HotbarGui)
 local InventoryControls = require(script.Parent.inventory.InventoryControls)
 local InventoryGui = require(script.Parent.inventory.InventoryGui)
+local LocalCharacter = require(script.Parent.world.LocalCharacter)
 local PlotPointer = require(script.Parent.world.PlotPointer)
 local Remotes = require(script.Parent.Remotes)
 local SlotGestures = require(script.Parent.inventory.SlotGestures)
 local StoveItemGhost = require(script.Parent.content.StoveItemGhost)
-local UseAndHit = require(script.Parent.world.UseAndHit)
 
 Content.register()
 
@@ -54,6 +60,10 @@ local selectedItemPieces: { [string]: SelectedItemPiece } = {
 }
 
 local remotes = Remotes.waitForAll()
+local worldInputs = ReplicatedStorage:WaitForChild("Inputs"):WaitForChild("World")
+local interactAction = worldInputs:WaitForChild("Interact") :: InputAction
+local breakAction = worldInputs:WaitForChild("Break") :: InputAction
+local pointerPositionAction = worldInputs:WaitForChild("PointerPosition") :: InputAction
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 --- What the server last said the player holds.
@@ -235,21 +245,68 @@ remotes.askForSnapshot:FireServer()
 -- Roblox's own backpack bar would sit on top of ours, and its tools are not our items.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-UseAndHit.startListening({
-	isBlocked = function()
-		return snapshot.screen ~= nil
-	end,
-	onPointerMoved = updateSelectedItemPiece,
-	onPlacedObjectUsed = function(placedObjectId)
-		remotes.interactWithPlacedObject:FireServer(placedObjectId)
-	end,
-	onTileUsed = function(x, z)
-		remotes.interactWithTile:FireServer(x, z)
-	end,
-	onPlacedObjectHit = function(placedObjectId)
-		remotes.breakPlacedObject:FireServer(placedObjectId)
-	end,
-})
+--- A white outline around the placed object that the pointer is over, while the player's
+--- character reaches it. It is Roblox's own SelectionBox, and its `Adornee` is the part it is
+--- around.
+local pointerOutline = Instance.new("SelectionBox")
+pointerOutline.Name = "PointerOutline"
+pointerOutline.LineThickness = 0.05
+pointerOutline.Color3 = Color3.new(1, 1, 1)
+pointerOutline.Parent = Workspace
+
+--- What the point `viewportPoint` of the screen is over in the world. `nil` while the inventory
+--- screen is open: the pointer is then over the screen.
+local function getWorldTargetAt(viewportPoint: Vector2): PlotPointer.Target?
+	return if snapshot.screen == nil then PlotPointer.getTargetAt(viewportPoint) else nil
+end
+
+--- Where the pointer is on the screen, in pixels from the top left of the whole window, as
+--- Roblox's input action `PointerPosition` has it.
+--- Note: what that action holds on a machine with no mouse has not been tried. While its context
+--- was disabled it held -1, -1, which is off the screen.
+local function getPointerPosition(): Vector2
+	return pointerPositionAction:GetState() :: Vector2
+end
+
+local function interactAt(viewportPoint: Vector2)
+	local target = getWorldTargetAt(viewportPoint)
+	if target ~= nil and target.kind == "placedObject" then
+		remotes.interactWithPlacedObject:FireServer(target.placedObjectId)
+	elseif target ~= nil and target.kind == "tile" then
+		remotes.interactWithTile:FireServer(target.x, target.z)
+	end
+end
+
+local function breakAt(viewportPoint: Vector2)
+	local target = getWorldTargetAt(viewportPoint)
+	if target ~= nil and target.kind == "placedObject" then
+		remotes.breakPlacedObject:FireServer(target.placedObjectId)
+	end
+end
+
+interactAction.Pressed:Connect(function()
+	interactAt(getPointerPosition())
+end)
+
+BreakClick.connect(breakAction, function()
+	breakAt(getPointerPosition())
+end)
+
+-- Note: Roblox's input actions have no tap, so a tap is still read from UserInputService. A tap's
+-- place is measured from under the strip along the top of the screen, and PlotPointer measures from
+-- the top of the window, so the strip's height is added back.
+UserInputService.TouchTapInWorld:Connect(function(position: Vector2, handledElsewhere: boolean)
+	if not handledElsewhere then
+		interactAt(position + GuiService:GetGuiInset())
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	local target = getWorldTargetAt(getPointerPosition())
+	local reached = if target ~= nil and LocalCharacter.canReachPoint(target.center) then target else nil
+	pointerOutline.Adornee = if reached ~= nil and reached.kind == "placedObject" then reached.part else nil
+	updateSelectedItemPiece(target)
+end)
 
 local function onDropKey()
 	local over = inventoryGui.hoveredSlot

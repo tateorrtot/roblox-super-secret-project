@@ -7,8 +7,8 @@ Run it from the repository root, with Studio open on the place and in Edit mode:
 
 It copies src/ into the place, starts a play test, and drives the test character with keys, clicks
 and walking: the hotbar, the inventory screen, dropping and picking up, the crate, and placing,
-using and hitting on the plot, baking an apple in the stove, and which way a throw goes in third
-person and in first. After each step it looks at what a player would see (the slots on
+interacting and breaking on the plot, what the item in hand shows there, baking an apple in the
+stove, and which way a throw goes in third person and in first. After each step it looks at what a player would see (the slots on
 the screen) and at what is in the world (the blocks on the ground and on the plot). It prints one
 line for each thing that should be true, and exits with code 1 if any was not.
 
@@ -173,7 +173,7 @@ task.wait(1)
 return tostring(sent)
 '''
 
-# Asks the server outright to use or to hit a placed object, whatever the player's own machine thinks of it.
+# Asks the server outright to interact with a placed object or to break it, whatever the player's own machine thinks of it.
 ASK_OUTRIGHT = '''
 game:GetService("ReplicatedStorage").Remotes.%s:FireServer(%d)
 task.wait(0.5)
@@ -185,6 +185,53 @@ ASK_TO_PLACE = '''
 game:GetService("ReplicatedStorage").Remotes.interactWithTile:FireServer(%d, %d)
 task.wait(0.5)
 return "asked"
+'''
+
+# The input actions under ReplicatedStorage.Inputs.World, each with the keys bound to it, as "Action:Key,Key".
+READ_INPUTS = '''
+local world = game:GetService("ReplicatedStorage"):FindFirstChild("Inputs")
+world = world and world:FindFirstChild("World")
+if world == nil or not world:IsA("InputContext") then
+	return "none"
+end
+local found = {}
+for _, action in world:GetChildren() do
+	if action:IsA("InputAction") then
+		local keys = {}
+		for _, binding in action:GetChildren() do
+			if binding:IsA("InputBinding") then
+				table.insert(keys, binding.KeyCode.Name)
+			end
+		end
+		table.sort(keys)
+		table.insert(found, action.Name .. "(" .. action.Type.Name .. "):" .. table.concat(keys, ","))
+	end
+end
+table.sort(found)
+return table.concat(found, " ")
+'''
+
+# The see-through blocks that show where an object would stand, as a list of where each is and which kind's
+# colour it has, and the id of the placed object that the white outline is around, if any.
+POINTER_MARKS = '''
+local HttpService = game:GetService("HttpService")
+local PlacedObjectLooks = require(game:GetService("ReplicatedStorage").Shared.content.PlacedObjectLooks)
+local marks = { ghosts = {} }
+for _, child in workspace:GetChildren() do
+	if child.Name == "PlacementGhost" and child:IsA("BasePart") then
+		local kind = "unknown"
+		for kindId, look in PlacedObjectLooks do
+			if child.Color == Color3.fromRGB(look.color[1], look.color[2], look.color[3]) then
+				kind = kindId
+			end
+		end
+		table.insert(marks.ghosts, { x = child.Position.X, z = child.Position.Z, kind = kind })
+	end
+end
+local outline = workspace:FindFirstChild("PointerOutline")
+local around = outline and outline.Adornee
+marks.outlined = if around then around:GetAttribute("placedObjectId") else nil
+return HttpService:JSONEncode(marks)
 '''
 
 # The length of a tile's side and of a ground item's block, in studs, as Plot and GroundItems have them.
@@ -413,9 +460,28 @@ class Playtest:
             {'action': 'moveTo', 'instance_path': PANEL + slot}, {'action': 'wait', 'wait_time_ms': 100},
             {'action': 'mouseButtonUp', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 350}]})
 
+    # Moves the pointer to a place and leaves it there. `where` is a point on the screen or the path of an instance.
     def hover(self, where):
+        move = {'action': 'moveTo'}
+        if isinstance(where, tuple):
+            move['x'], move['y'] = where
+        else:
+            move['instance_path'] = where
+        self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [move, {'action': 'wait', 'wait_time_ms': 250}]})
+
+    # Presses a mouse button at a point on the screen, holds it for so many milliseconds, and lets it go.
+    def press_for(self, point, button, milliseconds):
         self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
-            {'action': 'moveTo', 'instance_path': where}, {'action': 'wait', 'wait_time_ms': 250}]})
+            {'action': 'moveTo', 'x': point[0], 'y': point[1]}, {'action': 'wait', 'wait_time_ms': 150},
+            {'action': 'mouseButtonDown', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': milliseconds},
+            {'action': 'mouseButtonUp', 'mouse_button': button}, {'action': 'wait', 'wait_time_ms': 350}]})
+
+    # What marks the pointer's place in the world: the ghosts that are shown, and the id of the outlined placed object.
+    def pointer_marks(self):
+        marks = json.loads(self.studio.luau(POINTER_MARKS, 'Client'))
+        if not isinstance(marks.get('ghosts'), list):
+            marks['ghosts'] = []
+        return marks
 
     # Puts the first hotbar slot that holds anything in hand. False if the hotbar holds nothing.
     def select_a_held_slot(self):
@@ -495,6 +561,9 @@ class Playtest:
         check(sorted(entry['item'] for entry in world['placed']) == ['crate', 'stove'], 'a crate and a stove stand on the plot')
         stood = self.studio.luau(STAND_ON_OPEN_GROUND, 'Server').strip().split(',')
         check(len(stood) == 3 and stood[2] == 'Baseplate', 'the test character is stood on open ground, clear of the spawn pad', stood)
+        inputs = self.studio.luau(READ_INPUTS, 'Client').strip()
+        check(inputs == 'Break(Bool):MouseRightButton Interact(Bool):MouseLeftButton PointerPosition(ViewportPosition):MousePosition',
+              'the place has the input actions that the project file declares, each bound to its button', inputs)
 
         # The pack, by mouse.
         self.keys('E')
@@ -633,7 +702,7 @@ class Playtest:
             spilled = [entry for entry in world['ground'] if entry['item'] == 'crate']
             check(len(spilled) == 1 and ((spilled[0]['x'] - center_x) ** 2 + (spilled[0]['z'] - center_z) ** 2) ** 0.5 < 8
                   and spilled[0]['y'] < world['plot']['y'] + 0.5,
-                  'hit, the crate spills out of its tile and comes to rest on the ground near it', spilled)
+                  'broken, the crate spills out of its tile and comes to rest on the ground near it', spilled)
             time.sleep(1.6)
             for entry in world['ground']:
                 self.walk_to(entry['x'], entry['z'])
@@ -642,7 +711,7 @@ class Playtest:
             check(view['hotbar'].get('s3') == 'Log 6' and view['hotbar'].get('s4') == 'Crate' and self.world()['ground'] == [],
                   'and both are picked up again by walking over them', {'hotbar': view['hotbar'], 'ground': self.world()['ground']})
 
-        # Placing, using and hitting on the plot.
+        # Placing, interacting and breaking on the plot.
         self.keys('Four')
         found = self.studio.luau(FIND_TILE, 'Client').strip()
         check(found != 'none' and self.view()['held'] == 'Crate', 'with the crate in hand, a bare tile is in view and in reach', found)
@@ -650,6 +719,18 @@ class Playtest:
             return
         numbers = [float(part) for part in found.split(',')]
         point, tile_x, tile_z = (numbers[0], numbers[1]), numbers[2], numbers[3]
+        self.hover(point)
+        ghosts = self.pointer_marks()['ghosts']
+        check(len(ghosts) == 1 and ghosts[0]['kind'] == 'crate' and abs(ghosts[0]['x'] - tile_x) < 0.1 and abs(ghosts[0]['z'] - tile_z) < 0.1,
+              'with the crate in hand, a see-through crate shows on the tile under the pointer', ghosts)
+        self.keys('Three')
+        check(self.view()['held'] == 'Log' and self.pointer_marks()['ghosts'] == [],
+              'with a log in hand, nothing shows there', self.pointer_marks()['ghosts'])
+        self.keys('Four')
+        self.keys('E')
+        check(self.view()['open'] and self.pointer_marks()['ghosts'] == [],
+              'and nothing shows while the inventory screen is open', self.pointer_marks()['ghosts'])
+        self.keys('E')
         self.click(point)
         placed = [entry for entry in self.world()['placed'] if abs(entry['x'] - tile_x) < 0.1 and abs(entry['z'] - tile_z) < 0.1]
         check(len(placed) == 1 and placed[0]['item'] == 'crate', 'a click on the tile places the crate there')
@@ -657,6 +738,10 @@ class Playtest:
         if placed:
             mine = placed[0]
             point, _ = self.screen_point(mine['x'], mine['y'], mine['z'])
+            self.hover(point)
+            marks = self.pointer_marks()
+            check(marks.get('outlined') == mine['id'] and marks['ghosts'] == [],
+                  'the placed crate under the pointer has the white outline, and no ghost shows on it', marks)
             self.click(point)
             view = self.view()
             check(view['open'] and view['title'] == 'Crate' and all(text == '' for text in view['other'].values()),
@@ -667,9 +752,12 @@ class Playtest:
             check(self.view()['other'].get('s1') == 'Apple 4', 'a stack is sent into it', self.view()['other'].get('s1'))
             self.keys('E')
             point, _ = self.screen_point(mine['x'], mine['y'], mine['z'])
+            self.press_for(point, 'right', 700)
+            check(any(entry['id'] == mine['id'] for entry in self.world()['placed']),
+                  'the right button held on the crate for longer than a click breaks nothing')
             self.click(point, 'right')
             world = self.world()
-            check(all(entry['id'] != mine['id'] for entry in world['placed']), 'a right click knocks the crate off the plot')
+            check(all(entry['id'] != mine['id'] for entry in world['placed']), 'a right click breaks the crate: it is off the plot')
             check(self.ground_at_rest('crate') == [1] and self.ground('apple') == [4],
                   'it lies on the ground as an item, and so does what was in it', world['ground'])
 
@@ -735,10 +823,11 @@ class Playtest:
         check(on_screen and away > 16.5, 'the crate is in view from out of reach', {'studs away': away, 'at': point})
         self.click(point)
         check(not self.view()['open'], 'a click on it from there opens nothing')
+        check(self.pointer_marks().get('outlined') is None, 'and it has no outline, with the pointer on it', self.pointer_marks())
         self.studio.luau(ASK_OUTRIGHT % ('interactWithPlacedObject', crate['id']), 'Client')
         self.studio.luau(ASK_OUTRIGHT % ('breakPlacedObject', crate['id']), 'Client')
         check(not self.view()['open'] and any(entry['id'] == crate['id'] for entry in self.world()['placed']),
-              'and nor does asking the server outright to use it and to hit it, as a tampered machine might')
+              'and nor does asking the server outright to interact with it and to break it, as a tampered machine might')
         self.walk_to(crate['x'] - 7, crate['z'] + 5)
         self.studio.luau(ASK_OUTRIGHT % ('interactWithPlacedObject', crate['id']), 'Client')
         view = self.view()
