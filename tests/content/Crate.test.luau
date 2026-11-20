@@ -1,14 +1,14 @@
 --!strict
--- Tests for Crate. Run from the repository root: lune run tests/placedObjectKinds/Crate.test.luau
+-- Tests for Crate. Run from the repository root: lune run tests/content/Crate.test.luau
 
 local Check = require("../Check")
-local Crate = require("../../src/shared/placedObjectKinds/Crate")
+local Crate = require("../../src/shared/content/Crate")
 local GroundItems = require("../../src/shared/world/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
-local PlaceableItems = require("../../src/shared/placedObjectKinds/PlaceableItems")
+local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
@@ -58,9 +58,19 @@ end
 do -- a crate as numbers and names
 	check(Crate.PLACED_OBJECT_KIND_ID == "crate", 'PLACED_OBJECT_KIND_ID: a crate is of the kind "crate"')
 	check(Crate.SLOT_COUNT == 27, "SLOT_COUNT: a crate has 27 slots")
+	check(Crate.ITEM_ID_WHEN_BROKEN == "crate", 'ITEM_ID_WHEN_BROKEN: a broken crate leaves the item "crate"')
+end
+
+do -- a crate as the script of its kind
+	PlacedObjectScripts.register(Crate.PLACED_OBJECT_KIND_ID, Crate)
+	local registered = PlacedObjectScripts.find(Crate.PLACED_OBJECT_KIND_ID)
 	check(
-		PlaceableItems[Crate.ITEM_ID_WHEN_BROKEN] == Crate.PLACED_OBJECT_KIND_ID,
-		"ITEM_ID_WHEN_BROKEN: the item that a broken crate leaves is the item that places a crate"
+		registered ~= nil and registered.interact == Crate.interact,
+		"interact: is what a registered crate does when a player interacts with one"
+	)
+	check(
+		registered ~= nil and registered.breakPlacedObject == Crate.breakPlacedObject,
+		"breakPlacedObject: is what a registered crate does when a player breaks one"
 	)
 end
 

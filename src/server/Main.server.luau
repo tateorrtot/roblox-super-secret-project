@@ -13,14 +13,9 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local FuelDefinitions = require(Shared.stations.FuelDefinitions)
-local FuelRegistry = require(Shared.stations.FuelRegistry)
-local ItemDefinitions = require(Shared.items.ItemDefinitions)
-local ItemRegistry = require(Shared.items.ItemRegistry)
+local Content = require(Shared.content.Content)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
 local Position = require(Shared.Position)
-local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
-local RecipeRegistry = require(Shared.stations.RecipeRegistry)
 local Requests = require(Shared.requests.Requests)
 local World = require(Shared.world.World)
 
@@ -41,15 +36,7 @@ local REQUESTS_PER_SECOND = 60
 --- character's `HipHeight` says this already, and an R6 character's `HipHeight` is 0.
 local R6_LEG_LENGTH = 2
 
-for _, definition in ItemDefinitions do
-	ItemRegistry.register(definition)
-end
-for _, recipe in RecipeDefinitions do
-	RecipeRegistry.register(recipe)
-end
-for _, fuel in FuelDefinitions do
-	FuelRegistry.register(fuel)
-end
+Content.register()
 
 CollisionGroups.register()
 local remotes = Remotes.create()

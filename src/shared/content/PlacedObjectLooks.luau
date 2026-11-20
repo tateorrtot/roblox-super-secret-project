@@ -1,7 +1,8 @@
 --!strict
 --- How each kind of placed object is shown while it has no art of its own, by the kind's id.
 ---
---- There is one row for each kind in `PlacedObjectKinds`. The names and colours are placeholders.
+--- There is one row for each kind of placed object that the game has. The names and colours are
+--- placeholders.
 
 export type PlacedObjectLook = {
 	--- The name shown for a placed object of the kind.

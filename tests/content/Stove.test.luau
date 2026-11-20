@@ -1,5 +1,5 @@
 --!strict
--- Tests for Stove. Run from the repository root: lune run tests/placedObjectKinds/Stove.test.luau
+-- Tests for Stove. Run from the repository root: lune run tests/content/Stove.test.luau
 
 local Check = require("../Check")
 local FuelDefinitions = require("../../src/shared/stations/FuelDefinitions")
@@ -10,14 +10,14 @@ local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemDefinitions = require("../../src/shared/items/ItemDefinitions")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
-local PlaceableItems = require("../../src/shared/placedObjectKinds/PlaceableItems")
+local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local RecipeDefinitions = require("../../src/shared/stations/RecipeDefinitions")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Station = require("../../src/shared/stations/Station")
-local Stove = require("../../src/shared/placedObjectKinds/Stove")
+local Stove = require("../../src/shared/content/Stove")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -62,16 +62,26 @@ end
 do -- a stove as names, and its recipes
 	check(Stove.PLACED_OBJECT_KIND_ID == "stove", 'PLACED_OBJECT_KIND_ID: a stove is of the kind "stove"')
 	check(Stove.STATION_KIND_ID == "stove", 'STATION_KIND_ID: a stove is a station of the kind "stove"')
-	check(
-		PlaceableItems[Stove.ITEM_ID_WHEN_BROKEN] == Stove.PLACED_OBJECT_KIND_ID,
-		"ITEM_ID_WHEN_BROKEN: the item that a broken stove leaves is the item that places a stove"
-	)
+	check(Stove.ITEM_ID_WHEN_BROKEN == "stove", 'ITEM_ID_WHEN_BROKEN: a broken stove leaves the item "stove"')
 	for index, recipe in RecipeDefinitions do
 		check(
 			recipe.station == Stove.STATION_KIND_ID,
 			"RecipeDefinitions: row " .. index .. " is a recipe for the stove, the one kind of station there is"
 		)
 	end
+end
+
+do -- a stove as the script of its kind
+	PlacedObjectScripts.register(Stove.PLACED_OBJECT_KIND_ID, Stove)
+	local registered = PlacedObjectScripts.find(Stove.PLACED_OBJECT_KIND_ID)
+	check(
+		registered ~= nil and registered.interact == Stove.interact,
+		"interact: is what a registered stove does when a player interacts with one"
+	)
+	check(
+		registered ~= nil and registered.breakPlacedObject == Stove.breakPlacedObject,
+		"breakPlacedObject: is what a registered stove does when a player breaks one"
+	)
 end
 
 do -- place

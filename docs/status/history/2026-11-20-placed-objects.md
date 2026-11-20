@@ -16,7 +16,7 @@ On a new branch, `placed-objects`, cut from `dropped-items`. Eight commits, each
 | A placed item is called a placed object | Spelling only, across the code, the tests and the play test |
 | A player's state no longer names placed objects | `PlayerState.openScreen` is the one way to open the screen. The world remembers which placed object a screen was opened on |
 | Step 1 | The inventory comes out of the placed object. The world keeps what a placed object is given, by its id. `plots` no longer requires `inventory` |
-| Step 2 | A placed object is a kind and a tile. Each kind is a module in `src/shared/placedObjectKinds`. Items lose `placeable` and `slotCount`. `plots` no longer requires `items` |
+| Step 2 | A placed object is a kind and a tile. Each kind is a module in a folder of its own, `placedObjectKinds` (moved to `src/shared/content` later the same day). Items lose `placeable` and `slotCount`. `plots` no longer requires `items` |
 | Step 3 | Each kind says what interacting with it does and what breaking it leaves. The requests are `interactWithTile`, `interactWithPlacedObject` and `breakPlacedObject` |
 | `World.REACH` is `World.CHARACTER_REACH` | A name cold readers had doubted |
 | After the cold readers and the reviewers | Two names, three comments, six checks |

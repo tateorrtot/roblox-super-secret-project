@@ -14,7 +14,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local PlacedObjectLooks = require(Shared.placedObjectKinds.PlacedObjectLooks)
+local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local Plot = require(Shared.plots.Plot)
 local Station = require(Shared.stations.Station)
 

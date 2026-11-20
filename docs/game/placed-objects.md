@@ -48,9 +48,9 @@ Three kinds, then: one that works on what is inside it; one that is worked on by
 ## Where the code is
 Built on 2026-11-20, on the branch `placed-objects`. How it is put together is in `docs/code/pieces.md`.
 - **A placed object is a kind and a tile.** `plots` requires neither `items` nor `inventory`.
-- **Each kind is a module in `src/shared/placedObjectKinds`:** `Crate` and `Stove`. Each has three functions, `place`, `interact` and `breakPlacedObject`, and says in its own file what they do.
+- **Each kind is a module in `src/shared/content`:** `Crate` and `Stove`. Each has `place`, `interact` and `breakPlacedObject`, and says in its own file what they do. The last two are the kind's script, which `PlacedObjectScripts` holds and the requests call.
 - **What a kind gives its objects is kept by the world,** by the placed object's id, and goes when the object is taken off the plot.
-- **Which item places which kind is a table outside both systems,** `PlaceableItems`.
+- **An item that places an object has a script of its own:** `CrateItem` and `StoveItem`, which `ItemScripts` holds. No table says which items place. The user asked why one still did, on 2026-11-20 (`docs/working/code-reviews/2026-11-20-9-simple-things-and-glue.md`).
 
 What the game still decides for every kind alike, each for the piece named:
 - **A screen is a pack, another inventory and a furnace's gauges.** The player's machine draws a grid, or the furnace if the inventory has three slots. Any other screen needs the screens to be the kind's own.

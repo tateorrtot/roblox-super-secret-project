@@ -10,12 +10,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Crate = require(Shared.placedObjectKinds.Crate)
+local Crate = require(Shared.content.Crate)
 local Inventory = require(Shared.inventory.Inventory)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local Plot = require(Shared.plots.Plot)
-local Stove = require(Shared.placedObjectKinds.Stove)
+local Stove = require(Shared.content.Stove)
 local World = require(Shared.world.World)
 
 local PlaceholderWorld = {}

@@ -15,27 +15,43 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Content = require(Shared.content.Content)
+local CrateItem = require(Shared.content.CrateItem)
 local Direction = require(Shared.Direction)
 local Inventory = require(Shared.inventory.Inventory)
 local InventoryScreen = require(Shared.inventory.InventoryScreen)
-local ItemDefinitions = require(Shared.items.ItemDefinitions)
-local ItemRegistry = require(Shared.items.ItemRegistry)
-local PlaceableItems = require(Shared.placedObjectKinds.PlaceableItems)
-local PlacedObjectLooks = require(Shared.placedObjectKinds.PlacedObjectLooks)
+local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local PlayerState = require(Shared.players.PlayerState)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
 local StationProgress = require(Shared.stations.StationProgress)
+local StoveItem = require(Shared.content.StoveItem)
 
+local CrateItemGhost = require(script.Parent.content.CrateItemGhost)
 local HotbarGui = require(script.Parent.inventory.HotbarGui)
 local InventoryControls = require(script.Parent.inventory.InventoryControls)
 local InventoryGui = require(script.Parent.inventory.InventoryGui)
+local PlotPointer = require(script.Parent.world.PlotPointer)
 local Remotes = require(script.Parent.Remotes)
 local SlotGestures = require(script.Parent.inventory.SlotGestures)
+local StoveItemGhost = require(script.Parent.content.StoveItemGhost)
 local UseAndHit = require(script.Parent.world.UseAndHit)
 
-for _, definition in ItemDefinitions do
-	ItemRegistry.register(definition)
-end
+Content.register()
+
+--- What an item shows in the world while it is in the selected hotbar slot.
+type SelectedItemPiece = {
+	--- Called every frame while the item is in the selected hotbar slot, with what the pointer is
+	--- over, or `nil` if it is over nothing.
+	update: (pointerTarget: PlotPointer.Target?) -> (),
+	--- Called once when the item is in the selected hotbar slot no longer.
+	hide: () -> (),
+}
+
+--- The piece of each item that shows something while it is selected, by the item's id.
+local selectedItemPieces: { [string]: SelectedItemPiece } = {
+	[CrateItem.ITEM_ID] = CrateItemGhost,
+	[StoveItem.ITEM_ID] = StoveItemGhost,
+}
 
 local remotes = Remotes.waitForAll()
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -48,6 +64,9 @@ local snapshot: PlayerSnapshot.PlayerSnapshot = {
 --- How far the world's clock is ahead of this machine's own, in seconds, as of the last snapshot.
 local worldClockLead = 0
 local gestures = SlotGestures.new()
+--- The piece of `selectedItemPieces` that was last updated. `nil` while the item in the selected
+--- hotbar slot has none.
+local shownSelectedItemPiece: SelectedItemPiece? = nil
 
 local hotbarGui: HotbarGui.HotbarGui
 local inventoryGui: InventoryGui.InventoryGui
@@ -128,9 +147,16 @@ local function controlsScreen(screen: InventoryScreen.InventoryScreen): Inventor
 	}
 end
 
-local function getKindIdPlacedBySelectedItem(): string?
+local function updateSelectedItemPiece(pointerTarget: PlotPointer.Target?)
 	local selected = Inventory.getStack(snapshot.pack, snapshot.selectedHotbarSlot)
-	return if selected ~= nil then PlaceableItems[selected.itemId] else nil
+	local piece = if selected ~= nil then selectedItemPieces[selected.itemId] else nil
+	if shownSelectedItemPiece ~= nil and shownSelectedItemPiece ~= piece then
+		shownSelectedItemPiece.hide()
+	end
+	shownSelectedItemPiece = piece
+	if piece ~= nil then
+		piece.update(pointerTarget)
+	end
 end
 
 hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOT_COUNT, {
@@ -213,7 +239,7 @@ UseAndHit.startListening({
 	isBlocked = function()
 		return snapshot.screen ~= nil
 	end,
-	getPlaceableKindId = getKindIdPlacedBySelectedItem,
+	onPointerMoved = updateSelectedItemPiece,
 	onPlacedObjectUsed = function(placedObjectId)
 		remotes.interactWithPlacedObject:FireServer(placedObjectId)
 	end,

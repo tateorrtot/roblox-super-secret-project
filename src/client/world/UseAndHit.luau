@@ -4,9 +4,8 @@
 --- Use is a left click, or a tap on a touch screen. Hit is a short right click: holding the right
 --- button turns the camera, so only a quick press that did not turn it is a Hit. Hit has no touch
 --- control yet. Both act on the placed object or the bare tile under the pointer, if the player's
---- character stands within `World.CHARACTER_REACH` of it. With a mouse, the thing under the
---- pointer is marked while it is in reach: a placed object gets a white outline, and a bare tile
---- gets a faint block if the item in hand places an object.
+--- character stands within `World.CHARACTER_REACH` of it. With a mouse, a placed object under the
+--- pointer gets a white outline while it is in reach.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,7 +14,6 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local World = require(ReplicatedStorage:WaitForChild("Shared").world.World)
-local PlacementGhost = require(script.Parent.PlacementGhost)
 local PlotPointer = require(script.Parent.PlotPointer)
 
 local UseAndHit = {}
@@ -23,12 +21,13 @@ local UseAndHit = {}
 export type Callbacks = {
 	--- Returns `true` while the world takes no clicks, as when a screen is open over it.
 	isBlocked: () -> boolean,
-	--- Returns the id of the kind of placed object that the item in the player's hand places, or
-	--- `nil` if it places none.
-	getPlaceableKindId: () -> string?,
+	--- Called every frame with what the mouse is over, if the player's character reaches it.
+	--- Called with `nil` if it is over nothing in reach, while the world takes no clicks, and
+	--- on a machine with no mouse.
+	onPointerMoved: (target: PlotPointer.Target?) -> (),
 	--- Called with a placed object's id when the player uses it.
 	onPlacedObjectUsed: (placedObjectId: number) -> (),
-	--- Called with a tile when the player uses it while an item that places an object is in hand.
+	--- Called with a tile when the player uses it.
 	onTileUsed: (x: number, z: number) -> (),
 	--- Called with a placed object's id when the player hits it.
 	onPlacedObjectHit: (placedObjectId: number) -> (),
@@ -70,7 +69,6 @@ end
 --- through `callbacks`, and nothing is reported or marked while `callbacks.isBlocked` returns
 --- `true`.
 function UseAndHit.startListening(callbacks: Callbacks)
-	local ghost = PlacementGhost.new()
 	local outline = makeOutline()
 	local rightPressedAt: number? = nil
 	local lookWhenPressed = Vector3.zero
@@ -82,7 +80,7 @@ function UseAndHit.startListening(callbacks: Callbacks)
 	local function use(target: PlotPointer.Target?)
 		if target ~= nil and target.kind == "placedObject" then
 			callbacks.onPlacedObjectUsed(target.placedObjectId)
-		elseif target ~= nil and target.kind == "tile" and callbacks.getPlaceableKindId() ~= nil then
+		elseif target ~= nil and target.kind == "tile" then
 			callbacks.onTileUsed(target.x, target.z)
 		end
 	end
@@ -95,12 +93,7 @@ function UseAndHit.startListening(callbacks: Callbacks)
 
 	RunService.RenderStepped:Connect(function()
 		local target = if UserInputService.MouseEnabled then targetAt(UserInputService:GetMouseLocation()) else nil
-		local kindId = callbacks.getPlaceableKindId()
-		if target ~= nil and target.kind == "tile" and kindId ~= nil then
-			PlacementGhost.show(ghost, kindId, target.center)
-		else
-			PlacementGhost.hide(ghost)
-		end
+		callbacks.onPointerMoved(target)
 		outline.Adornee = if target ~= nil and target.kind == "placedObject" then target.part else nil
 	end)
 

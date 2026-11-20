@@ -1,15 +1,16 @@
 --!strict
 -- Tests for Requests and Messages. Run from the repository root: lune run tests/requests/Requests.test.luau
+-- The items and the kind of placed object here are made up for the tests. The game's own things are
+-- sent every request there is in tests/content/Content.test.luau.
 
 local Check = require("../Check")
-local Crate = require("../../src/shared/placedObjectKinds/Crate")
-local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryRequests = require("../../src/shared/requests/InventoryRequests")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local Messages = require("../../src/shared/requests/Messages")
+local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local PlotRequests = require("../../src/shared/requests/PlotRequests")
@@ -21,12 +22,19 @@ local check = Check.that
 local carryOut = Requests.carryOut :: (world: World.World, playerId: any, name: any, ...any) -> ()
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
-FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "post", stackSize = 8 })
-ItemRegistry.register({ id = "crate", stackSize = 1 })
 
-local itemIds = { "log", "fish", "post", "crate" }
+-- The players who have interacted with a bell, in order. A bell is a kind of placed object made up
+-- for these tests, whose script records who interacts with one and does nothing else.
+local bellInteractedBy: { PlayerState.PlayerState } = {}
+PlacedObjectScripts.register("bell", {
+	interact = function(_world: World.World, player: PlayerState.PlayerState, _placedObjectId: number)
+		table.insert(bellInteractedBy, player)
+	end,
+})
+
+local itemIds = { "log", "fish", "post" }
 local at = Position.new
 local ALONG_X = { x = 1, y = 0, z = 0 }
 
@@ -45,20 +53,7 @@ local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): b
 	return stack ~= nil and stack.itemId == itemId and stack.count == count
 end
 
--- The inventory that a placed object was given, or the inventory of the station it was made. Nil
--- if it was given neither.
-local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
-	local station = world.stations[placedObjectId]
-	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
-end
-
--- The inventory inside a placed object that is known to have one.
-local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
-	return findInside(world, placedObjectId) :: Inventory.Inventory
-end
-
--- How many of one item the world holds in all: in packs, carried, standing on the plot, inside what
--- stands on the plot, and on the ground.
+-- How many of one item the world holds in all: in packs, carried, and on the ground.
 local function inWorld(world: World.World, itemId: string): number
 	local count = 0
 	for _, groundItem in world.groundItems.itemsById do
@@ -73,32 +68,26 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for placedObjectId, placedObject in world.plot.placedObjectsById do
-		local inside = findInside(world, placedObjectId)
-		count += if placedObject.kindId == itemId then 1 else 0
-		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
-	end
 	return count
 end
 
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
--- tile x, z is at x * 4 - 2, z * 4 - 2. A crate holding 5 fish stands on tile 2, 2 (its middle is 6, 6).
--- Players 1 and 2 stand at 6, 0, 0 and at 10, 0, 10, and each has 12 logs in slot 1, 5 fish in slot 2 and
--- a crate in slot 3.
+-- tile x, z is at x * 4 - 2, z * 4 - 2. A bell stands on tile 2, 2 (its middle is 6, 6). Players 1 and 2
+-- stand at 6, 0, 0 and at 10, 0, 10, and each has 12 logs in slot 1, 5 fish in slot 2 and 3 posts in
+-- slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.PlayerState, number)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
-	local crateId = Crate.place(world, 2, 2)
-	Inventory.addItems(insideOf(world, crateId), "fish", 5)
+	local bellId = Plot.placeObject(world.plot, "bell", 2, 2)
 	local players = {}
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10) } do
 		local state = World.addPlayer(world, playerId)
 		Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 		Inventory.setStack(state.pack, 2, ItemStack.new("fish", 5))
-		Inventory.setStack(state.pack, 3, ItemStack.new("crate", 1))
+		Inventory.setStack(state.pack, 3, ItemStack.new("post", 3))
 		World.setCharacterPosition(world, playerId, position)
 		players[playerId] = state
 	end
-	return world, players[1], players[2], crateId
+	return world, players[1], players[2], bellId
 end
 
 do -- the names of the requests
@@ -181,7 +170,7 @@ do -- Messages
 end
 
 do -- carryOut
-	local world, first, second, crateId = newWorld()
+	local world, first, second, bellId = newWorld()
 	carryOut(world, 1, "openPack")
 	check(
 		first.screen ~= nil and second.screen == nil,
@@ -198,9 +187,9 @@ do -- carryOut
 		first.screen == nil and Inventory.countItems(first.pack, "log") == 12,
 		"carryOut: more arguments than a request takes are left unused"
 	)
-	carryOut(world, 2, "interactWithPlacedObject", crateId)
+	carryOut(world, 2, "interactWithPlacedObject", bellId)
 	check(
-		World.getOpenedPlacedObjectId(world, second) == crateId and World.getOpenedPlacedObjectId(world, first) == nil,
+		#bellInteractedBy == 1 and bellInteractedBy[1] == second,
 		"carryOut: carries out a plot request for the player who asked"
 	)
 	carryOut(world, 2, "selectHotbarSlot", 4)
@@ -313,9 +302,10 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	end
 
 	local errors, firstError = 0, ""
-	local allConserved, someTakenOff, someOpened = true, false, false
+	local allConserved = true
+	local interactedBefore = #bellInteractedBy
 	for _ = 1, 40 do
-		local world, _, _, crateId = newWorld()
+		local world, _, _, bellId = newWorld()
 		World.addPlayer(world, 3)
 		World.setCharacterPosition(world, 3, at(20, 0, 20))
 		local total: { [string]: number } = {}
@@ -333,10 +323,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 					World.setCharacterPosition(world, playerId, at(random(30), 0, random(30)))
 				end
 			end
-			-- Now and then a player interacts with the crate, as a real machine would ask, so that the
-			-- requests that follow find a screen open on it.
+			-- Now and then a player interacts with the bell, as a real machine would ask.
 			if random(25) == 1 then
-				carryOut(world, random(3), "interactWithPlacedObject", crateId)
+				carryOut(world, random(3), "interactWithPlacedObject", bellId)
 			end
 			local playerId: any = if random(10) == 1 then junk[random(#junk)] else random(4)
 			local name = names[random(#names)]
@@ -345,10 +334,6 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			if not ok then
 				errors += 1
 				firstError = if firstError == "" then tostring(name) .. ": " .. tostring(result) else firstError
-			end
-			someTakenOff = someTakenOff or world.plot.placedObjectsById[crateId] == nil
-			for _, state in world.players do
-				someOpened = someOpened or World.getOpenedPlacedObjectId(world, state) ~= nil
 			end
 			now += 0.5
 			World.advanceTo(world, now)
@@ -360,12 +345,8 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		end
 	end
 	check(errors == 0, "random run: none of 12,000 requests raises an error (first: " .. firstError .. ")")
-	check(
-		allConserved,
-		"random run: after every request every item is in a pack, carried, standing on the plot, inside it, or on the ground"
-	)
-	check(someOpened, "random run: and a crate was opened by a player, so that was tried")
-	check(someTakenOff, "random run: and a crate was taken off the plot, so that was tried")
+	check(allConserved, "random run: after every request every item is in a pack, carried, or on the ground")
+	check(#bellInteractedBy > interactedBefore, "random run: and a plot request reached a script, so that was tried")
 end
 
 Check.finish("Requests")

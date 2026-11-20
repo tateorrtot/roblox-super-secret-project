@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local PlacedObjectLooks = require(Shared.placedObjectKinds.PlacedObjectLooks)
+local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local Plot = require(Shared.plots.Plot)
 
 local PlacementGhost = {}
