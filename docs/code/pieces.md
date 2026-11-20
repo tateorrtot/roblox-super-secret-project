@@ -24,6 +24,7 @@ The game
     StationProgress   a station's fire and work, as times                built
   The world
     GroundItems       stacks loose in the world: spawned, merged, picked up, expired   built
+    PlotCollision     what gives way when an item is placed: ground items are pushed out of the tile   built
     World             the game's state and what can be done in it      built
     PlayerSnapshot    what a player's machine is told                  built
   Requests: what a player's machine may ask for
@@ -65,24 +66,12 @@ On the server:
 4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks which machine works the motion out.
 5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`. A ground item that has come beside its own kind merges into it there.
 
-`World.placeItem` is the one rule about motion that is ours: it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side.
+`PlotCollision.pushGroundItemsOutOfTile` is the one rule about motion that is ours: when an item is placed, it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side. `World.placeItem` calls it.
 
 ## What knows what
-`lune run tools/requires` prints this from the code, and `python tools/delete_directory_test.py` tests it by deleting.
+`docs/code/requires.svg` is the chart: a box for each folder with its modules, and an arrow for each require. `lune run tools/requires --chart` draws it from the code, and `lune run tools/check` fails if it has gone out of date. `python tools/delete_directory_test.py` tests the same thing by deleting.
 
-```
-client, server                 the Roblox side: wiring, drawing, input
-      |
-   requests                    what a player's machine may ask for
-      |
-    world                      where the pieces meet
-   /  |  \
-players  plots  stations       know nothing of one another
-   \  |  /
-  inventory
-      |
-    items
-```
+In short: the Roblox side requires the rules and never the other way. In the rules, `requests` is on top, then `world`, then `players`, `plots` and `stations`, which know nothing of one another, then `inventory`, then `items`.
 
 `World` is the only piece of the rules that knows `players`, `plots` and `stations` together. It also holds rules of its own that could live in smaller pieces: the push out of a tile, reach, and what a placed item does over time. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list.
 

@@ -7,7 +7,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 
 **A function's name says what it acts on, and where.** Read alone, with no arguments and no comment, `Module.name` tells a stranger what the function does.
 - A bare verb means the whole of the thing the file is named for. `Station.advance` advances the station. `Inventory.encode` encodes the inventory.
-- Anything else names its object, and the place when there is one. `Hotbar.selectSlot`, `Plot.placeItem`, `World.dropStackAt`, `InventoryScreen.pickUpFromSlot`, `InventoryScreen.swapCarriedStackWithSlot`.
+- Anything else names its object, and the place when there is one. `Hotbar.selectSlot`, `Plot.placeItem`, `World.throwStackFromCharacter`, `InventoryScreen.pickUpFromSlot`, `InventoryScreen.swapCarriedStackWithSlot`.
 - A noun in a name is a part of the thing, or something the caller passes or gets back. A name with `Stack` in it takes or returns a stack. One with `Slot` takes a slot.
 - Arguments come in the order the name gives them: the thing first, then where, then how much.
 - No name stops at an adjective. `placedItem`, not `placed`. `carriedStack`, not `carried`.
@@ -16,6 +16,8 @@ How things in the code are named. The user reads an outline of bare names, with 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
 **A name is a promise, and the function keeps it.** `drop` leaves the stack on the ground. A function that only takes the stack out is `take`. If what a function does cannot be said plainly in a sentence built from its name, it is the wrong shape: split it or rename it.
+- **A setter names the thing it sets.** The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPositionAndFacing`.
+- **One exception, granted by the user on 2026-11-20:** `World.spawnStack` and `World.setGroundItemPosition` also merge the ground item into one of its kind beside it. Keeping the merge out of them would mean checking every ground item ten times a second. Their words: "As long as its specified that it will merge in documentation I think its okay to break that method naming standard here and HERE ONLY". Both comments say so. No other function has this leave.
 
 ## One name for each idea
 | Name | Means |
@@ -27,7 +29,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `player` | A `PlayerState`, in the rules |
 | `placedItem`, `placedItemId` | A thing standing on a plot, and its id |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
-| `character` | A player's body in the world: its `position` and its `facing`. `nil` while they have none |
+| `character` | A player's body in the world, as far as the rules know it: its `position` and its `facing`. `nil` while they have none. It is not a transform: it has no scale, and it turns only along the ground |
 | `facing`, `direction` | A way along the ground, `{ x, z }` with a length of 1 |
 | `velocity` | How fast along each axis, `{ x, y, z }` in studs a second |
 | `...Time` | A moment on the world's clock, in seconds: `spawnTime` |
@@ -46,7 +48,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `add` | Puts in wherever it fits | Given a count, how many went in; given a stack, the stack that did not fit |
 | `put` | Puts into a named place | The stack that did not fit |
 | `take` | Takes out of a named place for the caller | The stack taken |
-| `remove` | Takes out wherever it is | How many were removed |
+| `remove` | Takes out wherever it is | Given a count, how many were removed. Given one thing, that thing if a caller has a use for it |
 | `move` | Takes items from where they are to somewhere else | How many items moved |
 | `spawn` | Makes a thing appear in the world at a position | Its id |
 | `merge` | Makes two things one | The id of the one that is left |

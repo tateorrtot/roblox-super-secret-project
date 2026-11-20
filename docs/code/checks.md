@@ -12,6 +12,7 @@ How the code is checked. Every command runs from the top of the repository.
 | `python tools/unused.py` | The public functions nothing in the game calls |
 | `python tools/outline.py` | Every public function and constant, with `--names` for bare names |
 | `python tools/bare_names.py <Module>` | One class as a names test shows it: its name and its members' names, and nothing else |
+| `lune run tools/requires --chart` | Draws what requires what as a chart, `docs/code/requires.svg`. The check fails if the chart no longer matches the code |
 | `python tools/delete_directory_test.py` | Deletes each directory of the rules in a scratch copy, and lists what else stops working |
 | `python tools/faces.py <out.txt> <modules...>` | The public face of modules: comments, types and signatures, with no bodies |
 | `lune run tools/requires` | What requires what in `src`, read from the code |

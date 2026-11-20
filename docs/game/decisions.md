@@ -50,7 +50,7 @@
 - **For the first build, skip family ties, permanent death of shared characters, and migration** ("maybe this is overkill for the MVP"). Characters are generated with a record, can be knocked out, and a player's own hires stay with the player. Because generation is seeded from the world, a recruit's brother is the same person next time and is not lost; that only starts to matter once family ties exist.
 
 ## Open decisions
-1. **Server Authority, and Humanoid versus the Character Controller Library.** Claude's position in docs/architecture/07 section B2: Server Authority is not adopted, and characters stay on Roblox's default Humanoid because the library is still labelled beta. Both are looked at again with the first vehicle prototype. The user has not been asked to confirm this.
+1. **Server Authority, and Humanoid versus the Character Controller Library.** Claude's position in docs/architecture/07 section B2: Server Authority is not adopted, and characters stay on Roblox's default Humanoid because the library is still labelled beta. Both are looked at again with the first vehicle prototype. The user was told of Server Authority on 2026-11-20, when they asked for prediction on the player's machine (`docs/research/18-client-first.md`), and has not yet said yes or no.
 2. **The architecture itself** is no longer decided on paper. It grows from the pieces as they are joined; docs/architecture/07 is reference.
 3. Later: whether a character shared by every server can die, and how.
 

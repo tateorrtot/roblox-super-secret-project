@@ -28,3 +28,14 @@ What happened when dropped items were rebuilt to behave as Minecraft's do. Where
   - A reader took `PUSHED_GROUND_ITEM_SPEED` for a character pushing an item, and could not tell whether `CHARACTER_THROW_HEIGHT` was where a throw starts or how high it goes. Both were renamed, and a second reader read them correctly.
   - Three comments promised more than the code does, and were corrected. Mutation testing found that no test checked the selected slot in a snapshot, or the order a placed item and its stacks are thrown in. Both have checks now.
   - Left as known problems in `docs/status/now.md`: a pushed item is not checked where it lands, and a block placed under an item in flight can miss it.
+
+## The same day: the user's answer to the report
+Their words are in `docs/working/code-reviews/2026-11-20-5-events-and-glue.md`.
+- **The merge stays where it is,** as the one exception to a name's promise, because the clean way would have checked every ground item ten times a second.
+- **`setCharacter` failed their read:** "setCharacter what?" It is now `setCharacterPositionAndFacing` and `removeCharacter`, in `World` and in `PlayerState`.
+- **The push out of a tile left `World`,** at their yes, for a piece of its own: `PlotCollision`. `World` went from 420 lines to 357.
+- **`lune run tools/requires --chart` draws the chart of requires,** and the check fails when the chart is out of date.
+- **They proposed signals:** a placed item that is removed says so, and the pieces that care do their part. Shown to them as a plan, since it is shared machinery.
+- **They asked why everything waits for the server.** Four readers checked what Roblox does and offers (`docs/research/18-client-first.md`). A plan for acting on the player's machine first was shown to them.
+- **Checked:** every check, the play test at 71 of 71, mutation testing of the three pieces changed, three cold readers, and a reviewer checked by a skeptic.
+- **The reviewer found four things, all fixed:** two comments that left a case out, one promise no test checked, and that the chart tool crashed if a require ever looped. Nothing in play had changed.

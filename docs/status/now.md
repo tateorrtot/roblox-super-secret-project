@@ -7,14 +7,15 @@ As of 2026-11-20. This file holds only what is true now. What is over is in `his
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | Rewritten and renamed on 2026-11-20 to the user's standard, on the branch `first-pieces`. Dropped items were rebuilt the same day on the branch `dropped-items`, and untangled there after the user's fifth review. It is not merged. Nothing pushed |
-| **Checked** | On `dropped-items`: `lune run tools/check` passes, with 1,946 test checks, and the play test passes, 71 of 71 |
+| **Checked** | On `dropped-items`: `lune run tools/check` passes, with 1,962 test checks, and the play test passes, 71 of 71 |
 | **Not checked** | A phone. Two players. A real server. How a thrown item looks from another player's machine |
-| **Waiting on the user** | One choice: whether merging moves into `World.advanceTo` (`asked-of-the-user.md`). To read the untangled code. Then their feedback on the game |
+| **Waiting on the user** | A yes or no to a signal piece in the rules, and to acting on the player's machine first (`asked-of-the-user.md`). To read the untangled code. Then their feedback on the game |
 
 ## With the user
-- **They have reviewed the code five times,** four of them on 2026-11-20. Their words are in `docs/working/code-reviews/`.
+- **They have reviewed the code six times,** five of them on 2026-11-20. Their words are in `docs/working/code-reviews/`.
 - **Everything from the first four is done.** The story is `history/2026-11-20-code-rewrite.md`.
 - **The fifth came from playing dropped items.** They felt a delay when throwing, called `World.setPlayerPosition` spaghetti, could make nothing of the class `Throw` out of context, and asked for a review of the coupling. They then approved four things, and all four are done: the untangle of `setPlayerPosition`, handing ground items back to Roblox's ownership, and faults 2 to 4 of the review. The story is `history/2026-11-20-dropped-items.md`.
+- **The sixth was their answer to the report on those fixes.** Done from it: `setCharacter` is renamed, the push out of a tile is its own piece, the chart of requires is drawn by a tool, and the merge in two of `World`'s functions is allowed as the one exception to a name's promise. Waiting on them: a signal piece, so that removing a placed item tells the pieces that care; and acting on the player's own machine first.
 - **They have not read the untangled code.**
 - **They judge code by two tests of their own:** a class must make sense from its bare names with no context at all, and deleting one directory must not break the one beside it (`docs/code/names.md`, `docs/code/conventions.md`). Their words: "maintainable straightforward easy to understand with no context decoupled code is much. much. much. more important than getting it to work right now."
 - **They corrected how Claude works that day:** say an idea beyond what was asked and let them choose, while they are here; use the engine before writing anything of our own; and put the cost of a changed default to them first (`docs/working/with-the-user.md`).
@@ -37,8 +38,8 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 - **Hit.** A short right click on a placed thing knocks it off the plot. It spills out as an item, upwards and a little outwards, and so does each stack that was in a crate.
 
 ## What has been checked
-- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 1,946 test checks and the demo.
-- **Mutation testing** of the nine pieces the untangle touched catches 841 of 870 deliberate bugs (`python build/mutate_some.py`; the survivors are in `build/mutate-untangled.txt`, which is not kept in git). The survivors change nothing a caller can see, or sit exactly on an edge that no real position lands on. Every plain-Luau piece was last run together before this work, at 1,475 of 1,527 (`python build/mutate_all.py`).
+- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 1,962 test checks and the demo.
+- **Mutation testing** of the nine pieces the untangle touched caught 841 of 870 deliberate bugs (`python build/mutate_some.py`; the survivors are in `build/mutate-untangled.txt`, which is not kept in git). After the sixth review, the three pieces changed again caught 290 of 302. The survivors change nothing a caller can see, or sit exactly on an edge that no real position lands on. Every plain-Luau piece was last run together before this work, at 1,475 of 1,527 (`python build/mutate_all.py`).
 - **The delete test** (`python tools/delete_directory_test.py`): `players`, `plots` and `stations` do not break one another. Only `world`, `requests` and the Roblox side need them.
 - **The names** were tested on readers given nothing but the names. See `history/2026-11-20-code-rewrite.md`.
 - **The play test** (`python tools/playtest.py`) passed 71 of 71 in Studio on 2026-11-20, on the code as it now stands. It drives a test character through every action in the list above, waits for thrown stacks to land, places a crate on a log to see it pushed out, and counts what a player watching a lit stove is sent.
@@ -52,9 +53,9 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 - **A real server.** In Studio there is no delay. On a real server the screen waits for the server's answer after each click, and will feel a little late.
 
 ## Known problems
-- **Two functions of `World` do more than their names say.** `World.spawnStack` also merges the new stack into a ground item of its kind beside it, and can return that one's id. `World.setGroundItemPosition` also merges, so the ground item it was given can be gone afterwards. Claude wrote both in the untangle, and a reviewer caught them. Claude's proposal is that merging happens in `World.advanceTo`. That changes when stacks merge and what merging costs, so it is the user's to choose (`asked-of-the-user.md`).
-- **The hotbar's highlight waits for the server.** Fix 4 of the coupling review made the server the one keeper of the selected slot, so a number key moves the highlight when the server's answer arrives: one trip there and back. In Studio that is a frame or two. On a real server it is the player's ping, and nobody has measured it. For that long, a click on a tile is judged by the player's machine against the slot it still shows.
-- **The coupling review's other six faults are not fixed** (`docs/code/reviews/16-coupling-review-2026-11-20.md`). `World` also holds rules that could be pieces of their own: the push out of a tile, and which placed items are stations.
+- **The hotbar's highlight, every click in the inventory, and a throw each wait for the server.** One trip there and back. In Studio that is a frame or two, because the server is on the same PC, and the user took the hotbar's wait for fixed. On a real server it is the player's ping, and nobody has measured it. The fix is to act on the player's own machine first (`docs/research/18-client-first.md`); the user has asked for it and has not yet seen the plan through.
+- **`World` still names stations,** and the coupling review's faults 5 to 9 are not fixed (`docs/code/reviews/16-coupling-review-2026-11-20.md`). The user said yes to the first, by a signal, which is shown to them before it is written.
+- **Two of `World`'s functions also merge ground items,** by the user's leave (`docs/code/names.md`).
 - **A ground item pushed out of a tile is not checked where it lands.** One that lay across a corner of the tile can land partly inside a placed item on the tile diagonally across that corner. It takes two placed items around that corner already.
 - **A block placed where a thrown item is flying can miss it.** The world knows where each ground item was at the last tenth of a second.
 - **A character looking exactly straight up or down is not told to the world,** which keeps what it last knew. A Roblox character does not do that by walking about.
