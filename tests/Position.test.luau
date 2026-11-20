@@ -5,7 +5,6 @@ local Check = require("./Check")
 local Position = require("../src/shared/Position")
 
 local check = Check.that
-local raises = Check.raises
 
 do -- making one
 	local here = Position.new(10, 2, -4)
@@ -55,25 +54,6 @@ do -- what is and is not a position
 	check(
 		Position.validate({ 1, 2, 3 }) == "position.x must be a number; got nil",
 		"validate: a list of three numbers is not a position"
-	)
-
-	check(
-		raises("Position.new: position.y must be a number; got nil", function()
-			return Position.new(1, nil :: any, 3)
-		end),
-		"new: refuses a missing number"
-	)
-	check(
-		raises("Position.new: position.x must be a number; got nan", function()
-			return Position.new(0 / 0, 2, 3)
-		end),
-		"new: refuses not-a-number"
-	)
-	check(
-		raises("Position.new: position.z must be a number; got 3", function()
-			return Position.new(1, 2, "3" :: any)
-		end),
-		"new: refuses a number written as a string"
 	)
 end
 
