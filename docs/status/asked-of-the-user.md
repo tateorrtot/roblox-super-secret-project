@@ -4,10 +4,9 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 
 ## About the code
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
-- **Whether the shape in which the item decides is the one they want, and whether it comes before prediction.** Shown to them on 2026-11-20 after their eighth review (`next.md`).
-- **`PlacedItem`, or `Block`.** They asked whether "placed item" is the best name. `Block` is their own word and Minecraft's, and is shorter. It also promises a cube on a grid, and they have said that walls will not keep to the grid.
-- **A name for the piece now called `UseAndHit`,** and for `InventoryControls`. They turned down `PlotControls`. Roblox's own scripts name such a module for what it reads, as `CameraInput`, which would give `WorldInput` and `InventoryInput`.
-- **Whether `fire` stays.** It is Roblox's word; Godot's is `emit`. Claude kept it under their rule and told them so.
+- **Whether to start on splitting items from placed objects, with step 1, before prediction** (`next.md`). Shown to them on 2026-11-20 after their ninth review.
+- **`PlacedObject`, or `Structure`.** Both are theirs. What other games say is in `docs/research/20-placed-things-in-other-games.md`. Claude leans to `PlacedObject`: it is their own phrase, and "object" is the word in The Sims and in Roblox's placement tutorials.
+- **A name for `InventoryControls`.** `UseAndHit` goes when input moves to Roblox's Input Action System, and the same may be true of this one.
 - **Which of the words that are neither Roblox's nor Godot's they want changed:** `put` and `take`, `advance` and `advanceTo`, `validate`, `pack` where Roblox says `Backpack`, and `spawn`, which in Roblox means something else. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
 - **Whether they would rather read the code in the method form** (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).
 - **Whether screens and models are made in Studio,** as scenes are in Godot, or stay in code.
@@ -20,7 +19,6 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **Personal or group ownership, and a brand name.**
 
 ## Things only they can do
-- **How to add the Roblox skills they pointed at** (`docs/roblox/studio.md`): run the plugin's two install commands themselves, or say yes to Claude copying six folders of text into `.claude/skills/` in this repository after reading every file in full.
 - **Run the one-line download of Roblox's type definitions,** since the app refused it for Claude. The command is in `docs/roblox/studio.md`. With it the server's and the client's scripts can be type-checked.
 - **For saving, when it is the next piece:** publish the place and switch on Studio's access (the steps are in `docs/roblox/studio.md`), and a clear yes to downloading ProfileStore, which the survey in docs/research/13 recommends wrapping behind a module of ours.
 - **One Blockbench model with a stepped animation,** in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.

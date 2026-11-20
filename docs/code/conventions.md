@@ -26,13 +26,13 @@ The user's rule, 2026-11-20: "if you say "jump" dont have a check inside that me
 - A function that is asked to remove a thing that is not there has nothing to do, and that is not a check: `removeCharacter`, `closeScreen`.
 - **A rule of the game is not a check.** `GroundItems.moveNearbyStacksToInventory` leaves alone a ground item that is too new to pick up, and `GroundItems.mergeItems` looks only at the ground items whose turn it is. Each says so in its comment.
 
-## What an item does
-The user's rule, 2026-11-20: "Shouldnt it be the item itself that determines what happens when it breaks? For example obsidian in minecraft doesnt drop its item unless you got a diamond pickaxe or netherite pickaxe. its the strategy pattern basically." And: "it sounds like youre favoring inheritance over composition - thats bad! you end up with functions like "throwPlacedItemAndContents"."
-- **The item decides.** What interacting with a kind of item does, and what breaking it leaves, are that kind's own to say. The rest of the game knows that it happened, and nothing of what follows.
-- **The game makes no promise for every item.** A function that does the same to every placed item, whatever it is, is a contract nobody asked for. A crate spills. A sack keeps what is in it. A cage lets a creature out.
-- **A kind of item is put together from parts,** and each part brings its own behaviour: one that places, one that holds stacks, one that casts a spell. It is not one fixed set of behaviours switched on by flags in its definition.
-- **A function does not know two things that have nothing to do with each other unless a kind of item says so:** a placed item and "contents".
-- **The code does not follow this yet.** What it promises for every item today is listed in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`. The shape that would follow it is shared machinery, and is shown to the user before any of it is written (`docs/status/next.md`). New code makes no new promise of the kind.
+## Two systems, and what joins them
+The user's rule, 2026-11-20: "the item in the inventories, and the placed object should be entirely seperate and decoupled. they are two v e r y different systems that shouldnt rely on or mention eachother i feel. Glue code for them should exist outside of them." And the day's earlier words: "Shouldnt it be the item itself that determines what happens when it breaks? ... its the strategy pattern basically."
+- **Items and placed objects are two systems.** One is items, stacks, inventories and the hotbar. The other is plots and the objects placed on them. Neither requires the other, and neither names the other.
+- **What joins them is glue, kept outside both:** that an item in the hand puts an object down, that an object broken leaves items, that an object holds an inventory, that an object works on items over time.
+- **The game makes no promise for every kind of thing.** What interacting with a kind of object does, and what breaking it leaves, belong to that kind. A crate spills. A sack keeps what is in it. A cage lets a creature out.
+- **A kind is put together from parts,** each with its own behaviour. It is not one fixed set of behaviours switched on by flags in a definition.
+- **The code does not follow this yet.** `plots` requires `items` and `inventory`, and a placed thing is called a placed item. What the game promises for every item today is listed in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`. The steps that would mend it are in `docs/status/next.md`, and each is shown to the user before it is written. New code adds nothing to the tangle.
 
 ## Failure
 - **What can happen in play is a return value.** No room, nothing there.

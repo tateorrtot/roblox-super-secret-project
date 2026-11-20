@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code eight times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code nine times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 The number in a file's name counts the reviews of 2026-11-20, so it is one less than the review's place in this list.
 
@@ -15,11 +15,12 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 | 7 | `2026-11-20-6-check-then-act.md` | "verbNounAndNoun": a name with `And` is two functions. "Check before you call the method like can_jump THEN jump." "Doesnt roblox have events?" A station is a black box: "contain the spaghettii" |
 
 | 8 | `2026-11-20-7-the-item-decides.md` | "Shouldnt it be the item itself that determines what happens when it breaks?" Composition, not inheritance. "You cant just... invent nouns out of nowhere". Roblox's word, or Godot's. "Did you fix what they found?" |
+| 9 | `2026-11-20-8-two-systems.md` | Items and placed objects are "two v e r y different systems that shouldnt rely on or mention eachother". Glue lives outside both. Roblox's style. "Why? Just why this class name?" A question they could not read: "Uh what? Im confused" |
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
 ## What to check before showing them code
-These are Claude's readings of the eight reviews. The quotes are in the files.
+These are Claude's readings of the nine reviews. The quotes are in the files.
 
 - **Read each class alone,** as `python tools/bare_names.py <Module>` prints it: its name and its members' names, and nothing else. Each name must say what it is, or what it acts on and where. If you would have to ask "... what?", so will they. A guess is a failure.
 - **A class is a noun.** If no noun works, the class is wrong.
@@ -30,6 +31,9 @@ These are Claude's readings of the eight reviews. The quotes are in the files.
 - **A noun that can be read two ways is a failed name.** "Plot Controls? ... controling a plot?"
 - **Roblox's word first, then Godot's, never one of ours.** And when explaining by Godot, say which word is whose.
 - **The item decides what happens to it.** No function does the same to every item whatever it is. A question that offers two answers for all items is the wrong question.
+- **Items and placed objects are two systems that do not know each other.** What joins them is glue, outside both.
+- **Say whether a list is how things are, or what was done.** They asked: "are you stating the issues currently and that youve fixed them?"
+- **A question to them is in plain words and can be read alone.** No label coined a page earlier.
 - **Use their words for the game:** "interact" and "break", not Claude's "use", "hit" or "knocked off the plot".
 - **A reader's doubt is fixed, or listed with the reason it stands.** A report says what was left: "Did you fix what they found?"
 - **Say what Roblox has before proposing ours.** "This is a roblox game first."
@@ -48,4 +52,4 @@ These are Claude's readings of the eight reviews. The quotes are in the files.
 - **Measure before showing:** `python tools/metrics.py --functions`, `python tools/unused.py`, and a names test on a fresh reader (`docs/code/names.md` says how).
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
-Each of the eight reviews found something the checks before it had passed. Expect a ninth.
+Each of the nine reviews found something the checks before it had passed. Expect a tenth.

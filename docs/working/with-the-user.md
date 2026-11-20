@@ -7,6 +7,9 @@ Who does what, what works with this user, and how code gets built here.
 - **The user is an experienced programmer and systems architect** (8 years coding, about 5 years and 4,000 hours in Godot). Talk to them as one.
 - **What works with this user:** ask one precise question, show reasoning, and expect to be challenged; they invite pushback ("youre free to challenge me"). What failed: handing over finished designs, panels of agents judging taste, rules derived from market research, and designing the whole architecture on paper through repeated drafts and agent reviews before any code existed.
 - When you need something from the user, name the exact task.
+- **A question is in plain words and can be read alone.** Claude asked "Build the item-decides shape first, starting with break, before prediction?", using a label of its own from a page earlier. The user: "Uh what? Im confused". Say what would be done, in the words they use.
+- **A list says whether it is how things are, or what was done.** Claude listed the code's faults as they stood, and the user could not tell whether they had been fixed.
+- **Claude may fetch and load the tools and skills it needs.** The user, 2026-11-20: "Youre free to grab and load whatever you need." Each is read before it is used, and written down in `docs/roblox/studio.md`. Robux, the account, and saving or publishing the place still need their yes.
 - **Helper agents are used sparingly,** on Sonnet and a few at a time. One overnight run used the account's whole weekly allowance. A names test is cheap, because its reader uses no tools. Mutation runs and checks of bad arguments are done in the session.
 
 ## Ideas beyond what was asked (the user's correction, 2026-11-20)

@@ -13,8 +13,9 @@ As of the end of 2026-11-20. This file holds only what is true now. What is over
 | **Approved, not built** | Prediction on the player's machine (`next.md`) |
 
 ## With the user
-- **They have reviewed the code eight times,** seven of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **They have reviewed the code nine times,** eight of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
 - **The eighth found a fault in the shape, not in a name:** the game decides what every item does, where the item should. "Shouldnt it be the item itself that determines what happens when it breaks?" An audit the same day found twelve such promises with one root, and about sixty names with a word that should not be there (`docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`). Nothing is rebuilt yet: the shape is shown to them first.
+- **The ninth set the direction:** items and placed objects are two systems that do not know each other, and what joins them is glue outside both. They also said to keep the code in Roblox's style, and that Claude may fetch the tools and skills it needs.
 - **Everything they asked of the code in those reviews is done,** except prediction on the player's machine, which is next, and what they said to leave: `World` stays one big piece of glue, and `Station` stays a furnace until a second process shows what the kinds share. The stories are in `history/`.
 - **Their last message of 2026-11-20 was answers, not a review.** Done from it that day:
   - seven functions brought to check, then act (`docs/code/conventions.md`);
