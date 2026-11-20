@@ -8,7 +8,6 @@ local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 
 local check = Check.that
-local raises = Check.raises
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
@@ -75,7 +74,10 @@ do -- dropping
 	check(id == 1, "drop: the first ground item is number 1")
 	check(ground.nextId == 2, "drop: the next one will be number 2")
 	local groundItem = ground.byId[1]
-	check(groundItem ~= nil and ItemStack.equals(groundItem.stack, logs), "drop: the ground item holds the stack")
+	check(
+		groundItem ~= nil and groundItem.stack.itemId == "log" and groundItem.stack.count == 5,
+		"drop: the ground item holds the stack"
+	)
 	check(
 		groundItem.position.x == 10 and groundItem.position.y == 2 and groundItem.position.z == -3,
 		"drop: it lies where it was dropped"
@@ -88,13 +90,6 @@ do -- dropping
 	local second = GroundItems.drop(ground, ItemStack.new("fish", 2), at(0, 0, 0), 13)
 	check(second == 2 and ground.nextId == 3, "drop: ids count up")
 	check(groundItemCount(ground) == 2, "drop: both are on the ground")
-
-	local handWritten = { itemId = "log", count = 3 }
-	local third = GroundItems.drop(ground, handWritten, at(1, 0, 1), 14)
-	check(
-		holds(ground, third, "log", 3) and table.isfrozen(ground.byId[third].stack),
-		"drop: a stack written by hand is stored as a real stack"
-	)
 end
 
 do -- a stack dropped beside its own kind joins it
@@ -228,7 +223,7 @@ do -- equally near ground items are picked up in the order they were dropped, wh
 	local pack = Inventory.new(1)
 	for expected = 101, 140 do
 		GroundItems.pickUpNear(ground, at(1, 0, 0), pack, LIFETIME + 10)
-		Inventory.clear(pack)
+		pack = Inventory.new(1)
 		if ground.byId[expected] ~= nil or groundItemCount(ground) ~= 140 - expected then
 			inOrder = false
 		end
@@ -326,92 +321,6 @@ do -- lying too long
 	GroundItems.pickUpNear(partly, at(0, 0, 0), pack, LIFETIME - 1)
 	GroundItems.expire(partly, LIFETIME)
 	check(groundItemCount(partly) == 0, "expire: picking part of a ground item up does not make the rest last longer")
-end
-
-do -- mistakes in the calling code
-	local ground = GroundItems.new()
-	local pack = Inventory.new(3)
-	local logs = ItemStack.new("log", 5)
-	GroundItems.drop(ground, logs, at(0, 0, 0), 0)
-
-	check(
-		raises("GroundItems.drop: a stack is a table, not a nil", function()
-			GroundItems.drop(ground, nil :: any, at(0, 0, 0), 0)
-		end),
-		"drop: refuses nothing in place of a stack"
-	)
-	check(
-		raises('GroundItems.drop: no item has the id "anvil"', function()
-			GroundItems.drop(ground, { itemId = "anvil", count = 1 }, at(0, 0, 0), 0)
-		end),
-		"drop: refuses an item that does not exist"
-	)
-	for _, badCount in { 0, 17, -1, 2.5 } do
-		check(
-			raises('GroundItems.drop: a stack of "log" holds 1 to 16, not ' .. tostring(badCount), function()
-				GroundItems.drop(ground, { itemId = "log", count = badCount }, at(0, 0, 0), 0)
-			end),
-			"drop: refuses a stack of " .. tostring(badCount) .. " logs"
-		)
-	end
-	check(
-		raises("GroundItems.drop: a position is a table with x, y and z, not a string", function()
-			GroundItems.drop(ground, logs, "here" :: any, 0)
-		end),
-		"drop: refuses a position that is not a table"
-	)
-	local badPositions: { [string]: any } = {
-		["position.x must be a number; got nil"] = { y = 0, z = 0 },
-		["position.y must be a number; got high"] = { x = 0, y = "high", z = 0 },
-		["position.z must be a number; got nan"] = { x = 0, y = 0, z = 0 / 0 },
-		["position.x must be a number; got inf"] = { x = math.huge, y = 0, z = 0 },
-		["position.y must be a number; got -inf"] = { x = 0, y = -math.huge, z = 0 },
-	}
-	for message, position in badPositions do
-		check(
-			raises("GroundItems.drop: " .. message, function()
-				GroundItems.drop(ground, logs, position, 0)
-			end),
-			"drop: refuses a bad position (" .. message .. ")"
-		)
-		check(
-			raises("GroundItems.pickUpNear: " .. message, function()
-				GroundItems.pickUpNear(ground, position, pack, 100)
-			end),
-			"pickUpNear: refuses a bad position (" .. message .. ")"
-		)
-	end
-	check(
-		raises("GroundItems.pickUpNear: a position is a table with x, y and z, not a nil", function()
-			GroundItems.pickUpNear(ground, nil :: any, pack, 100)
-		end),
-		"pickUpNear: refuses nothing in place of a position"
-	)
-	for _, badTime in { "now", 0 / 0, math.huge, -math.huge } do
-		local shown = tostring(badTime)
-		check(
-			raises("GroundItems.drop: now must be a number of seconds; got " .. shown, function()
-				GroundItems.drop(ground, logs, at(0, 0, 0), badTime :: any)
-			end),
-			"drop: refuses the time " .. shown
-		)
-		check(
-			raises("GroundItems.pickUpNear: now must be a number of seconds; got " .. shown, function()
-				GroundItems.pickUpNear(ground, at(0, 0, 0), pack, badTime :: any)
-			end),
-			"pickUpNear: refuses the time " .. shown
-		)
-		check(
-			raises("GroundItems.expire: now must be a number of seconds; got " .. shown, function()
-				GroundItems.expire(ground, badTime :: any)
-			end),
-			"expire: refuses the time " .. shown
-		)
-	end
-	check(
-		groundItemCount(ground) == 1 and holds(ground, 1, "log", 5) and ground.nextId == 2 and Inventory.isEmpty(pack),
-		"a refused call changes nothing"
-	)
 end
 
 do -- many random drops, pickups and expiries: no item is made, and none is lost except by expiring
