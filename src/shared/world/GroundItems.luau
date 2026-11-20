@@ -4,14 +4,13 @@
 ---
 --- A ground item is a stack, the position it is at, the velocity it was spawned with and the time
 --- it was spawned. `spawnStack` makes one. Nothing here moves a ground item afterwards:
---- `setItemPosition` records where it has got to. `mergeMovedItems` makes ground items of the same
---- item that have come close together into one: it looks only at the ones spawned or given a new
---- position since it last ran. `moveNearbyStacksToInventory` moves ground items into an inventory,
---- `removeItem` takes one out of the world, and `removeExpiredItems` removes the ones that have
---- been out too long. Ground items are numbered from 1 in the order
---- they were spawned, and a number is never used twice. Time is a number of seconds, passed in as
---- `now`, from any clock that only goes forward. Positions and distances are in studs. Ground items
---- are never saved.
+--- `setItemPosition` records where it has got to. `mergeItems` makes ground items of the same item
+--- that are close together into one. `moveNearbyStacksToInventory` moves ground items into an
+--- inventory, `removeItem` takes one out of the world, and `removeExpiredItems` removes the ones
+--- that have been out too long. Ground items are numbered from 1 in the order they were spawned,
+--- and a number is never used twice. Time is a number of seconds, passed in as `now`, from any
+--- clock that only goes forward. Positions and distances are in studs. Ground items are never
+--- saved.
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
@@ -48,9 +47,11 @@ export type GroundItems = {
 	--- Note: ids are not consecutive, because a ground item that is picked up, merged or expired
 	--- leaves its id unused. `#itemsById` is not the number of ground items.
 	itemsById: { [number]: GroundItem },
-	--- The ids of the ground items spawned, or given a new position, since `mergeMovedItems` last
-	--- ran. An id may be listed after its ground item has gone.
+	--- The ids of the ground items spawned, or given a new position, since `mergeItems` last ran.
+	--- An id may be listed after its ground item has gone.
 	movedIds: { [number]: true },
+	--- The time `mergeItems` was last given. `nil` until it has run.
+	lastMergeTime: number?,
 }
 
 --- How long a ground item lasts before `removeExpiredItems` removes it, in seconds.
@@ -69,16 +70,24 @@ GroundItems.PICKUP_REACH_UP = 7
 --- How far below the position `moveNearbyStacksToInventory` picks up from, in studs.
 GroundItems.PICKUP_REACH_DOWN = 2
 
---- How near two ground items of the same item must be for `mergeItemIntoNearbyItem` and
---- `mergeMovedItems` to make them one, in studs.
-GroundItems.MERGE_RADIUS = 1.5
-
 --- How wide, deep and tall a ground item is, in studs: it takes up a cube this wide, standing on
 --- its `position`.
 GroundItems.ITEM_WIDTH = 1.2
 
+--- How near two ground items of the same item must be for `mergeItems` to make them one, in
+--- studs: their positions are less than this apart along x, and along z, which leaves a gap of
+--- less than 2 studs between their sides. They must also be less than `ITEM_WIDTH` apart in
+--- height, so that neither lies wholly above the other.
+GroundItems.MERGE_REACH = 2 + GroundItems.ITEM_WIDTH
+
+--- How long a ground item that is not given a new position lies before `mergeItems` looks at it
+--- again, in seconds.
+GroundItems.MERGE_CHECK_SECONDS = 2
+
 local function isInMergeReach(from: Position, to: Position): boolean
-	return Position.getDistance(from, to) <= GroundItems.MERGE_RADIUS
+	return math.abs(to.x - from.x) < GroundItems.MERGE_REACH
+		and math.abs(to.z - from.z) < GroundItems.MERGE_REACH
+		and math.abs(to.y - from.y) < GroundItems.ITEM_WIDTH
 end
 
 local function isInPickupReach(from: Position, to: Position): boolean
@@ -105,16 +114,6 @@ local function idsNearestFirst(
 		return distances[a] < distances[b] or (distances[a] == distances[b] and a < b)
 	end)
 	return ids
-end
-
-local function findItemWithRoomNear(groundItems: GroundItems, stack: ItemStack, position: Position): number?
-	for _, id in idsNearestFirst(groundItems, position, isInMergeReach) do
-		local other = groundItems.itemsById[id].stack
-		if ItemStack.isSameItem(other, stack) and ItemStack.getSpaceLeft(other) >= stack.count then
-			return id
-		end
-	end
-	return nil
 end
 
 --- Returns a new set of ground items with nothing in the world.
@@ -161,47 +160,71 @@ function GroundItems.setItemPosition(groundItems: GroundItems, id: number, posit
 	groundItems.movedIds[id] = true
 end
 
---- Merges the ground item `id` into another ground item of the same item that is within
---- `MERGE_RADIUS` of it and has room for all of its stack. The other then holds both stacks, stays
---- where it is, and counts as spawned at the later of the two items' times, and the ground item
---- `id` is gone. With several such ground items it merges into the nearest, and of two equally
---- near, the one with the lower id.
----
---- Returns the id of the ground item that holds the stack afterwards. That is `id` itself if there
---- was nothing to merge into, or if no ground item has the id `id`.
-function GroundItems.mergeItemIntoNearbyItem(groundItems: GroundItems, id: number): number
-	local groundItem = groundItems.itemsById[id]
-	if groundItem == nil then
-		return id
-	end
-	groundItems.itemsById[id] = nil
-	local otherId = findItemWithRoomNear(groundItems, groundItem.stack, groundItem.position)
-	if otherId == nil then
-		groundItems.itemsById[id] = groundItem
-		return id
-	end
-	local other = groundItems.itemsById[otherId]
-	groundItems.itemsById[otherId] = table.freeze({
-		stack = (ItemStack.merge(other.stack, groundItem.stack)),
-		position = other.position,
-		spawnVelocity = other.spawnVelocity,
-		spawnTime = math.max(other.spawnTime, groundItem.spawnTime),
+local function mergeItemInto(groundItems: GroundItems, fromId: number, intoId: number)
+	local from, into = groundItems.itemsById[fromId], groundItems.itemsById[intoId]
+	groundItems.itemsById[fromId] = nil
+	groundItems.itemsById[intoId] = table.freeze({
+		stack = (ItemStack.merge(into.stack, from.stack)),
+		position = into.position,
+		spawnVelocity = into.spawnVelocity,
+		spawnTime = math.max(into.spawnTime, from.spawnTime),
 	})
-	return otherId
 end
 
---- Merges each ground item that was spawned, or given a new position, since this last ran, as
---- `mergeItemIntoNearbyItem` does, the lowest id first. A ground item that has lain still since
---- then is not looked at, though one that moved may merge into it.
-function GroundItems.mergeMovedItems(groundItems: GroundItems)
-	local ids = {}
-	for id in groundItems.movedIds do
-		table.insert(ids, id)
+local function canMergeStacks(stack: ItemStack, other: ItemStack): boolean
+	return ItemStack.isSameItem(stack, other) and ItemStack.getSpaceLeft(other) >= stack.count
+end
+
+local function mergeItemWithNearbyItems(groundItems: GroundItems, id: number)
+	local position = groundItems.itemsById[id].position
+	for _, otherId in idsNearestFirst(groundItems, position, isInMergeReach) do
+		local stack, other = groundItems.itemsById[id].stack, groundItems.itemsById[otherId].stack
+		local canMerge = otherId ~= id and canMergeStacks(stack, other)
+		if canMerge and other.count < stack.count then
+			mergeItemInto(groundItems, otherId, id)
+		elseif canMerge then
+			mergeItemInto(groundItems, id, otherId)
+			return
+		end
 	end
-	table.sort(ids)
+end
+
+local function isDueForMerge(groundItems: GroundItems, id: number, since: number, now: number): boolean
+	local spawnTime = groundItems.itemsById[id].spawnTime
+	local checksBySince = math.floor((since - spawnTime) / GroundItems.MERGE_CHECK_SECONDS)
+	local checksByNow = math.floor((now - spawnTime) / GroundItems.MERGE_CHECK_SECONDS)
+	return groundItems.movedIds[id] == true or checksByNow > checksBySince
+end
+
+--- Merges ground items of the same item that are within `MERGE_REACH` of each other. Not every
+--- ground item is looked at each time: `now` is the time, and decides which are.
+---
+--- A ground item is looked at if it was spawned or given a new position since `mergeItems` last
+--- ran, or if it has since been in the world for another whole `MERGE_CHECK_SECONDS`, counted
+--- from its `spawnTime`. They are looked at one by one, the lowest id first.
+---
+--- The one being looked at is tried with each ground item of the same item in reach of it, the
+--- nearest first, and of two equally near, the lower id first. The other need not be one that is
+--- looked at. Two merge only if both stacks fit in one stack. The one with the bigger stack then
+--- holds both, stays where it is, and counts as spawned at the later of the two items' times. The
+--- other is gone, and its id with it. If the two stacks are the same size, the one being looked
+--- at is the one that goes. One that took the other in is tried with the next nearest, and so on
+--- until it is gone or there are no more.
+function GroundItems.mergeItems(groundItems: GroundItems, now: number)
+	local since = groundItems.lastMergeTime or now
+	local due = {}
+	for id in groundItems.itemsById do
+		if isDueForMerge(groundItems, id, since, now) then
+			table.insert(due, id)
+		end
+	end
+	table.sort(due)
 	table.clear(groundItems.movedIds)
-	for _, id in ids do
-		GroundItems.mergeItemIntoNearbyItem(groundItems, id)
+	groundItems.lastMergeTime = now
+	for _, id in due do
+		if groundItems.itemsById[id] ~= nil then
+			mergeItemWithNearbyItems(groundItems, id)
+		end
 	end
 end
 

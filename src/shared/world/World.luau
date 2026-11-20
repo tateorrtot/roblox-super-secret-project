@@ -355,18 +355,21 @@ local function closeScreenIfOutOfReach(world: World, player: PlayerState)
 	end
 end
 
---- Moves the world on to the time `now`. Each ground item that was spawned, or given a new
---- position, since the world was last moved on merges into a ground item of the same item beside
---- it that has room for all of its stack. Each player with a character then picks up the ground
---- items near them, the player with the lowest id first. A player whose screen is open on a
---- placed item has it closed, as `closeScreen` does, if they stand more than
---- `SCREEN_CLOSES_BEYOND` from it. Every station burns and works for the time that has passed.
---- Ground items that have been in the world too long are removed. If `now` is earlier than the
---- time `advanceTo` was last given, no time passes for the stations.
+--- Moves the world on to the time `now`, in this order:
+--- - Ground items of the same item that lie close together merge. Each one that was spawned or
+---   given a new position since the world was last moved on is looked at, and each one that has
+---   been in the world for another `GroundItems.MERGE_CHECK_SECONDS`. Of two whose stacks fit in
+---   one stack, the bigger takes in the smaller, and stays where it is.
+--- - Each player with a character, the one with the lowest id first, picks up the ground items
+---   near them. If their screen is open on a placed item that they stand more than
+---   `SCREEN_CLOSES_BEYOND` from, it is then closed, as `closeScreen` does.
+--- - Every station burns and works for the time that has passed. If `now` is earlier than the
+---   time `advanceTo` was last given, no time passes for the stations.
+--- - Ground items that have been in the world too long are removed.
 function World.advanceTo(world: World, now: number)
 	local elapsed = math.max(now - world.now, 0)
 	world.now = now
-	GroundItems.mergeMovedItems(world.groundItems)
+	GroundItems.mergeItems(world.groundItems, now)
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
 		pickUpNearbyStacks(world, player)

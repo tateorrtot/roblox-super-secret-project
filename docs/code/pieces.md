@@ -65,7 +65,7 @@ On the server:
 3. `GroundItemParts.update` makes a part for it, at its position and moving at the velocity it was spawned with.
 4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks which machine works the motion out.
 5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`.
-6. `World.advanceTo` then merges each ground item that was spawned or moved into one of its own kind beside it.
+6. `World.advanceTo` then runs `GroundItems.mergeItems`: of two ground items of one kind that are close together and fit in one stack, the bigger takes in the smaller. One that was spawned or moved is looked at then, and one that lies still every two seconds (`docs/game/dropped-items.md`).
 
 `PlotCollision.pushGroundItemsOutOfTile` is the one rule about motion that is ours: when an item is placed, it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side. `World.placeItem` calls it.
 

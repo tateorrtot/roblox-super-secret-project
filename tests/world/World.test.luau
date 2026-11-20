@@ -368,24 +368,57 @@ do -- time passing: ground items merge
 	World.advanceTo(world, 101)
 	check(#groundStacks(world, "apple") == 2, "advanceTo: ground items of one kind that are apart stay apart")
 	World.setGroundItemPosition(world, flying, at(80.5, 0, 60))
-	World.advanceTo(world, 102)
+	World.advanceTo(world, 101)
 	local apples = groundStacks(world, "apple")
 	check(
-		#apples == 1 and is(apples[1].stack, "apple", 5) and world.groundItems.itemsById[flying] == nil,
-		"advanceTo: a ground item that has come beside its own kind merges into it"
+		#apples == 1 and is(apples[1].stack, "apple", 5) and world.groundItems.itemsById[lying] == nil,
+		"advanceTo: of two ground items of one kind that have come close together, the bigger takes in the smaller"
 	)
-	check(isAt(world.groundItems.itemsById[lying], 80, 0, 60), "advanceTo: the one it merged into stays where it is")
-	World.spawnStack(world, ItemStack.new("apple", 4), at(80.5, 0, 60), STILL)
-	World.advanceTo(world, 103)
+	check(isAt(world.groundItems.itemsById[flying], 80.5, 0, 60), "advanceTo: the bigger one stays where it is")
+	local spawned = World.spawnStack(world, ItemStack.new("apple", 4), at(80.5, 0, 60), STILL)
+	World.advanceTo(world, 101)
 	check(
-		#groundStacks(world, "apple") == 1 and onGround(world, "apple") == 9,
-		"advanceTo: a stack spawned beside its own kind merges into it too"
+		#groundStacks(world, "apple") == 1
+			and onGround(world, "apple") == 9
+			and world.groundItems.itemsById[spawned] == nil,
+		"advanceTo: a stack spawned beside a bigger one of its kind is taken in by it"
 	)
+
 	World.spawnStack(world, ItemStack.new("apple", 16), at(80.5, 0, 60), STILL)
 	World.advanceTo(world, 104)
 	check(
 		#groundStacks(world, "apple") == 2 and onGround(world, "apple") == 25,
 		"advanceTo: one that does not fit with its own kind stays a ground item of its own"
+	)
+
+	-- Ground items that lie still are looked at again when they have been in the world for another
+	-- `GroundItems.MERGE_CHECK_SECONDS`. A full stack, spawned at the time 100, and a part stack lie
+	-- side by side. Player 2 has room for six apples, comes to stand on the full stack and picks six
+	-- of it up, which moves neither ground item.
+	local still = newWorld()
+	local onePack = Inventory.new(1)
+	Inventory.addItems(onePack, "apple", 10)
+	World.addPlayer(still, 2, onePack)
+	local full = World.spawnStack(still, ItemStack.new("apple", 16), at(80, 0, 60), STILL)
+	World.advanceTo(still, 101)
+	local part = World.spawnStack(still, ItemStack.new("apple", 3), at(81, 0, 60), STILL)
+	World.advanceTo(still, 101.6)
+	World.setCharacterPosition(still, 2, at(80, 0, 60))
+	World.advanceTo(still, 101.7)
+	check(
+		is(still.groundItems.itemsById[full].stack, "apple", 10)
+			and is(still.groundItems.itemsById[part].stack, "apple", 3),
+		"advanceTo: (set up) six of the full stack are picked up, which leaves room in it for the part stack"
+	)
+	World.advanceTo(still, 101.99)
+	check(
+		#groundStacks(still, "apple") == 2,
+		"advanceTo: ground items that lie still are not looked at again until two seconds after they were spawned"
+	)
+	World.advanceTo(still, 102)
+	check(
+		still.groundItems.itemsById[part] == nil and is(still.groundItems.itemsById[full].stack, "apple", 13),
+		"advanceTo: a ground item that has lain for two seconds is looked at again, and takes in one beside it that now fits"
 	)
 
 	-- Merging comes before picking up. Player 1 stands at 6, 0, 0.
@@ -396,7 +429,7 @@ do -- time passing: ground items merge
 	World.advanceTo(order, 100 + GroundItems.PICKUP_DELAY_SECONDS)
 	check(
 		Inventory.countItems(orderState.pack, "apple") == 0 and #groundStacks(order, "apple") == 1,
-		"advanceTo: merging comes before picking up, so a stack that a new one has merged into is not picked up yet"
+		"advanceTo: merging comes before picking up, so two stacks that merged are not picked up until the newer could be"
 	)
 end
 

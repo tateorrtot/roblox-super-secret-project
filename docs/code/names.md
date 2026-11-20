@@ -54,7 +54,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `remove` | Takes out wherever it is | Given a count, how many were removed. Given one thing, that thing if a caller has a use for it |
 | `move` | Takes items from where they are to somewhere else | How many items moved |
 | `spawn` | Makes a thing appear in the world at a position | Its id |
-| `merge` | Makes two things one | The id of the one that is left |
+| `merge` | Makes things of one kind into one | Given two stacks, the stack that holds both, and then what did not fit. Given every ground item, nothing |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing | `true` or `false` |
 | `find` | Looks for one that may not be there | It, or `nil` |

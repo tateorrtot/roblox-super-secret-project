@@ -17,7 +17,9 @@ ItemRegistry.register({ id = "stove", stackSize = 1 })
 local DELAY = GroundItems.PICKUP_DELAY_SECONDS
 local RADIUS = GroundItems.PICKUP_RADIUS
 local LIFETIME = GroundItems.LIFETIME_SECONDS
-local MERGE = GroundItems.MERGE_RADIUS
+local REACH = GroundItems.MERGE_REACH
+local WIDTH = GroundItems.ITEM_WIDTH
+local CHECK = GroundItems.MERGE_CHECK_SECONDS
 local ABOVE = GroundItems.PICKUP_REACH_UP
 local BELOW = GroundItems.PICKUP_REACH_DOWN
 
@@ -25,23 +27,14 @@ local function at(x: number, y: number, z: number): GroundItems.Position
 	return { x = x, y = y, z = z }
 end
 
--- Spawns `stack` at `position`, not moving, and merges it into its own kind if one is near. Returns
--- the id of the ground item that holds it.
+-- Spawns `stack` at `position`, not moving, at the time `now`. Returns the ground item's id.
 local function dropAt(
 	ground: GroundItems.GroundItems,
 	stack: ItemStack.ItemStack,
 	position: GroundItems.Position,
 	now: number
 ): number
-	local id = GroundItems.spawnStack(ground, stack, position, STILL, now)
-	return GroundItems.mergeItemIntoNearbyItem(ground, id)
-end
-
--- Says that the ground item `id` is now at `position`, and merges it into its own kind if one is
--- near.
-local function moveTo(ground: GroundItems.GroundItems, id: number, position: GroundItems.Position)
-	GroundItems.setItemPosition(ground, id, position)
-	GroundItems.mergeItemIntoNearbyItem(ground, id)
+	return GroundItems.spawnStack(ground, stack, position, STILL, now)
 end
 
 -- How many ground items there are.
@@ -75,8 +68,12 @@ do -- the rules as numbers
 	check(DELAY == 1.5, "a ground item cannot be picked up for its first second and a half")
 	check(RADIUS == 4, "a ground item is picked up from 4 studs away along the ground")
 	check(ABOVE == 7 and BELOW == 2, "a ground item up to 7 studs above the position, or 2 studs below it, is in reach")
-	check(MERGE == 1.5, "two ground items of one kind within a stud and a half of each other become one")
-	check(GroundItems.ITEM_WIDTH == 1.2, "a ground item takes up a cube 1.2 studs on a side")
+	check(WIDTH == 1.2, "a ground item takes up a cube 1.2 studs on a side")
+	check(
+		math.abs(REACH - 3.2) < 1e-9,
+		"two ground items of one kind merge when the gap between their sides is less than 2 studs: 3.2 between their positions"
+	)
+	check(CHECK == 2, "a ground item that lies still is looked at again, for merging, every two seconds")
 end
 
 do -- nothing on the ground
@@ -137,99 +134,338 @@ do -- spawning
 	)
 end
 
-do -- merging: a ground item beside its own kind
+do -- merging: how close two ground items must be
+	-- Spawns 5 logs at `first` and 3 at `second` and merges once. True if they became one.
+	local function mergesBetween(first: GroundItems.Position, second: GroundItems.Position): boolean
+		local ground = GroundItems.new()
+		dropAt(ground, ItemStack.new("log", 5), first, 0)
+		dropAt(ground, ItemStack.new("log", 3), second, 0)
+		GroundItems.mergeItems(ground, 0)
+		return groundItemCount(ground) == 1 and itemsOnGround(ground, "log") == 8
+	end
+	local origin = at(0, 0, 0)
+	check(mergesBetween(origin, origin), "mergeItems: two of a kind in the same place merge")
+	check(
+		mergesBetween(origin, at(REACH - 0.01, 0, 0)) and mergesBetween(origin, at(-REACH + 0.01, 0, 0)),
+		"mergeItems: two of a kind just less than the reach apart along x merge"
+	)
+	check(
+		not mergesBetween(origin, at(REACH, 0, 0)) and not mergesBetween(origin, at(-REACH, 0, 0)),
+		"mergeItems: two exactly the reach apart along x do not"
+	)
+	check(
+		mergesBetween(origin, at(0, 0, REACH - 0.01)) and mergesBetween(origin, at(0, 0, -REACH + 0.01)),
+		"mergeItems: two of a kind just less than the reach apart along z merge"
+	)
+	check(
+		not mergesBetween(origin, at(0, 0, REACH)) and not mergesBetween(origin, at(0, 0, -REACH)),
+		"mergeItems: two exactly the reach apart along z do not"
+	)
+	check(
+		mergesBetween(origin, at(REACH - 0.01, 0, REACH - 0.01)),
+		"mergeItems: the reach is measured along x and along z, each alone, so two in opposite corners of it merge"
+	)
+	check(
+		mergesBetween(origin, at(0, WIDTH - 0.01, 0)) and mergesBetween(origin, at(0, -WIDTH + 0.01, 0)),
+		"mergeItems: two of a kind less than a ground item's width apart in height merge"
+	)
+	check(
+		not mergesBetween(origin, at(0, WIDTH, 0)) and not mergesBetween(origin, at(0, -WIDTH, 0)),
+		"mergeItems: one that lies a ground item's width above the other does not merge with it"
+	)
+	check(
+		mergesBetween(at(40, 7, -30), at(41, 7.5, -31)),
+		"mergeItems: the reach is between the two positions, wherever in the world they are"
+	)
+	check(
+		not mergesBetween(at(10, 0, 0), at(-10, 0, 0))
+			and not mergesBetween(at(0, 0, 10), at(0, 0, -10))
+			and not mergesBetween(at(0, 10, 0), at(0, -10, 0)),
+		"mergeItems: two ground items 10 studs to either side of the world's origin, along any axis, do not merge"
+	)
+end
+
+do -- merging: the bigger stack takes in the smaller
+	-- Each pair is spawned apart and merged once. After that only a ground item that is given a new
+	-- position is looked at, so the tests choose which of the two it is.
 	local ground = GroundItems.new()
-	local first = dropAt(ground, ItemStack.new("log", 5), at(10, 0, 0), 100)
-	local joined = dropAt(ground, ItemStack.new("log", 3), at(10 + MERGE, 0, 0), 130)
-	check(joined == first, "mergeItemIntoNearbyItem: returns the id of the ground item it merged into")
+	local lying = GroundItems.spawnStack(ground, ItemStack.new("log", 5), at(10, 0, 0), { x = 1, y = 2, z = 3 }, 100)
+	local coming = GroundItems.spawnStack(ground, ItemStack.new("log", 3), at(50, 0, 0), { x = 4, y = 5, z = 6 }, 130)
+	GroundItems.mergeItems(ground, 130)
 	check(
-		groundItemCount(ground) == 1 and holds(ground, first, "log", 8),
-		"mergeItemIntoNearbyItem: that ground item holds both stacks"
+		holds(ground, lying, "log", 5) and holds(ground, coming, "log", 3),
+		"mergeItems: ground items of one kind that are apart stay apart"
 	)
+	GroundItems.setItemPosition(ground, coming, at(11, 0, 0))
+	GroundItems.mergeItems(ground, 130)
 	check(
-		ground.itemsById[2] == nil and ground.nextId == 3,
-		"mergeItemIntoNearbyItem: the merged one is gone, id and all"
+		ground.itemsById[coming] == nil and holds(ground, lying, "log", 8),
+		"mergeItems: a smaller stack that has come beside a bigger one of its kind is taken in by it"
 	)
-	check(ground.itemsById[first].position.x == 10, "mergeItemIntoNearbyItem: the other stays where it is")
+	check(groundItemCount(ground) == 1 and ground.nextId == 3, "mergeItems: one ground item is left, and no id is used")
+	local merged = ground.itemsById[lying]
+	check(merged.position.x == 10, "mergeItems: the one that took the other in stays where it is")
 	check(
-		ground.itemsById[first].spawnTime == 130,
-		"mergeItemIntoNearbyItem: and counts as spawned at the later of the two times"
+		merged.spawnVelocity.x == 1 and merged.spawnVelocity.y == 2 and merged.spawnVelocity.z == 3,
+		"mergeItems: and keeps the velocity it was spawned with"
 	)
-	check(table.isfrozen(ground.itemsById[first]), "mergeItemIntoNearbyItem: the other is still a frozen value")
+	check(merged.spawnTime == 130, "mergeItems: and counts as spawned at the later of the two times")
+	check(table.isfrozen(merged), "mergeItems: and is still a frozen value")
 
-	local beyond = dropAt(ground, ItemStack.new("log", 1), at(10 + MERGE + 0.01, 0, 0), 130)
+	local bigger = GroundItems.new()
+	local small = dropAt(bigger, ItemStack.new("log", 3), at(10, 0, 0), 100)
+	local big = dropAt(bigger, ItemStack.new("log", 5), at(50, 0, 0), 60)
+	GroundItems.mergeItems(bigger, 100)
+	GroundItems.setItemPosition(bigger, big, at(11, 0, 0))
+	GroundItems.mergeItems(bigger, 100)
 	check(
-		beyond == 3 and holds(ground, first, "log", 8),
-		"mergeItemIntoNearbyItem: returns the item's own id when the other is just beyond the radius"
+		bigger.itemsById[small] == nil and holds(bigger, big, "log", 8),
+		"mergeItems: a bigger stack that has come beside a smaller one of its kind takes it in"
 	)
-	local above = dropAt(ground, ItemStack.new("log", 1), at(10, MERGE + 0.01, 0), 130)
-	check(above == 4 and holds(ground, first, "log", 8), "mergeItemIntoNearbyItem: height counts towards the distance")
-
-	local other = dropAt(ground, ItemStack.new("fish", 2), at(10, 0, 0), 130)
-	check(other == 5 and holds(ground, first, "log", 8), "mergeItemIntoNearbyItem: a different item is not merged into")
-
-	local full = GroundItems.new()
-	dropAt(full, ItemStack.new("log", 12), at(0, 0, 0), 0)
-	local apart = dropAt(full, ItemStack.new("log", 5), at(0, 0, 0), 0)
+	check(bigger.itemsById[big].position.x == 11, "mergeItems: and stays where it has come to")
 	check(
-		apart == 2 and holds(full, 1, "log", 12) and holds(full, 2, "log", 5),
-		"mergeItemIntoNearbyItem: a stack that does not wholly fit stays a ground item of its own"
-	)
-	check(
-		dropAt(full, ItemStack.new("log", 4), at(0, 0, 0), 0) == 1,
-		"mergeItemIntoNearbyItem: a stack that exactly fills the other merges"
-	)
-	check(holds(full, 1, "log", 16), "mergeItemIntoNearbyItem: and the other is a full stack")
-	check(dropAt(full, ItemStack.new("stove", 1), at(5, 0, 0), 0) == 4, "mergeItemIntoNearbyItem: a stove lies alone")
-	check(
-		dropAt(full, ItemStack.new("stove", 1), at(5, 0, 0), 0) == 5,
-		"mergeItemIntoNearbyItem: an item that does not stack never merges"
+		bigger.itemsById[big].spawnTime == 100,
+		"mergeItems: and counts as spawned at the later of the two times, though it was spawned at the earlier"
 	)
 
-	local choice = GroundItems.new()
-	local farther = dropAt(choice, ItemStack.new("log", 1), at(-1.2, 0, 0), 0)
-	local nearer = dropAt(choice, ItemStack.new("log", 1), at(0.5, 0, 0), 0)
+	local equal = GroundItems.new()
+	local stays = dropAt(equal, ItemStack.new("log", 4), at(10, 0, 0), 0)
+	local goes = dropAt(equal, ItemStack.new("log", 4), at(50, 0, 0), 0)
+	GroundItems.mergeItems(equal, 0)
+	GroundItems.setItemPosition(equal, goes, at(11, 0, 0))
+	GroundItems.mergeItems(equal, 0)
 	check(
-		dropAt(choice, ItemStack.new("log", 1), at(0, 0, 0), 0) == nearer,
-		"mergeItemIntoNearbyItem: merges into the nearest of two"
+		equal.itemsById[goes] == nil and holds(equal, stays, "log", 8) and equal.itemsById[stays].position.x == 10,
+		"mergeItems: of two stacks of the same size, the one being looked at is taken in by the other"
+	)
+	local equalToo = GroundItems.new()
+	local mover = dropAt(equalToo, ItemStack.new("log", 4), at(50, 0, 0), 0)
+	local rests = dropAt(equalToo, ItemStack.new("log", 4), at(10, 0, 0), 0)
+	GroundItems.mergeItems(equalToo, 0)
+	GroundItems.setItemPosition(equalToo, mover, at(11, 0, 0))
+	GroundItems.mergeItems(equalToo, 0)
+	check(
+		equalToo.itemsById[mover] == nil and holds(equalToo, rests, "log", 8),
+		"mergeItems: whichever of the two has the lower id"
+	)
+end
+
+do -- merging: only stacks of the same item that fit in one stack
+	local ground = GroundItems.new()
+	local twelve = dropAt(ground, ItemStack.new("log", 12), at(0, 0, 0), 0)
+	local five = dropAt(ground, ItemStack.new("log", 5), at(1, 0, 0), 0)
+	local fish = dropAt(ground, ItemStack.new("fish", 2), at(0, 0, 1), 0)
+	GroundItems.mergeItems(ground, 0)
+	check(
+		holds(ground, twelve, "log", 12) and holds(ground, five, "log", 5),
+		"mergeItems: two stacks that would not fit in one stack stay two"
 	)
 	check(
-		holds(choice, farther, "log", 1) and holds(choice, nearer, "log", 2),
-		"mergeItemIntoNearbyItem: and leaves the farther as it was"
+		holds(ground, fish, "fish", 2) and groundItemCount(ground) == 3,
+		"mergeItems: stacks of different items do not merge"
+	)
+	local four = dropAt(ground, ItemStack.new("log", 4), at(0, 0, -1), 0)
+	GroundItems.mergeItems(ground, 0)
+	check(
+		ground.itemsById[four] == nil and holds(ground, twelve, "log", 16) and holds(ground, five, "log", 5),
+		"mergeItems: two stacks that exactly fill one stack merge"
+	)
+	local stove = dropAt(ground, ItemStack.new("stove", 1), at(20, 0, 0), 0)
+	local otherStove = dropAt(ground, ItemStack.new("stove", 1), at(20, 0, 0), 0)
+	GroundItems.mergeItems(ground, 0)
+	check(
+		holds(ground, stove, "stove", 1) and holds(ground, otherStove, "stove", 1),
+		"mergeItems: an item that does not stack never merges"
+	)
+end
+
+do -- merging: the one being looked at is tried with each one in reach, the nearest first
+	-- Two ground items lie too far apart to merge with each other, the nearer 2 studs one way and
+	-- the farther 3 studs the other way from where a third is then spawned. Only the third is
+	-- looked at. Returns the ground items, and the ids of the nearer, the farther and the third.
+	local function newThree(
+		nearerCount: number,
+		fartherCount: number,
+		thirdCount: number
+	): (GroundItems.GroundItems, number, number, number)
+		local ground = GroundItems.new()
+		local farther = dropAt(ground, ItemStack.new("log", fartherCount), at(3, 0, 0), 0)
+		local nearer = dropAt(ground, ItemStack.new("log", nearerCount), at(-2, 0, 0), 0)
+		GroundItems.mergeItems(ground, 0)
+		local third = dropAt(ground, ItemStack.new("log", thirdCount), at(0, 0, 0), 0)
+		GroundItems.mergeItems(ground, 0)
+		return ground, nearer, farther, third
+	end
+
+	local both, bothNearer, bothFarther, bothThird = newThree(2, 3, 6)
+	check(
+		holds(both, bothThird, "log", 11) and both.itemsById[bothNearer] == nil and both.itemsById[bothFarther] == nil,
+		"mergeItems: a ground item takes in every smaller one of its kind in reach"
+	)
+	check(both.itemsById[bothThird].position.x == 0, "mergeItems: and stays where it is")
+
+	local into, intoNearer, intoFarther, intoThird = newThree(5, 3, 2)
+	check(
+		into.itemsById[intoThird] == nil and holds(into, intoNearer, "log", 7) and holds(into, intoFarther, "log", 3),
+		"mergeItems: a ground item that is taken in is tried with nothing more, and the nearest is the one that takes it"
 	)
 
+	local onward, onwardNearer, onwardFarther, onwardThird = newThree(2, 9, 3)
+	check(
+		holds(onward, onwardFarther, "log", 14)
+			and onward.itemsById[onwardNearer] == nil
+			and onward.itemsById[onwardThird] == nil,
+		"mergeItems: a ground item that took in the nearest is tried with the next with what it then holds"
+	)
+
+	local past, pastNearer, pastFarther, pastThird = newThree(8, 4, 10)
+	check(
+		holds(past, pastThird, "log", 14) and holds(past, pastNearer, "log", 8) and past.itemsById[pastFarther] == nil,
+		"mergeItems: one that does not fit is passed over for the next nearest"
+	)
+
+	-- Of two equally near, the lower id is tried first, in whatever order the ids are kept.
 	local tied = GroundItems.new()
 	for index = 1, 60 do
 		dropAt(tied, ItemStack.new("fish", 1), at(index * 10, 0, 500), 0)
 	end
 	GroundItems.removeExpiredItems(tied, LIFETIME)
-	local allFirst = true
+	local allLowest = true
 	for round = 1, 20 do
 		local x = round * 100
-		local left = dropAt(tied, ItemStack.new("log", 1), at(x - 1, 0, 0), LIFETIME)
-		dropAt(tied, ItemStack.new("log", 1), at(x + 1, 0, 0), LIFETIME)
-		if dropAt(tied, ItemStack.new("log", 1), at(x, 0, 0), LIFETIME) ~= left then
-			allFirst = false
+		local left = dropAt(tied, ItemStack.new("log", 12), at(x - 2, 0, 0), LIFETIME)
+		local right = dropAt(tied, ItemStack.new("log", 12), at(x + 2, 0, 0), LIFETIME)
+		GroundItems.mergeItems(tied, LIFETIME)
+		dropAt(tied, ItemStack.new("log", 4), at(x, 0, 0), LIFETIME)
+		GroundItems.mergeItems(tied, LIFETIME)
+		if not (holds(tied, left, "log", 16) and holds(tied, right, "log", 12)) then
+			allLowest = false
 		end
 	end
+	check(allLowest, "mergeItems: of two equally near, the one with the lower id is tried first")
+end
+
+do -- merging: which ground items are looked at
+	-- A full stack and a part stack lie side by side. Six of the full one are then picked up, which
+	-- leaves room for the part stack and gives neither a new position.
+	local ground = GroundItems.new()
+	local full = dropAt(ground, ItemStack.new("log", 16), at(0, 0, 0), 0)
+	local part = dropAt(ground, ItemStack.new("log", 3), at(1, 0, 0), 1)
+	GroundItems.mergeItems(ground, 1)
+	check(groundItemCount(ground) == 2, "mergeItems: (set up) a full stack and a part stack side by side stay two")
+	local nearlyFull = Inventory.new(1)
+	Inventory.addItems(nearlyFull, "log", 10)
+	GroundItems.moveNearbyStacksToInventory(ground, at(0, 0, 0), nearlyFull, 1.6)
+	check(holds(ground, full, "log", 10) and holds(ground, part, "log", 3), "mergeItems: (set up) six are picked up")
+	GroundItems.mergeItems(ground, 1.6)
+	GroundItems.mergeItems(ground, 1.99)
 	check(
-		allFirst,
-		"mergeItemIntoNearbyItem: of two equally near, merges into the one spawned first, whatever their ids"
+		groundItemCount(ground) == 2,
+		"mergeItems: a ground item that has lain still is not looked at again before its two seconds are up"
+	)
+	GroundItems.mergeItems(ground, 2)
+	check(
+		ground.itemsById[part] == nil and holds(ground, full, "log", 13),
+		"mergeItems: a ground item is looked at again once it has been in the world for two seconds"
 	)
 
-	local delayed = GroundItems.new()
-	local pack = Inventory.new(3)
-	dropAt(delayed, ItemStack.new("log", 5), at(0, 0, 0), 0)
-	dropAt(delayed, ItemStack.new("log", 1), at(0, 0, 0), 100)
+	-- The two seconds are counted from when each was spawned: the full stack is looked at again at
+	-- the times 2 and 4, and the part stack at the times 3 and 5.
+	local phased = GroundItems.new()
+	local phasedFull = dropAt(phased, ItemStack.new("log", 16), at(0, 0, 0), 0)
+	local phasedPart = dropAt(phased, ItemStack.new("log", 3), at(1, 0, 0), 1)
+	GroundItems.mergeItems(phased, 2)
+	local phasedPack = Inventory.new(1)
+	Inventory.addItems(phasedPack, "log", 10)
+	GroundItems.moveNearbyStacksToInventory(phased, at(0, 0, 0), phasedPack, 2.1)
+	GroundItems.mergeItems(phased, 2.99)
 	check(
-		GroundItems.moveNearbyStacksToInventory(delayed, at(1, 0, 0), pack, 100 + DELAY - 0.01) == 0,
-		"mergeItemIntoNearbyItem: a ground item that was merged into cannot be picked up straight away"
+		holds(phased, phasedFull, "log", 10) and holds(phased, phasedPart, "log", 3),
+		"mergeItems: a ground item is not looked at again between one of its two seconds and the next"
 	)
-	GroundItems.removeExpiredItems(delayed, LIFETIME + 50)
-	check(holds(delayed, 1, "log", 6), "mergeItemIntoNearbyItem: a ground item that was merged into lasts from then")
+	GroundItems.mergeItems(phased, 3)
 	check(
-		GroundItems.moveNearbyStacksToInventory(delayed, at(1, 0, 0), pack, 100 + DELAY) == 6,
-		"mergeItemIntoNearbyItem: and is picked up whole"
+		phased.itemsById[phasedPart] == nil and holds(phased, phasedFull, "log", 13),
+		"mergeItems: the two seconds are counted from when each ground item was spawned"
+	)
+
+	-- One that was spawned since the last run is looked at whatever the time. The one it lies
+	-- beside is not, and is merged with all the same.
+	local fresh = GroundItems.new()
+	local lyingStill = dropAt(fresh, ItemStack.new("log", 5), at(0, 0, 0), 0)
+	GroundItems.mergeItems(fresh, 0.5)
+	local spawned = dropAt(fresh, ItemStack.new("log", 3), at(1, 0, 0), 0.5)
+	GroundItems.mergeItems(fresh, 0.5)
+	check(
+		fresh.itemsById[spawned] == nil and holds(fresh, lyingStill, "log", 8),
+		"mergeItems: a ground item that was spawned since the last run is looked at, whatever the time"
+	)
+
+	-- Of the ground items that are looked at, the one with the lower id is looked at first.
+	local pair = GroundItems.new()
+	local first = dropAt(pair, ItemStack.new("log", 3), at(0, 0, 0), 0)
+	local second = dropAt(pair, ItemStack.new("log", 3), at(0, 0, 0), 0)
+	GroundItems.mergeItems(pair, 0)
+	check(
+		pair.itemsById[first] == nil and holds(pair, second, "log", 6),
+		"mergeItems: of two stacks of the same size that are both looked at, the one with the lower id goes"
+	)
+	local unequal = GroundItems.new()
+	local five = dropAt(unequal, ItemStack.new("log", 5), at(0, 0, 0), 0)
+	local three = dropAt(unequal, ItemStack.new("log", 3), at(0, 0, 0), 0)
+	GroundItems.mergeItems(unequal, 0)
+	check(
+		unequal.itemsById[three] == nil and holds(unequal, five, "log", 8),
+		"mergeItems: a ground item that was taken in before its turn is passed over"
+	)
+
+	-- The order holds whatever order the ids are kept in. Thirty single logs with ids 101 to 130 lie
+	-- in one place. The first is taken in by the second, which then takes in the next fourteen and
+	-- is full. The same happens from the seventeenth on.
+	local many = GroundItems.new()
+	for index = 1, 100 do
+		dropAt(many, ItemStack.new("stove", 1), at(500 + index * 10, 0, 500), 0)
+	end
+	GroundItems.removeExpiredItems(many, LIFETIME)
+	GroundItems.mergeItems(many, LIFETIME)
+	for _ = 1, 30 do
+		dropAt(many, ItemStack.new("log", 1), at(0, 0, 0), LIFETIME)
+	end
+	GroundItems.mergeItems(many, LIFETIME)
+	check(
+		groundItemCount(many) == 2 and holds(many, 102, "log", 16) and holds(many, 118, "log", 14),
+		"mergeItems: the ground items are looked at in the order of their ids, lowest first"
+	)
+
+	local gone = GroundItems.new()
+	local taken = dropAt(gone, ItemStack.new("log", 3), at(0, 0, 0), 0)
+	GroundItems.removeItem(gone, taken)
+	GroundItems.mergeItems(gone, 0)
+	check(groundItemCount(gone) == 0, "mergeItems: a ground item that was spawned and has since gone is passed over")
+	local none = GroundItems.new()
+	GroundItems.mergeItems(none, 0)
+	check(groundItemCount(none) == 0 and none.nextId == 1, "mergeItems: does nothing when nothing is on the ground")
+end
+
+do -- merging: a ground item that took another in is as new as the newer of the two
+	local ground = GroundItems.new()
+	local pack = Inventory.new(3)
+	local older = dropAt(ground, ItemStack.new("log", 5), at(0, 0, 0), 0)
+	dropAt(ground, ItemStack.new("log", 1), at(0, 0, 0), 100)
+	GroundItems.mergeItems(ground, 100)
+	check(
+		groundItemCount(ground) == 1 and holds(ground, older, "log", 6),
+		"mergeItems: (set up) the older, bigger stack takes in the newer"
+	)
+	check(
+		GroundItems.moveNearbyStacksToInventory(ground, at(1, 0, 0), pack, 100 + DELAY - 0.01) == 0,
+		"mergeItems: a ground item that took in a newer one cannot be picked up until the newer one could have been"
+	)
+	GroundItems.removeExpiredItems(ground, LIFETIME + 50)
+	check(holds(ground, older, "log", 6), "mergeItems: and lasts as long as the newer one would have")
+	check(
+		GroundItems.moveNearbyStacksToInventory(ground, at(1, 0, 0), pack, 100 + DELAY) == 6,
+		"mergeItems: and is picked up whole"
 	)
 end
 
@@ -526,89 +762,6 @@ do -- setting where a ground item is
 	)
 end
 
-do -- merging: a ground item that has come beside its own kind
-	local ground = GroundItems.new()
-	local lying = dropAt(ground, ItemStack.new("log", 5), at(10, 0, 0), 100)
-	local flying = dropAt(ground, ItemStack.new("log", 3), at(0, 3, 0), 130)
-	moveTo(ground, flying, at(10 - MERGE - 0.01, 0, 0))
-	check(
-		holds(ground, lying, "log", 5) and holds(ground, flying, "log", 3),
-		"mergeItemIntoNearbyItem: two of a kind just beyond the radius of each other stay two"
-	)
-	GroundItems.setItemPosition(ground, flying, at(10 - MERGE, 0, 0))
-	check(
-		GroundItems.mergeItemIntoNearbyItem(ground, flying) == lying,
-		"mergeItemIntoNearbyItem: returns the id of the one it merged into"
-	)
-	check(ground.itemsById[flying] == nil, "mergeItemIntoNearbyItem: the ground item that merged is gone")
-	check(holds(ground, lying, "log", 8), "mergeItemIntoNearbyItem: the other holds both stacks")
-	check(ground.itemsById[lying].position.x == 10, "mergeItemIntoNearbyItem: and stays where it was")
-	check(
-		ground.itemsById[lying].spawnTime == 130,
-		"mergeItemIntoNearbyItem: and counts as spawned at the later of the two times"
-	)
-	check(
-		groundItemCount(ground) == 1 and itemsOnGround(ground, "log") == 8,
-		"mergeItemIntoNearbyItem: no item is made or lost"
-	)
-	check(
-		GroundItems.mergeItemIntoNearbyItem(ground, flying) == flying and groundItemCount(ground) == 1,
-		"mergeItemIntoNearbyItem: returns the id given, and changes nothing, when no ground item has it"
-	)
-
-	local older = GroundItems.new()
-	local first = dropAt(older, ItemStack.new("log", 5), at(0, 0, 0), 50)
-	local second = dropAt(older, ItemStack.new("log", 3), at(20, 0, 0), 90)
-	moveTo(older, first, at(20, 0, 0))
-	check(
-		older.itemsById[first] == nil and holds(older, second, "log", 8) and older.itemsById[second].spawnTime == 90,
-		"mergeItemIntoNearbyItem: when the older one merges, the other keeps the later time"
-	)
-
-	local apart = GroundItems.new()
-	local logs = dropAt(apart, ItemStack.new("log", 12), at(0, 0, 0), 0)
-	local more = dropAt(apart, ItemStack.new("log", 5), at(20, 0, 0), 0)
-	local fish = dropAt(apart, ItemStack.new("fish", 2), at(40, 0, 0), 0)
-	moveTo(apart, more, at(0, 0, 0))
-	check(
-		holds(apart, logs, "log", 12) and holds(apart, more, "log", 5),
-		"mergeItemIntoNearbyItem: two that would not fit in one stack stay two"
-	)
-	check(
-		apart.itemsById[more].position.x == 0,
-		"mergeItemIntoNearbyItem: and the one that did not merge is where it was"
-	)
-	moveTo(apart, fish, at(0, 0, 0))
-	check(
-		holds(apart, fish, "fish", 2) and groundItemCount(apart) == 3,
-		"mergeItemIntoNearbyItem: a different item is not merged into"
-	)
-	moveTo(apart, more, at(0, MERGE + 0.01, 0))
-	local four = dropAt(apart, ItemStack.new("log", 4), at(20, 0, 0), 0)
-	moveTo(apart, four, at(0, 0, 0))
-	check(
-		apart.itemsById[four] == nil and holds(apart, logs, "log", 16) and holds(apart, more, "log", 5),
-		"mergeItemIntoNearbyItem: of two it could merge into, it takes the nearer"
-	)
-
-	local tied = GroundItems.new()
-	local left = dropAt(tied, ItemStack.new("log", 1), at(-1, 0, 0), 0)
-	local right = dropAt(tied, ItemStack.new("log", 1), at(1, 0, 0), 0)
-	local between = dropAt(tied, ItemStack.new("log", 1), at(0, 20, 0), 0)
-	moveTo(tied, between, at(0, 0, 0))
-	check(
-		holds(tied, left, "log", 2) and holds(tied, right, "log", 1),
-		"mergeItemIntoNearbyItem: of two equally near, it takes the one spawned first"
-	)
-
-	local still = GroundItems.new()
-	local alone = dropAt(still, ItemStack.new("log", 5), at(0, 0, 0), 0)
-	check(
-		GroundItems.mergeItemIntoNearbyItem(still, alone) == alone and holds(still, alone, "log", 5),
-		"mergeItemIntoNearbyItem: a ground item does not merge into itself"
-	)
-end
-
 do -- taking one out of the world
 	local ground = GroundItems.new()
 	local id = dropAt(ground, ItemStack.new("log", 5), at(0, 0, 0), 0)
@@ -622,7 +775,7 @@ do -- taking one out of the world
 	check(dropAt(ground, ItemStack.new("log", 1), at(9, 0, 0), 0) == 3, "removeItem: the id is not used again")
 end
 
-do -- many random drops, moves, pickups and expiries: no item is made, and none is lost except by expiring
+do -- many random drops, moves, merges, pickups and expiries: no item is made, and none is lost except by expiring
 	local seed = 20261119
 	local function random(limit: number): number
 		seed = (seed * 16807) % 2147483647
@@ -631,8 +784,30 @@ do -- many random drops, moves, pickups and expiries: no item is made, and none 
 	local itemIds = { "log", "fish", "stove" }
 	local stackSizes: { [string]: number } = { log = 16, fish = 8, stove = 1 }
 
+	-- True if two ground items are of the same item, fit in one stack, and are in reach of each other.
+	local function couldMerge(one: GroundItems.GroundItem, other: GroundItems.GroundItem): boolean
+		return one.stack.itemId == other.stack.itemId
+			and one.stack.count + other.stack.count <= stackSizes[one.stack.itemId]
+			and math.abs(one.position.x - other.position.x) < REACH
+			and math.abs(one.position.z - other.position.z) < REACH
+			and math.abs(one.position.y - other.position.y) < WIDTH
+	end
+
+	-- True if no two ground items could merge.
+	local function isMergedThrough(ground: GroundItems.GroundItems): boolean
+		for id, groundItem: GroundItems.GroundItem in ground.itemsById :: any do
+			for otherId, other: GroundItems.GroundItem in ground.itemsById :: any do
+				if id ~= otherId and couldMerge(groundItem, other) then
+					return false
+				end
+			end
+		end
+		return true
+	end
+
 	local allConserved = true
 	local allValid = true
+	local allMerged = true
 	for _ = 1, 40 do
 		local ground = GroundItems.new()
 		local packs = { Inventory.new(random(6)), Inventory.new(random(6)) }
@@ -640,15 +815,16 @@ do -- many random drops, moves, pickups and expiries: no item is made, and none 
 		local expired: { [string]: number } = { log = 0, fish = 0, stove = 0 }
 		local now = 0
 		for _ = 1, 120 do
-			now += random(40) / 2
+			now += random(40) / 4
 			local action = random(10)
 			if action <= 3 then
 				local itemId = itemIds[random(3)]
 				local count = random(stackSizes[itemId])
-				dropAt(ground, ItemStack.new(itemId, count), at(random(12), 0, random(12)), now)
+				dropAt(ground, ItemStack.new(itemId, count), at(random(12), random(3) * 0.75, random(12)), now)
 				dropped[itemId] += count
 			elseif action <= 5 then
-				moveTo(ground, random(math.max(ground.nextId - 1, 1)), at(random(12), 0, random(12)))
+				local to = at(random(12), random(3) * 0.75, random(12))
+				GroundItems.setItemPosition(ground, random(math.max(ground.nextId - 1, 1)), to)
 			elseif action <= 9 then
 				local pack = packs[random(2)]
 				local before = Inventory.countItems(pack, "log")
@@ -671,6 +847,16 @@ do -- many random drops, moves, pickups and expiries: no item is made, and none 
 					expired[itemId] += before[itemId] - itemsOnGround(ground, itemId)
 				end
 			end
+			local onGroundBefore: { [string]: number } = {}
+			for _, itemId in itemIds do
+				onGroundBefore[itemId] = itemsOnGround(ground, itemId)
+			end
+			GroundItems.mergeItems(ground, now)
+			for _, itemId in itemIds do
+				if itemsOnGround(ground, itemId) ~= onGroundBefore[itemId] then
+					allConserved = false
+				end
+			end
 			for id, groundItem: GroundItems.GroundItem in ground.itemsById :: any do
 				if ItemStack.validate(groundItem.stack) ~= nil or id >= ground.nextId then
 					allValid = false
@@ -686,99 +872,17 @@ do -- many random drops, moves, pickups and expiries: no item is made, and none 
 				allConserved = false
 			end
 		end
+		GroundItems.mergeItems(ground, now + CHECK)
+		if not isMergedThrough(ground) then
+			allMerged = false
+		end
 	end
 	check(allConserved, "random play: every item dropped is in a pack, on the ground or expired")
 	check(allValid, "random play: every ground item holds a real stack under an id already given out")
-end
-
-do -- merging the ground items that moved
-	local ground = GroundItems.new()
-	local lying = GroundItems.spawnStack(ground, ItemStack.new("log", 3), at(10, 0, 0), STILL, 0)
-	local far = GroundItems.spawnStack(ground, ItemStack.new("log", 4), at(50, 0, 0), STILL, 5)
-	GroundItems.mergeMovedItems(ground)
-	check(groundItemCount(ground) == 2, "mergeMovedItems: ground items that are apart stay apart")
-	GroundItems.setItemPosition(ground, far, at(10.5, 0, 0))
 	check(
-		groundItemCount(ground) == 2,
-		"setItemPosition: a ground item set beside its own kind does not merge by that alone"
+		allMerged,
+		"random play: two seconds after the last change, no two ground items in reach of each other would fit in one stack"
 	)
-	GroundItems.mergeMovedItems(ground)
-	check(
-		ground.itemsById[far] == nil and holds(ground, lying, "log", 7),
-		"mergeMovedItems: a ground item given a new position beside its own kind merges into it"
-	)
-	check(
-		ground.itemsById[lying].spawnTime == 5,
-		"mergeMovedItems: which then counts as spawned at the later of the two times"
-	)
-	local fresh = GroundItems.spawnStack(ground, ItemStack.new("log", 2), at(10.5, 0, 0), STILL, 9)
-	check(groundItemCount(ground) == 2, "spawnStack: a stack spawned beside its own kind does not merge by that alone")
-	GroundItems.mergeMovedItems(ground)
-	check(
-		ground.itemsById[fresh] == nil and holds(ground, lying, "log", 9),
-		"mergeMovedItems: a ground item spawned beside its own kind merges into it"
-	)
-
-	-- Two that moved to the same place: the one with the lower id is merged first, into the other.
-	local pair = GroundItems.new()
-	local first = GroundItems.spawnStack(pair, ItemStack.new("log", 3), at(0, 0, 0), STILL, 0)
-	local second = GroundItems.spawnStack(pair, ItemStack.new("log", 4), at(0, 0, 0), STILL, 0)
-	GroundItems.mergeMovedItems(pair)
-	check(
-		pair.itemsById[first] == nil and holds(pair, second, "log", 7),
-		"mergeMovedItems: of two that moved, the one with the lower id is merged first"
-	)
-
-	-- The order holds whatever order the ids are kept in. Thirty single logs with ids 101 to 130 lie
-	-- in one place: each merges into the next, the stack is full at the sixteenth, and the rest
-	-- gather in the last.
-	local many = GroundItems.new()
-	for index = 1, 100 do
-		GroundItems.spawnStack(many, ItemStack.new("stove", 1), at(500 + index * 10, 0, 500), STILL, 0)
-	end
-	GroundItems.removeExpiredItems(many, LIFETIME)
-	GroundItems.mergeMovedItems(many)
-	for _ = 1, 30 do
-		GroundItems.spawnStack(many, ItemStack.new("log", 1), at(0, 0, 0), STILL, LIFETIME)
-	end
-	GroundItems.mergeMovedItems(many)
-	check(
-		groundItemCount(many) == 2 and holds(many, 116, "log", 16) and holds(many, 130, "log", 14),
-		"mergeMovedItems: the ground items that moved are merged in the order of their ids, lowest first"
-	)
-
-	-- A ground item that has lain still is not looked at. A full stack and a part stack lie side by
-	-- side; some of the full one is then picked up, which leaves room, and moves neither.
-	local still = GroundItems.new()
-	local full = GroundItems.spawnStack(still, ItemStack.new("log", 16), at(0, 0, 0), STILL, 0)
-	local part = GroundItems.spawnStack(still, ItemStack.new("log", 3), at(1, 0, 0), STILL, 0)
-	GroundItems.mergeMovedItems(still)
-	check(groundItemCount(still) == 2, "mergeMovedItems: (set up) a full stack and a part stack side by side stay two")
-	local nearlyFull = Inventory.new(1)
-	Inventory.addItems(nearlyFull, "log", 10)
-	GroundItems.moveNearbyStacksToInventory(still, at(0, 0, 0), nearlyFull, 10)
-	check(holds(still, full, "log", 10) and holds(still, part, "log", 3), "mergeMovedItems: (set up) six are picked up")
-	GroundItems.mergeMovedItems(still)
-	check(
-		groundItemCount(still) == 2,
-		"mergeMovedItems: ground items that have lain still are not looked at, though they would now fit in one stack"
-	)
-	GroundItems.setItemPosition(still, part, at(1, 0, 0))
-	GroundItems.mergeMovedItems(still)
-	check(
-		still.itemsById[part] == nil and holds(still, full, "log", 13),
-		"mergeMovedItems: until one of them is given a position again"
-	)
-
-	-- An id whose ground item has gone is passed over.
-	local gone = GroundItems.new()
-	local taken = GroundItems.spawnStack(gone, ItemStack.new("log", 3), at(0, 0, 0), STILL, 0)
-	GroundItems.removeItem(gone, taken)
-	GroundItems.mergeMovedItems(gone)
-	check(groundItemCount(gone) == 0, "mergeMovedItems: a ground item that moved and has since gone is passed over")
-	local none = GroundItems.new()
-	GroundItems.mergeMovedItems(none)
-	check(groundItemCount(none) == 0, "mergeMovedItems: does nothing when nothing has moved")
 end
 
 Check.finish("GroundItems")

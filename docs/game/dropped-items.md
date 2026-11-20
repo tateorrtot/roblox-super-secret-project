@@ -26,7 +26,20 @@ They called this "a bigger issue from the 'lots of little issues'" they have bee
 | 4 | Items do not collide with each other, or with players and creatures | Yes, by Roblox's collision groups |
 | 5 | A block placed where an item lies pushes the item out of the way | Yes. Roblox does not do this, so it is a rule of ours: out of the nearest side with nothing against it |
 
-Also built, from the outline they approved: a player picks up what lies up to 7 studs above their feet, so a stack on a block beside them is in reach. Merging and the five-minute life are as before, except that a stack now joins its own kind where it lands, not where it was dropped.
+Also built, from the outline they approved: a player picks up what lies up to 7 studs above their feet, so a stack on a block beside them is in reach. A ground item lasts five minutes.
+
+## Merging, copied from Minecraft
+The user, 2026-11-20: "I think we should follow minecraft's item behaviour exactly if its not too much work."
+
+- **Two ground items of the same item merge when they are close and both stacks fit in one stack.** Close is a gap of less than half a tile (2 studs) between their sides along x and along z, with neither lying wholly above the other. It is a box, not a distance.
+- **The bigger stack takes in the smaller, and stays where it is.** Of two the same size, the one being looked at goes.
+- **The one that is left is as new as the newer of the two:** its pickup delay and its five minutes are counted from the later spawn time.
+- **A ground item is looked at when it is spawned, whenever it is told to have moved, and every two seconds after it was spawned.** So two stacks that lie still side by side merge within two seconds of there being room.
+- All of it is `GroundItems.mergeItems`, which `World.advanceTo` runs first, ten times a second. The facts about Minecraft are in `docs/research/16-dropped-items.md`.
+
+Two differences are left, and are Claude's call:
+- **A moving item is looked at every tenth of a second.** Minecraft looks at one only as it crosses into a new block, so two stacks thrown to one spot can lie apart for up to two seconds there. Ours merge as soon as they are close. Copying it would mean ground items knowing about tiles, to make merging slower.
+- **The nearest is tried first, and of two equally near the older.** Minecraft tries them in whatever order it holds them. Ours is the same every time, which the tests need.
 
 ## How it is built
 - **Roblox's physics does all the motion.** We wrote no physics. The user, 2026-11-20: "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
