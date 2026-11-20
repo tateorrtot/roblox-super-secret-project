@@ -16,7 +16,7 @@ ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "baked_apple", stackSize = 16 })
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
-ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true, slotCount = 3 })
+ItemRegistry.register({ id = "stove", stackSize = 1 })
 RecipeRegistry.register({ station = "stove", input = "fish", output = "cooked_fish", seconds = 8 })
 RecipeRegistry.register({ station = "stove", input = "apple", output = "baked_apple", seconds = 6 })
 

@@ -18,8 +18,8 @@ ItemRegistry.register({ id = "baked_apple", stackSize = 16 })
 ItemRegistry.register({ id = "stone", stackSize = 16 })
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "twig", stackSize = 16, burnSeconds = 2 })
-ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true, slotCount = 3 })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
+ItemRegistry.register({ id = "stove", stackSize = 1 })
+ItemRegistry.register({ id = "crate", stackSize = 1 })
 RecipeRegistry.register({ station = "stove", input = "fish", output = "cooked_fish", seconds = 8 })
 RecipeRegistry.register({ station = "stove", input = "apple", output = "baked_apple", seconds = 6 })
 
@@ -59,13 +59,14 @@ end
 
 do -- the slots
 	check(INPUT == 1 and FUEL == 2 and OUTPUT == 3, "the slots are: what goes in, fuel, what comes out")
+	check(Station.SLOT_COUNT == 3, "SLOT_COUNT: a station has three slots")
 end
 
 do -- a new station
 	local inventory = Inventory.new(3)
 	local station = Station.new("stove", inventory)
 	check(
-		station.itemId == "stove" and station.inventory == inventory,
+		station.kindId == "stove" and station.inventory == inventory,
 		"new: is of the kind it was given, over the inventory it was given"
 	)
 	check(station.burnSecondsLeft == 0 and station.burnSecondsTotal == 0, "new: no fire has been lit")

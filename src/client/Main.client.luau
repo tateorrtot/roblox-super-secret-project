@@ -19,8 +19,9 @@ local Direction = require(Shared.Direction)
 local Inventory = require(Shared.inventory.Inventory)
 local InventoryScreen = require(Shared.inventory.InventoryScreen)
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
-local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
+local PlaceableItems = require(Shared.placedObjectKinds.PlaceableItems)
+local PlacedObjectLooks = require(Shared.placedObjectKinds.PlacedObjectLooks)
 local PlayerState = require(Shared.players.PlayerState)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
 local StationProgress = require(Shared.stations.StationProgress)
@@ -127,9 +128,9 @@ local function controlsScreen(screen: InventoryScreen.InventoryScreen): Inventor
 	}
 end
 
-local function placeableInHand(): string?
-	local held = Inventory.getStack(snapshot.pack, snapshot.selectedHotbarSlot)
-	return if held ~= nil and ItemRegistry.get(held.itemId).placeable then held.itemId else nil
+local function getKindIdPlacedBySelectedItem(): string?
+	local selected = Inventory.getStack(snapshot.pack, snapshot.selectedHotbarSlot)
+	return if selected ~= nil then PlaceableItems[selected.itemId] else nil
 end
 
 hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOT_COUNT, {
@@ -177,8 +178,8 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 		onScreenOpenedOrClosed(screen ~= nil)
 	end
 	if screen ~= nil then
-		local otherLook = if snapshot.otherInventoryItemId then ItemLooks[snapshot.otherInventoryItemId] else nil
-		local otherName = if otherLook then otherLook.name else ""
+		local kindId = snapshot.placedObjectKindId
+		local otherName = if kindId ~= nil then PlacedObjectLooks[kindId].name else ""
 		InventoryGui.show(
 			inventoryGui,
 			snapshot.pack,
@@ -212,7 +213,7 @@ UseAndHit.startListening({
 	isBlocked = function()
 		return snapshot.screen ~= nil
 	end,
-	getPlaceableInHand = placeableInHand,
+	getPlaceableKindId = getKindIdPlacedBySelectedItem,
 	onPlacedObjectUsed = function(placedObjectId)
 		remotes.usePlacedObject:FireServer(placedObjectId)
 	end,

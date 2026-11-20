@@ -6,7 +6,7 @@
 --- control yet. Both act on the placed object or the bare tile under the pointer, if the player's
 --- character stands within `World.REACH` of it. With a mouse, the thing under the pointer is
 --- marked while it is in reach: a placed object gets a white outline, and a bare tile gets a faint
---- block if the item in hand can be placed.
+--- block if the item in hand places an object.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,11 +23,12 @@ local UseAndHit = {}
 export type Callbacks = {
 	--- Returns `true` while the world takes no clicks, as when a screen is open over it.
 	isBlocked: () -> boolean,
-	--- Returns the id of the item in the player's hand if it can be placed, or `nil`.
-	getPlaceableInHand: () -> string?,
+	--- Returns the id of the kind of placed object that the item in the player's hand places, or
+	--- `nil` if it places none.
+	getPlaceableKindId: () -> string?,
 	--- Called with a placed object's id when the player uses it.
 	onPlacedObjectUsed: (placedObjectId: number) -> (),
-	--- Called with a tile when the player uses it while an item that can be placed is in hand.
+	--- Called with a tile when the player uses it while an item that places an object is in hand.
 	onTileUsed: (x: number, z: number) -> (),
 	--- Called with a placed object's id when the player hits it.
 	onPlacedObjectHit: (placedObjectId: number) -> (),
@@ -81,7 +82,7 @@ function UseAndHit.startListening(callbacks: Callbacks)
 	local function use(target: PlotPointer.Target?)
 		if target ~= nil and target.kind == "placedObject" then
 			callbacks.onPlacedObjectUsed(target.placedObjectId)
-		elseif target ~= nil and target.kind == "tile" and callbacks.getPlaceableInHand() ~= nil then
+		elseif target ~= nil and target.kind == "tile" and callbacks.getPlaceableKindId() ~= nil then
 			callbacks.onTileUsed(target.x, target.z)
 		end
 	end
@@ -94,9 +95,9 @@ function UseAndHit.startListening(callbacks: Callbacks)
 
 	RunService.RenderStepped:Connect(function()
 		local target = if UserInputService.MouseEnabled then targetAt(UserInputService:GetMouseLocation()) else nil
-		local itemId = callbacks.getPlaceableInHand()
-		if target ~= nil and target.kind == "tile" and itemId ~= nil then
-			PlacementGhost.show(ghost, itemId, target.center)
+		local kindId = callbacks.getPlaceableKindId()
+		if target ~= nil and target.kind == "tile" and kindId ~= nil then
+			PlacementGhost.show(ghost, kindId, target.center)
 		else
 			PlacementGhost.hide(ghost)
 		end

@@ -1,5 +1,5 @@
 --!strict
---- A placed object that turns one item into another while its fire burns: a stove.
+--- A fire and three slots that turn one item into another while the fire burns, as a stove's do.
 ---
 --- A station has three slots. `INPUT_SLOT` holds what is to be worked on, `FUEL_SLOT` holds fuel,
 --- and what is made collects in `OUTPUT_SLOT`. `advance` burns the fire and does the work. The fire
@@ -14,9 +14,9 @@ local Station = {}
 type Inventory = Inventory.Inventory
 
 export type Station = {
-	--- The id of the item this station is, such as `"stove"`. Its recipes are the ones registered
-	--- for that item.
-	read itemId: string,
+	--- The id of the kind of station it is, such as `"stove"`. Its recipes are the ones registered
+	--- for that kind.
+	read kindId: string,
 	--- Its three slots.
 	read inventory: Inventory,
 	--- How many seconds longer the fuel now burning will burn. 0 when the fire is out.
@@ -39,12 +39,17 @@ Station.FUEL_SLOT = 2
 --- The slot where what has been made collects.
 Station.OUTPUT_SLOT = 3
 
+--- How many slots a station's inventory has.
+Station.SLOT_COUNT = 3
+
 --- Two times closer together than this, in seconds, count as the same time.
 local SAME_TIME = 1e-9
 
---- Returns a new station of the kind `itemId` over `inventory`, with no fire and nothing worked on.
-function Station.new(itemId: string, inventory: Inventory): Station
-	return { itemId = itemId, inventory = inventory, burnSecondsLeft = 0, burnSecondsTotal = 0, workedSeconds = 0 }
+--- Returns a new station of the kind `kindId` over `inventory`, with no fire and nothing worked
+--- on.
+--- Note: `inventory` must have `SLOT_COUNT` slots. It is not checked.
+function Station.new(kindId: string, inventory: Inventory): Station
+	return { kindId = kindId, inventory = inventory, burnSecondsLeft = 0, burnSecondsTotal = 0, workedSeconds = 0 }
 end
 
 --- Returns `true` if the station's fire is burning.
@@ -52,12 +57,12 @@ function Station.isBurning(station: Station): boolean
 	return station.burnSecondsLeft > 0
 end
 
---- Returns `true` if a slot of the station that the item `stationItemId` is accepts the item
---- `itemId`. The input slot accepts what that station has a recipe for, the fuel slot accepts
---- what burns, and the output slot accepts nothing.
-function Station.slotAcceptsItem(stationItemId: string, slot: number, itemId: string): boolean
+--- Returns `true` if a slot of a station of the kind `kindId` accepts the item `itemId`. The
+--- input slot accepts what that kind of station has a recipe for, the fuel slot accepts what
+--- burns, and the output slot accepts nothing.
+function Station.slotAcceptsItem(kindId: string, slot: number, itemId: string): boolean
 	if slot == Station.INPUT_SLOT then
-		return RecipeRegistry.find(stationItemId, itemId) ~= nil
+		return RecipeRegistry.find(kindId, itemId) ~= nil
 	end
 	return slot == Station.FUEL_SLOT and ItemRegistry.get(itemId).burnSeconds ~= nil
 end
@@ -67,7 +72,7 @@ end
 --- recipe makes.
 function Station.getWorkableRecipe(station: Station): RecipeRegistry.Recipe?
 	local input = Inventory.getStack(station.inventory, Station.INPUT_SLOT)
-	local recipe = if input then RecipeRegistry.find(station.itemId, input.itemId) else nil
+	local recipe = if input then RecipeRegistry.find(station.kindId, input.itemId) else nil
 	local output = Inventory.getStack(station.inventory, Station.OUTPUT_SLOT)
 	if recipe == nil or output == nil then
 		return recipe

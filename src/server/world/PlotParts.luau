@@ -1,19 +1,20 @@
 --!strict
 --- Blocks that show a plot in the world.
 ---
---- Draws thin lines on the plot's slab to mark the tiles, and one block a tile wide for each item
---- standing on the plot, in the colour of its item and with its name above it. `update` makes the
---- blocks match what is placed: a new block for each newly placed object and none for one that was
---- removed. The slab is tagged `Plot` and has the attributes `width` and `depth` in tiles and
---- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.getTileAt` wants it. Each block
---- has the attribute `placedObjectId`, the id of its placed object, and the attribute `burning`, which
---- is `true` while the block is a station whose fire is burning. The blocks are placeholders until
---- items have models, and the plot must lie square to the world's x and z axes.
+--- Draws thin lines on the plot's slab to mark the tiles, and one block a tile wide for each
+--- object standing on the plot, in the colour of its kind and with the kind's name above it.
+--- `update` makes the blocks match what is placed: a new block for each newly placed object and
+--- none for one that was removed. The slab is tagged `Plot` and has the attributes `widthInTiles`
+--- and `depthInTiles`, and `cornerX`, `cornerY` and `cornerZ`, the plot's corner as
+--- `Plot.getTileAt` wants it. Each block has the attribute `placedObjectId`, the id of its placed
+--- object, and the attribute `burning`, which is `true` while the block is a station whose fire is
+--- burning. The blocks are placeholders until placed objects have models, and the plot must lie
+--- square to the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local ItemLooks = require(Shared.items.ItemLooks)
+local PlacedObjectLooks = require(Shared.placedObjectKinds.PlacedObjectLooks)
 local Plot = require(Shared.plots.Plot)
 local Station = require(Shared.stations.Station)
 
@@ -49,11 +50,11 @@ local function makeLabel(part: Part, text: string, side: number)
 	label.Parent = billboard
 end
 
-local function makePart(itemId: string, id: number, center: Plot.Position): Part
-	local look = ItemLooks[itemId]
+local function makePart(kindId: string, id: number, center: Plot.Position): Part
+	local look = PlacedObjectLooks[kindId]
 	local side = Plot.TILE_SIZE
 	local part = Instance.new("Part")
-	part.Name = itemId
+	part.Name = kindId
 	part.Anchored = true
 	part.Size = Vector3.new(side, side, side)
 	part.Position = Vector3.new(center.x, center.y + side / 2, center.z)
@@ -84,8 +85,8 @@ end
 
 local function makeTileLines(folder: Folder, corner: Plot.Position, plot: Plot.Plot, color: Color3)
 	local side = Plot.TILE_SIZE
-	local length = plot.depth * side
-	for index = 0, plot.width do
+	local length = plot.depthInTiles * side
+	for index = 0, plot.widthInTiles do
 		makeTileLine(
 			folder,
 			color,
@@ -93,8 +94,8 @@ local function makeTileLines(folder: Folder, corner: Plot.Position, plot: Plot.P
 			Vector3.new(corner.x + index * side, corner.y, corner.z + length / 2)
 		)
 	end
-	local breadth = plot.width * side
-	for index = 0, plot.depth do
+	local breadth = plot.widthInTiles * side
+	for index = 0, plot.depthInTiles do
 		makeTileLine(
 			folder,
 			color,
@@ -114,8 +115,8 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 		y = slab.Position.Y + slab.Size.Y / 2,
 		z = slab.Position.Z - slab.Size.Z / 2,
 	})
-	slab:SetAttribute("width", plot.width)
-	slab:SetAttribute("depth", plot.depth)
+	slab:SetAttribute("widthInTiles", plot.widthInTiles)
+	slab:SetAttribute("depthInTiles", plot.depthInTiles)
 	slab:SetAttribute("cornerX", corner.x)
 	slab:SetAttribute("cornerY", corner.y)
 	slab:SetAttribute("cornerZ", corner.z)
@@ -129,7 +130,7 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 end
 
 local function showFire(part: Part, burning: boolean)
-	local color = ItemLooks[part.Name].color
+	local color = PlacedObjectLooks[part.Name].color
 	local unlit = Color3.fromRGB(color[1], color[2], color[3])
 	part.Color = if burning then unlit:Lerp(Color3.fromRGB(255, 140, 40), 0.6) else unlit
 	part.Material = if burning then Enum.Material.Neon else Enum.Material.SmoothPlastic
@@ -149,8 +150,8 @@ end
 local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
 	for id, placedObject in plot.placedObjectsById do
 		if plotParts.partsById[id] == nil then
-			local center = Plot.getTileCenter(plotParts.corner, placedObject.x, placedObject.z)
-			local part = makePart(placedObject.itemId, id, center)
+			local center = Plot.getTileCenter(plotParts.corner, placedObject.tileX, placedObject.tileZ)
+			local part = makePart(placedObject.kindId, id, center)
 			plotParts.partsById[id] = part
 			part.Parent = plotParts.folder
 		end

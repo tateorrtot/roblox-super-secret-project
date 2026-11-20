@@ -21,9 +21,9 @@ local check = Check.that
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
+ItemRegistry.register({ id = "crate", stackSize = 1 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
-ItemRegistry.register({ id = "oven", stackSize = 1, placeable = true, slotCount = 3 })
+ItemRegistry.register({ id = "oven", stackSize = 1 })
 RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fish", seconds = 8 })
 
 local at = Position.new
@@ -122,7 +122,7 @@ do -- no screen open
 	local view = PlayerSnapshot.decode(encoded)
 	check(view.screen == nil, "decode: a view with no screen has no screen")
 	check(
-		view.otherInventoryItemId == nil and view.stationProgress == nil,
+		view.placedObjectKindId == nil and view.stationProgress == nil,
 		"decode: and no placed object and no progress"
 	)
 	check(sameInventory(view.pack, world.players[1].pack), "decode: the pack is what the player holds")
@@ -153,7 +153,7 @@ do -- the pack open alone
 	check(
 		screen ~= nil
 			and screen.otherInventory == nil
-			and screen.otherInventoryItemId == nil
+			and screen.placedObjectKindId == nil
 			and screen.carriedStack == nil
 			and screen.stationProgress == nil,
 		"encode: with nothing beside the pack, nothing carried and no progress"
@@ -168,7 +168,7 @@ do -- the pack open alone
 		"decode: with nothing beside it and nothing carried"
 	)
 	check(
-		view.otherInventoryItemId == nil and view.stationProgress == nil,
+		view.placedObjectKindId == nil and view.stationProgress == nil,
 		"decode: and no placed object and no progress"
 	)
 	check(sameInventory(view.pack, state.pack), "decode: the pack is what the player holds")
@@ -209,7 +209,7 @@ do -- a crate open
 	openOn(world, state, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.otherInventoryItemId == "crate", "encode: says what kind of placed object is open")
+	check(screen ~= nil and screen.placedObjectKindId == "crate", "encode: says what kind of placed object is open")
 	check(
 		screen ~= nil
 			and screen.otherInventory ~= nil
@@ -225,7 +225,7 @@ do -- a crate open
 
 	local view = PlayerSnapshot.decode(encoded)
 	check(
-		view.otherInventoryItemId == "crate" and view.stationProgress == nil,
+		view.placedObjectKindId == "crate" and view.stationProgress == nil,
 		"decode: knows it is a crate, and has no progress"
 	)
 	check(
@@ -260,7 +260,7 @@ do -- a crate open
 			and is(Inventory.getStack(carryingView.screen.otherInventory, 1), "fish", 1),
 		"decode: gives back the stack carried and what was left in the crate"
 	)
-	check(carryingView.otherInventoryItemId == "crate", "decode: and the kind of placed object")
+	check(carryingView.placedObjectKindId == "crate", "decode: and the kind of placed object")
 end
 
 do -- an oven open
@@ -283,7 +283,7 @@ do -- an oven open
 	World.advanceTo(world, 4)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.otherInventoryItemId == "oven", "encode: says an oven is open")
+	check(screen ~= nil and screen.placedObjectKindId == "oven", "encode: says an oven is open")
 	check(
 		screen ~= nil
 			and screen.stationProgress ~= nil
@@ -305,7 +305,7 @@ do -- an oven open
 	check(isPlain(encoded), "encode: all of it is plain data")
 
 	local view = PlayerSnapshot.decode(encoded)
-	check(view.otherInventoryItemId == "oven", "decode: knows it is an oven")
+	check(view.placedObjectKindId == "oven", "decode: knows it is an oven")
 	check(
 		view.stationProgress ~= nil
 			and view.stationProgress.fuelBurnsOutAt == 16
@@ -326,7 +326,7 @@ do -- an oven open
 		both.screen ~= nil
 			and is(both.screen.carriedStack, "apple", 4)
 			and both.stationProgress ~= nil
-			and both.otherInventoryItemId == "oven",
+			and both.placedObjectKindId == "oven",
 		"decode: an oven open and a stack carried come back together"
 	)
 end

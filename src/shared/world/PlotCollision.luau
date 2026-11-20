@@ -1,9 +1,9 @@
 --!strict
---- What gives way when an item is placed on a plot.
+--- What gives way when an object is placed on a plot.
 ---
---- A placed object fills its tile as a cube `Plot.TILE_SIZE` on each side, standing on the tile, and
---- no ground item lies inside one. `pushGroundItemsOutOfTile` moves the ground items out of a tile
---- that has just had an item placed on it.
+--- A placed object fills its tile as a cube `Plot.TILE_SIZE` on each side, standing on the tile,
+--- and no ground item lies inside one. `pushGroundItemsOutOfTile` moves the ground items out of a
+--- tile that has just had an object placed on it.
 local GroundItems = require("./GroundItems")
 local ItemStack = require("../items/ItemStack")
 local Plot = require("../plots/Plot")
@@ -14,7 +14,7 @@ local PlotCollision = {}
 type GroundItems = GroundItems.GroundItems
 type ItemStack = ItemStack.ItemStack
 type Position = Position.Position
-type Tile = { plot: Plot.Plot, x: number, z: number, center: Position }
+type Tile = { plot: Plot.Plot, tileX: number, tileZ: number, center: Position }
 type Side = { x: number, z: number }
 
 --- How fast a ground item that `pushGroundItemsOutOfTile` pushes out of a side of a tile starts
@@ -47,7 +47,7 @@ local function findNearestFreeSideOfTile(position: Position, tile: Tile): (Side?
 	for _, side in SIDES do
 		local towardsSide = (position.x - center.x) * side.x + (position.z - center.z) * side.z
 		local distance = CENTER_DISTANCE_WHEN_TOUCHING - towardsSide
-		if distance < nearestDistance and not Plot.isTileTaken(tile.plot, tile.x + side.x, tile.z + side.z) then
+		if distance < nearestDistance and not Plot.isTileTaken(tile.plot, tile.tileX + side.x, tile.tileZ + side.z) then
 			nearestSide, nearestDistance = side, distance
 		end
 	end
@@ -71,8 +71,8 @@ local function pushGroundItemOutOfTile(groundItems: GroundItems, id: number, til
 	}, now)
 end
 
---- Pushes the ground items out of the tile `x`, `z` of `plot`, whose tile x 1, z 1 has its outer
---- corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of a stud into
+--- Pushes the ground items out of the tile `tileX`, `tileZ` of `plot`, whose tile x 1, z 1 has
+--- its outer corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of a stud into
 --- the cube a placed object fills on that tile. It is taken out of the world and its stack is
 --- spawned again at the time `now`, as a new ground item with a new id: just outside the nearest
 --- side of the tile that has no placed object against it, no higher and no further along that side
@@ -88,11 +88,12 @@ function PlotCollision.pushGroundItemsOutOfTile(
 	groundItems: GroundItems,
 	plot: Plot.Plot,
 	plotCorner: Position,
-	x: number,
-	z: number,
+	tileX: number,
+	tileZ: number,
 	now: number
 )
-	local tile: Tile = { plot = plot, x = x, z = z, center = Plot.getTileCenter(plotCorner, x, z) }
+	local center = Plot.getTileCenter(plotCorner, tileX, tileZ)
+	local tile: Tile = { plot = plot, tileX = tileX, tileZ = tileZ, center = center }
 	local ids = {}
 	for id, groundItem in groundItems.itemsById do
 		if isLyingInTile(groundItem.position, tile) then

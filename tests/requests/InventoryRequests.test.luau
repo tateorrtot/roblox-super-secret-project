@@ -21,8 +21,8 @@ ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
 ItemRegistry.register({ id = "stove", stackSize = 1 })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 3 })
-ItemRegistry.register({ id = "oven", stackSize = 1, placeable = true, slotCount = 3 })
+ItemRegistry.register({ id = "crate", stackSize = 1 })
+ItemRegistry.register({ id = "oven", stackSize = 1 })
 RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fish", seconds = 8 })
 
 local itemIds = { "log", "fish", "cooked_fish", "stove", "crate", "oven" }
@@ -80,11 +80,11 @@ local function insideOf(world: World.World, placedObjectId: number): Inventory.I
 	return findInside(world, placedObjectId) :: Inventory.Inventory
 end
 
--- Stands an object named for the item `itemId` on a tile of the world's plot. One named "oven" is
--- made a station, and any other is given an inventory of 3 slots.
-local function place(world: World.World, itemId: string, x: number, z: number): number
-	local placedObjectId = Plot.placeObject(world.plot, itemId, x, z)
-	if itemId == "oven" then
+-- Stands an object of the kind `kindId` on a tile of the world's plot. An oven is made a station,
+-- and any other kind is given an inventory of 3 slots.
+local function place(world: World.World, kindId: string, tileX: number, tileZ: number): number
+	local placedObjectId = Plot.placeObject(world.plot, kindId, tileX, tileZ)
+	if kindId == "oven" then
 		World.addStation(world, placedObjectId, Station.new("oven", Inventory.new(3)))
 	else
 		World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(3))
@@ -108,10 +108,10 @@ local function open(world: World.World, state: PlayerState.PlayerState, placedOb
 	)
 end
 
--- Stands an object named for the item `itemId` on tile 6, 6, opens it on the player's screen beside
--- their pack, and returns what is inside it.
-local function openPlaced(world: World.World, state: PlayerState.PlayerState, itemId: string): Inventory.Inventory
-	local placedObjectId = place(world, itemId, 6, 6)
+-- Stands an object of the kind `kindId` on tile 6, 6, opens it on the player's screen beside their
+-- pack, and returns what is inside it.
+local function openPlaced(world: World.World, state: PlayerState.PlayerState, kindId: string): Inventory.Inventory
+	local placedObjectId = place(world, kindId, 6, 6)
 	open(world, state, placedObjectId)
 	return insideOf(world, placedObjectId)
 end
@@ -140,7 +140,7 @@ local function inWorld(world: World.World, itemId: string): number
 	end
 	for placedObjectId, placedObject in world.plot.placedObjectsById do
 		local inside = findInside(world, placedObjectId)
-		count += if placedObject.itemId == itemId then 1 else 0
+		count += if placedObject.kindId == itemId then 1 else 0
 		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
 	end
 	return count

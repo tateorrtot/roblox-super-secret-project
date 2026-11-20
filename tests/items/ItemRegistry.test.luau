@@ -77,41 +77,14 @@ do -- what register refuses
 	check(#ItemRegistry.getAll() == 3, "register: the registry still has only the three good item types")
 end
 
-do -- items that can be placed, and that hold things
-	ItemRegistry.register({ id = "placed_plain", stackSize = 1, placeable = true })
-	ItemRegistry.register({ id = "placed_holder", stackSize = 1, placeable = true, slotCount = 27 })
-	ItemRegistry.register({ id = "not_placed", stackSize = 8 })
-	check(ItemRegistry.get("placed_plain").placeable == true, "register: keeps placeable")
-	check(ItemRegistry.get("placed_plain").slotCount == nil, "register: a placeable item need not hold things")
-	check(ItemRegistry.get("placed_holder").slotCount == 27, "register: keeps slotCount")
-	ItemRegistry.register({ id = "placed_one_slot", stackSize = 1, placeable = true, slotCount = 1 })
-	check(ItemRegistry.get("placed_one_slot").slotCount == 1, "register: 1 is the fewest slots")
-	check(
-		ItemRegistry.get("not_placed").placeable == nil and ItemRegistry.get("not_placed").slotCount == nil,
-		"register: an item that cannot be placed has neither field"
-	)
-	for _, bad in { false, "yes", 1, {} } :: { any } do
+do -- fields that item definitions once had
+	for _, gone in { "placeable", "slotCount" } do
 		check(
-			refuses({ id = "bad_placeable", stackSize = 1, placeable = bad }),
-			"register: refuses placeable = " .. tostring(bad)
+			refuses({ id = "odd", stackSize = 1, [gone] = true }),
+			"register: refuses the field " .. gone .. ", which item definitions do not have"
 		)
 	end
-	for _, bad in { 0, -3, 1.5, 0 / 0, math.huge, "9", true } :: { any } do
-		check(
-			refuses({ id = "bad_slots", stackSize = 1, placeable = true, slotCount = bad }),
-			"register: refuses slotCount = " .. tostring(bad)
-		)
-	end
-	check(
-		refuses({ id = "loose_slots", stackSize = 1, slotCount = 9 }),
-		"register: refuses slots on an item that cannot be placed"
-	)
-	check(
-		not ItemRegistry.has("bad_placeable")
-			and not ItemRegistry.has("bad_slots")
-			and not ItemRegistry.has("loose_slots"),
-		"register: a refused definition is not registered"
-	)
+	check(not ItemRegistry.has("odd"), "register: a refused definition is not registered")
 end
 
 do -- items that burn
@@ -119,7 +92,11 @@ do -- items that burn
 	ItemRegistry.register({ id = "burns_briefly", stackSize = 16, burnSeconds = 0.5 })
 	check(ItemRegistry.get("burns_long").burnSeconds == 16, "register: keeps burnSeconds")
 	check(ItemRegistry.get("burns_briefly").burnSeconds == 0.5, "register: a fraction of a second is fine")
-	check(ItemRegistry.get("not_placed").burnSeconds == nil, "register: an item that does not burn has no burnSeconds")
+	ItemRegistry.register({ id = "does_not_burn", stackSize = 8 })
+	check(
+		ItemRegistry.get("does_not_burn").burnSeconds == nil,
+		"register: an item that does not burn has no burnSeconds"
+	)
 	for _, bad in { 0, -4, 0 / 0, math.huge, "16", true } :: { any } do
 		check(
 			refuses({ id = "bad_fuel", stackSize = 1, burnSeconds = bad }),

@@ -10,11 +10,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Crate = require(Shared.placedObjectKinds.Crate)
 local Inventory = require(Shared.inventory.Inventory)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local Plot = require(Shared.plots.Plot)
-local Station = require(Shared.stations.Station)
+local Stove = require(Shared.placedObjectKinds.Stove)
 local World = require(Shared.world.World)
 
 local PlaceholderWorld = {}
@@ -120,15 +121,13 @@ end
 --- Stands a crate and a stove on the plot of `world`, and puts a few stacks in the crate. Call it
 --- once, on the world made over the plot that `build` returned.
 function PlaceholderWorld.placeStartingObjects(world: World.World)
-	local crateId = Plot.placeObject(world.plot, "crate", 13, 7)
-	local inCrate = Inventory.new(27)
-	World.addPlacedObjectInventory(world, crateId, inCrate)
+	local crateId = Crate.place(world, 13, 7)
+	local inCrate = world.placedObjectInventories[crateId]
 	Inventory.addItems(inCrate, "cheese", 8)
 	Inventory.addItems(inCrate, "fish", 5)
 	Inventory.addItems(inCrate, "crystal", 40)
 	Inventory.addItems(inCrate, "crate", 1)
-	local stoveId = Plot.placeObject(world.plot, "stove", 6, 13)
-	World.addStation(world, stoveId, Station.new("stove", Inventory.new(3)))
+	Stove.place(world, 6, 13)
 end
 
 --- Adds a few items to `pack`, so that a new player's hotbar is not bare.
@@ -160,15 +159,15 @@ function PlaceholderWorld.restockGroundItems(placeholder: PlaceholderWorld, worl
 
 	local plot = placeholder.plot
 	local slab = placeholder.slab
-	local tileX = random:NextInteger(1, plot.width)
-	local tileZ = random:NextInteger(1, plot.depth)
+	local tileX = random:NextInteger(1, plot.widthInTiles)
+	local tileZ = random:NextInteger(1, plot.depthInTiles)
 	local corner = {
 		x = slab.Position.X - slab.Size.X / 2,
 		y = slab.Position.Y + slab.Size.Y / 2,
 		z = slab.Position.Z - slab.Size.Z / 2,
 	}
 	local spot = Plot.getTileCenter(corner, tileX, tileZ)
-	if not Plot.canPlaceObject(plot, "crate", tileX, tileZ) then
+	if Plot.isTileTaken(plot, tileX, tileZ) then
 		return
 	end
 

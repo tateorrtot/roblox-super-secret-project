@@ -21,11 +21,11 @@ local STILL = { x = 0, y = 0, z = 0 }
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
-ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
-ItemRegistry.register({ id = "post", stackSize = 8, placeable = true })
+ItemRegistry.register({ id = "stove", stackSize = 1 })
+ItemRegistry.register({ id = "crate", stackSize = 1 })
+ItemRegistry.register({ id = "post", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
-ItemRegistry.register({ id = "oven", stackSize = 1, placeable = true, slotCount = 3 })
+ItemRegistry.register({ id = "oven", stackSize = 1 })
 RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fish", seconds = 8 })
 
 local itemIds = { "log", "fish", "apple", "stove", "crate", "post" }
@@ -93,7 +93,8 @@ local function insideOf(world: World.World, placedObjectId: number): Inventory.I
 end
 
 -- How many of one item the whole world holds: in packs, carried, standing on the plot, inside what
--- stands on the plot, and on the ground. A placed object counts as one of the item it is named for.
+-- stands on the plot, and on the ground. A placed object counts as one of the item that its kind is
+-- named for.
 local function inWorld(world: World.World, itemId: string): number
 	local count = onGround(world, itemId)
 	for _, state in world.players do
@@ -105,7 +106,7 @@ local function inWorld(world: World.World, itemId: string): number
 	end
 	for placedObjectId, placedObject in world.plot.placedObjectsById do
 		local inside = findInside(world, placedObjectId)
-		count += if placedObject.itemId == itemId then 1 else 0
+		count += if placedObject.kindId == itemId then 1 else 0
 		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
 	end
 	return count
@@ -121,14 +122,14 @@ local function placedIds(world: World.World): { number }
 	return ids
 end
 
--- Stands an object on a tile of the world's plot and gives it what these tests give one named for
--- that item: a crate an inventory of 27 slots, and an oven a station of its own. Anything else is
--- given nothing.
-local function place(world: World.World, itemId: string, x: number, z: number): number
-	local placedObjectId = Plot.placeObject(world.plot, itemId, x, z)
-	if itemId == "crate" then
+-- Stands an object of the kind `kindId` on a tile of the world's plot, and gives it what these
+-- tests give one of that kind: a crate an inventory of 27 slots, and an oven a station of its own.
+-- Any other kind is given nothing.
+local function place(world: World.World, kindId: string, tileX: number, tileZ: number): number
+	local placedObjectId = Plot.placeObject(world.plot, kindId, tileX, tileZ)
+	if kindId == "crate" then
 		World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(27))
-	elseif itemId == "oven" then
+	elseif kindId == "oven" then
 		World.addStation(world, placedObjectId, Station.new("oven", Inventory.new(3)))
 	end
 	return placedObjectId
@@ -155,8 +156,9 @@ local function openOn(world: World.World, state: PlayerState.PlayerState, placed
 	World.openPlacedObjectScreen(world, state, placedObjectId, insideOf(world, placedObjectId))
 end
 
--- Takes a placed object off the plot, and throws one of the item it is named for and then every
--- stack that was inside it from its tile, as a hit does. Does nothing if no placed object has that id.
+-- Takes a placed object off the plot, and throws one of the item its kind is named for and then
+-- every stack that was inside it from its tile, as a hit does. Does nothing if no placed object has
+-- that id.
 local function knockOff(world: World.World, placedObjectId: number)
 	local placedObject = world.plot.placedObjectsById[placedObjectId]
 	if placedObject == nil then
@@ -164,9 +166,9 @@ local function knockOff(world: World.World, placedObjectId: number)
 	end
 	local inside = findInside(world, placedObjectId)
 	local stacks = if inside ~= nil then Inventory.takeEveryStack(inside) else {}
-	table.insert(stacks, 1, ItemStack.new(placedObject.itemId, 1))
+	table.insert(stacks, 1, ItemStack.new(placedObject.kindId, 1))
 	Plot.removePlacedObject(world.plot, placedObjectId)
-	World.throwStacksFromTile(world, stacks, placedObject.x, placedObject.z)
+	World.throwStacksFromTile(world, stacks, placedObject.tileX, placedObject.tileZ)
 end
 
 do -- the numbers the world goes by
@@ -748,17 +750,17 @@ do -- standing on a tile
 	)
 end
 
-do -- placing an item
+do -- placing an object
 	local world = newWorld()
 	local placedObjectId = Plot.placeObject(world.plot, "crate", 1, 1)
 	check(
-		placedObjectId ~= nil and world.plot.placedObjectsById[placedObjectId].itemId == "crate",
+		placedObjectId ~= nil and world.plot.placedObjectsById[placedObjectId].kindId == "crate",
 		"Plot.placeObject on the world's plot: returns the id of the placed object"
 	)
 	check(
 		placedObjectId ~= nil
-			and world.plot.placedObjectsById[placedObjectId].x == 1
-			and world.plot.placedObjectsById[placedObjectId].z == 1,
+			and world.plot.placedObjectsById[placedObjectId].tileX == 1
+			and world.plot.placedObjectsById[placedObjectId].tileZ == 1,
 		"Plot.placeObject on the world's plot: on the tile it was asked for"
 	)
 	check(
@@ -768,14 +770,13 @@ do -- placing an item
 		"Plot.placeObject on the world's plot: and it is given nothing by being placed"
 	)
 	check(
-		World.canPlaceObject(world, "crate", 1, 2) and not World.canPlaceObject(world, "crate", 1, 1),
+		World.canPlaceObject(world, 1, 2) and not World.canPlaceObject(world, 1, 1),
 		"canPlaceObject: true for a tile that holds nothing, and false for a tile something stands on"
 	)
-	check(not World.canPlaceObject(world, "log", 3, 1), "canPlaceObject: false for an item that cannot be placed")
-	check(not World.canPlaceObject(world, "crate", 7, 1), "canPlaceObject: false for a tile the plot does not have")
+	check(not World.canPlaceObject(world, 7, 1), "canPlaceObject: false for a tile the plot does not have")
 	check(Check.errorFrom(function()
 		Plot.placeObject(world.plot, "crate", 1, 1)
-	end) ~= nil, "Plot.placeObject on the world's plot: fails where the plot cannot take the item")
+	end) ~= nil, "Plot.placeObject on the world's plot: fails where the plot cannot take an object")
 	check(
 		world.plot.nextId == (placedObjectId :: number) + 1,
 		"Plot.placeObject on the world's plot: and places nothing then"
@@ -783,20 +784,20 @@ do -- placing an item
 
 	-- Tile 3, 3 has its middle at 10, 10. Player 1 stands 3 studs from it.
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
-	check(not World.canPlaceObject(world, "stove", 3, 3), "canPlaceObject: false for a tile a player stands on")
+	check(not World.canPlaceObject(world, 3, 3), "canPlaceObject: false for a tile a player stands on")
 	World.setCharacterPosition(world, 1, at(13.01, 0, 10))
-	check(World.canPlaceObject(world, "stove", 3, 3), "canPlaceObject: true once the player has stepped off")
+	check(World.canPlaceObject(world, 3, 3), "canPlaceObject: true once the player has stepped off")
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
 	local forced = Plot.placeObject(world.plot, "stove", 3, 3)
 	check(
-		world.plot.placedObjectsById[forced].itemId == "stove",
+		world.plot.placedObjectsById[forced].kindId == "stove",
 		"Plot.placeObject on the world's plot: it does not ask whether a player stands on the tile"
 	)
 
 	-- A world needs no player to place in it.
 	local empty = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	check(
-		World.canPlaceObject(empty, "post", 2, 2) and Plot.placeObject(empty.plot, "post", 2, 2) == 1,
+		World.canPlaceObject(empty, 2, 2) and Plot.placeObject(empty.plot, "post", 2, 2) == 1,
 		"canPlaceObject, Plot.placeObject: work with no player in the world"
 	)
 	local nowhere = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
@@ -807,7 +808,7 @@ do -- placing an item
 	)
 end
 
-do -- placing an item where ground items lie
+do -- placing an object where ground items lie
 	-- Tile 3, 3 reaches from 8 to 12 along x and z, and its middle is 10, 10.
 	local touching = (Plot.TILE_SIZE + GroundItems.ITEM_WIDTH) / 2
 	local world = newWorld()
@@ -896,8 +897,8 @@ do -- taking a placed object off
 	)
 	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 1, "throwStacksFromTile: nothing was made or lost")
 	check(
-		Plot.canPlaceObject(world.plot, "stove", 2, 2) and Plot.placeObject(world.plot, "stove", 2, 2) ~= nil,
-		"Plot.removePlacedObject on the world's plot: the tile holds nothing, so another item can be placed there"
+		Plot.canPlaceObject(world.plot, 2, 2) and Plot.placeObject(world.plot, "stove", 2, 2) ~= nil,
+		"Plot.removePlacedObject on the world's plot: the tile holds nothing, so another object can be placed there"
 	)
 
 	-- Each stack from inside is thrown a way of its own.
@@ -990,7 +991,7 @@ do -- taking a placed object off the plot, and throwing stacks from a tile, each
 	local inside = insideOf(world, ids.crate)
 	local taken = Plot.removePlacedObject(world.plot, ids.crate)
 	check(
-		taken ~= nil and taken.itemId == "crate" and taken.x == 2 and taken.z == 2,
+		taken ~= nil and taken.kindId == "crate" and taken.tileX == 2 and taken.tileZ == 2,
 		"Plot.removePlacedObject on the world's plot: returns the placed object"
 	)
 	check(
@@ -1381,7 +1382,10 @@ do -- several players, several things at once, and no item is made or lost
 						local taken = Inventory.takeFromSlot(state.pack, slot, 1)
 						if taken ~= nil then
 							local x, z = random(6), random(6)
-							if World.canPlaceObject(world, taken.itemId, x, z) then
+							local isPlaceable = taken.itemId == "stove"
+								or taken.itemId == "crate"
+								or taken.itemId == "post"
+							if isPlaceable and World.canPlaceObject(world, x, z) then
 								place(world, taken.itemId, x, z)
 							else
 								local leftover = Inventory.addStack(state.pack, taken)

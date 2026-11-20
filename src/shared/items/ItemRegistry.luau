@@ -13,18 +13,13 @@ export type ItemDefinition = {
 	read id: string,
 	--- The most of this item that one inventory slot can hold: a whole number, 1 or more.
 	read stackSize: number,
-	--- `true` for an item that can be placed on a plot. Left out for an item that cannot.
-	read placeable: boolean?,
-	--- How many inventory slots the item has once it is placed, as a crate does: a whole number,
-	--- 1 or more. Left out for an item that holds nothing. Only a placeable item has it.
-	read slotCount: number?,
 	--- How long one of this item burns as fuel, in seconds: a number above 0. Left out for an
 	--- item that does not burn.
 	read burnSeconds: number?,
 }
 
 local definitions: { [string]: ItemDefinition } = {}
-local FIELDS = { id = true, stackSize = true, placeable = true, slotCount = true, burnSeconds = true }
+local FIELDS = { id = true, stackSize = true, burnSeconds = true }
 
 local function isCount(value: unknown): boolean
 	return type(value) == "number" and value >= 1 and value < math.huge and value % 1 == 0
@@ -44,16 +39,13 @@ end
 --- the table has a field that `ItemDefinition` does not list, or if an item with that id is
 --- already registered.
 function ItemRegistry.register(definition: ItemDefinition)
-	local id, slotCount, burnSeconds = definition.id, definition.slotCount, definition.burnSeconds
+	local id, burnSeconds = definition.id, definition.burnSeconds
 	local unknownField = findUnknownField(definition)
 	assert(
 		string.match(id, "^[a-z][a-z0-9_]*$"),
 		`id "{id}" is not lowercase letters, digits and underscores, starting with a letter`
 	)
 	assert(isCount(definition.stackSize), `"{id}" needs a stackSize that is a whole number, 1 or more`)
-	assert(definition.placeable == nil or definition.placeable == true, `"{id}" has a placeable that is not true`)
-	assert(slotCount == nil or isCount(slotCount), `"{id}" has a slotCount that is not a whole number, 1 or more`)
-	assert(slotCount == nil or definition.placeable, `"{id}" has a slotCount but is not placeable`)
 	assert(
 		burnSeconds == nil or (type(burnSeconds) == "number" and burnSeconds > 0 and burnSeconds < math.huge),
 		`"{id}" has a burnSeconds that is not a finite number above 0`

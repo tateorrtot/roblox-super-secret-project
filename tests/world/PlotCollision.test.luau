@@ -17,9 +17,9 @@ local SPEED = PlotCollision.PUSHED_GROUND_ITEM_SPEED
 
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
-ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
-ItemRegistry.register({ id = "post", stackSize = 8, placeable = true })
+ItemRegistry.register({ id = "stove", stackSize = 1 })
+ItemRegistry.register({ id = "crate", stackSize = 1 })
+ItemRegistry.register({ id = "post", stackSize = 8 })
 
 -- A ground item touches the side of what stands on a tile when its middle is this far from the
 -- tile's middle along x or z.

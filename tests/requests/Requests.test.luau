@@ -2,6 +2,7 @@
 -- Tests for Requests and Messages. Run from the repository root: lune run tests/requests/Requests.test.luau
 
 local Check = require("../Check")
+local Crate = require("../../src/shared/placedObjectKinds/Crate")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryRequests = require("../../src/shared/requests/InventoryRequests")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
@@ -20,8 +21,8 @@ local carryOut = Requests.carryOut :: (world: World.World, playerId: any, name: 
 
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
-ItemRegistry.register({ id = "post", stackSize = 8, placeable = true })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
+ItemRegistry.register({ id = "post", stackSize = 8 })
+ItemRegistry.register({ id = "crate", stackSize = 1 })
 
 local itemIds = { "log", "fish", "post", "crate" }
 local at = Position.new
@@ -72,7 +73,7 @@ local function inWorld(world: World.World, itemId: string): number
 	end
 	for placedObjectId, placedObject in world.plot.placedObjectsById do
 		local inside = findInside(world, placedObjectId)
-		count += if placedObject.itemId == itemId then 1 else 0
+		count += if placedObject.kindId == itemId then 1 else 0
 		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
 	end
 	return count
@@ -84,8 +85,7 @@ end
 -- a crate in slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.PlayerState, number)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
-	local crateId = Plot.placeObject(world.plot, "crate", 2, 2)
-	World.addPlacedObjectInventory(world, crateId, Inventory.new(27))
+	local crateId = Crate.place(world, 2, 2)
 	Inventory.addItems(insideOf(world, crateId), "fish", 5)
 	local players = {}
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10) } do

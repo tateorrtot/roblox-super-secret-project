@@ -88,8 +88,8 @@ World.TILE_THROW_UPWARD_SPEED = 20
 local RADIANS_BETWEEN_THROWN_STACKS = 2.4
 local NO_VELOCITY: GroundItems.Velocity = table.freeze({ x = 0, y = 0, z = 0 })
 
-local function tileCenter(world: World, x: number, z: number): Position
-	return Plot.getTileCenter(world.plotCorner, x, z)
+local function tileCenter(world: World, tileX: number, tileZ: number): Position
+	return Plot.getTileCenter(world.plotCorner, tileX, tileZ)
 end
 
 local function sortedPlayerIds(world: World): { number }
@@ -121,8 +121,8 @@ local function onPlacedObjectAdded(world: World, placedObject: Plot.PlacedObject
 		world.groundItems,
 		world.plot,
 		world.plotCorner,
-		placedObject.x,
-		placedObject.z,
+		placedObject.tileX,
+		placedObject.tileZ,
 		world.now
 	)
 end
@@ -308,17 +308,19 @@ function World.getOpenedPlacedObjectId(world: World, player: PlayerState): numbe
 	return if screen ~= nil then world.placedObjectIdsByScreen[screen] else nil
 end
 
---- Returns `true` if a player's character stands within `World.REACH` of the middle of a tile,
---- in studs along the ground. A player with no character reaches nothing.
-function World.canReachTile(world: World, player: PlayerState, x: number, z: number): boolean
+--- Returns `true` if a player's character stands within `World.REACH` of the middle of the tile
+--- `tileX`, `tileZ` of the plot, in studs along the ground. A player with no character reaches
+--- nothing.
+function World.canReachTile(world: World, player: PlayerState, tileX: number, tileZ: number): boolean
 	local character = player.character
-	return character ~= nil and Position.getGroundDistance(character.position, tileCenter(world, x, z)) <= World.REACH
+	local center = tileCenter(world, tileX, tileZ)
+	return character ~= nil and Position.getGroundDistance(character.position, center) <= World.REACH
 end
 
---- Returns `true` if any player's character stands on a tile: within `TILE_STOOD_ON_WITHIN` of its
---- middle.
-function World.isTileStoodOn(world: World, x: number, z: number): boolean
-	local center = tileCenter(world, x, z)
+--- Returns `true` if any player's character stands on the tile `tileX`, `tileZ` of the plot:
+--- within `TILE_STOOD_ON_WITHIN` of its middle.
+function World.isTileStoodOn(world: World, tileX: number, tileZ: number): boolean
+	local center = tileCenter(world, tileX, tileZ)
 	for _, player in world.players do
 		local character = player.character
 		local isOnTile = character ~= nil
@@ -330,21 +332,21 @@ function World.isTileStoodOn(world: World, x: number, z: number): boolean
 	return false
 end
 
---- Returns `true` if an item can be placed on a tile of the plot: `Plot.canPlaceObject` says the
---- plot can take it there, and no player's character stands on the tile. Fails if no item has
---- that id.
+--- Returns `true` if an object can be placed on the tile `tileX`, `tileZ` of the plot:
+--- `Plot.canPlaceObject` says the plot can take one there, and no player's character stands on the
+--- tile.
 --- Note: `Plot.placeObject` does not ask this. A request from a player's machine does.
-function World.canPlaceObject(world: World, itemId: string, x: number, z: number): boolean
-	return Plot.canPlaceObject(world.plot, itemId, x, z) and not World.isTileStoodOn(world, x, z)
+function World.canPlaceObject(world: World, tileX: number, tileZ: number): boolean
+	return Plot.canPlaceObject(world.plot, tileX, tileZ) and not World.isTileStoodOn(world, tileX, tileZ)
 end
 
---- Throws each stack of `stacks` into the world from the tile `x`, `z` of the plot. Each is
---- spawned as `spawnStack` does, in the middle of the cube that a placed object fills on that tile,
---- moving upwards at `TILE_THROW_UPWARD_SPEED` and outwards along the ground at
+--- Throws each stack of `stacks` into the world from the tile `tileX`, `tileZ` of the plot. Each
+--- is spawned as `spawnStack` does, in the middle of the cube that a placed object fills on that
+--- tile, moving upwards at `TILE_THROW_UPWARD_SPEED` and outwards along the ground at
 --- `TILE_THROW_OUTWARD_SPEED`, each a different way from the one before.
 --- Note: it does not take the stacks from anywhere.
-function World.throwStacksFromTile(world: World, stacks: { ItemStack }, x: number, z: number)
-	local center = tileCenter(world, x, z)
+function World.throwStacksFromTile(world: World, stacks: { ItemStack }, tileX: number, tileZ: number)
+	local center = tileCenter(world, tileX, tileZ)
 	local middle = Position.new(center.x, center.y + (Plot.TILE_SIZE - GroundItems.ITEM_WIDTH) / 2, center.z)
 	for index, stack in stacks do
 		local angle = index * RADIANS_BETWEEN_THROWN_STACKS
@@ -370,7 +372,7 @@ local function closeScreenIfOutOfReach(world: World, player: PlayerState)
 		return
 	end
 	local placedObject = world.plot.placedObjectsById[placedObjectId]
-	local center = tileCenter(world, placedObject.x, placedObject.z)
+	local center = tileCenter(world, placedObject.tileX, placedObject.tileZ)
 	if Position.getGroundDistance(character.position, center) > World.SCREEN_CLOSES_BEYOND then
 		World.closeScreen(world, player)
 	end

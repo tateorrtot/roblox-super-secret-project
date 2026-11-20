@@ -2,15 +2,10 @@
 -- Tests for Plot. Run from the repository root: lune run tests/plots/Plot.test.luau
 
 local Check = require("../Check")
-local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local Plot = require("../../src/shared/plots/Plot")
 local Signal = require("../../src/shared/Signal")
 
 local check = Check.that
-
-ItemRegistry.register({ id = "apple", stackSize = 16 })
-ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
-ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
 
 -- How many placed objects a plot has.
 local function placedCount(plot: Plot.Plot): number
@@ -27,9 +22,9 @@ end
 
 do -- a new plot
 	local plot = Plot.new(18, 12)
-	check(plot.width == 18 and plot.depth == 12, "new: has the size asked for")
+	check(plot.widthInTiles == 18 and plot.depthInTiles == 12, "new: has the size asked for")
 	check(plot.nextId == 1 and placedCount(plot) == 0, "new: nothing is placed, and the first placed object will be 1")
-	check(Plot.new(1, 1).width == 1, "new: a plot may be a single tile")
+	check(Plot.new(1, 1).widthInTiles == 1, "new: a plot may be a single tile")
 end
 
 do -- which tiles a plot has
@@ -50,10 +45,10 @@ end
 
 do -- placing
 	local plot = Plot.new(4, 4)
-	check(Plot.canPlaceObject(plot, "stove", 2, 3), "canPlaceObject: a placeable item on a tile that holds nothing")
+	check(Plot.canPlaceObject(plot, 2, 3), "canPlaceObject: true for a tile that holds nothing")
 	check(not Plot.isTileTaken(plot, 2, 3), "isTileTaken: false for a tile that holds nothing")
 	local stove = Plot.placeObject(plot, "stove", 2, 3)
-	check(Plot.isTileTaken(plot, 2, 3), "isTileTaken: true once an item stands on the tile")
+	check(Plot.isTileTaken(plot, 2, 3), "isTileTaken: true once an object stands on the tile")
 	check(not Plot.isTileTaken(plot, 3, 2), "isTileTaken: x and z are not swapped")
 	check(
 		not Plot.isTileTaken(plot, 0, 3) and not Plot.isTileTaken(plot, 5, 3) and not Plot.isTileTaken(plot, 2, -1),
@@ -61,32 +56,31 @@ do -- placing
 	)
 	check(stove == 1 and plot.nextId == 2, "placeObject: the first placed object is 1, and the next will be 2")
 	local placed = plot.placedObjectsById[1]
-	check(placed.itemId == "stove" and placed.x == 2 and placed.z == 3, "placeObject: it is that item on that tile")
+	check(
+		placed.kindId == "stove" and placed.tileX == 2 and placed.tileZ == 3,
+		"placeObject: the placed object is of that kind, on that tile"
+	)
 	check(table.isfrozen(placed), "placeObject: a placed object's record never changes")
 
-	check(not Plot.canPlaceObject(plot, "crate", 2, 3), "canPlaceObject: not on a tile that is taken")
+	check(not Plot.canPlaceObject(plot, 2, 3), "canPlaceObject: false for a tile that is taken")
 	check(
-		Check.raises('the item "crate" cannot be placed on the tile 2, 3', function()
+		Check.raises("nothing can be placed on the tile 2, 3", function()
 			Plot.placeObject(plot, "crate", 2, 3)
 		end),
 		"placeObject: fails on a tile that is taken"
 	)
 	check(placedCount(plot) == 1 and plot.nextId == 2, "placeObject: a placing that fails changes nothing")
-	check(Plot.canPlaceObject(plot, "crate", 3, 2), "canPlaceObject: x and z are not swapped")
-
-	check(not Plot.canPlaceObject(plot, "apple", 1, 1), "canPlaceObject: not an item that cannot be placed")
-	check(
-		Check.raises('the item "apple" cannot be placed on the tile 1, 1', function()
-			Plot.placeObject(plot, "apple", 1, 1)
-		end),
-		"placeObject: fails for an item that cannot be placed"
-	)
-	check(placedCount(plot) == 1 and plot.nextId == 2, "placeObject: and again nothing changes")
+	check(Plot.canPlaceObject(plot, 3, 2), "canPlaceObject: x and z are not swapped")
 
 	local crate = Plot.placeObject(plot, "crate", 1, 1)
 	check(crate == 2, "placeObject: ids count up")
+	local unheardOf = Plot.placeObject(plot, "a kind nobody has heard of", 2, 2)
 	check(
-		Plot.placeObject(plot, "stove", 4, 1) == 3 and Plot.placeObject(plot, "stove", 1, 4) == 4,
+		plot.placedObjectsById[unheardOf].kindId == "a kind nobody has heard of",
+		"placeObject: the plot takes any kind id as it is given"
+	)
+	check(
+		Plot.placeObject(plot, "stove", 4, 1) == 4 and Plot.placeObject(plot, "stove", 1, 4) == 5,
 		"placeObject: the corner tiles can be used"
 	)
 end
@@ -98,7 +92,7 @@ do -- removing
 
 	local removed = Plot.removePlacedObject(plot, crate)
 	check(
-		removed ~= nil and removed.itemId == "crate" and removed.x == 3 and removed.z == 3,
+		removed ~= nil and removed.kindId == "crate" and removed.tileX == 3 and removed.tileZ == 3,
 		"removePlacedObject: returns the placed object"
 	)
 	check(removed ~= nil and table.isfrozen(removed), "removePlacedObject: and it is the record that stood there")
@@ -114,8 +108,8 @@ do -- removing
 	check(Plot.removePlacedObject(plot, 99) == nil, "removePlacedObject: nil for an id that never was")
 	check(placedCount(plot) == 1, "removePlacedObject: a removal that found nothing changes nothing")
 
-	check(Plot.canPlaceObject(plot, "stove", 3, 3), "canPlaceObject: the tile holds nothing again")
-	check(not Plot.isTileTaken(plot, 3, 3), "isTileTaken: false again once the item is taken off")
+	check(Plot.canPlaceObject(plot, 3, 3), "canPlaceObject: true again once the placed object is taken off")
+	check(not Plot.isTileTaken(plot, 3, 3), "isTileTaken: false again once the placed object is taken off")
 	check(Plot.placeObject(plot, "stove", 3, 3) == 3, "placeObject: a new placed object gets a new id, not the old one")
 end
 
@@ -156,7 +150,7 @@ do -- a tile the plot does not have
 	local offPlot = { { 0, 1 }, { 4, 1 }, { 1, 3 }, { 1, 0 }, { 1.5, 1 }, { 1, "2" } } :: { { any } }
 	for _, tile in offPlot do
 		check(
-			not Plot.canPlaceObject(plot, "stove", tile[1], tile[2]),
+			not Plot.canPlaceObject(plot, tile[1], tile[2]),
 			`canPlace: false for tile x {tile[1]}, z {tile[2]}, which the plot does not have`
 		)
 		check(Check.errorFrom(function()
@@ -171,16 +165,16 @@ do -- the two signals
 	local heard: { string } = {}
 	Signal.connect(plot.placedObjectAdded, function(id: number, placedObject: Plot.PlacedObject)
 		local stands = plot.placedObjectsById[id] == placedObject
-		table.insert(heard, `added {id} {placedObject.itemId} {placedObject.x} {placedObject.z} {stands}`)
+		table.insert(heard, `added {id} {placedObject.kindId} {placedObject.tileX} {placedObject.tileZ} {stands}`)
 	end)
 	Signal.connect(plot.placedObjectRemoved, function(id: number, placedObject: Plot.PlacedObject)
 		local gone = plot.placedObjectsById[id] == nil
-		table.insert(heard, `removed {id} {placedObject.itemId} {gone}`)
+		table.insert(heard, `removed {id} {placedObject.kindId} {gone}`)
 	end)
 	local crate = Plot.placeObject(plot, "crate", 2, 3)
 	check(
 		#heard == 1 and heard[1] == `added {crate} crate 2 3 true`,
-		"placeObject: fires placedObjectAdded with the id and the placed object, once the item stands on the plot"
+		"placeObject: fires placedObjectAdded with the id and the placed object, once the object stands on the plot"
 	)
 	Check.errorFrom(function()
 		Plot.placeObject(plot, "stove", 2, 3)

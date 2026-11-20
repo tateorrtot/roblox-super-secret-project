@@ -1,10 +1,11 @@
 --!strict
---- Works out what a point on the screen is over: an item placed on a plot, or a tile of a plot that
---- nothing stands on.
+--- Works out what a point on the screen is over: an object placed on a plot, or a tile of a plot
+--- that nothing stands on.
 ---
 --- `getTargetAt` looks through the camera at a point and reads what it hits. A block with the
 --- attribute `placedObjectId` is a placed object. The top of a slab tagged `Plot`, which has the
---- attributes `cornerX`, `cornerY`, `cornerZ`, `width` and `depth`, is a grid of tiles.
+--- attributes `cornerX`, `cornerY`, `cornerZ`, `widthInTiles` and `depthInTiles`, is a grid of
+--- tiles.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -44,9 +45,9 @@ local function tileTarget(hit: RaycastResult): Target?
 		z = part:GetAttribute("cornerZ") :: number,
 	}
 	local x, z = Plot.getTileAt(corner, { x = hit.Position.X, y = hit.Position.Y, z = hit.Position.Z })
-	local width = part:GetAttribute("width") :: number
-	local depth = part:GetAttribute("depth") :: number
-	if x < 1 or x > width or z < 1 or z > depth then
+	local widthInTiles = part:GetAttribute("widthInTiles") :: number
+	local depthInTiles = part:GetAttribute("depthInTiles") :: number
+	if x < 1 or x > widthInTiles or z < 1 or z > depthInTiles then
 		return nil
 	end
 	local center = Plot.getTileCenter(corner, x, z)

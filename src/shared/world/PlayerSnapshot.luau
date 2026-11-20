@@ -19,9 +19,9 @@ export type EncodedSnapshot = {
 	screen: {
 		--- The other inventory that is open. `nil` when the pack is open alone.
 		otherInventory: Inventory.EncodedInventory?,
-		--- The item id of the placed object that `otherInventory` is inside, such as `"crate"`. `nil`
-		--- when the pack is open alone.
-		otherInventoryItemId: string?,
+		--- The id of the kind of the placed object that the screen was opened on, such as
+		--- `"crate"`. `nil` when the pack is open alone.
+		placedObjectKindId: string?,
 		carriedStack: { itemId: string, count: number }?,
 		--- How far the fire and the work have got, as times on the world's clock. `nil` unless
 		--- `otherInventory` is a station's inventory.
@@ -35,9 +35,9 @@ export type PlayerSnapshot = {
 	selectedHotbarSlot: number,
 	--- The open inventory screen, over `pack`. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
-	--- The item id of the placed object whose inventory is shown beside the pack, such as `"crate"`.
+	--- The id of the kind of the placed object that the screen was opened on, such as `"crate"`.
 	--- `nil` when the pack is open alone.
-	otherInventoryItemId: string?,
+	placedObjectKindId: string?,
 	--- How far the fire and the work have got, as times on the world's clock. `nil` unless that
 	--- placed object is a station.
 	stationProgress: StationProgress.StationProgress?,
@@ -61,7 +61,7 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 		selectedHotbarSlot = selectedHotbarSlot,
 		screen = {
 			otherInventory = if screen.otherInventory then Inventory.encode(screen.otherInventory) else nil,
-			otherInventoryItemId = if placedObject then placedObject.itemId else nil,
+			placedObjectKindId = if placedObject then placedObject.kindId else nil,
 			carriedStack = if carried then { itemId = carried.itemId, count = carried.count } else nil,
 			stationProgress = if station then StationProgress.new(station, world.now) else nil,
 		},
@@ -87,7 +87,7 @@ function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 		pack = pack,
 		selectedHotbarSlot = encoded.selectedHotbarSlot,
 		screen = screen,
-		otherInventoryItemId = encodedScreen.otherInventoryItemId,
+		placedObjectKindId = encodedScreen.placedObjectKindId,
 		stationProgress = encodedScreen.stationProgress,
 	}
 end
