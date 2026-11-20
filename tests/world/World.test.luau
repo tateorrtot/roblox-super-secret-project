@@ -30,7 +30,7 @@ RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fis
 
 local itemIds = { "log", "fish", "apple", "stove", "crate", "post" }
 local at = Position.new
-local ALONG_X = { x = 1, z = 0 }
+local ALONG_X = { x = 1, y = 0, z = 0 }
 
 -- True if `groundItem` is at `x`, `y`, `z`, to within a rounding error.
 local function isAt(groundItem: GroundItems.GroundItem, x: number, y: number, z: number): boolean
@@ -317,9 +317,9 @@ do -- throwing a stack from a character
 	)
 	check(
 		wasSpawnedMovingAt(apples[1], World.CHARACTER_THROW_FORWARD_SPEED, World.CHARACTER_THROW_UPWARD_SPEED, 0),
-		"throwStackFromCharacter: moving the way the direction points along the ground, and upwards"
+		"throwStackFromCharacter: a direction along the ground throws at the forward speed that way, and at the upward speed upwards"
 	)
-	World.throwStackFromCharacter(world, ItemStack.new("fish", 1), at(0, 0, 0), { x = 0, z = -1 })
+	World.throwStackFromCharacter(world, ItemStack.new("fish", 1), at(0, 0, 0), { x = 0, y = 0, z = -1 })
 	check(
 		wasSpawnedMovingAt(
 			groundStacks(world, "fish")[1],
@@ -328,6 +328,26 @@ do -- throwing a stack from a character
 			-World.CHARACTER_THROW_FORWARD_SPEED
 		),
 		"throwStackFromCharacter: another direction throws that way"
+	)
+	World.throwStackFromCharacter(world, ItemStack.new("log", 1), at(0, 0, 0), { x = 0.6, y = 0.8, z = 0 })
+	check(
+		wasSpawnedMovingAt(
+			groundStacks(world, "log")[1],
+			0.6 * World.CHARACTER_THROW_FORWARD_SPEED,
+			0.8 * World.CHARACTER_THROW_FORWARD_SPEED + World.CHARACTER_THROW_UPWARD_SPEED,
+			0
+		),
+		"throwStackFromCharacter: a direction that points up throws at the forward speed along it, with the upward speed added"
+	)
+	World.throwStackFromCharacter(world, ItemStack.new("post", 1), at(0, 0, 0), { x = 0, y = -1, z = 0 })
+	check(
+		wasSpawnedMovingAt(
+			groundStacks(world, "post")[1],
+			0,
+			World.CHARACTER_THROW_UPWARD_SPEED - World.CHARACTER_THROW_FORWARD_SPEED,
+			0
+		),
+		"throwStackFromCharacter: a direction straight down throws straight down, slowed by the upward speed"
 	)
 	check(
 		World.CHARACTER_THROW_START_HEIGHT == 3

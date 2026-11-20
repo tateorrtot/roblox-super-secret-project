@@ -69,16 +69,29 @@ local mouseButtons: { [Enum.UserInputType]: SlotGestures.Button } = {
 	[Enum.UserInputType.Touch] = "left",
 }
 
---- The way a stack the player drops is thrown: the way the camera looks along the ground. If the
---- camera looks straight up or straight down, it is the way the player's character faces. `nil` if
---- neither can be told.
+--- The camera is in first person when it is nearer than this to the point it turns about, in
+--- studs. Roblox's own camera scripts go into first person below this distance, where they hold
+--- the camera half a stud from that point, and no property says that they have.
+local FIRST_PERSON_WITHIN = 1
+
+local function isCameraInFirstPerson(camera: Camera): boolean
+	return (camera.Focus.Position - camera.CFrame.Position).Magnitude < FIRST_PERSON_WITHIN
+end
+
+--- The way a stack the player drops is thrown. In first person it is the way the camera looks, up
+--- and down as well. Otherwise it is the way the camera looks along the ground, or the way the
+--- player's character faces if the camera looks straight up or straight down. `nil` if it cannot
+--- be told.
 local function getThrowDirection(): Direction.Direction?
 	local camera = Workspace.CurrentCamera
 	local look = if camera then camera.CFrame.LookVector else Vector3.zero
+	if camera ~= nil and isCameraInFirstPerson(camera) then
+		return Direction.new(look.X, look.Y, look.Z)
+	end
 	local character = Players.LocalPlayer.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	local facing = if root and root:IsA("BasePart") then root.CFrame.LookVector else Vector3.zero
-	return Direction.new(look.X, look.Z) or Direction.new(facing.X, facing.Z)
+	return Direction.new(look.X, 0, look.Z) or Direction.new(facing.X, 0, facing.Z)
 end
 
 local function send(request: InventoryControls.Request?)

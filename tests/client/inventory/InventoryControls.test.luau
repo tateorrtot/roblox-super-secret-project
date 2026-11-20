@@ -15,7 +15,7 @@ local SlotGestures = require("../../../src/client/inventory/SlotGestures")
 local World = require("../../../src/shared/world/World")
 
 local check = Check.that
-local ALONG_X = { x = 1, z = 0 }
+local ALONG_X = { x = 1, y = 0, z = 0 }
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
 ItemRegistry.register({ id = "stone", stackSize = 16 })

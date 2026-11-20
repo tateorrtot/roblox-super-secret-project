@@ -10,8 +10,9 @@ local InventoryControls = {}
 
 type Slot = SlotGestures.Slot
 
---- A way along the ground: numbers under `x` and `z` that together have a length of 1.
-export type Direction = { read x: number, read z: number }
+--- A way in the world: numbers under `x`, `y` and `z` that together have a length of 1. `y` is
+--- upwards.
+export type Direction = { read x: number, read y: number, read z: number }
 
 --- A stack as the controls see it.
 export type Stack = { read itemId: string, read count: number }

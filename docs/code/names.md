@@ -33,7 +33,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `placedItem`, `placedItemId` | A thing standing on a plot, and its id |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
 | `character` | A player's body in the world, as far as the rules know it: its `position`. `nil` while they have none |
-| `direction` | A way along the ground, `{ x, z }` with a length of 1 |
+| `direction` | A way in the world, `{ x, y, z }` with a length of 1. `y` is upwards, and one with a `y` of 0 lies along the ground |
 | `velocity` | How fast along each axis, `{ x, y, z }` in studs a second |
 | `...Time` | A moment on the world's clock, in seconds: `spawnTime` |
 | `now` | The present time, in seconds |

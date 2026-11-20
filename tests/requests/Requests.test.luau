@@ -25,7 +25,7 @@ ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount
 
 local itemIds = { "log", "fish", "post", "crate" }
 local at = Position.new
-local ALONG_X = { x = 1, z = 0 }
+local ALONG_X = { x = 1, y = 0, z = 0 }
 
 -- The name of every function in a table of requests, sorted.
 local function namesIn(requests: any): { string }

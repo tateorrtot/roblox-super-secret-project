@@ -21,7 +21,7 @@ They called this "a bigger issue from the 'lots of little issues'" they have bee
 | | They asked | Built |
 |---|---|---|
 | 1 | A dropped item is a thing with momentum, taken from what dropped it | Yes. Each ground item is an ordinary Roblox part, set moving once and then left to Roblox's physics |
-| 2 | A player spits it out the way they face. A broken container just drops what it held | Yes for a player and for a broken container. There are no droppers yet |
+| 2 | A player spits it out the way they face. A broken container just drops what it held | Yes for a player and for a broken container. In third person a throw goes along the ground the way the camera looks; in first person it goes the way the view looks, up and down as well, as they asked on 2026-11-20. There are no droppers yet |
 | 3 | Water can push it around | No. There is no moving water |
 | 4 | Items do not collide with each other, or with players and creatures | Yes, by Roblox's collision groups |
 | 5 | A block placed where an item lies pushes the item out of the way | Yes. Roblox does not do this, so it is a rule of ours: out of the nearest side with nothing against it |

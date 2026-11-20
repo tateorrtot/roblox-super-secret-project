@@ -4,7 +4,6 @@
 --- A placed item fills its tile as a cube `Plot.TILE_SIZE` on each side, standing on the tile, and
 --- no ground item lies inside one. `pushGroundItemsOutOfTile` moves the ground items out of a tile
 --- that has just had an item placed on it.
-local Direction = require("../Direction")
 local GroundItems = require("./GroundItems")
 local ItemStack = require("../items/ItemStack")
 local Plot = require("../plots/Plot")
@@ -12,18 +11,18 @@ local Position = require("../Position")
 
 local PlotCollision = {}
 
-type Direction = Direction.Direction
 type GroundItems = GroundItems.GroundItems
 type ItemStack = ItemStack.ItemStack
 type Position = Position.Position
 type Tile = { plot: Plot.Plot, x: number, z: number, center: Position }
+type Side = { x: number, z: number }
 
 --- How fast a ground item that `pushGroundItemsOutOfTile` pushes out of a side of a tile starts
 --- moving away from the tile along the ground, in studs a second.
 PlotCollision.PUSHED_GROUND_ITEM_SPEED = 6
 
 local NO_VELOCITY: GroundItems.Velocity = table.freeze({ x = 0, y = 0, z = 0 })
-local SIDES: { Direction } = {
+local SIDES: { Side } = {
 	{ x = 1, z = 0 },
 	{ x = -1, z = 0 },
 	{ x = 0, z = 1 },
@@ -41,9 +40,9 @@ local function isLyingInTile(position: Position, tile: Tile): boolean
 		and position.y + GroundItems.ITEM_WIDTH > center.y + OVERLAP_TOLERANCE
 end
 
-local function findNearestFreeSideOfTile(position: Position, tile: Tile): (Direction?, number)
+local function findNearestFreeSideOfTile(position: Position, tile: Tile): (Side?, number)
 	local center = tile.center
-	local nearestSide: Direction? = nil
+	local nearestSide: Side? = nil
 	local nearestDistance = math.huge
 	for _, side in SIDES do
 		local towardsSide = (position.x - center.x) * side.x + (position.z - center.z) * side.z

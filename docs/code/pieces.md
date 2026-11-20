@@ -13,7 +13,7 @@ The game
     InventoryScreen   what a player has open, and the carried stack    built
     Hotbar            the first slots, and the selected one            built
   Where and which way
-    Position, Direction   a point in the world; a way along the ground      built
+    Position, Direction   a point in the world; a way in the world          built
   Players
     PlayerState       one player: pack, hotbar, the screen they have open, where their character is   built
   Plots and building
@@ -60,7 +60,7 @@ On the server:
 8. `PlayerSnapshot.encode` makes what the player's machine is told, and the screen redraws from it.
 
 ## How a dropped stack moves
-1. A request such as `dropFromSelectedSlot` comes with the way to throw, which the player's machine takes from its camera. It takes the stack out of the pack and calls `World.throwStackFromCharacter`.
+1. A request such as `dropFromSelectedSlot` comes with the way to throw, which the player's machine takes from its camera: along the ground in third person, and up and down as well in first person. It takes the stack out of the pack and calls `World.throwStackFromCharacter`.
 2. That works out where the stack starts and how fast, and calls `World.spawnStack`, which makes a ground item.
 3. `GroundItemParts.update` makes a part for it, at its position and moving at the velocity it was spawned with.
 4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks which machine works the motion out.

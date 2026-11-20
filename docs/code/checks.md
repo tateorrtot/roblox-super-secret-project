@@ -41,7 +41,8 @@ Use it when the user asks which scripts and directories are coupled to which, an
 - One step sends every request with nonsense, as a tampered machine might, and checks that nothing breaks.
 - Another asks the server outright to use and to hit a crate from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
 - A third counts how many times a player watching a lit stove is told what they hold, in three seconds. It was 27 before `StationProgress`, and must be 3 or fewer.
-- It waits for thrown stacks to come to rest before it looks at them, checks that a throw goes the way the character faces, and places a crate on a log to see the log pushed out.
+- It waits for thrown stacks to come to rest before it looks at them, and places a crate on a log to see the log pushed out.
+- Its last steps tilt the camera and read the velocity a thrown block starts with: along the ground in third person however the camera is tilted, and the way the view looks in first person, up and then down. The camera's look is read at the moment Q goes down, so a mouse that moves cannot spoil the check.
 - It is PC only.
 - **Run it after any change to `src/server` or `src/client`.**
 

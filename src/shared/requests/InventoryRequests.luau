@@ -7,9 +7,9 @@
 --- that makes no sense for the player as they are now does nothing. A player with no character
 --- can open no screen and drop nothing.
 ---
---- A request that drops takes a `direction`: the way the stack is thrown along the ground, chosen
---- by the player's machine. It is a table with numbers from -1 to 1 under `x` and `z`, not both 0.
---- Only the way it points counts, not its length.
+--- A request that drops takes a `direction`: the way the stack is thrown, chosen by the player's
+--- machine. It is a table with numbers from -1 to 1 under `x`, `y` and `z`, not all 0, where `y`
+--- is upwards. Only the way it points counts, not its length.
 local Direction = require("../Direction")
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
@@ -33,9 +33,12 @@ local function isFromMinusOneToOne(value: unknown): boolean
 end
 
 local function toDirection(sent: unknown): Direction.Direction?
-	local x = if type(sent) == "table" then (sent :: any).x else nil
-	local z = if type(sent) == "table" then (sent :: any).z else nil
-	return if isFromMinusOneToOne(x) and isFromMinusOneToOne(z) then Direction.new(x, z) else nil
+	if type(sent) ~= "table" then
+		return nil
+	end
+	local x, y, z = (sent :: any).x, (sent :: any).y, (sent :: any).z
+	local isInRange = isFromMinusOneToOne(x) and isFromMinusOneToOne(y) and isFromMinusOneToOne(z)
+	return if isInRange then Direction.new(x, y, z) else nil
 end
 
 local function screenWithSlot(player: PlayerState, side: unknown, slot: unknown): InventoryScreen?

@@ -7,7 +7,8 @@ Run it from the repository root, with Studio open on the place and in Edit mode:
 
 It copies src/ into the place, starts a play test, and drives the test character with keys, clicks
 and walking: the hotbar, the inventory screen, dropping and picking up, the crate, and placing,
-using and hitting on the plot, and baking an apple in the stove. After each step it looks at what a player would see (the slots on
+using and hitting on the plot, baking an apple in the stove, and which way a throw goes in third
+person and in first. After each step it looks at what a player would see (the slots on
 the screen) and at what is in the world (the blocks on the ground and on the plot). It prints one
 line for each thing that should be true, and exits with code 1 if any was not.
 
@@ -209,6 +210,80 @@ return "counting"
 
 READ_SNAPSHOTS_COUNTED = 'return tostring(game:GetService("Players").LocalPlayer:GetAttribute("SnapshotsCounted") or -1)'
 
+# Watches, on the server, for the next block to appear on the ground, and leaves the velocity it
+# starts with as the attribute PlaytestThrowVelocity on the Workspace. The block is read after the
+# server's own script has set it moving and before Roblox's physics has moved it.
+WATCH_NEXT_THROW = '''
+local folder = workspace:WaitForChild("GroundItems")
+workspace:SetAttribute("PlaytestThrowVelocity", nil)
+local connection
+connection = folder.ChildAdded:Connect(function(part)
+	connection:Disconnect()
+	task.defer(function()
+		workspace:SetAttribute("PlaytestThrowVelocity", part.AssemblyLinearVelocity)
+	end)
+end)
+return "watching"
+'''
+
+READ_THROW = '''
+local velocity = workspace:GetAttribute("PlaytestThrowVelocity")
+if velocity == nil then
+	return "none"
+end
+return string.format("%f,%f,%f", velocity.X, velocity.Y, velocity.Z)
+'''
+
+# Watches, on the player's machine, for the next press of Q, and leaves which way the camera looked
+# at that moment, and how far it was from the point it turns about, as attributes on the player.
+WATCH_NEXT_DROP_KEY = '''
+local player = game:GetService("Players").LocalPlayer
+player:SetAttribute("PlaytestLookAtDrop", nil)
+player:SetAttribute("PlaytestCameraDistanceAtDrop", nil)
+local connection
+connection = game:GetService("UserInputService").InputBegan:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.Q then
+		connection:Disconnect()
+		local camera = workspace.CurrentCamera
+		player:SetAttribute("PlaytestLookAtDrop", camera.CFrame.LookVector)
+		player:SetAttribute("PlaytestCameraDistanceAtDrop", (camera.Focus.Position - camera.CFrame.Position).Magnitude)
+	end
+end)
+return "watching"
+'''
+
+READ_LOOK_AT_DROP = '''
+local player = game:GetService("Players").LocalPlayer
+local look = player:GetAttribute("PlaytestLookAtDrop")
+local distance = player:GetAttribute("PlaytestCameraDistanceAtDrop")
+if look == nil or distance == nil then
+	return "none"
+end
+return string.format("%f,%f,%f,%f", look.X, look.Y, look.Z, distance)
+'''
+
+# Tilts the camera to look %f degrees above level, along the way it already looks along the ground.
+# Roblox's own camera script keeps the way the camera looks from one frame to the next.
+TILT_CAMERA = '''
+local camera = workspace.CurrentCamera
+local heading = (camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+local tilt = math.rad(%f)
+camera.CFrame = CFrame.lookAlong(camera.CFrame.Position, heading * math.cos(tilt) + Vector3.new(0, math.sin(tilt), 0))
+task.wait(0.5)
+return "tilted"
+'''
+
+ENTER_FIRST_PERSON = '''
+game:GetService("Players").LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+task.wait(1)
+return "first person"
+'''
+
+# The speeds a character throws at, in studs a second, as World has them.
+THROW_FORWARD_SPEED = 24
+THROW_UPWARD_SPEED = 8
+DIGIT_KEYS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
+
 PANEL = 'LocalPlayer.PlayerGui.Inventory.Panel.'
 
 
@@ -318,6 +393,30 @@ class Playtest:
     def hover(self, where):
         self.studio.call('user_mouse_input', {'datamodel_type': 'Client', 'actions': [
             {'action': 'moveTo', 'instance_path': where}, {'action': 'wait', 'wait_time_ms': 250}]})
+
+    # Puts the first hotbar slot that holds anything in hand. False if the hotbar holds nothing.
+    def select_a_held_slot(self):
+        hotbar = self.view()['hotbar']
+        held = sorted(int(name[1:]) for name, text in hotbar.items() if text != '')
+        if not held:
+            return False
+        self.keys(DIGIT_KEYS[held[0] - 1])
+        return True
+
+    # Throws one of what is in hand with Q. Returns the way the camera looked when Q went down, how far
+    # the camera then was from the point it turns about, and the velocity the thrown block started with.
+    def throw_and_measure(self):
+        self.studio.luau(WATCH_NEXT_THROW, 'Server')
+        self.studio.luau(WATCH_NEXT_DROP_KEY, 'Client')
+        self.keys('Q')
+        for _ in range(10):
+            thrown = self.studio.luau(READ_THROW, 'Server').strip()
+            seen = self.studio.luau(READ_LOOK_AT_DROP, 'Client').strip()
+            if thrown != 'none' and seen != 'none':
+                look_x, look_y, look_z, distance = (float(part) for part in seen.split(','))
+                return (look_x, look_y, look_z), distance, tuple(float(part) for part in thrown.split(','))
+            time.sleep(0.2)
+        return None, None, None
 
     def walk_to(self, x, z):
         self.studio.call('character_navigation', {'datamodel_type': 'Client', 'x': x, 'y': 1, 'z': z, 'speed_multiplier': 2})
@@ -673,6 +772,42 @@ class Playtest:
         check(carried.startswith('Baked apple'), 'what it made can be taken out, and cannot be put back', carried)
         self.keys('E')
         check(not self.view()['open'], 'E closes the stove')
+
+        # Which way a throw goes. In third person it goes along the ground, however the camera is
+        # tilted. In first person it goes the way the view looks, up and down as well.
+        def near(velocity, expected):
+            return all(abs(velocity[axis] - expected[axis]) < 0.3 for axis in range(3))
+
+        check(self.select_a_held_slot(), 'the hotbar holds something to throw', self.view()['hotbar'])
+        self.studio.luau(TILT_CAMERA % -35, 'Client')
+        look, distance, velocity = self.throw_and_measure()
+        check(look is not None, 'Q in third person throws a block onto the ground')
+        if look is not None:
+            flat = (look[0] ** 2 + look[2] ** 2) ** 0.5
+            expected = (look[0] / flat * THROW_FORWARD_SPEED, THROW_UPWARD_SPEED, look[2] / flat * THROW_FORWARD_SPEED)
+            check(distance >= 1 and look[1] < -0.3, 'the camera is in third person and looks down at the character',
+                  {'studs from what it turns about': distance, 'look': look})
+            check(near(velocity, expected), 'all the same the throw leaves along the ground, the way the camera looks',
+                  {'velocity': velocity, 'expected': expected, 'look': look})
+
+        check(self.select_a_held_slot(), 'the hotbar still holds something to throw', self.view()['hotbar'])
+        self.studio.luau(ENTER_FIRST_PERSON, 'Client')
+        for tilt, which in ((40, 'up'), (-50, 'down')):
+            self.studio.luau(TILT_CAMERA % tilt, 'Client')
+            if not self.select_a_held_slot():
+                check(False, 'the hotbar holds something to throw ' + which, self.view()['hotbar'])
+                continue
+            look, distance, velocity = self.throw_and_measure()
+            check(look is not None, 'Q in first person, looking ' + which + ', throws a block')
+            if look is None:
+                continue
+            expected = (look[0] * THROW_FORWARD_SPEED, look[1] * THROW_FORWARD_SPEED + THROW_UPWARD_SPEED,
+                        look[2] * THROW_FORWARD_SPEED)
+            tilted = look[1] > 0.5 if which == 'up' else look[1] < -0.5
+            check(distance < 1 and tilted, 'the camera is in first person and looks ' + which,
+                  {'studs from what it turns about': distance, 'look': look})
+            check(near(velocity, expected), 'the throw leaves the way the view looks, ' + which + ' as well',
+                  {'velocity': velocity, 'expected': expected, 'look': look})
 
 
 if __name__ == '__main__':

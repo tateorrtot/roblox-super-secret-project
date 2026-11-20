@@ -254,6 +254,21 @@ do -- how far in a ground item must reach, and how high it may be
 		"pushGroundItemsOutOfTile: one that reaches in less than that, from the side or from above, is left alone"
 	)
 
+	-- Exactly a tenth of a stud in is not more than a tenth.
+	local edgePlot, edge = newPlot()
+	local atSideAlongX = lyingAt(edge, "apple", 10 + TOUCHING - 0.1, 0, 10)
+	local atSideAlongZ = lyingAt(edge, "fish", 10, 0, 10 - (TOUCHING - 0.1))
+	local atTop = lyingAt(edge, "post", 10, Plot.TILE_SIZE - 0.1, 10)
+	placeCrateAndPush(edgePlot, edge, 0)
+	check(
+		edge.itemsById[atSideAlongX] ~= nil and edge.itemsById[atSideAlongZ] ~= nil,
+		"pushGroundItemsOutOfTile: a ground item that reaches exactly a tenth of a stud in from a side is left alone"
+	)
+	check(
+		edge.itemsById[atTop] ~= nil,
+		"pushGroundItemsOutOfTile: and so is one that reaches exactly a tenth of a stud in from above"
+	)
+
 	local underPlot, under = newPlot()
 	local below = lyingAt(under, "apple", 10, -GroundItems.ITEM_WIDTH + 0.09, 10)
 	local reachingUp = lyingAt(under, "fish", 10, -GroundItems.ITEM_WIDTH + 0.11, 10)

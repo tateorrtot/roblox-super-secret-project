@@ -26,7 +26,7 @@ RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fis
 
 local itemIds = { "log", "fish", "cooked_fish", "stove", "crate", "oven" }
 local at = Position.new
-local ALONG_X = { x = 1, z = 0 }
+local ALONG_X = { x = 1, y = 0, z = 0 }
 
 -- The requests are called with whatever a player's machine might send, so they are called through
 -- this, which does not check their arguments.
@@ -811,7 +811,7 @@ do -- dropCarriedStack
 	World.setCharacterPosition(movedWorld, 1, at(1, 0, 1))
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
-	send("dropCarriedStack", movedWorld, moved, { x = 0, z = 1 }, nil)
+	send("dropCarriedStack", movedWorld, moved, { x = 0, y = 0, z = 1 }, nil)
 	local movedItem = movedWorld.groundItems.itemsById[next(movedWorld.groundItems.itemsById) :: number]
 	check(
 		movedItem.position.x == 1
@@ -928,13 +928,23 @@ do -- the direction a drop is thrown in
 		7,
 		{},
 		{ x = 1 },
-		{ z = 1 },
-		{ x = 0, z = 0 },
-		{ x = 2, z = 0 },
-		{ x = 0, z = -1.5 },
-		{ x = 0 / 0, z = 1 },
-		{ x = math.huge, z = 0 },
-		{ x = "1", z = 0 },
+		{ x = 1, z = 0 },
+		{ x = 1, y = 0 },
+		{ y = 1, z = 0 },
+		{ x = 0, y = 0, z = 0 },
+		{ x = 2, y = 0, z = 0 },
+		{ x = 0, y = 0, z = -1.5 },
+		{ x = 0, y = 1.5, z = 0 },
+		{ x = 1, y = -2, z = 1 },
+		{ x = 0 / 0, y = 0, z = 1 },
+		{ x = 1, y = 0 / 0, z = 0 },
+		{ x = 1, y = 0, z = 0 / 0 },
+		{ x = math.huge, y = 0, z = 0 },
+		{ x = 0, y = -math.huge, z = 0 },
+		{ x = 0, y = 0, z = math.huge },
+		{ x = "1", y = 0, z = 0 },
+		{ x = 1, y = "0", z = 0 },
+		{ x = 1, y = 0, z = "0" },
 	}
 	for _, bad in badDirections do
 		local world, state = newWorld()
@@ -945,12 +955,12 @@ do -- the direction a drop is thrown in
 		send("dropCarriedStack", world, state, bad, 1)
 		check(
 			onGround(world, "log") == 0 and is(carriedBy(state), "log", 12),
-			"a drop with a direction that is not two numbers from -1 to 1, not both 0, drops nothing"
+			"a drop with a direction that is not three numbers from -1 to 1, not all 0, drops nothing"
 		)
 	end
 
 	local world, state = newWorld()
-	send("dropFromSelectedSlot", world, state, { x = 0.3, z = -0.4 }, 1)
+	send("dropFromSelectedSlot", world, state, { x = 0.3, y = 0, z = -0.4 }, 1)
 	local thrown = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
 		math.abs(thrown.spawnVelocity.x - 0.6 * World.CHARACTER_THROW_FORWARD_SPEED) < 1e-9
@@ -960,19 +970,56 @@ do -- the direction a drop is thrown in
 	)
 	check(is(inSlot(state, 1), "log", 11), "a drop with a short direction still takes the item from the slot")
 
+	-- A direction that points up or down throws up or down.
+	local upWorld, upState = newWorld()
+	send("dropFromSelectedSlot", upWorld, upState, { x = 0.3, y = 0.4, z = 0 }, 1)
+	local thrownUp = upWorld.groundItems.itemsById[next(upWorld.groundItems.itemsById) :: number]
+	check(
+		math.abs(thrownUp.spawnVelocity.x - 0.6 * World.CHARACTER_THROW_FORWARD_SPEED) < 1e-9
+			and math.abs(
+				thrownUp.spawnVelocity.y
+					- (0.8 * World.CHARACTER_THROW_FORWARD_SPEED + World.CHARACTER_THROW_UPWARD_SPEED)
+			) < 1e-9
+			and thrownUp.spawnVelocity.z == 0,
+		"a drop with a direction that points up is thrown up, the way the direction points"
+	)
+	local downWorld, downState = newWorld()
+	send("dropFromSelectedSlot", downWorld, downState, { x = 0, y = -0.5, z = 0 }, 1)
+	local thrownDown = downWorld.groundItems.itemsById[next(downWorld.groundItems.itemsById) :: number]
+	check(
+		thrownDown.spawnVelocity.x == 0
+			and thrownDown.spawnVelocity.y == World.CHARACTER_THROW_UPWARD_SPEED - World.CHARACTER_THROW_FORWARD_SPEED
+			and thrownDown.spawnVelocity.z == 0,
+		"a drop with a direction straight down is thrown straight down"
+	)
+
 	local edgeWorld, edgeState = newWorld()
-	send("dropFromSelectedSlot", edgeWorld, edgeState, { x = -1, z = 0 }, 1)
-	send("dropFromSelectedSlot", edgeWorld, edgeState, { x = 0, z = 1 }, 1)
-	send("dropFromSelectedSlot", edgeWorld, edgeState, { x = 2.7e-162, z = 0 }, 1)
+	local edgeDirections = {
+		{ x = -1, y = 0, z = 0 },
+		{ x = 0, y = 0, z = 1 },
+		{ x = 0, y = -1, z = 0 },
+		{ x = 1, y = 1, z = 1 },
+		{ x = -1, y = 1, z = -1 },
+		{ x = 2.7e-162, y = 0, z = 0 },
+		{ x = 0, y = 2.7e-162, z = 0 },
+	}
+	for _, direction in edgeDirections do
+		send("dropFromSelectedSlot", edgeWorld, edgeState, direction, 1)
+	end
 	local speeds = {}
 	for _, groundItem in edgeWorld.groundItems.itemsById do
-		table.insert(speeds, math.sqrt(groundItem.spawnVelocity.x ^ 2 + groundItem.spawnVelocity.z ^ 2))
+		local velocity = groundItem.spawnVelocity
+		local alongThrow = velocity.y - World.CHARACTER_THROW_UPWARD_SPEED
+		table.insert(speeds, math.sqrt(velocity.x ^ 2 + alongThrow ^ 2 + velocity.z ^ 2))
 	end
-	check(#speeds == 3, "a drop with a direction of exactly -1 or 1 along one axis, or a very faint one, is thrown")
+	check(
+		#speeds == #edgeDirections,
+		"a drop with a direction of exactly -1 or 1 along any axis, or a very faint one, is thrown"
+	)
 	for _, speed in speeds do
 		check(
 			math.abs(speed - World.CHARACTER_THROW_FORWARD_SPEED) < 1e-9,
-			"no direction a player's machine can send throws faster or slower than a throw goes"
+			"no direction a player's machine can send throws faster or slower than a throw goes, the upward speed aside"
 		)
 	end
 end

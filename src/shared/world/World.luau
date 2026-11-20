@@ -63,11 +63,12 @@ World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
 --- How far above a character's feet a stack that the character throws starts, in studs.
 World.CHARACTER_THROW_START_HEIGHT = 3
 
---- How fast a stack that a character throws starts moving along the ground, the way it is thrown,
---- in studs a second.
+--- How fast a stack that a character throws starts moving the way it is thrown, in studs a
+--- second.
 World.CHARACTER_THROW_FORWARD_SPEED = 24
 
---- How fast a stack that a character throws starts moving upwards, in studs a second.
+--- How fast a stack that a character throws starts moving straight up, on top of its speed the
+--- way it is thrown, in studs a second.
 World.CHARACTER_THROW_UPWARD_SPEED = 8
 
 --- How fast a placed item that `throwPlacedItemAndContents` throws, and each stack that was in it,
@@ -200,8 +201,9 @@ local function getThrowStart(characterPosition: Position): Position
 end
 
 --- Throws a stack into the world from a character whose feet are at `characterPosition`: it
---- spawns `CHARACTER_THROW_START_HEIGHT` above them, moving the way `direction` points along the
---- ground at `CHARACTER_THROW_FORWARD_SPEED`, and upwards at `CHARACTER_THROW_UPWARD_SPEED`.
+--- spawns `CHARACTER_THROW_START_HEIGHT` above them, moving the way `direction` points at
+--- `CHARACTER_THROW_FORWARD_SPEED`, with `CHARACTER_THROW_UPWARD_SPEED` straight up added to that.
+--- A `direction` that points up or down throws it up or down.
 --- Note: it does not take the stack from anywhere.
 function World.throwStackFromCharacter(
 	world: World,
@@ -211,7 +213,7 @@ function World.throwStackFromCharacter(
 )
 	World.spawnStack(world, stack, getThrowStart(characterPosition), {
 		x = direction.x * World.CHARACTER_THROW_FORWARD_SPEED,
-		y = World.CHARACTER_THROW_UPWARD_SPEED,
+		y = direction.y * World.CHARACTER_THROW_FORWARD_SPEED + World.CHARACTER_THROW_UPWARD_SPEED,
 		z = direction.z * World.CHARACTER_THROW_FORWARD_SPEED,
 	})
 end
