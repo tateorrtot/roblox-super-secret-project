@@ -16,8 +16,11 @@ How things in the code are named. The user reads an outline of bare names, with 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
 **A name is a promise, and the function keeps it.** `drop` leaves the stack on the ground. A function that only takes the stack out is `take`. If what a function does cannot be said plainly in a sentence built from its name, it is the wrong shape: split it or rename it.
-- **A setter names the thing it sets.** The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPositionAndFacing`.
-- **One exception, granted by the user on 2026-11-20:** `World.spawnStack` and `World.setGroundItemPosition` also merge the ground item into one of its kind beside it. Keeping the merge out of them would mean checking every ground item ten times a second. Their words: "As long as its specified that it will merge in documentation I think its okay to break that method naming standard here and HERE ONLY". Both comments say so. No other function has this leave.
+- **A setter names the thing it sets:** `set` and the property. The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPosition`.
+- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." One name still has it, `throwPlacedItemAndContents`, and waits for their word.
+- **A long name is a flag too, and not always wrong.** `pushGroundItemsOutOfTile` stands: the user called it "one of these times a mouthful may be okay".
+- **A word names a real thing in the code, or it is not used.** The user, of a `Transform` that did not exist: "is transform a defined solid thing? like a class? if not dont do transform".
+- **There is no exception.** The user allowed one on 2026-11-20, for two functions of `World` that also merged ground items, and it was lifted the same day when the merge moved to `World.advanceTo`.
 
 ## One name for each idea
 | Name | Means |
@@ -29,8 +32,8 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `player` | A `PlayerState`, in the rules |
 | `placedItem`, `placedItemId` | A thing standing on a plot, and its id |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
-| `character` | A player's body in the world, as far as the rules know it: its `position` and its `facing`. `nil` while they have none. It is not a transform: it has no scale, and it turns only along the ground |
-| `facing`, `direction` | A way along the ground, `{ x, z }` with a length of 1 |
+| `character` | A player's body in the world, as far as the rules know it: its `position`. `nil` while they have none |
+| `direction` | A way along the ground, `{ x, z }` with a length of 1 |
 | `velocity` | How fast along each axis, `{ x, y, z }` in studs a second |
 | `...Time` | A moment on the world's clock, in seconds: `spawnTime` |
 | `now` | The present time, in seconds |

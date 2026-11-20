@@ -12,10 +12,18 @@ Names have a file of their own, `names.md`. In short: a function's name says wha
 - **A value never changes,** and its functions return new values: `ItemStack`, an item definition, a `Position`. It is frozen, and its fields are typed `read`.
 - **A thing changes in place, through its own module's functions:** `Inventory`, `InventoryScreen`, `Hotbar`, `World`. A field its module assigns is a plain field. Only fields that never change after the thing is made are `read`. Code outside the module does not assign a thing's fields.
 - **A function that moves items returns what the caller is left holding,** and no item is made or lost.
-- **Keep the facts, and work the rest out where it is used.** A value worked out from others is not stored. A player's state holds where their character is and which way it faces; the throw of a dropped stack is worked out when the stack is dropped. Claude once stored it, in a function named for a position, and the user called that spaghetti.
+- **Keep the facts, and work the rest out where it is used.** A value worked out from others is not stored. A player's state holds where their character is; the throw of a dropped stack is worked out when the stack is dropped, from the direction the request brings. Claude once stored it, in a function named for a position, and the user called that spaghetti.
 - **Only a thing's own module assigns its fields,** and it offers a function for each change that keeps the thing whole: `PlayerState.openPackScreen`, not `player.screen = ...` from somewhere else.
 
 Plain fields on things are Claude's call of 2026-11-20, for the user to veto. The earlier rule typed every field `read`, which made each module write its own fields through a cast to `any`.
+
+## Check, then act
+The user's rule, 2026-11-20: "if you say "jump" dont have a check inside that method. Check before you call the method like "can_jump" THEN "jump". A method should always do as it says so its intuitive. ... Sometimes we may never care about "can_jump" and just force a jump."
+- **A function does what its name says, every time it is called.** It does not look first and quietly do nothing.
+- **The check is a function of its own,** named `can...` or `is...`, and the caller asks it first. A request from a player's machine asks; a caller that means to force the thing does not.
+- **The same goes for a tool.** `python tools/studio.py sync` syncs. Whether the code passed its checks is another command's to say.
+- **Not yet brought to this rule:** `World.placeItem`, `Plot.placeItem`, `World.openPlacedItemScreen`, `PlayerState.openPackScreen`, `PlayerState.openPlacedItemScreen` and `InventoryScreen.swapCarriedStackWithSlot` each look first and return `nil` or `false`. `Plot.canPlaceItem` is the one check that already stands by itself. New code follows the rule.
+- A function that is asked to remove a thing that is not there has nothing to do, and that is not a check: `removeCharacter`, `closeScreen`.
 
 ## Failure
 - **What can happen in play is a return value.** No room, nothing there.

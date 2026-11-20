@@ -22,4 +22,9 @@ The user's own examples, to test any design against:
 - A travelling hospital that heals for a price; protection bought with goods or a tax; a nomad living in a caravan who supplies a city; becoming a city's neighbour, vassal or ruler.
 - RimWorld services: "someone comes to your colony and in exchange for you feeding and housing them they work for you"; "a person is injured! if you rescue and heal them their faction will reward you or this person will join!"
 
+More of the user's examples, 2026-11-20:
+- "Players taking a submarine from a quest they heard about to a dry cave system with an underwater volcano venturing past the puzzles, enemies, and challenges using spells, tools, guns, their helpers, maybe a small vehicle they made (could be made as in crafted it like as a recipe or maybe later authored/engineered it), and shurikens, defeating a boss like in terraria, and getting really good items that can be used for who knows what, or other rewards like the "blue wood" in lumber tycoon. Or setting up geothermal generators for their base or something down there."
+- "having to prep a town or their base aganist a raid getting allies, or building defenses, or getting gear, or placing tower defenses, or engineering something".
+- **Towns act on one another.** "I feel like youre not really talking about how the towns interact with eachother. That might be a later feature though."
+
 The most useful form for content: for each place or people, what it needs, from whom, and what it makes for whom.

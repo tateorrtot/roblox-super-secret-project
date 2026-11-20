@@ -24,6 +24,14 @@
 - **A stack dropped on the ground vanishes after a few minutes and is never saved.** (The user's choice, 2026-11-19.) Built as five minutes.
 - **The first process, cooking on the stove, works as a Minecraft furnace does,** with slots for what goes in, for fuel and for what comes out. (The user, 2026-11-19: "yes furnace style slots I like".)
 
+- **Saving matters, and so does a plot for each player** (2026-11-20). Technically it is "multiple plots with associated owners". The owner is not always a player: "Could be a faction, a bank, a corporation, a player-made clan, a shared base/save among multiple players who knows! the owner is a bit of a black box". Many plots to buy and work through, as in Schedule 1, was turned down: it "ruins the magic of joining a server with other players and never knowing what youll get".
+- **Walls and floors are wanted,** as in The Sims, Bloxburg, Retail Tycoon and Paralives (2026-11-20): parts that can be customised, "using the grid as a pure guideline rather than a set boundary", and walls of other heights and thicknesses. The user sees that this "may need rethinking with the plots and placement", and that helpers must still find their way. Not designed.
+- **Three kinds of process are wanted** (2026-11-20): one that works on what is inside it, as the furnace does; one worked on by what stands over it, as Create's basin is by a mixer or a press; and one that works on what is in front of it, as Create's fan does. Their words are in `placed-items.md`.
+- **A helper does what a player can, with a different brain** (2026-11-20). "they should kinda be like the player and able to do the things a player can, its just an AI brain happens to be driving it and they may have other functionality like dialogue." They may skip the screen: "they dont actually "click" on a furnace with a cursor and put items in they just kinda get near it open its inventory and put stuff in". Skills change how fast, as in RimWorld: "Wanna cut down that tree? They better be good at a "plants" skill."
+- **What a placed thing does is its own business** (2026-11-20). See `placed-items.md`.
+- **A dropped stack is thrown the way the camera looks along the ground,** and not up or down with it (2026-11-20): "in third person it should shoot out based on the x y of the camera (not the z or "pitch" though since the camera will naturally be looking down at the world)". Built.
+- **What a player does is shown on their own machine at once, and the server corrects it** (2026-11-20). Our own prediction, not Roblox's Server Authority: "We had to do our own inventory and hotbar, so our own client side prediction makes sense." Not built; the plan is in `docs/status/next.md`.
+
 ## Proposed, awaiting the user
 - **Spatial model** (a first tile grid is built, so the user can judge it by playing; see Status): plot tile grid for building and for helpers to walk on; authored terrain between plots; things can be set down anywhere, at rest and not simulated; physics only where it is fun (carrying, throwing, vehicles).
 - **Interface:** world verbs wherever one held thing meets one target (apply, take, work, set down), and one consistent panel anchored to the object for contents, moving stacks and choosing recipes. A fixed-camera station mode in the style of the Hands-On Delight mod for a couple of flagship stations later. See docs/research/06.
@@ -55,4 +63,5 @@
 3. Later: whether a character shared by every server can die, and how.
 
 ## The name
+- **The user's first name for it was "products for people"** (told 2026-11-20: "I originally envisioned calling this game "products for people"").
 - **The game has no name, not even a placeholder** (the user raised this). Claude suggested "Patchwork" as a working name, with "Crossroads" and "Waymeet" as alternatives; names belong to the user. Not chosen yet.

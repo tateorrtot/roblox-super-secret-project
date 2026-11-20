@@ -7,15 +7,16 @@ As of 2026-11-20. This file holds only what is true now. What is over is in `his
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | Rewritten and renamed on 2026-11-20 to the user's standard, on the branch `first-pieces`. Dropped items were rebuilt the same day on the branch `dropped-items`, and untangled there after the user's fifth review. It is not merged. Nothing pushed |
-| **Checked** | On `dropped-items`: `lune run tools/check` passes, with 1,962 test checks, and the play test passes, 71 of 71 |
+| **Checked** | On `dropped-items`: `lune run tools/check` passes, with 2,003 test checks, and the play test passes, 71 of 71 |
 | **Not checked** | A phone. Two players. A real server. How a thrown item looks from another player's machine |
-| **Waiting on the user** | A yes or no to a signal piece in the rules, and to acting on the player's machine first (`asked-of-the-user.md`). To read the untangled code. Then their feedback on the game |
+| **Waiting on the user** | Their read of the plan for prediction on the player's machine (`next.md`). To read the untangled code. Then their feedback on the game |
 
 ## With the user
-- **They have reviewed the code six times,** five of them on 2026-11-20. Their words are in `docs/working/code-reviews/`.
+- **They have reviewed the code seven times,** six of them on 2026-11-20. Their words are in `docs/working/code-reviews/`.
 - **Everything from the first four is done.** The story is `history/2026-11-20-code-rewrite.md`.
 - **The fifth came from playing dropped items.** They felt a delay when throwing, called `World.setPlayerPosition` spaghetti, could make nothing of the class `Throw` out of context, and asked for a review of the coupling. They then approved four things, and all four are done: the untangle of `setPlayerPosition`, handing ground items back to Roblox's ownership, and faults 2 to 4 of the review. The story is `history/2026-11-20-dropped-items.md`.
 - **The sixth was their answer to the report on those fixes.** Done from it: `setCharacter` is renamed, the push out of a tile is its own piece, the chart of requires is drawn by a tool, and the merge in two of `World`'s functions is allowed as the one exception to a name's promise. Waiting on them: a signal piece, so that removing a placed item tells the pieces that care; and acting on the player's own machine first.
+- **The seventh answered that report in twenty-five points.** Done from it: ground items merge when time moves on; a throw goes the way the camera looks; the rules keep only where a character is, so there is one setter, `setCharacterPosition`. Two rules came with it: a function does what it says with the check kept apart, and a name with `And` in it is two functions. They chose our own prediction, said to leave `World` as it is, and gave a great deal on the game itself, which is in `docs/game/`.
 - **They have not read the untangled code.**
 - **They judge code by two tests of their own:** a class must make sense from its bare names with no context at all, and deleting one directory must not break the one beside it (`docs/code/names.md`, `docs/code/conventions.md`). Their words: "maintainable straightforward easy to understand with no context decoupled code is much. much. much. more important than getting it to work right now."
 - **They corrected how Claude works that day:** say an idea beyond what was asked and let them choose, while they are here; use the engine before writing anything of our own; and put the cost of a changed default to them first (`docs/working/with-the-user.md`).
@@ -24,7 +25,7 @@ As of 2026-11-20. This file holds only what is true now. What is over is in `his
 ## What a player can do
 Press Play in Studio and you appear on a grey plot, with a hotbar along the bottom. It is all grey boxes, laid out for a PC.
 
-- **Ground items.** Stacks of items lie about, and walking over one picks it up, also off the top of a block beside you. Q throws one of what is in hand out in front of you: it falls, lands and comes to rest as any Roblox part does, about 7 studs ahead. Items pass through each other and through players. A stack that lands by its own kind joins it. A stack is gone after five minutes.
+- **Ground items.** Stacks of items lie about, and walking over one picks it up, also off the top of a block beside you. Q throws one of what is in hand the way the camera looks: it falls, lands and comes to rest as any Roblox part does, about 7 studs ahead. Items pass through each other and through players. A stack that lands by its own kind joins it. A stack is gone after five minutes.
 - **The pack.** E opens it. The inventory screen works as Minecraft's does:
   - a left click picks a stack up or puts it down, and a right click takes half or puts one down;
   - a double click fills the carried stack from every slot holding its kind;
@@ -38,7 +39,7 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 - **Hit.** A short right click on a placed thing knocks it off the plot. It spills out as an item, upwards and a little outwards, and so does each stack that was in a crate.
 
 ## What has been checked
-- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 1,962 test checks and the demo.
+- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,003 test checks and the demo.
 - **Mutation testing** of the nine pieces the untangle touched caught 841 of 870 deliberate bugs (`python build/mutate_some.py`; the survivors are in `build/mutate-untangled.txt`, which is not kept in git). After the sixth review, the three pieces changed again caught 290 of 302. The survivors change nothing a caller can see, or sit exactly on an edge that no real position lands on. Every plain-Luau piece was last run together before this work, at 1,475 of 1,527 (`python build/mutate_all.py`).
 - **The delete test** (`python tools/delete_directory_test.py`): `players`, `plots` and `stations` do not break one another. Only `world`, `requests` and the Roblox side need them.
 - **The names** were tested on readers given nothing but the names. See `history/2026-11-20-code-rewrite.md`.
@@ -54,14 +55,16 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 
 ## Known problems
 - **The hotbar's highlight, every click in the inventory, and a throw each wait for the server.** One trip there and back. In Studio that is a frame or two, because the server is on the same PC, and the user took the hotbar's wait for fixed. On a real server it is the player's ping, and nobody has measured it. The fix is to act on the player's own machine first (`docs/research/18-client-first.md`); the user has asked for it and has not yet seen the plan through.
-- **`World` still names stations,** and the coupling review's faults 5 to 9 are not fixed (`docs/code/reviews/16-coupling-review-2026-11-20.md`). The user said yes to the first, by a signal, which is shown to them before it is written.
-- **Two of `World`'s functions also merge ground items,** by the user's leave (`docs/code/names.md`).
+- **`World` still names stations,** and `Station` is a furnace under a general name (`docs/game/placed-items.md`). The user said to leave `World` for now. The coupling review's faults 5 to 9 are not fixed either (`docs/code/reviews/16-coupling-review-2026-11-20.md`).
+- **Six functions look first and quietly do nothing,** against the user's rule of 2026-11-20 (`docs/code/conventions.md`, "Check, then act").
+- **`throwPlacedItemAndContents` has `And` in its name,** against the user's rule of the same day.
+- **A carried stack that does not fit the pack is dropped at the feet when a screen closes,** where it used to be thrown ahead. The rules no longer know which way a character faces.
 - **A ground item pushed out of a tile is not checked where it lands.** One that lay across a corner of the tile can land partly inside a placed item on the tile diagonally across that corner. It takes two placed items around that corner already.
 - **A block placed where a thrown item is flying can miss it.** The world knows where each ground item was at the last tenth of a second.
 - **A character looking exactly straight up or down is not told to the world,** which keeps what it last knew. A Roblox character does not do that by walking about.
 - **The faint block shows on tiles the server will refuse,** such as the one the player stands on. Found by reading the code (`docs/code/reviews/15-code-double-check-2026-11-20.md`), and not fixed.
 - **A ground item's block that falls out of the world is not noticed.** Roblox destroys the part, and the ground item stays in the rules, out of reach, until its five minutes are up. It cannot happen on the placeholder map, whose ground is 1,024 studs across.
-- **Every ground item that moved is compared with every other for merging,** ten times a second. Measured in Lune on this machine with every item moving: 0.3 milliseconds a pass at 100 items, 2.4 at 300, and 27 at 1,000, which is a quarter of a core (`build/merge_pass_cost.luau`).
+- **Every ground item that was spawned or moved is compared with every other for merging,** ten times a second, when the world's time moves on. Ground items that lie still are not looked at. Measured in Lune on this machine with every item moving: 0.3 milliseconds a pass at 100 items, 2.4 at 300, and 27 at 1,000, which is a quarter of a core (`build/merge_pass_cost.luau`).
 
 Left from the audits and not done (`build/audit.json` has the full list, and is not kept in git):
 - The inventory screen's drawing code does two jobs, the screen and the stove's panel, and finds the stove's parts by their place in a list.

@@ -18,7 +18,7 @@ One block is one metre, and there are 20 ticks to a second.
 | **Inside a solid block** | Every tick, an item that is inside a block is pushed out through the nearest open side, or the top if none is open, at 0.1 to 0.3 blocks per tick. This is why a block can be placed where an item lies: the item is squeezed out |
 | **Flowing water** | Adds 0.014 blocks per tick along the flow, each tick. In still water an item floats slowly up |
 | **Picking up** | A player takes items that touch their own box grown by 1 block sideways and half a block up and down. They take as many as fit and leave the rest |
-| **Merging** | Two stacks of the same item within half a block sideways become one, the larger absorbing the smaller. Checked every 2 seconds, and at once when an item crosses into a new block |
+| **Merging** | Two stacks of the same item within half a block sideways become one, the larger absorbing the smaller. Checked every 2 seconds, and at once when an item crosses into a new block. Checked again on 2026-11-20 against the Minecraft Wiki for the current game: one item must be inside a box of 0.5 by 0.25 by 0.5 blocks around the other; the two must fit in one stack; the bigger stack takes the count, and of two equal ones the one looked at first is removed; the survivor keeps whichever despawn time is later. A lying item is looked at every 40 ticks, and one crossing between blocks every 2. No source said where the survivor ends up, or what becomes of its pickup delay |
 | **Despawning** | After 6,000 ticks: five minutes |
 | **How it looks** | It bobs and spins, and a bigger stack shows up to five copies. That is drawing only: the entity does not bob or spin |
 

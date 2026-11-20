@@ -17,4 +17,6 @@ The user is here to help with whatever Claude can't do.
 - **No "Verb a Noun" titles.** The user reads them as slop. Long-lived games name a world, a role or a genre (Murder Mystery, Lumber Tycoon, Prison Life, Bloxburg).
 - **Do not over-abstract.** The user: "you have this very weird abstracty non-retified un-physical way of designing things". Things in this game are physical objects and real events. Prefer the concrete, physical answer, and ask what would happen in the real world.
 - **Do not impose arbitrary limits.** "Why can't you own a vat?" If a thing exists in the world, a player can make, own or take it.
+- **It is a sandbox, and not a copy of one.** The user, 2026-11-20: "I think this game can confidentaly be summed up as a sandbox. I dont really know if its a building sandbox like minecraft though thats not really my core goal. Im not trying to make "minecraft"."
+- **What they draw on,** in their words: "fantasy magic, the sims, cozyness, ark, restaurant tycoon, dungeon defenders, taming creatures, stardew valley, retail tycoon, vehicle building, adventures, whatnot".
 - Hour-ten test (Claude's, not disputed): at hour ten a player is doing something different from hour one, chosen by them, and two players at hour ten are doing different things.

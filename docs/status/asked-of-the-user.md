@@ -2,13 +2,12 @@
 
 - To play the build and say what feels wrong.
 - To play with dropped items again now that Roblox owns their motion, and say how they feel: whether the delay when throwing is gone, how far a throw goes, how a broken crate spills, whether items should fall more lightly.
-- Whether to build a small signal piece in the rules, so that a plot says when a placed item is placed or removed and the pieces that care do their part: stations, open screens, the push of ground items (shown 2026-11-20, after they proposed it).
-- Whether to start acting on the player's own machine first, and in which order: the hotbar, then clicks in the inventory, then the thrown item (shown 2026-11-20, after they asked for it). Roblox's own Server Authority is the other road, and stays an open decision.
-- Whether merging should still move into `World.advanceTo`, now that there is a way that costs no more than today's: remembering which ground items moved. They allowed the merge to stay where it is, and asked to hear this.
-- Whether `setCharacterPositionAndFacing` suits them, or they would rather it were called a transform.
-- Whether a throw should follow the camera up and down. Facing is along the ground only.
+- Their read of the plan for prediction on the player's machine, and a yes to build it (`next.md`, shown 2026-11-20).
+- Whether `throwPlacedItemAndContents` should be split, since it has `And` in its name: one function to throw the placed item, one to throw what is inside it.
+- Whether to bring the six functions that look first and do nothing to their rule of check, then act (`docs/code/conventions.md`).
+- Whether a throw in first person should go up and down with the view. It goes along the ground in both views now.
+- Whether a carried stack that does not fit the pack may be dropped at the feet when a screen closes, as it now is.
 - Which of the coupling review's faults 5 to 9 to fix, and when (`docs/code/reviews/16-coupling-review-2026-11-20.md`).
-- What they picture for plots, now that they have asked "couldnt a plot be, anywhere? Like the world is a plot?" The agreed decisions say a plot for each player, as in Lumber Tycoon, and building on vehicles as in ARK.
 - Which, if any, of the ideas Claude set aside they want. The list is at the end of `docs/game/dropped-items.md`.
 - Whether they want an audit of the rule files: merging duplicates and deleting what a later rule replaced, with the diff shown first.
 - Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.

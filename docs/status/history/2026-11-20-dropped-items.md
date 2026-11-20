@@ -39,3 +39,13 @@ Their words are in `docs/working/code-reviews/2026-11-20-5-events-and-glue.md`.
 - **They asked why everything waits for the server.** Four readers checked what Roblox does and offers (`docs/research/18-client-first.md`). A plan for acting on the player's machine first was shown to them.
 - **Checked:** every check, the play test at 71 of 71, mutation testing of the three pieces changed, three cold readers, and a reviewer checked by a skeptic.
 - **The reviewer found four things, all fixed:** two comments that left a case out, one promise no test checked, and that the chart tool crashed if a require ever looped. Nothing in play had changed.
+
+## The same day: twenty-five points
+Their words are in `docs/working/code-reviews/2026-11-20-6-check-then-act.md` and in `docs/game/`.
+- **Merging moved into `World.advanceTo`,** once it could be done at no more cost: the ground items remember which of them moved. The exception to a name's promise, allowed that morning, was lifted.
+- **A throw goes the way the camera looks along the ground.** The three drop requests carry the direction. The rules stopped keeping which way a character faces, which left one setter, `setCharacterPosition`, and answered their objection to `setCharacterPositionAndFacing`.
+- **Two rules:** a function does what its name says and the check is kept apart, and `And` in a name means two functions.
+- **They asked why Claude would reinvent Roblox's events.** Claude had not said what Roblox has. The answer is `docs/research/19-roblox-events.md`, and nothing is built.
+- **They said what a station is to them:** a black box. `Station` in the code is a furnace (`docs/game/placed-items.md`).
+- **They chose our own prediction,** and asked how it stays out of the existing pieces. The plan is in `docs/status/next.md`.
+- **They gave much more of the game:** more of what they draw on, more examples, plots with owners, walls and floors, three kinds of process, and helpers who do what a player can.

@@ -15,12 +15,12 @@ The game
   Where and which way
     Position, Direction   a point in the world; a way along the ground      built
   Players
-    PlayerState       one player: pack, hotbar, the screen they have open, their character   built
+    PlayerState       one player: pack, hotbar, the screen they have open, where their character is   built
   Plots and building
     Plot              a grid of tiles and the items placed on it       built: one shared plot, one item to a tile
     Footprint, a plot of one's own, walls, floors and ceilings         not started
   Stations and recipes
-    RecipeRegistry, RecipeDefinitions, Station                         built: the stove
+    RecipeRegistry, RecipeDefinitions, Station                         built: the stove. `Station` is a furnace, and no more general than that
     StationProgress   a station's fire and work, as times                built
   The world
     GroundItems       stacks loose in the world: spawned, merged, picked up, expired   built
@@ -60,11 +60,12 @@ On the server:
 8. `PlayerSnapshot.encode` makes what the player's machine is told, and the screen redraws from it.
 
 ## How a dropped stack moves
-1. A request such as `dropFromSelectedSlot` takes the stack out of the pack and calls `World.throwStackFromCharacter` with the player's character.
-2. That works out where the stack starts and how fast, and calls `World.spawnStack`, which makes a ground item and merges it into its own kind if one is beside it.
+1. A request such as `dropFromSelectedSlot` comes with the way to throw, which the player's machine takes from its camera. It takes the stack out of the pack and calls `World.throwStackFromCharacter`.
+2. That works out where the stack starts and how fast, and calls `World.spawnStack`, which makes a ground item.
 3. `GroundItemParts.update` makes a part for it, at its position and moving at the velocity it was spawned with.
 4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks which machine works the motion out.
-5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`. A ground item that has come beside its own kind merges into it there.
+5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`.
+6. `World.advanceTo` then merges each ground item that was spawned or moved into one of its own kind beside it.
 
 `PlotCollision.pushGroundItemsOutOfTile` is the one rule about motion that is ours: when an item is placed, it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side. `World.placeItem` calls it.
 
