@@ -1,16 +1,22 @@
 --!strict
---- Shows the stacks lying on the ground as blocks in the world.
+--- Shows the stacks loose in the world as blocks, which Roblox's physics moves.
 ---
---- Each ground item gets one plain block in the colour of its item, with a label that says what it
---- is and how many. `update` makes the blocks match a `GroundItems` as it is now: a new block for
---- each new ground item, a changed label when part of a stack was picked up, and no block for what
---- is gone. The blocks are placeholders until items have models.
+--- Each ground item gets one small block in the colour of its item, with a label that says what it
+--- is and how many. `update` makes the blocks match a `GroundItems` as it is now: a block for each
+--- new ground item, a changed label when a stack grew or shrank, and no block for what is gone. A
+--- new block starts where its ground item was thrown from, moving as fast as it was thrown. After
+--- that it is an ordinary unanchored part: Roblox's physics makes it fall, land and come to rest,
+--- and shows its motion to every player. Only the server moves it, never a player's machine. A
+--- block passes through the other blocks and through characters, and collides with everything
+--- else. `getMovedPositions` says where the blocks have got to. The blocks are placeholders until
+--- items have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GroundItems = require(Shared.world.GroundItems)
 local ItemLooks = require(Shared.items.ItemLooks)
-local ItemRegistry = require(Shared.items.ItemRegistry)
+
+local CollisionGroups = require(script.Parent.CollisionGroups)
 
 local GroundItemParts = {}
 
@@ -21,11 +27,15 @@ export type GroundItemParts = {
 	read partsById: { [number]: Part },
 }
 
+--- How far a block must be from where its ground item is said to be, along any axis, for
+--- `getMovedPositions` to count it as moved, in studs.
+GroundItemParts.MOVE_NOTICED = 0.01
+
 local function makeLabel(part: Part)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
 	billboard.Size = UDim2.fromOffset(200, 24)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.2, 0)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 1.6, 0)
 	billboard.MaxDistance = 60
 	billboard.Parent = part
 
@@ -40,36 +50,46 @@ local function makeLabel(part: Part)
 	text.Parent = billboard
 end
 
-local function makePart(itemId: string): Part
+local function showCount(part: Part, itemId: string, count: number)
+	local name = ItemLooks[itemId].name
+	local label = part:FindFirstChild("Label") :: BillboardGui
+	local text = label:FindFirstChild("Text") :: TextLabel
+	text.Text = if count > 1 then string.format("%s ×%d", name, count) else name
+	part:SetAttribute("count", count)
+end
+
+local function makePart(groundItem: GroundItems.GroundItem): Part
+	local itemId = groundItem.stack.itemId
 	local look = ItemLooks[itemId]
+	local side = GroundItems.ITEM_SIZE
+	local from = groundItem.throw.from
 	local part = Instance.new("Part")
 	part.Name = itemId
-	part.Anchored = true
-	part.CanCollide = false
+	part.Size = Vector3.new(side, side, side)
+	part.Position = Vector3.new(from.x, from.y + side / 2, from.z)
+	part.CollisionGroup = CollisionGroups.GROUND_ITEMS
 	part.CanQuery = false
 	part.CanTouch = false
 	part.Material = Enum.Material.SmoothPlastic
 	part.Color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
 	makeLabel(part)
+	showCount(part, itemId, groundItem.stack.count)
 	return part
 end
 
-local function setLabelText(part: Part, itemId: string, count: number)
-	local name = ItemLooks[itemId].name
-	local label = part:FindFirstChild("Label") :: BillboardGui
-	local text = label:FindFirstChild("Text") :: TextLabel
-	text.Text = if count > 1 then string.format("%s ×%d", name, count) else name
+local function throwPart(part: Part, folder: Folder, velocity: { read x: number, read y: number, read z: number })
+	part.Parent = folder
+	part:SetNetworkOwner(nil)
+	part.AssemblyLinearVelocity = Vector3.new(velocity.x, velocity.y, velocity.z)
 end
 
-local function fitPartToGroundItem(part: Part, id: number, groundItem: GroundItems.GroundItem)
-	local stack = groundItem.stack
-	local fullness = stack.count / ItemRegistry.get(stack.itemId).stackSize
-	local side = 1.2 + 1.2 * fullness
-	local position = groundItem.position
-	part.Size = Vector3.new(side, side, side)
-	part.CFrame = CFrame.new(position.x, position.y + side / 2, position.z) * CFrame.Angles(0, id * 0.7, 0)
-	part:SetAttribute("count", stack.count)
-	setLabelText(part, stack.itemId, stack.count)
+local function hasMoved(from: GroundItems.Position, to: Vector3): boolean
+	local noticed = GroundItemParts.MOVE_NOTICED
+	local isFinite = to == to and to.Magnitude < math.huge
+	local isElsewhere = math.abs(to.X - from.x) > noticed
+		or math.abs(to.Y - from.y) > noticed
+		or math.abs(to.Z - from.z) > noticed
+	return isFinite and isElsewhere
 end
 
 --- Returns a new set of blocks, with none made yet, that will be kept in a folder called
@@ -81,20 +101,19 @@ function GroundItemParts.new(parent: Instance): GroundItemParts
 	return { folder = folder, partsById = {} }
 end
 
---- Makes the blocks match `groundItems` as they are now. A ground item with no block gets one; a
---- block whose stack changed in size is resized and relabelled; a block whose ground item is gone
---- is destroyed. A bigger stack makes a bigger block, resting on the ground where the stack lies.
+--- Makes the blocks match `groundItems` as it is now. A ground item with no block gets one, where
+--- the ground item was thrown from and moving as fast as it was thrown. A block whose stack
+--- changed in size is relabelled. A block whose ground item is gone is destroyed.
 function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: GroundItems.GroundItems)
 	local partsById = groundItemParts.partsById
 	for id, groundItem in groundItems.itemsById do
 		local part = partsById[id]
 		if part == nil then
-			part = makePart(groundItem.stack.itemId)
+			part = makePart(groundItem)
 			partsById[id] = part
-			fitPartToGroundItem(part, id, groundItem)
-			part.Parent = groundItemParts.folder
+			throwPart(part, groundItemParts.folder, groundItem.throw.velocity)
 		elseif part:GetAttribute("count") ~= groundItem.stack.count then
-			fitPartToGroundItem(part, id, groundItem)
+			showCount(part, groundItem.stack.itemId, groundItem.stack.count)
 		end
 	end
 	for id, part in partsById do
@@ -103,6 +122,25 @@ function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: G
 			partsById[id] = nil
 		end
 	end
+end
+
+--- Returns where each block now is, by the id of its ground item, for every block that is more
+--- than `MOVE_NOTICED` from where `groundItems` says its ground item is. A position returned is
+--- the middle of the block's underside, as a ground item's position is. A block at rest is where
+--- its ground item is said to be, so it is left out.
+function GroundItemParts.getMovedPositions(
+	groundItemParts: GroundItemParts,
+	groundItems: GroundItems.GroundItems
+): { [number]: GroundItems.Position }
+	local moved = {}
+	for id, part in groundItemParts.partsById do
+		local groundItem = groundItems.itemsById[id]
+		local underside = part.Position - Vector3.new(0, GroundItems.ITEM_SIZE / 2, 0)
+		if groundItem ~= nil and hasMoved(groundItem.position, underside) then
+			moved[id] = { x = underside.X, y = underside.Y, z = underside.Z }
+		end
+	end
+	return moved
 end
 
 return GroundItemParts

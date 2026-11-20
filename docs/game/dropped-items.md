@@ -1,6 +1,6 @@
 # Dropped items
 
-What the user wants of items lying in the world, and where that stands. Nothing here is built yet.
+What the user wants of items loose in the world, what is built, and what is left to choose.
 
 ## The user's words (2026-11-20)
 > The way dropped items work compared to minecraft seems to be completly different?
@@ -15,18 +15,32 @@ What the user wants of items lying in the world, and where that stands. Nothing 
 >
 > It would completly eliminate the bug of landing ontop of a placed block, or placing blocks ontop of it (placing a block ontop of an item stack in minecraft just pushes the item stack out of the way)
 
-They called this "a bigger issue from the 'lots of little issues'" they have been holding back about the first build.
+They called this "a bigger issue from the 'lots of little issues'" they have been holding back about the first build. On 2026-11-20 they approved an outline and said "Go ahead and build it."
 
-## What they asked for, as a list
-1. A dropped item is a thing with momentum, taken from what dropped it.
-2. A player or a dropper spits it out the way they face. A broken container just drops what it held.
-3. Water can push it around.
-4. Items do not collide with each other, or with players and creatures.
-5. A block placed where an item lies pushes the item out of the way.
+## What they asked for, and where each stands
+| | They asked | Built |
+|---|---|---|
+| 1 | A dropped item is a thing with momentum, taken from what dropped it | Yes. Each ground item is an ordinary Roblox part, set moving once and then left to Roblox's physics |
+| 2 | A player spits it out the way they face. A broken container just drops what it held | Yes for a player and for a broken container. There are no droppers yet |
+| 3 | Water can push it around | No. There is no moving water |
+| 4 | Items do not collide with each other, or with players and creatures | Yes, by Roblox's collision groups |
+| 5 | A block placed where an item lies pushes the item out of the way | Yes. Roblox does not do this, so it is a rule of ours: out of the nearest side with nothing against it |
 
-## Where it stands
-- **Researched, not built.** `docs/research/16-dropped-items.md` has how Minecraft does each of these, with numbers, and what was measured in Roblox.
-- **Claude's answer to "is it possible and reasonable": yes.** Roblox's physics handles 1, 2 and 4 cheaply. It does not do 5: a block placed over an item leaves the item inside it, so that rule has to be written, and a hand-written version worked in a test. 3 needs moving water, which does not exist yet.
-- **Networking it is Roblox's job, not ours.** A dropped item moves for about a second, the engine sends that, and then it rests and costs nothing. `docs/research/17-physics-networking.md` has what the user asked about physics networking and what was found.
-- **Not decided, and the user's to decide:** whether an item should fall as lightly as Minecraft's does or as heavily as Roblox's own gravity makes it; how far a throw goes.
-- **Not decided, and Claude's to propose:** whether the flight is Roblox's physics, with the server telling the rules where each stack came to rest, or a small simulation of our own inside the rules.
+Also built, from the outline they approved: a player picks up what lies up to 7 studs above their feet, so a stack on a block beside them is in reach. Merging and the five-minute life are as before, except that a stack now joins its own kind where it lands, not where it was dropped.
+
+## How it is built
+- **Roblox's physics does all the motion.** We wrote no physics. The user, 2026-11-20: "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
+- **The rules decide how a stack sets off** (`Throw`), and are told where each one has got to (`World.moveGroundItemTo`), as they are told where each character is.
+- **The server alone moves the parts.** Roblox sends their motion to players by itself. `docs/research/17-physics-networking.md` has what was found about that.
+- `docs/code/pieces.md` lists the pieces. `docs/research/16-dropped-items.md` has how Minecraft does each thing and what was measured in Roblox.
+
+## Ideas not built, for the user to choose
+None is needed now. Each was Claude's idea, set aside when the user asked it to stop building ahead (`docs/working/with-the-user.md`).
+- **A lighter, floatier fall,** as Minecraft's items have. Measured and working: one built-in force on each part, and the part still goes to sleep. Numbers are in `docs/research/16-dropped-items.md`.
+- **Two pickup delays,** as in Minecraft: 2 seconds for what a player throws, half a second for everything else. There is one delay of 1.5 seconds.
+- **A bigger stack drawn as a bigger block.** Every ground item is one size, with the count on its label.
+- **A check on every moving item for being inside a block.** The rule runs only when a block is placed. An item flying through a tile at the instant a block is placed there could end inside it.
+- **Keeping an item's age when it is pushed out of a block.** A pushed item is taken up and thrown again, so its five minutes and its pickup delay start over.
+
+## The user's to judge by playing
+How far a throw goes, how a spill looks, and whether items should fall more lightly. The numbers are in `src/shared/Throw.luau`, and are Claude's first guesses.

@@ -82,10 +82,18 @@ local world = { ground = {}, placed = {}, players = {} }
 local groundFolder = workspace:FindFirstChild("GroundItems")
 if groundFolder then
 	for _, part in groundFolder:GetChildren() do
-		table.insert(world.ground, { item = part.Name, count = part:GetAttribute("count"), x = part.Position.X, z = part.Position.Z })
+		table.insert(world.ground, {
+			item = part.Name, count = part:GetAttribute("count"),
+			x = part.Position.X, y = part.Position.Y - part.Size.Y / 2, z = part.Position.Z,
+			speed = part.AssemblyLinearVelocity.Magnitude,
+		})
 	end
 end
 local placeholder = workspace:FindFirstChild("PlaceholderWorld")
+local slab = placeholder and placeholder:FindFirstChild("Plot")
+if slab then
+	world.plot = { x = slab:GetAttribute("cornerX"), y = slab:GetAttribute("cornerY"), z = slab:GetAttribute("cornerZ") }
+end
 local placedFolder = placeholder and placeholder:FindFirstChild("PlacedItems")
 if placedFolder then
 	for _, part in placedFolder:GetChildren() do
@@ -98,7 +106,8 @@ end
 for _, player in game:GetService("Players"):GetPlayers() do
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if root then
-		table.insert(world.players, { x = root.Position.X, z = root.Position.Z })
+		local look = root.CFrame.LookVector
+		table.insert(world.players, { x = root.Position.X, z = root.Position.Z, lookX = look.X, lookZ = look.Z })
 	end
 end
 return HttpService:JSONEncode(world)
@@ -162,6 +171,17 @@ game:GetService("ReplicatedStorage").Remotes.%s:FireServer(%d)
 task.wait(0.5)
 return "asked"
 '''
+
+# Asks the server outright to place what is in hand on a tile of the plot.
+ASK_TO_PLACE = '''
+game:GetService("ReplicatedStorage").Remotes.placeSelectedItem:FireServer(%d, %d)
+task.wait(0.5)
+return "asked"
+'''
+
+# The length of a tile's side and of a ground item's block, in studs, as Plot and GroundItems have them.
+TILE_SIZE = 4
+ITEM_SIZE = 1.2
 
 # Counts, on the player's machine, how many times the server tells it what the player holds in the
 # next %d seconds, and leaves the count as the attribute SnapshotsCounted on the player.
@@ -228,6 +248,20 @@ class Playtest:
 
     def ground(self, item):
         return sorted(entry['count'] for entry in self.world()['ground'] if entry['item'] == item)
+
+    # What is in the world once every block on the ground has come to rest, or after four seconds.
+    def world_at_rest(self):
+        world = self.world()
+        for _ in range(20):
+            if all(entry['speed'] < 0.05 for entry in world['ground']):
+                break
+            time.sleep(0.2)
+            world = self.world()
+        return world
+
+    # The counts of one item's stacks on the ground, once every block has come to rest.
+    def ground_at_rest(self, item):
+        return sorted(entry['count'] for entry in self.world_at_rest()['ground'] if entry['item'] == item)
 
     # How far the test character stands from a placed item, along the ground, in studs.
     def distance_to(self, placed):
@@ -377,12 +411,21 @@ class Playtest:
         self.keys('Q')
         check(self.view()['pack'].get('s3') == 'Log 3' and self.ground('log') == [1], 'Q over a slot drops one from it',
               self.world()['ground'])
+        world = self.world_at_rest()
+        thrown = [entry for entry in world['ground'] if entry['item'] == 'log']
+        player = world['players'][0]
+        if thrown:
+            ahead = (thrown[0]['x'] - player['x']) * player['lookX'] + (thrown[0]['z'] - player['z']) * player['lookZ']
+            aside = abs((thrown[0]['x'] - player['x']) * player['lookZ'] - (thrown[0]['z'] - player['z']) * player['lookX'])
+            check(4 < ahead < 14 and aside < 2, 'it is thrown the way the character faces, and comes to rest some way ahead',
+                  {'studs ahead': ahead, 'studs aside': aside})
+            check(thrown[0]['speed'] < 0.05 and thrown[0]['y'] < 1.5, 'on the ground, and still', thrown[0])
         self.hover(PANEL + 'PackSlot12')
         self.hold('LeftControl', True)
         self.keys('Q')
         self.hold('LeftControl', False)
-        check(self.view()['pack'].get('s12') == '' and self.ground('log') == [3],
-              'Ctrl and Q over a slot drops the whole stack from it, and it joins the log on the ground', self.world()['ground'])
+        check(self.view()['pack'].get('s12') == '' and self.ground_at_rest('log') == [3],
+              'Ctrl and Q over a slot drops the whole stack from it, and it joins the log where it lands', self.world()['ground'])
         self.click(PANEL + 'PackSlot1', 'right')
 
         # Dropping from the screen.
@@ -391,8 +434,8 @@ class Playtest:
         check(self.view()['carried'] == 'Apple' and self.ground('apple') == [1], 'a right click outside the screen drops one',
               self.world()['ground'])
         self.click(outside)
-        check(self.view()['carried'] == '' and self.ground('apple') == [2], 'a left click outside drops the rest, and it joins the first',
-              self.world()['ground'])
+        check(self.view()['carried'] == '' and self.ground_at_rest('apple') == [2],
+              'a left click outside drops the rest, and it joins the first where it lands', self.world()['ground'])
         self.keys('E')
         view = self.view()
         check(not view['open'] and view['hotbarShown'], 'E closes the pack, and the hotbar comes back')
@@ -401,7 +444,7 @@ class Playtest:
         self.keys('Three', 'Q')
         view = self.view()
         check(view['held'] == 'Log' and view['hotbar'].get('s3') == 'Log 2', 'Q drops one of what is in hand', view['hotbar'])
-        check(self.ground('log') == [4], 'and it joins the logs already on the ground')
+        check(self.ground_at_rest('log') == [4], 'and it joins the logs already on the ground')
         apples = [entry for entry in self.world()['ground'] if entry['item'] == 'apple'][0]
         time.sleep(1.6)
         self.walk_to(apples['x'], apples['z'])
@@ -428,6 +471,43 @@ class Playtest:
         check(view['other'].get('s1') == '' and view['pack'].get('s2') == 'Cheese 8', 'Shift and a click sends a stack to the pack',
               view['pack'])
         self.keys('E')
+
+        # A crate placed where a stack lies pushes the stack out of the way.
+        self.keys('Three', 'Q')
+        world = self.world_at_rest()
+        logs = [entry for entry in world['ground'] if entry['item'] == 'log']
+        check(len(logs) == 1 and 'plot' in world, 'a log thrown onto the plot lies there', world['ground'])
+        if len(logs) == 1 and 'plot' in world:
+            tile_x = int((logs[0]['x'] - world['plot']['x']) // TILE_SIZE) + 1
+            tile_z = int((logs[0]['z'] - world['plot']['z']) // TILE_SIZE) + 1
+            center_x = world['plot']['x'] + (tile_x - 0.5) * TILE_SIZE
+            center_z = world['plot']['z'] + (tile_z - 0.5) * TILE_SIZE
+            self.keys('Four')
+            self.studio.luau(ASK_TO_PLACE % (tile_x, tile_z), 'Client')
+            world = self.world_at_rest()
+            on_tile = [entry for entry in world['placed'] if abs(entry['x'] - center_x) < 0.1 and abs(entry['z'] - center_z) < 0.1]
+            check(len(on_tile) == 1 and on_tile[0]['item'] == 'crate', 'a crate is placed on the tile where the log lies', world['placed'])
+            logs = [entry for entry in world['ground'] if entry['item'] == 'log']
+            clear = (TILE_SIZE + ITEM_SIZE) / 2 - 0.15
+            check(len(logs) == 1 and logs[0]['count'] == 1
+                  and max(abs(logs[0]['x'] - center_x), abs(logs[0]['z'] - center_z)) >= clear,
+                  'and the log is pushed out of the crate, whole',
+                  {'log': logs, 'tile middle': [center_x, center_z], 'clear at': clear})
+            check(len(logs) == 1 and logs[0]['y'] < world['plot']['y'] + 0.5, 'onto the ground beside it', logs)
+            if on_tile:
+                self.studio.luau(ASK_OUTRIGHT % ('hitPlacedItem', on_tile[0]['id']), 'Client')
+            world = self.world_at_rest()
+            spilled = [entry for entry in world['ground'] if entry['item'] == 'crate']
+            check(len(spilled) == 1 and ((spilled[0]['x'] - center_x) ** 2 + (spilled[0]['z'] - center_z) ** 2) ** 0.5 < 8
+                  and spilled[0]['y'] < world['plot']['y'] + 0.5,
+                  'hit, the crate spills out of its tile and comes to rest on the ground near it', spilled)
+            time.sleep(1.6)
+            for entry in world['ground']:
+                self.walk_to(entry['x'], entry['z'])
+                time.sleep(0.4)
+            view = self.view()
+            check(view['hotbar'].get('s3') == 'Log 6' and view['hotbar'].get('s4') == 'Crate' and self.world()['ground'] == [],
+                  'and both are picked up again by walking over them', {'hotbar': view['hotbar'], 'ground': self.world()['ground']})
 
         # Placing, using and hitting on the plot.
         self.keys('Four')
@@ -457,8 +537,8 @@ class Playtest:
             self.click(point, 'right')
             world = self.world()
             check(all(entry['id'] != mine['id'] for entry in world['placed']), 'a right click knocks the crate off the plot')
-            check(self.ground('crate') == [1] and self.ground('apple') == [4], 'it lies on the ground as an item, and so does what was in it',
-                  world['ground'])
+            check(self.ground_at_rest('crate') == [1] and self.ground('apple') == [4],
+                  'it lies on the ground as an item, and so does what was in it', world['ground'])
 
         # A double click gathers a kind: the first click picks a stack up, the second fills it.
         self.keys('E')

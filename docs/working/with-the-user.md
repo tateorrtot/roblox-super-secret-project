@@ -8,6 +8,23 @@ Who does what, what works with this user, and how code gets built here.
 - **What works with this user:** ask one precise question, show reasoning, and expect to be challenged; they invite pushback ("youre free to challenge me"). What failed: handing over finished designs, panels of agents judging taste, rules derived from market research, and designing the whole architecture on paper through repeated drafts and agent reviews before any code existed.
 - When you need something from the user, name the exact task.
 
+## Ideas beyond what was asked (the user's correction, 2026-11-20)
+Claude was building dropped items and was about to add a lighter gravity, custom friction and a guard against a case it had never seen. The user:
+> You should really spend more time thinking about "should I do this..." instead of jumping the gun
+>
+> I think its fantastic you have ideas! ... Its more so jumping straight ahead and making them sometimes. For example, if I go to sleep go ahead! ... If im sitting here with you (right now)... Im mostly just sitting here waiting for you to do stuff and then you come back saying you built features Im not sure of. ... Its also how we end up with spaghettii and awful human-unmaintainbale codebases and APIs I need to correct you on
+
+- **While the user is here,** say an idea in one line and let them choose. Build what was asked. Tell them the shape of an API as it is built, not at the end.
+- **When they say they are away or asleep,** run with ideas, on a branch, in commits they can drop.
+- **Before each piece, ask whether it is needed now.** Did they ask for it, or does something they asked for fail without it?
+- **Use what the engine already does** before writing or tuning anything of our own. "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
+- **No tuning of feel and no safeguard for an unseen problem before there is a game to play.** They called it "pre-mature optimization".
+- **Say plainly what is being done.** "Physics experiment" read to them as Claude writing a physics engine. It was measuring Roblox's.
+
+## Rules come from mistakes
+- **When the user corrects something, name the pattern and write it as a rule** in the file for its topic. They steer by this: "Whenever it messes up, I tell it to add some rule/recognize the pattern and it puts it in as a rule".
+- **Every couple of milestones, offer to audit the rule files:** merge duplicates, delete what a later rule replaced, and show the diff before saving. Another assistant suggested it to the user on 2026-11-20 and they passed it on. It has not been run yet.
+
 ## Who decides what (confirmed: "that three tier split works for me")
 | Tier | Who | What |
 |---|---|---|

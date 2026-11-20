@@ -2,9 +2,10 @@
 --- Starts the game on the server and runs it. This is the only Script.
 ---
 --- The rules are in ReplicatedStorage.Shared, and one World holds the whole game. This script
---- tells the World what happens: a player joins or leaves, where each character stands, what a
---- player's machine asks for, and that time has passed. Then it draws the World, and tells each
---- player's machine what that player holds.
+--- tells the World what happens: a player joins or leaves, where each character is and which way
+--- it faces, where Roblox's physics has carried each ground item, what a player's machine asks
+--- for, and that time has passed. Then it draws the World, and tells each player's machine what
+--- that player holds.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +13,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Direction = require(Shared.Direction)
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
@@ -21,6 +23,7 @@ local RecipeRegistry = require(Shared.stations.RecipeRegistry)
 local Requests = require(Shared.requests.Requests)
 local World = require(Shared.world.World)
 
+local CollisionGroups = require(script.Parent.world.CollisionGroups)
 local GroundItemParts = require(script.Parent.world.GroundItemParts)
 local PlaceholderWorld = require(script.Parent.world.PlaceholderWorld)
 local PlotParts = require(script.Parent.world.PlotParts)
@@ -33,9 +36,9 @@ local SECONDS_BETWEEN_ADVANCES = 0.1
 --- ignored. A person clicking as fast as they can makes far fewer.
 local REQUESTS_PER_SECOND = 60
 
---- How far in front of a player a stack they drop lands, in studs. It is farther than
---- `GroundItems.PICKUP_RADIUS`, so that a player standing still does not pick it straight back up.
-local DROP_DISTANCE = 6
+--- How far below the bottom of its root part an R6 character's feet are, in studs. An R15
+--- character's `HipHeight` says this already, and an R6 character's `HipHeight` is 0.
+local R6_LEG_LENGTH = 2
 
 for _, definition in ItemDefinitions do
 	ItemRegistry.register(definition)
@@ -44,6 +47,7 @@ for _, recipe in RecipeDefinitions do
 	RecipeRegistry.register(recipe)
 end
 
+CollisionGroups.register()
 local remotes = Remotes.create()
 local placeholder = PlaceholderWorld.build()
 local plotParts = PlotParts.new(placeholder.slab, placeholder.plot)
@@ -61,24 +65,19 @@ local function toPosition(point: Vector3): Position.Position
 	return { x = point.X, y = point.Y, z = point.Z }
 end
 
-local function groundBelow(from: Vector3): Vector3?
-	local characters = {}
-	for _, player in Players:GetPlayers() do
-		table.insert(characters, player.Character)
-	end
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = characters
-	local hit = Workspace:Raycast(from, Vector3.new(0, -40, 0), params)
-	return if hit then hit.Position else nil
-end
-
-local function livingRoot(player: Player): BasePart?
+local function getLivingCharacter(player: Player): (BasePart?, Humanoid?)
 	local character = player.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-	local isAlive = humanoid ~= nil and humanoid.Health > 0
-	return if isAlive and root ~= nil and root:IsA("BasePart") then root else nil
+	if humanoid ~= nil and humanoid.Health > 0 and root ~= nil and root:IsA("BasePart") then
+		return root, humanoid
+	end
+	return nil, nil
+end
+
+local function getFeet(root: BasePart, humanoid: Humanoid): Vector3
+	local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then R6_LEG_LENGTH else 0
+	return root.Position - Vector3.new(0, root.Size.Y / 2 + humanoid.HipHeight + legs, 0)
 end
 
 local function isFinitePoint(point: Vector3): boolean
@@ -86,15 +85,20 @@ local function isFinitePoint(point: Vector3): boolean
 end
 
 local function tellPosition(player: Player)
-	local root = livingRoot(player)
-	if root == nil or not isFinitePoint(root.Position) then
+	local root, humanoid = getLivingCharacter(player)
+	if root == nil or humanoid == nil or not isFinitePoint(root.Position) then
 		World.setPlayerPosition(world, player.UserId, nil)
 		return
 	end
-	local standing = groundBelow(root.Position) or root.Position - Vector3.new(0, 3, 0)
-	local ahead = root.Position + root.CFrame.LookVector * DROP_DISTANCE
-	local dropSpot = groundBelow(ahead + Vector3.new(0, 4, 0)) or standing
-	World.setPlayerPosition(world, player.UserId, toPosition(standing), toPosition(dropSpot))
+	local look = root.CFrame.LookVector
+	local facing = Direction.new(look.X, look.Z)
+	World.setPlayerPosition(world, player.UserId, toPosition(getFeet(root, humanoid)), facing)
+end
+
+local function tellGroundItemPositions()
+	for id, position in GroundItemParts.getMovedPositions(groundItemParts, world.groundItems) do
+		World.moveGroundItemTo(world, id, position)
+	end
 end
 
 local function try(doing: string, callback: (...any) -> ...any, ...: any)
@@ -115,8 +119,8 @@ end
 
 local function showWorldToPlayers()
 	needsShow = false
-	GroundItemParts.update(groundItemParts, world.groundItems)
 	PlotParts.update(plotParts, world.plot, world.stations)
+	GroundItemParts.update(groundItemParts, world.groundItems)
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
 			try("telling a player what they hold", sendSnapshotIfChanged, player)
@@ -151,9 +155,14 @@ remotes.askForSnapshot.OnServerEvent:Connect(function(player: Player)
 end)
 
 local function addPlayer(player: Player)
-	if world.players[player.UserId] == nil then
-		local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
-		PlaceholderWorld.addStartingItemsToPack(state.pack)
+	if world.players[player.UserId] ~= nil then
+		return
+	end
+	local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
+	PlaceholderWorld.addStartingItemsToPack(state.pack)
+	player.CharacterAdded:Connect(CollisionGroups.addCharacter)
+	if player.Character ~= nil then
+		CollisionGroups.addCharacter(player.Character)
 	end
 end
 
@@ -175,6 +184,7 @@ local function advanceWorld()
 			try("reading where a player stands", tellPosition, player)
 		end
 	end
+	try("reading where the ground items are", tellGroundItemPositions)
 	try("advancing the World", World.advanceTo, world, os.clock())
 	try("restocking the plot", PlaceholderWorld.restockGroundItems, placeholder, world.groundItems, world.now)
 	showWorldToPlayers()
