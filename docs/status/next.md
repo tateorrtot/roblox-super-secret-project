@@ -2,14 +2,19 @@
 
 The work that is approved or owed, in the order Claude means to do it. What is only a question is in `asked-of-the-user.md`. How the work is done is in `docs/working/with-the-user.md`.
 
-Items and placed objects were split into two systems on 2026-11-20 (`history/2026-11-20-placed-objects.md`). The user had approved its three steps, and has not yet read the result.
+On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
-## 1. Input for the world, so that `UseAndHit` goes
-The user has asked about this class three times. On 2026-11-20: "so have you actually changed UseAndHit yet". It has not been changed, and it is next unless they say otherwise.
-- **Today** `UseAndHit` finds what the pointer is over, draws two markers and tells two clicks apart, by reading `UserInputService` by hand. No noun fits it, because it is three things.
-- **Roblox has a way of its own:** the Input Action System, in which an action such as "interact" is an Instance with its keys, buttons and touches bound to it. Roblox's own skill on it is read first (`docs/roblox/studio.md`). Roblox also has `ProximityPrompt`, for interacting with a thing nearby: say what each offers, and why it does or does not fit, before proposing anything of ours.
-- **What it should leave:** two actions, interact and break, bound for a mouse, a touch screen and a gamepad; a piece that draws the markers; and `PlotPointer`, which stays. `InventoryControls` may go the same way.
-- **It is shared machinery,** so its shape is shown to the user before it is written.
+## 0. If the user says so: `World` stops keeping what a placed object is given
+Asked on 2026-11-20 (`asked-of-the-user.md`). They had said to leave `World` as one piece of glue. A reviewer applying their tenth review found it the largest thing still fused: a store for inventories, a store for stations, and a loop that advances every station.
+- **What it should leave:** `World` knowing nothing of inventories or stations. A kind's own module keeps what its objects have, hears from the plot that one was taken off, and hears that time passed.
+- **It is shared machinery,** so its shape is shown to the user before it is written. There are choices in it: where a kind keeps what belongs to one object, who tells a kind that time passed, and how a kind's screen reaches the player's machine.
+- The same change is what lets the stove's glow and the furnace's gauges become the stove's own (`docs/game/placed-objects.md`).
+
+## 1. The keys onto Roblox's input actions
+The clicks on the world are input actions; E, Q, 1 to 9 and the mouse on the inventory screen still go through `UserInputService` (`docs/roblox/input.md`).
+- **What it should leave:** an action for each thing the keys do, declared in `default.project.json`; `Main.client` connecting to them; and, on the way, a name for `InventoryControls` that the user can read.
+- **To settle first:** whether the inventory screen is a second context that takes the keys while it is open, which is what Roblox's guide means by a mode, and whether a held Ctrl is a modifier on a binding or an action of its own.
+- **Add to the play test:** a click on the world in first person, which nothing tries.
 
 ## 2. Prediction on the player's machine
 The user chose it on 2026-11-20, as our own and not Roblox's Server Authority (`docs/research/18-client-first.md`), asked that it sit on top as pieces of its own, and said yes to this plan: "Ah prediction sounds great the way you architected it! ... As long as its following the rest of the codebases standards good."
@@ -29,14 +34,17 @@ They are holding the feedback until the code is checked. Their read comes first,
 Each starts with one precise question to them, and is built as small pieces. The order is theirs to choose. Their words are in `docs/game/decisions.md` and `docs/game/placed-objects.md`.
 - **Saving, and a plot for each owner:** "multiple plots with associated owners", where the owner is not always a player. Saving needs two things only they can do (`asked-of-the-user.md`). With more than one plot, what the world keeps by a placed object's id needs the plot's id too.
 - **A second kind of process,** very unlike the furnace: one worked on by what stands over it, or one that works on what is in front of it. Building it is what will show what the kinds share. It is also what makes a screen a kind's own: today every screen is a pack, another inventory and a furnace's gauges. `Station`, `world.stations` and the furnace's slots in the screen's drawing code wait for it.
-- **What an item in the hand does, said for each item:** a wand that casts a spell where a log places itself. Today the one thing is placing, in `PlaceableItems`.
+- **An item that is used on something other than a bare tile:** a wand cast at the open air, a bucket used on a placed object. Each item has a script now, and the script is told of a bare tile only. Each new sort of target is one new request and one new function of the script. Minecraft's order is the one to copy unless the user says otherwise: the thing pointed at answers first, then the item.
 - **Walls and floors,** with the grid as a guide and not a boundary.
 - **Helpers:** people who can do what a player can, with a different brain.
 
 ## 5. Small things owed to the rules
 - **The server's and the client's scripts in `lune run tools/check`.** They can be type-checked now, and a run on 2026-11-20 found nothing new: seven reports in two places, both older (`docs/roblox/studio.md`). Mend those two, then add the check.
 - **A pass over the names the audit of 2026-11-20 found,** in what was not rewritten: `Main.server`, `Main.client`, `PlaceholderWorld` and the private helpers. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
-- **`can...` for a kind's `interact` and `breakPlacedObject`,** when the first kind refuses one: obsidian that needs the right tool.
+- **Picking up, moved into the glue.** `GroundItems.moveNearbyStacksToInventory` joins two systems in one function, so `groundItems` requires `inventory`. `World` already calls it for each player: the ground items could hand over a stack and take back what did not fit. About fifty checks in `tests/groundItems` follow it.
+- **`PlaceholderWorld`'s starting crate, stove and items** belong with the game's things in `src/shared/content`, or go with the placeholder map.
+- **Five comments in the systems that use the game's own things as examples:** `ItemRegistry`, `Plot`, `Station`, `RecipeRegistry` and `PlayerSnapshot`.
+- **A phone.** Whether a tap also fires the input action bound to the left mouse button, which would interact twice.
 - `StationProgress` should check the fire before it says a station is working. A few lines, with the next change to stations.
 - A mutation run over every piece at once stalls on `Station`: some of the bugs it plants make a loop run until the tool's 60-second limit, one after another. `tools/mutate.py` wants a shorter limit, or a way to give one.
 - What the audits left is listed in `now.md`. None of it is urgent. The screen's drawing code is best left until the user decides whether screens are made in Studio.

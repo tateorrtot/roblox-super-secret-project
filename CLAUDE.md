@@ -15,9 +15,9 @@ The user is here to help with whatever Claude can't do.
 - **The user is an experienced programmer and Godot architect who has never used Roblox or Luau.** Talk to them as one. Explain Roblox by its Godot counterpart. Ask one precise question, show the reasoning, and expect to be challenged. Show structure as a diagram, not a listing.
 - **Build small pieces, one at a time.** No design document is a gate before code. No giant diffs and no rewrites: past a few hundred lines, show the plan first. Shared machinery is shown before it is written.
 - **Quality before speed.** The user, 2026-11-20: "Cant build ontop a foundation made on mud." Maintainable, decoupled, checked code outranks finishing sooner (`docs/working/engineering-rules.md`).
-- **Before changing code, read `docs/code/names.md` and `docs/code/conventions.md`.** In short: a class makes sense from its bare names with no context; a name says what it acts on and where, and keeps its promise; a function does one thing, every time, with any check kept apart as `can...`; `And` in a name is two functions; deleting a directory does not break the one beside it; one rule tells another with a signal; items and placed objects are two systems that do not know each other, with glue outside both; each kind of placed object says what it does in a module of its own; no function does the same to every kind of thing; every word in a name is a real thing in the code, in Roblox's word first and Godot's second; a comment says completely what a thing does, in its own words; the rules know nothing of the mouse; nothing nests more than two deep. `lune run tools/check` must pass.
+- **Before changing code, read `docs/code/names.md` and `docs/code/conventions.md`.** In short: a class makes sense from its bare names with no context; a name says what it acts on and where, and keeps its promise; a function does one thing, every time, with any check kept apart as `can...`; `And` in a name is two functions; deleting a directory does not break the one beside it; one rule tells another with a signal; a system does one job and knows no other system, and each could ship as a FoxFabric addon; general code never asks what sort of thing a thing is, and calls the thing's own script; nothing is pulled out before there is a pattern, and no combination gets a piece of its own; every word in a name is a real thing in the code, in Roblox's word first and Godot's second; a comment says completely what a thing does, in its own words; the rules know nothing of the mouse; nothing nests more than two deep. `lune run tools/check` must pass.
 - **Roblox first.** Before proposing a thing of our own, say what Roblox has for it and why that will not do.
-- **Before showing the user code, read `docs/working/code-reviews/README.md`.** They have corrected the code nine times, and the same mistakes are easy to repeat.
+- **Before showing the user code, read `docs/working/code-reviews/README.md`.** They have corrected the code ten times, and the same mistakes are easy to repeat.
 - **Commit as work is done. Push nothing unless asked.**
 - **No AI-generated art reaches the public.** Player-facing words are drafted by Claude and reviewed by the user before release.
 - **Ask before any action that spends Robux.** Passwords and verification stay with the user. Never put the Roblox account name, or anything about the user, in a web request. Do not save or publish the Studio place. Tools and skills may be fetched without asking ("Youre free to grab and load whatever you need", 2026-11-20): read each first, and note it in `docs/roblox/studio.md`.
@@ -25,10 +25,10 @@ The user is here to help with whatever Claude can't do.
 
 ## Where things stand (2026-11-20)
 - **Playable:** a first loop on grey boxes, for PC. A pack and hotbar, stacks that are thrown and land, one shared plot of tiles, a crate, and a stove that cooks.
-- **The code** was broken up, rewritten and renamed on 2026-11-20 after three reviews by the user, on the branch `first-pieces`. Dropped items were rebuilt on the branch `dropped-items` over four more reviews. After two more, items and placed objects were split into two systems on the branch `placed-objects`, in three steps the user approved. No branch is merged. Nothing is pushed.
-- **Checked:** on `placed-objects`, `lune run tools/check` passes, and the play test passes 83 of 83 in Studio.
-- **Next:** input for the world through Roblox's own input system, so that the class `UseAndHit` goes; then prediction on the player's machine, which the user approved.
-- **Waiting on the user:** their read of the code; then their feedback on the game, which they are holding until the code is checked.
+- **The code** was rewritten on 2026-11-20 over nine reviews by the user, on three branches each cut from the one before: `first-pieces`, `dropped-items`, `placed-objects`. After the tenth, each item and each kind of placed object got a script of its own, the game's things moved to `src/shared/content`, and the clicks on the world moved to Roblox's input actions. No branch is merged. Nothing is pushed.
+- **Checked:** on `placed-objects`, `lune run tools/check` passes, and the play test passes 93 of 93 in Studio.
+- **Next:** the keys onto input actions, if the user agrees; then prediction on the player's machine, which they approved.
+- **Waiting on the user:** their read of the code; whether `World` should stop keeping a store for each sort of thing a placed object is given; then their feedback on the game.
 
 More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
 
@@ -43,7 +43,7 @@ More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
 | `docs/working/code-reviews/` | The user's reviews of the code, in their words | Before showing them code |
 | `docs/code/names.md`, `docs/code/conventions.md` | How things are named, and how code is written | Before changing code. Both load by themselves when a file in `src` or `tests` is opened |
 | `docs/code/pieces.md`, `docs/code/checks.md` | What exists, and how it is checked | Finding your way; before calling anything done |
-| `docs/roblox/` | Platform facts, driving Studio, Roblox explained for a Godot developer | Touching the platform, or explaining it |
+| `docs/roblox/` | Platform facts, driving Studio, input, Roblox explained for a Godot developer | Touching the platform, or explaining it |
 | `docs/research/`, `docs/architecture/`, `docs/code/reviews/` | Research and reviews. Large | Only for the question each answers. Each folder's README says which |
 
 `docs/README.md` describes the folders, and how to add to them.

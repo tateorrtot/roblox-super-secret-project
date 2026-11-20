@@ -51,4 +51,6 @@ To "Shall I rebuild the world's input next, so that UseAndHit goes?" they answer
 - `PlaceableItems` is gone. `ItemScripts` holds a script for each item and `PlacedObjectScripts` one for each kind of placed object, each filled by `register` and read by `find`. Neither names a thing of the game.
 - `CrateItem` and `StoveItem` are the two items' scripts, and `CrateItemGhost` and `StoveItemGhost` are what each shows on the player's machine while selected.
 - The game's own things are in `src/shared/content`, and `Content.register` is the one list of them. The rules name none of them.
+- A request checks only what a machine sent. How far a player may stand is for the thing's script to ask.
 - The rule this became is under "Simple things, and what joins them" in `docs/code/conventions.md`.
+- **It is not all mended.** A helper told to apply this review to the result found where general code still decides for every kind of thing: `World` keeps a store for each sort of thing a placed object can be given, the furnace's screen and glow are drawn by general code, and picking up is one function across two systems. The list is in `docs/status/now.md`.

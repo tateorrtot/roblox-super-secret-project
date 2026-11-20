@@ -42,14 +42,14 @@ THINGS: the game's own, and the one place that names them
   - `inventory`: `InventoryGui`, `HotbarGui`, `SlotGui` and `StackIcon` draw. `SlotGestures` and `InventoryControls` are plain Luau, tested in `tests/client`, and turn mouse and keys on the screen into requests.
   - `world`: `PlotPointer` says what a point of the screen is over. `BreakClick` tells a click of the Break action from a turn of the camera. `PlacementGhost` draws a see-through block on a tile. `LocalCharacter` says whether the character reaches a point, for drawing only.
   - `content`: `CrateItemGhost` and `StoveItemGhost` are what each of those items shows while selected.
-- **The input actions** `Interact`, `Break` and `PointerPosition` are Instances under `ReplicatedStorage.Inputs.World`, declared in `default.project.json` (`docs/roblox/input.md`).
+- **The input actions** `Interact` and `Break` are Instances under `ReplicatedStorage.Inputs.World`, declared in `default.project.json` (`docs/roblox/input.md`).
 
 ## How an interaction reaches the thing's own script
 1. On the player's machine, Roblox fires the input action `Interact`. `Main.client.luau` asks `PlotPointer` what the pointer is over, and sends `interactWithPlacedObject` or `interactWithTile`. A click of `Break` sends `breakPlacedObject`.
-2. `PlotRequests` checks what was sent.
-   - For a placed object: that it stands on the plot within the character's reach. It asks `PlacedObjectScripts` for the script of the object's kind, and calls its `interact` or `breakPlacedObject`.
-   - For a tile: that the plot has it and no screen is open. It asks `ItemScripts` for the script of the item in the selected hotbar slot, and calls its `interactWithTile`.
-3. The script does the rest, by calling systems. `CrateItem.interactWithTile` asks whether the character reaches the tile and whether an object can stand there, then calls `Crate.place` and takes one item from the slot. `Crate.breakPlacedObject` takes every stack out of the crate's inventory, takes the crate off the plot, and has the world throw a crate item and those stacks from its tile.
+2. `PlotRequests` checks what was sent, and nothing else.
+   - For a placed object: that one with that id stands on the plot. It asks `PlacedObjectScripts` for the script of the object's kind, and calls its `interact` or `breakPlacedObject`.
+   - For a tile: that the plot has it. It asks `ItemScripts` for the script of the item in the selected hotbar slot, and calls its `interactWithTile`.
+3. The script does the rest, by calling systems. `CrateItem.interactWithTile` asks whether the character reaches the tile and whether an object can stand there, then calls `Crate.place` and takes one item from the slot. `Crate.breakPlacedObject` asks whether the character reaches the crate, takes every stack out of the crate's inventory, takes the crate off the plot, and has the world throw a crate item and those stacks from its tile.
 4. The plot fires `placedObjectRemoved`. The world closes the screens open on the crate, and drops the inventory it kept for it.
 
 Nothing happens for a thing with no script, or whose script lacks the function. A request, a registry and a system each know nothing of crates.

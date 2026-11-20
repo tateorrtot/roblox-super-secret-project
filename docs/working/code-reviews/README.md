@@ -56,6 +56,7 @@ These are Claude's readings of the ten reviews. The quotes are in the files.
 - **Few indents.** Nothing nests more than two deep.
 - **The rules know nothing of the mouse, the keys or a touch screen.**
 - **Measure before showing:** `python tools/metrics.py --functions`, `python tools/unused.py`, and a names test on a fresh reader (`docs/code/names.md` says how).
+- **Have a helper apply their latest review to the result,** told to assume the author thinks it is mended and to quote the words each finding goes against. After the tenth, that helper found twelve things where the two ordinary reviewers found none of them.
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
 Each of the ten reviews found something the checks before it had passed. Expect an eleventh.

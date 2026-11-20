@@ -18,7 +18,7 @@ How the code is checked. Every command runs from the top of the repository.
 | `lune run tools/requires` | What requires what in `src`, read from the code |
 | `python tools/members.py` | That every member and message the server's and client's scripts use exists |
 | `python tools/notes.py` | That every path the notes mention exists, and that no notes file has grown too long |
-| `python tools/studio.py <command>` | Drives Roblox Studio. See `docs/roblox/studio.md` |
+| `python tools/studio.py <command>` | Drives Roblox Studio. `sync` does what `default.project.json` says. See `docs/roblox/studio.md` |
 
 The user's PowerShell may need `~/.rokit/bin/lune` in place of `lune`.
 
@@ -35,9 +35,11 @@ The user's PowerShell may need `~/.rokit/bin/lune` in place of `lune`.
 Use it when the user asks which scripts and directories are coupled to which, and draw the diagram from its output, not from memory.
 
 ## The play test
-`python tools/playtest.py` copies `src/` into Studio, starts a play test, and drives the test character with keys, clicks and walking through the whole loop: the pack, dropping, picking up, the crate, placing, interacting and breaking, dragging a stack across slots, reach, and baking an apple in the stove. After each step it checks what the screen shows and what is in the world. Then it stops the play test.
+`python tools/playtest.py` copies `src/` into Studio and makes the input actions, starts a play test, and drives the test character with keys, clicks and walking through the whole loop: the pack, dropping, picking up, the crate, placing, interacting and breaking, what the item in hand shows, dragging a stack across slots, reach, and baking an apple in the stove. After each step it checks what the screen shows and what is in the world. Then it stops the play test.
 
-- 83 checks, in about four minutes. The last clean run was on 2026-11-20, after items and placed objects were split into two systems.
+- 93 checks, in about five minutes. The last clean run was on 2026-11-20, after the clicks on the world moved to Roblox's input actions.
+- It checks what marks the pointer's place: the see-through block of the item in hand, and the white outline. Each such check also asks the game's own `PlotPointer` what the pointer is over, so that "no outline" cannot pass because the pointer missed.
+- Break is tried three ways on one crate: the right button held too long, a right click during which a script turns the camera, and a plain right click. Only the last breaks it.
 - It first stands the test character on open ground, 10 studs past the spawn pad. A player spawns at a random spot on the pad, which is a stud high, and a block thrown from some of those spots clips the pad's edge as it falls and tumbles about 20 studs, where on open ground it comes to rest after 7.6. That spoiled one run on 2026-11-20 with four failures that had nothing to do with the code (`build/throw_from_places.py` shows it on demand).
 - One step sends every request with nonsense, as a tampered machine might, and checks that nothing breaks.
 - Another asks the server outright to interact with a crate and to break it from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
@@ -55,6 +57,6 @@ Use it when the user asks which scripts and directories are coupled to which, an
 - Python 3 is needed for the tools written in Python.
 
 ## Git
-- Three branches, each cut from the one before and none merged: `first-pieces`, `dropped-items` and `placed-objects`, all of 2026-11-19 and 2026-11-20. `main` has no commits.
+- Three branches, each cut from the one before and none merged: `first-pieces`, `dropped-items` and `placed-objects`, all of 2026-11-19 and 2026-11-20. `main` has no commits. The scripts and the input of 2026-11-20 are on `placed-objects` too.
 - Work is committed as it is done. The user, 2026-11-19: "Yes, commit as you go".
 - Nothing is pushed anywhere. Push only when the user asks.
