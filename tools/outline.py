@@ -9,7 +9,7 @@ Run from the repository root:
 
 A names test checks that a name says what its function acts on. A reader who has never seen the
 code is given the sheet and nothing else, and writes what each function takes and does. See
-"Conventions for the code" in CLAUDE.md.
+docs/code/conventions.md.
 """
 import glob
 import io

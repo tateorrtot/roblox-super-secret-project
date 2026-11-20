@@ -220,7 +220,7 @@ Hired helpers, trading between players and driven vehicles come after the first 
 
 ### How "one rule, many activities" games are built underneath
 
-`docs/04-activity-research.md` did not exist, so nothing was taken from it. Fandom wikis refused requests, so the Roblox rows lean on third-party guides. Everything I could not check is listed under `unproven`.
+`docs/research/04-activity-research.md` did not exist, so nothing was taken from it. Fandom wikis refused requests, so the Roblox rows lean on third-party guides. Everything I could not check is listed under `unproven`.
 
 #### 1. The games
 
@@ -278,7 +278,7 @@ Hired helpers, trading between players and driven vehicles come after the first 
 
 **(5) What survives phones, short sessions and one-or-two-player servers**
 - **Survives:** tag and property rules (they are pure data); item × material; capabilities as objects; NPC settlements as fixed consumers with needs; a menu of needs; hand-first-then-helper; offline production computed from timestamps; shared numbers such as faction stock across servers.
-- **Does not survive as built:** player-only economies and fronts (Foxhole and EVE need thousands present); pixel or voxel simulation at scale; hundreds of moving items on belts; raids on absent owners; heavy physics hauling on low frame rates (see docs/02 on Retail Tycoon 2).
+- **Does not survive as built:** player-only economies and fronts (Foxhole and EVE need thousands present); pixel or voxel simulation at scale; hundreds of moving items on belts; raids on absent owners; heavy physics hauling on low frame rates (see docs/research/02 on Retail Tycoon 2).
 
 **(6) Smallest content set that showed real emergence**
 - **Designed:** Zelda's five elements, a handful of material properties and three rules. Fire makes an updraft that lifts a glider; a metal weapon draws lightning. The team reportedly proved the idea in a prototype styled on the first NES game.
@@ -334,7 +334,7 @@ Hired helpers, trading between players and driven vehicles come after the first 
 - Albion Online: the return-rate figures (about 15.3%, 36.7%, 53.9% with Focus) come from third-party guides that vary slightly between sites and may be out of date.
 - Dwarf Fortress: reaction and material pages mix current and legacy versions, and the main Reaction page returned an error on direct fetch, so the REACTION_CLASS description is from search excerpts of older-version pages.
 - Stardew Valley: the 'one best crop-to-keg line' failure and the starting seed count are from my own knowledge. Potion Craft: 'customers are the only sink' is my characterisation.
-- Finding 5 (what survives phones and small servers) is my inference from the platform facts in docs/02 applied to these structures. No source tested these patterns on Roblox directly.
+- Finding 5 (what survives phones and small servers) is my inference from the platform facts in docs/research/02 applied to these structures. No source tested these patterns on Roblox directly.
 
 
 ---
@@ -1512,7 +1512,7 @@ Signs it is not:
 - Duplication and save races are the historic killers of physical-goods games on Roblox. Slots, serial numbers and atomic trades reduce the surface but do not remove it.
 - Skirmishes, knocked-out creatures and bones must stay cartoon-level to keep the Mild rating; the rating questionnaire should be checked against the lurker fights and the undead envoy before art is made.
 - A one-player server has no stalls, trades or rival escorts. The world's actors keep the rule working, but the stories that need a second person will be rare at launch.
-- The first build puts all peoples on one small map as envoys. Later regions as separate places add loading screens to every route and split a small audience, per docs/02.
+- The first build puts all peoples on one small map as envoys. Later regions as separate places add loading screens to every route and split a small audience, per docs/research/02.
 
 
 ---

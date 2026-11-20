@@ -1,0 +1,9 @@
+# The first build (2026-11-19)
+
+What happened around the first playable build. Kept as a record; `docs/status/now.md` is the current state.
+
+- **The user played the first build at about 4:40 in the morning** and said: "For a first draft this is pretty good!" They described it as "grid placing / items, inventory, inventory / placeables * that can also hold storage". They also said: "theres a LOT of feedback and little issues / tweaks im finding that will need to be made but that can wait til tomorrow". **That feedback has not been given yet. Ask for it first.**
+- **On libraries,** the user said: "if a plugin or addon already existed for this or the future systems youre going to make... maybe we should use that. dont throw anything away though! its just a consideration". The survey that followed is docs/research/13. Its short answer: nothing found replaces what is built; ProfileStore is worth wrapping for saving; Roblox's Input Action System is the thing to build phone controls on.
+- **On the `World` piece,** the user said: "im not fully grasping the purpose of it since its late but youre more than welcome to build it and have me review if its the proper architecture tomorrow". It is built and the server runs on it. **It awaits their review; explain it with a diagram, not a listing.**
+- **Until 2026-11-20 the user had reviewed none of the code.**
+- **A morning report was left for the user at about 06:30 on 2026-11-19,** while they slept: two diagrams (who tells whom around `World`; what requires what, folder by folder, drawn from `tools/requires`), four pictures, what was built after they went to bed (`World`, the stove as a furnace, the library survey, the code review, dragging a stack across slots, the requires check), Claude's calls for them to veto, and what is asked of them. They had not answered it when that session ended.

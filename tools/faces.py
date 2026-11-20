@@ -3,7 +3,7 @@ comments, types and function signatures, with no function bodies.
 
 A reader test checks that a piece makes sense with no context. A reader who has never seen the
 code is given the faces and a list of calls, and predicts what each call returns. Where they are
-wrong, the names or the comments need work. See "How to write things" in CLAUDE.md.
+wrong, the names or the comments need work. See docs/working/code-reviews/2026-11-19-the-first-piece.md.
 
 Run it from the repository root:
 

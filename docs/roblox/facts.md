@@ -1,0 +1,14 @@
+# Roblox facts that constrain the design
+
+Details and sources are in the docs. Roblox changed these roughly monthly through 2026; check the live docs page before relying on a number.
+- **New games are shown first only to age-checked 16+ users.** Under-16s unlock after 250 plays by highly engaged 16+ players within 60 days (a drop to 100 was announced), or a refundable 50,000 Robux expedited review.
+- **Home ranking** weighs play-through from the thumbnail, leaving within 60 and 180 seconds (negative), play days across days 1, 2-7 and 8-28, playtime up to 60 minutes a day, deliberately playing with friends, and days on which a player spends. Players acquired through ads never count.
+- **Only near-identical copies are suppressed** as non-unique.
+- **Servers stop when empty,** hold at most 200 players, and long-lived building games run 6 to 12. Progress saves to the player. A few shared numbers across servers are feasible; a shared live world is not.
+- **Most play is on phones.** Do not rely on text chat, which is age-gated.
+- **The higher 18+ payout rate** needs R15 avatars, or custom characters with enough joints, or no visible avatar. R6 disqualifies.
+- **No shipped Roblox game keeps every good as a live physics object.** The ones that lasted make goods physical only while handled. The only budget found is roughly 40 to 60 moving assemblies in one player's view, from a community article.
+- **Paid random items** need odds shown and are switched off in some regions.
+- **Roblox's chat window lies over the top left of the screen and takes clicks there even when it has faded from sight** (seen 2026-11-19: 308 by 181 pixels in a small window). A screen of ours that may overlap it turns the chat off while it is open.
+- **The strip along the top of the screen is 58 pixels high.** `UserInputService:GetMouseLocation` counts it, and so does a ScreenGui with `IgnoreGuiInset` on; `Camera:WorldToScreenPoint` and a GUI object's `AbsolutePosition` do not.
+- **`require("@game/ReplicatedStorage/...")` works in Studio** (checked 2026-11-19). The code does not use it: Roblox-side requires go through `game:GetService`, which is what luau-lsp follows with a Rojo sourcemap.

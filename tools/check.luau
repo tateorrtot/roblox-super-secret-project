@@ -21,9 +21,12 @@
 	   and message that `src` uses from its own modules exists. The server's
 	   and the client's scripts are not type-checked, so this is what catches
 	   a misspelt or renamed member there.
-	6. Tests: every file in `tests` whose name ends in `.test.luau` runs and
+	6. Notes: `tools/notes.py` finds that every path the notes mention exists,
+	   and that `CLAUDE.md` and the topic files under `docs` have not grown
+	   too long to read at a glance.
+	7. Tests: every file in `tests` whose name ends in `.test.luau` runs and
 	   exits without an error.
-	7. Demos: every file in `demos` runs and exits without an error.
+	8. Demos: every file in `demos` runs and exits without an error.
 
 	The process exits with code 1 if any check failed.
 
@@ -95,6 +98,7 @@ end
 
 run("requires", "lune", { "run", "tools/requires" })
 run("members", "python", { "tools/members.py" })
+run("notes", "python", { "tools/notes.py" })
 
 local tests = findFiles("tests", ".test.luau")
 for _, test in tests do

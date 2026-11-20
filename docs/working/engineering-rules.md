@@ -1,0 +1,24 @@
+# Engineering rules
+
+The user's requirements for how the code is engineered.
+
+> i dont want it to become unmaintanable buggy slop ... i *really* dont want to see 40k line difs and entire rewrites. take how rimworld was made its basically a solid core with lots of XML
+
+- **Dependencies must not be a spider web.** The user wants to see which scripts and directories are coupled to which. `lune run tools/requires` prints that from the code, and fails if the rules require the server or the client. The architecture notes, and what five drafts of them taught, are in `docs/architecture/`.
+- **Follow the philosophy of the user's FoxFabric library** (github.com/tateorrtot/foxfabric): small independent modules, each with one very specific job, that chain together by design and not by tight coupling; no heavy framework; "add don't overwrite". And Godot's best practices for engine contributors: the problem comes first, a problem must exist before it is solved (no future-proofing), to each problem its own solution, prefer local solutions, no complex canned solutions for simple problems.
+- **Libraries are welcome when they earn it.** The user: "if you can find some seriously good libraries and theyre better than what youd make or atleast save you time youre more than welcome to use them! YOU are doing alot of the code authoring here its not exactly hand made so it matters a bit less". Wrap each behind a module of ours; do not adopt a framework the game is written inside.
+- **The user wants the code "as maintainable and easy to understand and expand on as possible no matter what crazy feature i come up with",** and wants diagrams, not text listings, when shown structure. The kernel-plus-features layout in docs/architecture/07 was Claude's answer to that on paper (a feature is a new directory and never needs another feature's files edited). It is not built unless real pieces need it.
+- **"most importantly dont tie visuals heavily to logic!"** Rules never touch an Instance; presentation is a separate layer and separate data.
+- **The user's test for any architecture is "can it be added".** They listed ice caves, toxic fallout, mana-heavy areas, heavy mud, rain storms, thunder clouds, mules, horses, pigs, cows, pterodactyls, boom rats, wolfmen and vampires, and said "this is all really an exercise to see 'can it be added' is the greater pattern im getting at". Section C5 of docs/architecture/07 answers each with a cost level: a row of data, a small handler in an existing feature, or a new feature directory.
+- **Regions as separate servers:** the user asked whether there are "seperated worlds / hexes like in foxhole or ultimate driving where going to the edge of a map takes you to a new server", and whether that would be per region. Claude's answer: yes, one Roblox place per region with a teleport at the edge, all running the same code; not in the first build. See section C6 of docs/architecture/07.
+- The user is "a master with godot" and "not very familiar with roblox and lua". Explain Roblox by mapping it to Godot. Document code in Godot's style.
+- **A small, stable core and everything else as data.** Adding content must never require editing the core. Say "definition" (a def), not "card".
+- **No giant diffs and no rewrites.** If a core change would run past a few hundred lines, stop and show the plan first. Do not add fields or modules ahead of need; with small modules and versioned saves, adding later is an addition. (This replaces Claude's earlier idea of putting body parts and character fields in the schema from day one.)
+- **Shared machinery is shown to the user before it is written.** A single piece is shown as it is made (see `docs/working/with-the-user.md`). This replaces Claude's earlier commitment to show the whole architecture before any core code.
+- **History stays readable.** The user worries about commits "ballooning into thousands". Claude proposed a short branch per feature squashed into `main`, prefixes by area, a tag per playtest build, and a changelog. Not yet confirmed.
+- All changes to authoritative state go through one code path. Strict Luau typing, Selene and StyLua clean on every commit. Core rules are pure logic with tests that run without a live game. Saves carry a version number and a migration step from the first build. The server is the authority.
+- The user approved committing as work is done (2026-11-19). Nothing is pushed; push only when the user asks.
+
+## AI-made art and text (the user's rule)
+- **No AI-generated art reaches the public:** no generated meshes, textures, images, icons, thumbnails or audio in a published build. Generated assets are allowed as placeholders, kept in one tagged place, with a pre-publish check that fails if any remain.
+- **Player-facing words:** Claude drafts, and the user reviews all of it before release.

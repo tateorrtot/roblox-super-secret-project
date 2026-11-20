@@ -874,7 +874,7 @@ Source keys are listed at the end. "Staff" = DevForum post by a Roblox_Staff acc
 
 4. MemoryStore memory quota has an eight-day traceback before it shrinks, so it follows recent peak users. Sorted maps and queues each sit on one partition (about 30,000 request units per minute); hash maps spread across partitions and are the documented choice when ordering is not needed.
 
-5. The low-population problem is the opposite of the 200 cap and is not addressed. Request and memory quotas scale with CCU, so a new game gets the base only (300 data store requests per minute per type, 64 KB of MemoryStore). Splitting a small launch audience across region places leaves each region nearly empty, which works against the co-play signal and criterion 6 in docs/01-research.md, and any teleport before the fun starts works against the under-60-second bounce signal (criterion 2).
+5. The low-population problem is the opposite of the 200 cap and is not addressed. Request and memory quotas scale with CCU, so a new game gets the base only (300 data store requests per minute per type, 64 KB of MemoryStore). Splitting a small launch audience across region places leaves each region nearly empty, which works against the co-play signal and criterion 6 in docs/research/01-research.md, and any teleport before the fun starts works against the under-60-second bounce signal (criterion 2).
 
 6. Other roadmap items relevant to this design (https://devforum.roblox.com/raw/4880208/1): Developer push notifications "for asynchronous gameplay" (Late 2026), Instance Streaming adaptive radius and path pre-fetching (Late 2026), Queue service (Early 2027), In-game creation persistence (Early 2027), Offline play (Mid 2027).
 
