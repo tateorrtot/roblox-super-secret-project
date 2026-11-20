@@ -182,7 +182,7 @@ return "asked"
 
 # Asks the server outright to place what is in hand on a tile of the plot.
 ASK_TO_PLACE = '''
-game:GetService("ReplicatedStorage").Remotes.placeSelectedItem:FireServer(%d, %d)
+game:GetService("ReplicatedStorage").Remotes.interactWithTile:FireServer(%d, %d)
 task.wait(0.5)
 return "asked"
 '''
@@ -628,7 +628,7 @@ class Playtest:
                   {'log': logs, 'tile middle': [center_x, center_z], 'clear at': clear})
             check(len(logs) == 1 and logs[0]['y'] < world['plot']['y'] + 0.5, 'onto the ground beside it', logs)
             if on_tile:
-                self.studio.luau(ASK_OUTRIGHT % ('hitPlacedObject', on_tile[0]['id']), 'Client')
+                self.studio.luau(ASK_OUTRIGHT % ('breakPlacedObject', on_tile[0]['id']), 'Client')
             world = self.world_at_rest()
             spilled = [entry for entry in world['ground'] if entry['item'] == 'crate']
             check(len(spilled) == 1 and ((spilled[0]['x'] - center_x) ** 2 + (spilled[0]['z'] - center_z) ** 2) ** 0.5 < 8
@@ -735,12 +735,12 @@ class Playtest:
         check(on_screen and away > 16.5, 'the crate is in view from out of reach', {'studs away': away, 'at': point})
         self.click(point)
         check(not self.view()['open'], 'a click on it from there opens nothing')
-        self.studio.luau(ASK_OUTRIGHT % ('usePlacedObject', crate['id']), 'Client')
-        self.studio.luau(ASK_OUTRIGHT % ('hitPlacedObject', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('interactWithPlacedObject', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('breakPlacedObject', crate['id']), 'Client')
         check(not self.view()['open'] and any(entry['id'] == crate['id'] for entry in self.world()['placed']),
               'and nor does asking the server outright to use it and to hit it, as a tampered machine might')
         self.walk_to(crate['x'] - 7, crate['z'] + 5)
-        self.studio.luau(ASK_OUTRIGHT % ('usePlacedObject', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('interactWithPlacedObject', crate['id']), 'Client')
         view = self.view()
         check(view['open'] and view['title'] == 'Crate', 'the same request from within reach opens it',
               {'studs away': self.distance_to(crate), 'title': view['title']})

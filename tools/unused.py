@@ -2,13 +2,16 @@
 
 Run from the repository root: python tools/unused.py
 A function a test calls but the game does not is still listed: it was built ahead of need.
-The request functions are called by name through Requests, so they are left out.
+The request functions are called by name through Requests, so they are left out. So are the
+functions that every kind of placed object has, which are called through PlacedObjectKinds.
 """
 import os
 import re
 
 DEFINITION = re.compile(r'^function (\w+)\.(\w+)\(', re.MULTILINE)
 CALLED_BY_NAME = {'InventoryRequests', 'PlotRequests'}
+KINDS_FOLDER = 'src/shared/placedObjectKinds/'
+KIND_FUNCTIONS = {'place', 'interact', 'breakPlacedObject'}
 
 sources = {}
 for root, _, names in os.walk('src'):
@@ -21,7 +24,7 @@ for root, _, names in os.walk('src'):
 unused = []
 for path, text in sources.items():
     for module, function in DEFINITION.findall(text):
-        if module in CALLED_BY_NAME:
+        if module in CALLED_BY_NAME or (path.startswith(KINDS_FOLDER) and function in KIND_FUNCTIONS):
             continue
         use = re.compile(r'\b' + module + r'\.' + function + r'\b')
         uses = sum(len(use.findall(other)) for other in sources.values()) - 1

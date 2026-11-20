@@ -54,9 +54,9 @@ local function tileTarget(hit: RaycastResult): Target?
 	return { kind = "tile", x = x, z = z, center = Vector3.new(center.x, center.y, center.z) }
 end
 
---- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed object nor
---- a bare tile of a plot. The player's own character is looked through. Anything else in the way
---- hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides.
+--- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed object
+--- nor a bare tile of a plot. The player's own character is looked through. Anything else in the
+--- way hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides.
 ---
 --- Note: `viewportPoint` is in pixels from the top left of the whole window, which includes the
 --- strip along the top of the screen.

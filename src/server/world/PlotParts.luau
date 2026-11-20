@@ -107,8 +107,8 @@ end
 
 --- Returns a new set of blocks for the plot that lies on `slab`, with no block made yet, and draws
 --- the lines between the plot's tiles. The blocks and the lines are kept in a folder called
---- `PlacedObjects` beside the slab. `plot` is read once, for its size. The plot starts at the slab's
---- corner of least x and z, and the slab's top must be at least as large as the plot.
+--- `PlacedObjects` beside the slab. `plot` is read once, for its size. The plot starts at the
+--- slab's corner of least x and z, and the slab's top must be at least as large as the plot.
 function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	local corner = table.freeze({
 		x = slab.Position.X - slab.Size.X / 2,

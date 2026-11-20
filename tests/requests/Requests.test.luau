@@ -196,7 +196,7 @@ do -- carryOut
 		first.screen == nil and Inventory.countItems(first.pack, "log") == 12,
 		"carryOut: more arguments than a request takes are left unused"
 	)
-	carryOut(world, 2, "usePlacedObject", crateId)
+	carryOut(world, 2, "interactWithPlacedObject", crateId)
 	check(
 		World.getOpenedPlacedObjectId(world, second) == crateId and World.getOpenedPlacedObjectId(world, first) == nil,
 		"carryOut: carries out a plot request for the player who asked"
@@ -330,6 +330,11 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				else
 					World.setCharacterPosition(world, playerId, at(random(30), 0, random(30)))
 				end
+			end
+			-- Now and then a player interacts with the crate, as a real machine would ask, so that the
+			-- requests that follow find a screen open on it.
+			if random(25) == 1 then
+				carryOut(world, random(3), "interactWithPlacedObject", crateId)
 			end
 			local playerId: any = if random(10) == 1 then junk[random(#junk)] else random(4)
 			local name = names[random(#names)]

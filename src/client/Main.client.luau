@@ -215,13 +215,13 @@ UseAndHit.startListening({
 	end,
 	getPlaceableKindId = getKindIdPlacedBySelectedItem,
 	onPlacedObjectUsed = function(placedObjectId)
-		remotes.usePlacedObject:FireServer(placedObjectId)
+		remotes.interactWithPlacedObject:FireServer(placedObjectId)
 	end,
 	onTileUsed = function(x, z)
-		remotes.placeSelectedItem:FireServer(x, z)
+		remotes.interactWithTile:FireServer(x, z)
 	end,
 	onPlacedObjectHit = function(placedObjectId)
-		remotes.hitPlacedObject:FireServer(placedObjectId)
+		remotes.breakPlacedObject:FireServer(placedObjectId)
 	end,
 })
 

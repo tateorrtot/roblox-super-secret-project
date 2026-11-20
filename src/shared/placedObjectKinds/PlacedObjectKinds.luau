@@ -5,6 +5,7 @@
 --- kind has and does. `PlacedObjectKind` lists the functions that every kind has, and `get`
 --- returns the kind with an id.
 local Crate = require("./Crate")
+local PlayerState = require("../players/PlayerState")
 local Stove = require("./Stove")
 local World = require("../world/World")
 
@@ -17,6 +18,12 @@ export type PlacedObjectKind = {
 	--- whatever an object of this kind has, and returns the placed object's id. Fails if
 	--- `Plot.canPlaceObject` would return `false` for that tile.
 	read place: (world: World.World, tileX: number, tileZ: number) -> number,
+	--- A player interacts with the placed object that has the id `placedObjectId`, which is of
+	--- this kind and stands on the world's plot.
+	read interact: (world: World.World, player: PlayerState.PlayerState, placedObjectId: number) -> (),
+	--- A player breaks the placed object that has the id `placedObjectId`, which is of this kind
+	--- and stands on the world's plot.
+	read breakPlacedObject: (world: World.World, player: PlayerState.PlayerState, placedObjectId: number) -> (),
 }
 
 local kindsById: { [string]: PlacedObjectKind } = {

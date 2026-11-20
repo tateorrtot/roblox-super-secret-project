@@ -139,10 +139,10 @@ end
 
 --- Spawns a stack of a random item in the middle of a random tile of the plot, not moving. Does
 --- nothing if `GROUND_ITEMS_KEPT` ground items already lie about, or if it last chose a tile less
---- than `SECONDS_BETWEEN_RESTOCKS` before the world's time. If a placed object stands on the tile it
---- chooses, it spawns nothing, and waits `SECONDS_BETWEEN_RESTOCKS` before it chooses again. Does
---- nothing while the Workspace attribute `PlaceholderRestock` is `false`, which the play test sets
---- so that it knows what lies on the ground.
+--- than `SECONDS_BETWEEN_RESTOCKS` before the world's time. If a placed object stands on the tile
+--- it chooses, it spawns nothing, and waits `SECONDS_BETWEEN_RESTOCKS` before it chooses again.
+--- Does nothing while the Workspace attribute `PlaceholderRestock` is `false`, which the play test
+--- sets so that it knows what lies on the ground.
 function PlaceholderWorld.restockGroundItems(placeholder: PlaceholderWorld, world: World.World)
 	local now = world.now
 	if now < nextRestockAt or Workspace:GetAttribute("PlaceholderRestock") == false then

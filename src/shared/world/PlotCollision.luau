@@ -72,15 +72,16 @@ local function pushGroundItemOutOfTile(groundItems: GroundItems, id: number, til
 end
 
 --- Pushes the ground items out of the tile `tileX`, `tileZ` of `plot`, whose tile x 1, z 1 has
---- its outer corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of a stud into
---- the cube a placed object fills on that tile. It is taken out of the world and its stack is
---- spawned again at the time `now`, as a new ground item with a new id: just outside the nearest
---- side of the tile that has no placed object against it, no higher and no further along that side
---- than it was, moving away from the tile along the ground at `PUSHED_GROUND_ITEM_SPEED`. A side
---- at the edge of the plot has nothing against it. Of sides equally near, the one towards greater
---- x is used first, then lesser x, then greater z, then lesser z. If all four sides have a placed
---- item against them, the stack is spawned again on top of the cube instead, not moving. Ground
---- items are pushed in the order of their ids, lowest first.
+--- its outer corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of a
+--- stud into the cube a placed object fills on that tile. It is taken out of the world and its
+--- stack is spawned again at the time `now`, as a new ground item with a new id: just outside the
+--- nearest side of the tile that has no placed object against it, no higher and no further along
+--- that side than it was, moving away from the tile along the ground at
+--- `PUSHED_GROUND_ITEM_SPEED`. A side at the edge of the plot has nothing against it. Of sides
+--- equally near, the one towards greater x is used first, then lesser x, then greater z, then
+--- lesser z. If all four sides have a placed object against them, the stack is spawned again on
+--- top of the cube instead, not moving. Ground items are pushed in the order of their ids, lowest
+--- first.
 --- Note: it does not check that anything stands on the tile, and where a pushed ground item
 --- lands is not checked either. One that lay across a corner of the tile can land partly inside a
 --- placed object that stands on the tile diagonally across that corner.
