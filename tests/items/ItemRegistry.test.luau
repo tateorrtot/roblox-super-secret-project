@@ -78,32 +78,13 @@ do -- what register refuses
 end
 
 do -- fields that item definitions once had
-	for _, gone in { "placeable", "slotCount" } do
+	for _, gone in { "placeable", "slotCount", "burnSeconds" } do
 		check(
 			refuses({ id = "odd", stackSize = 1, [gone] = true }),
 			"register: refuses the field " .. gone .. ", which item definitions do not have"
 		)
 	end
 	check(not ItemRegistry.has("odd"), "register: a refused definition is not registered")
-end
-
-do -- items that burn
-	ItemRegistry.register({ id = "burns_long", stackSize = 16, burnSeconds = 16 })
-	ItemRegistry.register({ id = "burns_briefly", stackSize = 16, burnSeconds = 0.5 })
-	check(ItemRegistry.get("burns_long").burnSeconds == 16, "register: keeps burnSeconds")
-	check(ItemRegistry.get("burns_briefly").burnSeconds == 0.5, "register: a fraction of a second is fine")
-	ItemRegistry.register({ id = "does_not_burn", stackSize = 8 })
-	check(
-		ItemRegistry.get("does_not_burn").burnSeconds == nil,
-		"register: an item that does not burn has no burnSeconds"
-	)
-	for _, bad in { 0, -4, 0 / 0, math.huge, "16", true } :: { any } do
-		check(
-			refuses({ id = "bad_fuel", stackSize = 1, burnSeconds = bad }),
-			"register: refuses burnSeconds = " .. tostring(bad)
-		)
-	end
-	check(not ItemRegistry.has("bad_fuel"), "register: a refused fuel is not registered")
 end
 
 do -- ids that are fine

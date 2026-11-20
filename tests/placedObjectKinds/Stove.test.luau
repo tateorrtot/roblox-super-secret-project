@@ -2,6 +2,8 @@
 -- Tests for Stove. Run from the repository root: lune run tests/placedObjectKinds/Stove.test.luau
 
 local Check = require("../Check")
+local FuelDefinitions = require("../../src/shared/stations/FuelDefinitions")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local GroundItems = require("../../src/shared/world/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
@@ -27,6 +29,9 @@ for _, definition in ItemDefinitions do
 end
 for _, recipe in RecipeDefinitions do
 	RecipeRegistry.register(recipe)
+end
+for _, fuel in FuelDefinitions do
+	FuelRegistry.register(fuel)
 end
 
 -- True if `stack` is `count` of the item `itemId`.

@@ -2,6 +2,7 @@
 -- Tests for StationProgress. Run from the repository root: lune run tests/stations/StationProgress.test.luau
 
 local Check = require("../Check")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
@@ -15,7 +16,8 @@ ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "baked_apple", stackSize = 16 })
-ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16 })
+FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "stove", stackSize = 1 })
 RecipeRegistry.register({ station = "stove", input = "fish", output = "cooked_fish", seconds = 8 })
 RecipeRegistry.register({ station = "stove", input = "apple", output = "baked_apple", seconds = 6 })

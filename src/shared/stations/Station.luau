@@ -4,8 +4,8 @@
 --- A station has three slots. `INPUT_SLOT` holds what is to be worked on, `FUEL_SLOT` holds fuel,
 --- and what is made collects in `OUTPUT_SLOT`. `advance` burns the fire and does the work. The fire
 --- is lit only when there is something to work on, and once lit it burns its fuel out.
+local FuelRegistry = require("./FuelRegistry")
 local Inventory = require("../inventory/Inventory")
-local ItemRegistry = require("../items/ItemRegistry")
 local ItemStack = require("../items/ItemStack")
 local RecipeRegistry = require("./RecipeRegistry")
 
@@ -64,7 +64,7 @@ function Station.slotAcceptsItem(kindId: string, slot: number, itemId: string): 
 	if slot == Station.INPUT_SLOT then
 		return RecipeRegistry.find(kindId, itemId) ~= nil
 	end
-	return slot == Station.FUEL_SLOT and ItemRegistry.get(itemId).burnSeconds ~= nil
+	return slot == Station.FUEL_SLOT and FuelRegistry.find(itemId) ~= nil
 end
 
 --- Returns the recipe for the item in the input slot. Returns `nil` if that slot holds nothing,
@@ -88,14 +88,14 @@ local function setWorkingOn(station: Station, itemId: string?)
 end
 
 local function light(station: Station): boolean
-	local fuel = Inventory.getStack(station.inventory, Station.FUEL_SLOT)
-	local burnSeconds = if fuel then ItemRegistry.get(fuel.itemId).burnSeconds else nil
-	if burnSeconds == nil then
+	local stack = Inventory.getStack(station.inventory, Station.FUEL_SLOT)
+	local fuel = if stack then FuelRegistry.find(stack.itemId) else nil
+	if fuel == nil then
 		return false
 	end
 	Inventory.takeFromSlot(station.inventory, Station.FUEL_SLOT, 1)
-	station.burnSecondsLeft = burnSeconds
-	station.burnSecondsTotal = burnSeconds
+	station.burnSecondsLeft = fuel.seconds
+	station.burnSecondsTotal = fuel.seconds
 	return true
 end
 

@@ -1,12 +1,12 @@
 --!strict
 --- The written definition of every item in the game, one row each.
 ---
---- A row is an `ItemRegistry.ItemDefinition`: its id, its stack size, and for an item that burns
---- as fuel, how long it burns. These rows are placeholders.
+--- A row is an `ItemRegistry.ItemDefinition`: its id and its stack size. These rows are
+--- placeholders.
 local ItemRegistry = require("./ItemRegistry")
 
 local definitions: { ItemRegistry.ItemDefinition } = {
-	{ id = "log", stackSize = 16, burnSeconds = 16 },
+	{ id = "log", stackSize = 16 },
 	{ id = "stone", stackSize = 16 },
 	{ id = "crystal", stackSize = 32 },
 	{ id = "apple", stackSize = 16 },

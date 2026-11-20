@@ -2,6 +2,7 @@
 -- Tests for InventoryRequests. Run from the repository root: lune run tests/requests/InventoryRequests.test.luau
 
 local Check = require("../Check")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryRequests = require("../../src/shared/requests/InventoryRequests")
@@ -17,7 +18,8 @@ local World = require("../../src/shared/world/World")
 
 local check = Check.that
 
-ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16 })
+FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
 ItemRegistry.register({ id = "stove", stackSize = 1 })

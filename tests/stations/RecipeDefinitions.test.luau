@@ -2,6 +2,8 @@
 -- Tests for the written rows of recipes. Run from the repository root: lune run tests/stations/RecipeDefinitions.test.luau
 
 local Check = require("../Check")
+local FuelDefinitions = require("../../src/shared/stations/FuelDefinitions")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local ItemDefinitions = require("../../src/shared/items/ItemDefinitions")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local RecipeDefinitions = require("../../src/shared/stations/RecipeDefinitions")
@@ -23,13 +25,17 @@ for index, recipe in RecipeDefinitions do
 	check(recipe.input ~= recipe.output, "row " .. index .. " turns its item into a different one")
 end
 
-local burns = false
-for _, definition in ItemRegistry.getAll() do
-	if definition.burnSeconds ~= nil then
-		burns = true
-	end
+check(#FuelDefinitions > 0, "there is at least one fuel, so that a station can be lit")
+for index, fuel in FuelDefinitions do
+	local problem = Check.errorFrom(function()
+		FuelRegistry.register(fuel)
+	end)
+	check(problem == nil, "fuel row " .. index .. " is a fuel the registry accepts: " .. tostring(problem))
+	check(
+		Station.slotAcceptsItem("stove", Station.FUEL_SLOT, fuel.item),
+		'a station takes "' .. fuel.item .. '" in its fuel slot'
+	)
 end
-check(burns, "at least one item burns, so that a station can be lit")
 
 for _, recipe in RecipeDefinitions do
 	check(

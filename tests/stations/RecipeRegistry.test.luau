@@ -2,6 +2,7 @@
 -- Tests for RecipeRegistry. Run from the repository root: lune run tests/stations/RecipeRegistry.test.luau
 
 local Check = require("../Check")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 
@@ -11,7 +12,8 @@ ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "baked_apple", stackSize = 16 })
-ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16 })
+FuelRegistry.register({ item = "log", seconds = 16 })
 
 do -- an empty registry
 	check(RecipeRegistry.find("stove", "fish") == nil, "find: nil before any recipe is registered")

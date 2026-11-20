@@ -2,6 +2,7 @@
 -- Tests for World. Run from the repository root: lune run tests/world/World.test.luau
 
 local Check = require("../Check")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local GroundItems = require("../../src/shared/world/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
@@ -18,7 +19,8 @@ local World = require("../../src/shared/world/World")
 local check = Check.that
 local STILL = { x = 0, y = 0, z = 0 }
 
-ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16 })
+FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "stove", stackSize = 1 })

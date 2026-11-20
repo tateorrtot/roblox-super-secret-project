@@ -3,6 +3,7 @@
 
 local Check = require("../Check")
 local Crate = require("../../src/shared/placedObjectKinds/Crate")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryRequests = require("../../src/shared/requests/InventoryRequests")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
@@ -19,7 +20,8 @@ local World = require("../../src/shared/world/World")
 local check = Check.that
 local carryOut = Requests.carryOut :: (world: World.World, playerId: any, name: any, ...any) -> ()
 
-ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16 })
+FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "post", stackSize = 8 })
 ItemRegistry.register({ id = "crate", stackSize = 1 })

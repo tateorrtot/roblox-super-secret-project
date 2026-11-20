@@ -3,6 +3,7 @@
 
 local Check = require("../Check")
 local Crate = require("../../src/shared/placedObjectKinds/Crate")
+local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
@@ -19,7 +20,8 @@ local World = require("../../src/shared/world/World")
 
 local check = Check.that
 
-ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
+ItemRegistry.register({ id = "log", stackSize = 16 })
+FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })

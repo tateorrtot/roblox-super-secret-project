@@ -13,6 +13,8 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local FuelDefinitions = require(Shared.stations.FuelDefinitions)
+local FuelRegistry = require(Shared.stations.FuelRegistry)
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
@@ -44,6 +46,9 @@ for _, definition in ItemDefinitions do
 end
 for _, recipe in RecipeDefinitions do
 	RecipeRegistry.register(recipe)
+end
+for _, fuel in FuelDefinitions do
+	FuelRegistry.register(fuel)
 end
 
 CollisionGroups.register()
