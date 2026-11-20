@@ -207,9 +207,9 @@ end
 --- nearest first, and of two equally near, the lower id first. The other need not be one that is
 --- looked at. Two merge only if both stacks fit in one stack. The one with the bigger stack then
 --- holds both, stays where it is, keeps the velocity it was spawned with, and counts as spawned at
---- the later of the two items' times. The other is gone, and its id with it. If the two stacks are the same size, the one being looked
---- at is the one that goes. One that took the other in is tried with the next nearest, and so on
---- until it is gone or there are no more.
+--- the later of the two items' times. The other is gone, and its id with it. If the two stacks
+--- are the same size, the one being looked at is the one that goes. One that took the other in is
+--- tried with the next nearest, and so on until it is gone or there are no more.
 ---
 --- If `now` is no later than the time `mergeItems` was last given, only the ground items spawned
 --- or given a new position since then are looked at.
