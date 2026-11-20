@@ -26,6 +26,7 @@ RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fis
 
 local itemIds = { "log", "fish", "cooked_fish", "stove", "crate", "oven" }
 local at = Position.new
+local ALONG_X = { x = 1, z = 0 }
 
 -- The requests are called with whatever a player's machine might send, so they are called through
 -- this, which does not check their arguments.
@@ -800,21 +801,21 @@ do -- dropCarriedStack
 	check(onGround(allWorld, "log") == 12, "dropCarriedStack: and again drops nothing")
 
 	local movedWorld, moved = newWorld()
-	World.setPlayerPosition(movedWorld, 1, at(1, 0, 1), at(3, 0, 4))
+	World.setPlayerPosition(movedWorld, 1, at(1, 0, 1), { x = 0, z = 1 })
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
 	send("dropCarriedStack", movedWorld, moved, nil)
 	local movedItem = movedWorld.groundItems.itemsById[next(movedWorld.groundItems.itemsById) :: number]
 	check(
-		movedItem.position.x == 3 and movedItem.position.z == 4,
-		"dropCarriedStack: drops at the player's drop position as it is now"
+		movedItem.throw == moved.throw and movedItem.position.x == 1 and movedItem.throw.velocity.z > 0,
+		"dropCarriedStack: throws as the player's throw says now"
 	)
 	World.setPlayerPosition(movedWorld, 1, nil)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 10)
 	send("dropCarriedStack", movedWorld, moved, nil)
 	check(
 		onGround(movedWorld, "log") == 16,
-		"dropCarriedStack: a player with no character can drop, where they last could"
+		"dropCarriedStack: a player with no character can drop, thrown as their throw last said"
 	)
 end
 
@@ -1002,7 +1003,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	local allConserved, allValid = true, true
 	for _ = 1, 40 do
 		local world, state = newWorld()
-		World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+		World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 		local crateId = World.placeItem(world, "crate", 6, 6) :: number
 		local ovenId = World.placeItem(world, "oven", 6, 5) :: number
 		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory

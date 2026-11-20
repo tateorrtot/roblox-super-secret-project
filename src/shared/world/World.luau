@@ -1,10 +1,13 @@
 --!strict
---- Everything in one running copy of the game: the plot, the stacks on the ground, and the players.
+--- Everything in one running copy of the game: the plot, the stacks loose in the world, and the
+--- players.
 ---
---- The server keeps one world. It adds and removes players, says where each one stands with
---- `setPlayerPosition`, and moves time on with `advanceTo`. The other functions are what can be
---- done in the world: dropping a stack, opening a placed item, closing a player's screen, placing
---- an item on the plot and taking it off again.
+--- The server keeps one world. It adds and removes players, says where each character is with
+--- `setPlayerPosition` and where each ground item has got to with `moveGroundItemTo`, and moves
+--- time on with `advanceTo`. The other functions are what can be done in the world: throwing a
+--- stack, opening a placed item, closing a player's screen, placing an item on the plot and taking
+--- it off again.
+local Direction = require("../Direction")
 local GroundItems = require("./GroundItems")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -14,7 +17,7 @@ local Plot = require("../plots/Plot")
 local Position = require("../Position")
 local RecipeRegistry = require("../stations/RecipeRegistry")
 local Station = require("../stations/Station")
-local Throw = require("./Throw")
+local Throw = require("../Throw")
 
 local World = {}
 
@@ -22,13 +25,15 @@ type ItemStack = ItemStack.ItemStack
 type Inventory = Inventory.Inventory
 type PlayerState = PlayerState.PlayerState
 type Position = Position.Position
+type Direction = Direction.Direction
+type Throw = Throw.Throw
 
 export type World = {
 	--- The one plot there is for now, shared by every player.
 	read plot: Plot.Plot,
 	--- The point in the world at the outer corner of the plot's tile x 1, z 1.
 	read plotCorner: Position,
-	--- The stacks lying on the ground.
+	--- The stacks loose in the world.
 	read groundItems: GroundItems.GroundItems,
 	--- Every player in the world, by id. On Roblox the id is the UserId.
 	read players: { [number]: PlayerState },
@@ -51,8 +56,14 @@ World.SCREEN_CLOSES_BEYOND = World.REACH + 4
 --- A player standing this near the middle of a tile, in studs along the ground, stands on it.
 World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
 
-local SPILL_DISTANCE = 1.7
-local SPILL_ANGLE = 2.4
+local SIDES: { Direction } = {
+	{ x = 1, z = 0 },
+	{ x = -1, z = 0 },
+	{ x = 0, z = 1 },
+	{ x = 0, z = -1 },
+}
+local TILE_TO_TOUCHING_GROUND_ITEM = (Plot.TILE_SIZE + GroundItems.ITEM_SIZE) / 2
+local OVERLAP_LEFT_ALONE = 0.1
 
 local function tileCenter(world: World, x: number, z: number): Position
 	return Plot.getTileCenter(world.plotCorner, x, z)
@@ -91,14 +102,15 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	return world
 end
 
---- Puts a stack on the ground at a position.
-function World.dropStackAt(world: World, stack: ItemStack, position: Position)
-	GroundItems.throwStack(world.groundItems, stack, Throw.newAtRest(position), world.now)
+--- Throws a stack into the world as `throw` says. It becomes a ground item, or joins a ground
+--- item of its own kind that is where the throw leaves from and has room for all of it.
+function World.throwStack(world: World, stack: ItemStack, throw: Throw)
+	GroundItems.throwStack(world.groundItems, stack, throw, world.now)
 end
 
 --- Closes a player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit lands on the ground at their `dropPosition`. Does nothing if they have no
---- screen open.
+--- and what does not fit is thrown into the world as their `throw` says. Does nothing if they
+--- have no screen open.
 function World.closeScreen(world: World, player: PlayerState)
 	local screen = player.screen
 	if screen == nil then
@@ -107,7 +119,7 @@ function World.closeScreen(world: World, player: PlayerState)
 	local carried = InventoryScreen.takeCarriedStack(screen)
 	local leftover = if carried then Inventory.addStack(player.pack, carried) else nil
 	if leftover ~= nil then
-		World.dropStackAt(world, leftover, player.dropPosition)
+		World.throwStack(world, leftover, player.throw)
 	end
 	player.screen = nil
 	player.openedPlacedItemId = nil
@@ -134,11 +146,12 @@ function World.openPlacedItem(world: World, player: PlayerState, placedItemId: n
 end
 
 --- Adds a new player to the world and returns them. They have no character yet, and a stack
---- they drop lands at `dropPosition` until `setPlayerPosition` says where they stand. They carry
---- `pack`, or a pack that holds nothing if none is given. Fails if a player already has that id.
-function World.addPlayer(world: World, playerId: number, dropPosition: Position, pack: Inventory?): PlayerState
+--- they drop is let go at `position` until `setPlayerPosition` says where their character is.
+--- They carry `pack`, or a pack that holds nothing if none is given. Fails if a player already
+--- has that id.
+function World.addPlayer(world: World, playerId: number, position: Position, pack: Inventory?): PlayerState
 	assert(world.players[playerId] == nil, `player {playerId} is already in the world`)
-	local player = PlayerState.new(dropPosition, pack)
+	local player = PlayerState.new(Throw.newAtRest(position), pack)
 	world.players[playerId] = player
 	return player
 end
@@ -155,16 +168,24 @@ function World.removePlayer(world: World, playerId: number): PlayerState?
 	return player
 end
 
---- Sets where a player's character stands to `position`, a point on the ground, or to `nil` if
---- they have no living character. With a `position`, it also sets where a stack they drop lands:
---- at `dropPosition`, or at `position` if `dropPosition` is left out. With no `position`, where
---- their drops land stays as it was. Fails if no player has that id.
-function World.setPlayerPosition(world: World, playerId: number, position: Position?, dropPosition: Position?)
+--- Sets where a player's character is to `position`, the point at its feet, or to `nil` if they
+--- have no living character. With a `position`, it also sets how a stack they drop sets off: it
+--- is thrown from their character the way the character faces, which is `facing`, or let go at
+--- `position` if `facing` is left out. With no `position`, how their drops set off stays as it
+--- was. Fails if no player has that id.
+function World.setPlayerPosition(world: World, playerId: number, position: Position?, facing: Direction?)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	player.position = position
 	if position ~= nil then
-		player.dropPosition = dropPosition or position
+		player.throw = if facing then Throw.newFromCharacter(position, facing) else Throw.newAtRest(position)
 	end
+end
+
+--- Records that a ground item has got to `position`, the middle of its underside. If that brings
+--- it close to another ground item of its own kind that has room for all of its stack, the two
+--- become one. Does nothing if no ground item has that id.
+function World.moveGroundItemTo(world: World, groundItemId: number, position: Position)
+	GroundItems.moveItemTo(world.groundItems, groundItemId, position)
 end
 
 --- Returns `true` if a player's character stands within `World.REACH` of the middle of a tile,
@@ -187,10 +208,61 @@ function World.isTileStoodOn(world: World, x: number, z: number): boolean
 	return false
 end
 
+local function isLyingInTile(world: World, position: Position, x: number, z: number): boolean
+	local center = tileCenter(world, x, z)
+	local reach = TILE_TO_TOUCHING_GROUND_ITEM - OVERLAP_LEFT_ALONE
+	return math.abs(position.x - center.x) < reach
+		and math.abs(position.z - center.z) < reach
+		and position.y < center.y + Plot.TILE_SIZE - OVERLAP_LEFT_ALONE
+		and position.y + GroundItems.ITEM_SIZE > center.y + OVERLAP_LEFT_ALONE
+end
+
+local function getThrowOutOfTile(world: World, position: Position, x: number, z: number): Throw
+	local center = tileCenter(world, x, z)
+	local nearestSide: Direction? = nil
+	local nearestDistance = math.huge
+	for _, side in SIDES do
+		local toSide = (position.x - center.x) * side.x + (position.z - center.z) * side.z
+		local distance = TILE_TO_TOUCHING_GROUND_ITEM - toSide
+		if distance < nearestDistance and not Plot.isTileTaken(world.plot, x + side.x, z + side.z) then
+			nearestSide, nearestDistance = side, distance
+		end
+	end
+	if nearestSide == nil then
+		return Throw.newAtRest(Position.new(position.x, center.y + Plot.TILE_SIZE, position.z))
+	end
+	local from = Position.new(
+		position.x + nearestSide.x * nearestDistance,
+		position.y,
+		position.z + nearestSide.z * nearestDistance
+	)
+	return Throw.newPush(from, nearestSide)
+end
+
+local function pushGroundItemsOutOfTile(world: World, x: number, z: number)
+	local ids = {}
+	for id, groundItem in world.groundItems.itemsById do
+		if isLyingInTile(world, groundItem.position, x, z) then
+			table.insert(ids, id)
+		end
+	end
+	table.sort(ids)
+	for _, id in ids do
+		local position = world.groundItems.itemsById[id].position
+		local stack = GroundItems.takeStack(world.groundItems, id) :: ItemStack
+		World.throwStack(world, stack, getThrowOutOfTile(world, position, x, z))
+	end
+end
+
 --- Places one of an item on a tile and returns the placed item's id. Returns `nil`, placing
 --- nothing, if the plot has no such tile, if a player stands on the tile, if something already
 --- stands on it, or if the item is not one that can be placed. The item is not taken from
 --- anywhere. An item that is a station starts as a station with no fire.
+---
+--- A placed item fills its tile as a cube `Plot.TILE_SIZE` on each side. Every ground item lying
+--- where that cube now is gets pushed out of it: it is thrown again from just outside the nearest
+--- side of the tile that has no placed item against it, along the ground and away from the tile.
+--- If all four sides have a placed item against them, it is let go on top of the cube instead.
 function World.placeItem(world: World, itemId: string, x: number, z: number): number?
 	if World.isTileStoodOn(world, x, z) then
 		return nil
@@ -198,6 +270,7 @@ function World.placeItem(world: World, itemId: string, x: number, z: number): nu
 	local placedItemId = Plot.placeItem(world.plot, itemId, x, z)
 	if placedItemId ~= nil then
 		world.stations[placedItemId] = newStationFor(world.plot.placedItemsById[placedItemId])
+		pushGroundItemsOutOfTile(world, x, z)
 	end
 	return placedItemId
 end
@@ -211,24 +284,22 @@ local function closeScreensOn(world: World, placedItemId: number)
 	end
 end
 
-local function spill(world: World, inventory: Inventory, center: Position)
-	local spilled = 0
+local function takeEveryStack(inventory: Inventory): { ItemStack }
+	local stacks = {}
 	for slot = 1, inventory.slotCount do
 		local stack = Inventory.takeFromSlot(inventory, slot)
 		if stack ~= nil then
-			spilled += 1
-			local angle = spilled * SPILL_ANGLE
-			local x = center.x + math.cos(angle) * SPILL_DISTANCE
-			local z = center.z + math.sin(angle) * SPILL_DISTANCE
-			World.dropStackAt(world, stack, { x = x, y = center.y, z = z })
+			table.insert(stacks, stack)
 		end
 	end
+	return stacks
 end
 
 --- Takes a placed item off the plot. Every screen open on it is closed first, as `closeScreen`
---- does. The item then lies on its tile as a ground item, and each stack that was inside it lies
---- on the ground in a ring around it. If it was a station its fire goes out, and the fuel that was
---- burning is lost. Does nothing if no placed item has that id.
+--- does. The item then spills out of the middle of where it stood, as a ground item, and each
+--- stack that was inside it spills out after it: each is thrown upwards and a little outwards, the
+--- next a different way from the last. If it was a station its fire goes out, and the fuel that
+--- was burning is lost. Does nothing if no placed item has that id.
 function World.removePlacedItem(world: World, placedItemId: number)
 	local placedItem = world.plot.placedItemsById[placedItemId]
 	if placedItem == nil then
@@ -238,9 +309,11 @@ function World.removePlacedItem(world: World, placedItemId: number)
 	Plot.removePlacedItem(world.plot, placedItemId)
 	world.stations[placedItemId] = nil
 	local center = tileCenter(world, placedItem.x, placedItem.z)
-	World.dropStackAt(world, ItemStack.new(placedItem.itemId, 1), center)
-	if placedItem.inventory ~= nil then
-		spill(world, placedItem.inventory, center)
+	local middle = Position.new(center.x, center.y + (Plot.TILE_SIZE - GroundItems.ITEM_SIZE) / 2, center.z)
+	local stacks = if placedItem.inventory then takeEveryStack(placedItem.inventory) else {}
+	table.insert(stacks, 1, ItemStack.new(placedItem.itemId, 1))
+	for index, stack in stacks do
+		World.throwStack(world, stack, Throw.newSpill(middle, index))
 	end
 end
 

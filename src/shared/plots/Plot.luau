@@ -51,15 +51,6 @@ local function isWholeNumber(value: unknown): boolean
 	return type(value) == "number" and value == math.floor(value) and value ~= math.huge and value ~= -math.huge
 end
 
-local function isTileTaken(plot: Plot, x: number, z: number): boolean
-	for _, placedItem in plot.placedItemsById do
-		if placedItem.x == x and placedItem.z == z then
-			return true
-		end
-	end
-	return false
-end
-
 --- Returns a new plot of `width` by `depth` tiles with nothing placed on it.
 --- Note: `width` and `depth` must be whole numbers of 1 or more. They are not checked.
 function Plot.new(width: number, depth: number): Plot
@@ -77,12 +68,23 @@ function Plot.hasTile(plot: Plot, x: unknown, z: unknown): boolean
 		and (z :: number) <= plot.depth
 end
 
+--- Returns `true` if a placed item stands on the tile `x`, `z`. A tile the plot does not have
+--- holds nothing, so it is never taken.
+function Plot.isTileTaken(plot: Plot, x: number, z: number): boolean
+	for _, placedItem in plot.placedItemsById do
+		if placedItem.x == x and placedItem.z == z then
+			return true
+		end
+	end
+	return false
+end
+
 --- Returns `true` if the item `itemId` could be placed on the tile `x`, `z`: the plot has that
 --- tile, the item's definition says it is `placeable`, and the tile holds nothing. Fails if no
 --- item has that id.
 function Plot.canPlaceItem(plot: Plot, itemId: string, x: number, z: number): boolean
 	local isPlaceable = ItemRegistry.get(itemId).placeable == true
-	return isPlaceable and Plot.hasTile(plot, x, z) and not isTileTaken(plot, x, z)
+	return isPlaceable and Plot.hasTile(plot, x, z) and not Plot.isTileTaken(plot, x, z)
 end
 
 --- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed item. If

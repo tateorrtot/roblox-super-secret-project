@@ -5,8 +5,8 @@
 --- nothing of what happens next. `newFromCharacter` is the throw of a character, `newSpill` of a
 --- stack that bursts out of something, `newPush` of a stack shoved aside, and `newAtRest` of a
 --- stack that is only let go. Every speed here is in studs a second.
-local Direction = require("../Direction")
-local Position = require("../Position")
+local Direction = require("./Direction")
+local Position = require("./Position")
 
 local Throw = {}
 

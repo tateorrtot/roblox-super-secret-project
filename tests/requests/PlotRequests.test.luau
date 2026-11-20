@@ -26,6 +26,7 @@ RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fis
 
 local itemIds = { "log", "fish", "apple", "post", "crate", "oven" }
 local at = Position.new
+local ALONG_X = { x = 1, z = 0 }
 
 -- The requests are called with whatever a player's machine might send, so they are called through
 -- this, which does not check their arguments.
@@ -89,7 +90,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, number, number
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 2, ItemStack.new("crate", 1))
 	Inventory.setStack(state.pack, 3, ItemStack.new("oven", 1))
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 	return world, state, crateId, postId
 end
 
@@ -159,7 +160,7 @@ do -- placeSelectedItem
 
 	-- The middle of tile 6, 1 is at 22, 2. Standing at 6, 2 it is exactly 16 studs away.
 	state.hotbar.selectedSlot = 3
-	World.setPlayerPosition(world, 1, at(6, 0, 2), at(12, 0, 2))
+	World.setPlayerPosition(world, 1, at(6, 0, 2), ALONG_X)
 	send("placeSelectedItem", world, state, 6, 1)
 	check(Inventory.getStack(state.pack, 3) == nil, "placeSelectedItem: a tile exactly at reach can be placed on")
 	local farId = world.plot.nextId - 1
@@ -223,7 +224,7 @@ do -- usePlacedItem
 	)
 
 	-- From 18, 10 both the crate and the post are in reach.
-	World.setPlayerPosition(world, 1, at(18, 0, 10), at(24, 0, 10))
+	World.setPlayerPosition(world, 1, at(18, 0, 10), ALONG_X)
 	send("usePlacedItem", world, state, postId)
 	check(
 		(state.screen :: InventoryScreen.InventoryScreen).otherInventory
@@ -231,7 +232,7 @@ do -- usePlacedItem
 			and state.openedPlacedItemId == crateId,
 		"usePlacedItem: ignored for a placed item that holds nothing, even in reach, and what was open stays open"
 	)
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 	for _, bad in badIds do
 		send("usePlacedItem", world, state, bad)
 	end
@@ -294,7 +295,7 @@ do -- hitPlacedItem
 	World.setPlayerPosition(world, 1, nil)
 	send("hitPlacedItem", world, state, crateId)
 	check(world.plot.placedItemsById[crateId] ~= nil, "hitPlacedItem: not by a player with no character")
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 	for _, bad in badIds do
 		send("hitPlacedItem", world, state, bad)
 	end
@@ -351,24 +352,23 @@ do -- hitPlacedItem
 	local ringState = World.addPlayer(ringWorld, 1, at(0, 0, 0))
 	World.setPlayerPosition(ringWorld, 1, at(0, 0, 0))
 	send("hitPlacedItem", ringWorld, ringState, ringCrate)
-	local spots: { [string]: boolean } = {}
-	local spotCount, onRing = 0, true
+	local ways: { [string]: boolean } = {}
+	local wayCount, fromMiddle = 0, true
 	for _, groundItem in ringWorld.groundItems.itemsById do
-		local key = string.format("%.3f %.3f", groundItem.position.x, groundItem.position.z)
-		if not spots[key] then
-			spots[key] = true
-			spotCount += 1
+		local key = string.format("%.3f %.3f", groundItem.throw.velocity.x, groundItem.throw.velocity.z)
+		if not ways[key] then
+			ways[key] = true
+			wayCount += 1
 		end
-		local fromMiddle = Position.getGroundDistance(groundItem.position, at(6, 0, 6))
-		if groundItem.stack.itemId ~= "crate" and math.abs(fromMiddle - 1.7) > 0.001 then
-			onRing = false
+		if Position.getGroundDistance(groundItem.throw.from, at(6, 0, 6)) > 0 or groundItem.throw.velocity.y <= 0 then
+			fromMiddle = false
 		end
 	end
 	check(
-		spotCount == 4,
-		"hitPlacedItem: the crate and each of the three stacks that were in it lie in a place of their own"
+		wayCount == 4,
+		"hitPlacedItem: the crate and each of the three stacks that were in it are thrown a way of their own"
 	)
-	check(onRing, "hitPlacedItem: the stacks lie in a ring around the middle of the tile")
+	check(fromMiddle, "hitPlacedItem: each upwards, out of the middle of the tile")
 end
 
 do -- whatever a player's machine sends, nothing raises an error and no item is made or lost

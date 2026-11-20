@@ -20,9 +20,10 @@ local function isPlacedItemInReach(world: World, player: PlayerState, placedItem
 end
 
 --- Places one of the item in the player's selected hotbar slot on the tile `x`, `z` of the plot,
---- and takes it out of that slot. Does nothing if that slot holds nothing, if they have a screen
---- open, if the plot has no such tile, if they stand more than `World.REACH` from it, if a player
---- stands on it, if something already stands on it, or if the item is not one that can be placed.
+--- and takes it out of that slot. Ground items lying where it now stands are pushed out of it.
+--- Does nothing if that slot holds nothing, if they have a screen open, if the plot has no such
+--- tile, if they stand more than `World.REACH` from it, if a player stands on it, if something
+--- already stands on it, or if the item is not one that can be placed.
 function PlotRequests.placeSelectedItem(world: World, player: PlayerState, x: unknown, z: unknown)
 	local selected = Hotbar.getSelectedStack(player.hotbar)
 	if selected == nil or player.screen ~= nil or not Plot.hasTile(world.plot, x, z) then
@@ -44,8 +45,8 @@ function PlotRequests.usePlacedItem(world: World, player: PlayerState, placedIte
 end
 
 --- The player hits the placed item with the id `placedItemId`, which knocks it off the plot: it
---- lies on the ground as an item, and what was inside it lies around it. Does nothing if no placed
---- item has that id, or if the player stands more than `World.REACH` from it.
+--- spills out of where it stood as a ground item, and what was inside it spills out after it. Does
+--- nothing if no placed item has that id, or if the player stands more than `World.REACH` from it.
 function PlotRequests.hitPlacedItem(world: World, player: PlayerState, placedItemId: unknown)
 	if isPlacedItemInReach(world, player, placedItemId) then
 		World.removePlacedItem(world, placedItemId :: number)

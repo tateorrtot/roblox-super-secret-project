@@ -6,7 +6,7 @@ local GroundItems = require("../../src/shared/world/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
-local Throw = require("../../src/shared/world/Throw")
+local Throw = require("../../src/shared/Throw")
 
 local check = Check.that
 

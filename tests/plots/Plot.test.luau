@@ -52,7 +52,14 @@ end
 do -- placing
 	local plot = Plot.new(4, 4)
 	check(Plot.canPlaceItem(plot, "stove", 2, 3), "canPlaceItem: a placeable item on a tile that holds nothing")
+	check(not Plot.isTileTaken(plot, 2, 3), "isTileTaken: false for a tile that holds nothing")
 	local stove = Plot.placeItem(plot, "stove", 2, 3)
+	check(Plot.isTileTaken(plot, 2, 3), "isTileTaken: true once an item stands on the tile")
+	check(not Plot.isTileTaken(plot, 3, 2), "isTileTaken: x and z are not swapped")
+	check(
+		not Plot.isTileTaken(plot, 0, 3) and not Plot.isTileTaken(plot, 5, 3) and not Plot.isTileTaken(plot, 2, -1),
+		"isTileTaken: false for a tile the plot does not have"
+	)
 	check(stove == 1 and plot.nextId == 2, "placeItem: the first placed item is 1, and the next will be 2")
 	local placed = plot.placedItemsById[1]
 	check(placed.itemId == "stove" and placed.x == 2 and placed.z == 3, "placeItem: it is that item on that tile")
@@ -113,6 +120,7 @@ do -- removing
 	check(placedCount(plot) == 1, "removePlacedItem: a removal that found nothing changes nothing")
 
 	check(Plot.canPlaceItem(plot, "stove", 3, 3), "canPlaceItem: the tile holds nothing again")
+	check(not Plot.isTileTaken(plot, 3, 3), "isTileTaken: false again once the item is taken off")
 	check(Plot.placeItem(plot, "stove", 3, 3) == 3, "placeItem: a new placed item gets a new id, not the old one")
 end
 

@@ -25,6 +25,7 @@ ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount
 
 local itemIds = { "log", "fish", "post", "crate" }
 local at = Position.new
+local ALONG_X = { x = 1, z = 0 }
 
 -- The name of every function in a table of requests, sorted.
 local function namesIn(requests: any): { string }
@@ -83,7 +84,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.Pl
 		Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 		Inventory.setStack(state.pack, 2, ItemStack.new("fish", 5))
 		Inventory.setStack(state.pack, 3, ItemStack.new("crate", 1))
-		World.setPlayerPosition(world, playerId, position, at(position.x + 6, 0, position.z))
+		World.setPlayerPosition(world, playerId, position, ALONG_X)
 		players[playerId] = state
 	end
 	return world, players[1], players[2], crateId

@@ -27,9 +27,9 @@ local function screenWithSlot(player: PlayerState, side: unknown, slot: unknown)
 	return if screen ~= nil and InventoryScreen.hasSlot(screen, side, slot) then screen else nil
 end
 
-local function dropAtPlayer(world: World, player: PlayerState, stack: ItemStack.ItemStack?)
+local function throwFromPlayer(world: World, player: PlayerState, stack: ItemStack.ItemStack?)
 	if stack ~= nil then
-		World.dropStackAt(world, stack, player.dropPosition)
+		World.throwStack(world, stack, player.throw)
 	end
 end
 
@@ -42,7 +42,7 @@ function InventoryRequests.openPack(_world: World, player: PlayerState)
 end
 
 --- Closes the player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit is dropped on the ground.
+--- and what does not fit is thrown into the world as the player's `throw` says.
 function InventoryRequests.closeScreen(world: World, player: PlayerState)
 	World.closeScreen(world, player)
 end
@@ -154,22 +154,22 @@ function InventoryRequests.spreadCarriedStackOverSlots(
 	end
 end
 
---- Drops up to `count` items of the carried stack on the ground at the player's `dropPosition`,
---- or all of it if `count` is `nil`.
+--- Drops up to `count` items of the carried stack, or all of it if `count` is `nil`: they are
+--- thrown into the world as the player's `throw` says.
 function InventoryRequests.dropCarriedStack(world: World, player: PlayerState, count: unknown)
 	local screen = player.screen
 	if screen ~= nil and isCountOrNil(count) then
-		dropAtPlayer(world, player, InventoryScreen.takeCarriedStack(screen, count :: any))
+		throwFromPlayer(world, player, InventoryScreen.takeCarriedStack(screen, count :: any))
 	end
 end
 
---- Drops up to `count` items out of a slot of the open screen on the ground at the player's
---- `dropPosition`, or everything in the slot if `count` is `nil`.
+--- Drops up to `count` items out of a slot of the open screen, or everything in the slot if
+--- `count` is `nil`: they are thrown into the world as the player's `throw` says.
 function InventoryRequests.dropFromSlot(world: World, player: PlayerState, side: unknown, slot: unknown, count: unknown)
 	local screen = screenWithSlot(player, side, slot)
 	if screen ~= nil and isCountOrNil(count) then
 		local inventory = InventoryScreen.getInventoryOnSide(screen, side :: any)
-		dropAtPlayer(world, player, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
+		throwFromPlayer(world, player, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
 	end
 end
 
@@ -180,11 +180,11 @@ function InventoryRequests.selectHotbarSlot(_world: World, player: PlayerState, 
 	end
 end
 
---- Drops up to `count` items out of the selected hotbar slot on the ground at the player's
---- `dropPosition`, or everything in the slot if `count` is `nil`.
+--- Drops up to `count` items out of the selected hotbar slot, or everything in the slot if
+--- `count` is `nil`: they are thrown into the world as the player's `throw` says.
 function InventoryRequests.dropFromSelectedSlot(world: World, player: PlayerState, count: unknown)
 	if isCountOrNil(count) then
-		dropAtPlayer(world, player, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any))
+		throwFromPlayer(world, player, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any))
 	end
 end
 

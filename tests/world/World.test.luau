@@ -13,6 +13,7 @@ local Position = require("../../src/shared/Position")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Station = require("../../src/shared/stations/Station")
 local StationProgress = require("../../src/shared/stations/StationProgress")
+local Throw = require("../../src/shared/Throw")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -29,6 +30,26 @@ RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fis
 
 local itemIds = { "log", "fish", "apple", "stove", "crate", "post" }
 local at = Position.new
+local ALONG_X = { x = 1, z = 0 }
+
+-- True if `throw` has no speed along any axis.
+local function isAtRest(throw: Throw.Throw): boolean
+	return throw.velocity.x == 0 and throw.velocity.y == 0 and throw.velocity.z == 0
+end
+
+-- True if `throw` leaves from `x`, `y`, `z`, to within a rounding error.
+local function leavesFrom(throw: Throw.Throw, x: number, y: number, z: number): boolean
+	return Position.getDistance(throw.from, at(x, y, z)) < 1e-9
+end
+
+-- How many ground items there are.
+local function groundItemCount(world: World.World): number
+	local count = 0
+	for _ in world.groundItems.itemsById do
+		count += 1
+	end
+	return count
+end
 
 -- True if `stack` is `count` of the item `itemId`.
 local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): boolean
@@ -98,7 +119,7 @@ end
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
 -- tile x, z is at x * 4 - 2, z * 4 - 2. A crate holding 5 fish stands on tile 2, 2 (its middle is 6, 6),
 -- a stove on tile 5, 5 (its middle is 18, 18) and an oven on tile 4, 2 (its middle is 14, 6). Player 1
--- stands at 6, 0 with 12 logs in their first slot, and their drops land at 12, 0.
+-- has 12 logs in their first slot, and their character is at 6, 0, facing along x.
 local function newWorld(): (World.World, PlayerState.PlayerState, { crate: number, stove: number, oven: number })
 	local plot = Plot.new(6, 6)
 	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
@@ -108,7 +129,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, { crate: numbe
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1, at(0, 0, 0))
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 	return world, state, { crate = crateId, stove = stoveId, oven = ovenId }
 end
 
@@ -170,10 +191,10 @@ do -- players come and go
 	check(Inventory.isEmpty(state.pack), "addPlayer: with no pack given, the pack holds nothing")
 	check(state.pack.slotCount == PlayerState.PACK_SLOT_COUNT, "addPlayer: and has the slots of any pack")
 	check(state.screen == nil and state.openedPlacedItemId == nil, "addPlayer: a new player has no screen open")
-	check(state.position == nil, "addPlayer: and stands nowhere yet")
+	check(state.position == nil, "addPlayer: and has no character yet")
 	check(
-		state.dropPosition.x == 1 and state.dropPosition.y == 0 and state.dropPosition.z == 2,
-		"addPlayer: a stack they drop lands where it was said"
+		leavesFrom(state.throw, 1, 0, 2) and isAtRest(state.throw),
+		"addPlayer: a stack they drop is let go at the position given"
 	)
 	local second = World.addPlayer(world, -3, at(0, 0, 0))
 	check(
@@ -203,30 +224,41 @@ do -- players come and go
 	check(World.addPlayer(world, 7, at(0, 0, 0)) ~= state, "addPlayer: a player who comes back starts afresh")
 end
 
-do -- where a player stands
+do -- where a player's character is
 	local world, state = newWorld()
+	check(state.position ~= nil and state.position.x == 6, "setPlayerPosition: says where their character is")
 	check(
-		state.position ~= nil and state.position.x == 6 and state.dropPosition.x == 12,
-		"setPlayerPosition: says where they stand and where their drops land"
+		leavesFrom(state.throw, 6, Throw.CHARACTER_THROW_HEIGHT, 0),
+		"setPlayerPosition: a stack they drop leaves from above their character's feet"
+	)
+	check(
+		state.throw.velocity.x == Throw.CHARACTER_THROW_SPEED
+			and state.throw.velocity.y == Throw.CHARACTER_THROW_LIFT
+			and state.throw.velocity.z == 0,
+		"setPlayerPosition: thrown the way their character faces"
 	)
 	World.setPlayerPosition(world, 1, at(3, 0, 3))
 	check(
-		state.position ~= nil and state.position.x == 3 and state.dropPosition.x == 3 and state.dropPosition.z == 3,
-		"setPlayerPosition: with no drop position, drops land where they stand"
+		state.position ~= nil and state.position.x == 3 and leavesFrom(state.throw, 3, 0, 3) and isAtRest(state.throw),
+		"setPlayerPosition: with no facing, a stack they drop is let go at their character's feet"
 	)
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
+	local thrown = state.throw
 	World.setPlayerPosition(world, 1, nil)
 	check(state.position == nil, "setPlayerPosition: nil means they have no character")
-	check(state.dropPosition.x == 12, "setPlayerPosition: and their drop position stays as it was")
-	World.setPlayerPosition(world, 1, nil, at(50, 0, 50))
+	check(state.throw == thrown, "setPlayerPosition: and how their drops set off stays as it was")
+	World.setPlayerPosition(world, 1, nil, { x = 0, z = 1 })
 	check(
-		state.position == nil and state.dropPosition.x == 12,
-		"setPlayerPosition: a drop position given with no position is not used"
+		state.position == nil and state.throw == thrown,
+		"setPlayerPosition: a facing given with no position is not used"
 	)
-	World.setPlayerPosition(world, 1, at(1, 0, 1), at(9, 0, 9))
+	World.setPlayerPosition(world, 1, at(1, 0, 1), { x = 0, z = -1 })
 	check(
-		state.position ~= nil and state.position.x == 1 and state.dropPosition.x == 9,
-		"setPlayerPosition: a character that is back is placed again"
+		state.position ~= nil
+			and state.position.x == 1
+			and leavesFrom(state.throw, 1, Throw.CHARACTER_THROW_HEIGHT, 1)
+			and state.throw.velocity.z == -Throw.CHARACTER_THROW_SPEED,
+		"setPlayerPosition: a character that is back is placed again, and throws the way it now faces"
 	)
 	local nobody = Check.errorFrom(function()
 		World.setPlayerPosition(world, 2, at(0, 0, 0))
@@ -237,18 +269,53 @@ do -- where a player stands
 	)
 end
 
-do -- dropping a stack
+do -- throwing a stack
 	local world = newWorld()
-	World.dropStackAt(world, ItemStack.new("apple", 3), at(60, 0, 60))
+	local throw = Throw.newFromCharacter(at(60, 0, 60), ALONG_X)
+	World.throwStack(world, ItemStack.new("apple", 3), throw)
 	local apples = groundStacks(world, "apple")
-	check(#apples == 1 and is(apples[1].stack, "apple", 3), "dropStackAt: the stack lies on the ground")
-	check(apples[1].position.x == 60 and apples[1].position.z == 60, "dropStackAt: at the position it was dropped at")
-	check(apples[1].droppedAt == 100, "dropStackAt: dropped at the world's time")
+	check(#apples == 1 and is(apples[1].stack, "apple", 3), "throwStack: the stack is loose in the world")
+	check(apples[1].throw == throw, "throwStack: thrown as it was said")
+	check(
+		apples[1].position.x == 60 and apples[1].position.y == Throw.CHARACTER_THROW_HEIGHT,
+		"throwStack: and starts where the throw leaves from"
+	)
+	check(apples[1].droppedAt == 100, "throwStack: dropped at the world's time")
 	World.advanceTo(world, 150)
-	World.dropStackAt(world, ItemStack.new("apple", 2), at(60.5, 0, 60))
+	World.throwStack(world, ItemStack.new("apple", 2), Throw.newAtRest(at(60.5, Throw.CHARACTER_THROW_HEIGHT, 60)))
 	apples = groundStacks(world, "apple")
-	check(#apples == 1 and is(apples[1].stack, "apple", 5), "dropStackAt: a stack dropped beside its own kind joins it")
-	check(apples[1].droppedAt == 150, "dropStackAt: and counts as dropped now, at the time the world has reached")
+	check(
+		#apples == 1 and is(apples[1].stack, "apple", 5),
+		"throwStack: a stack thrown from beside its own kind joins it"
+	)
+	check(apples[1].droppedAt == 150, "throwStack: and counts as dropped now, at the time the world has reached")
+end
+
+do -- a ground item moves
+	local world = newWorld()
+	World.throwStack(world, ItemStack.new("apple", 3), Throw.newFromCharacter(at(60, 0, 60), ALONG_X))
+	local flying = next(world.groundItems.itemsById) :: number
+	World.moveGroundItemTo(world, flying, at(66, 0, 60))
+	local moved = world.groundItems.itemsById[flying]
+	check(
+		moved.position.x == 66 and moved.position.y == 0 and moved.position.z == 60,
+		"moveGroundItemTo: the ground item is where it was said to have got to"
+	)
+	check(is(moved.stack, "apple", 3) and moved.droppedAt == 100, "moveGroundItemTo: and is otherwise as it was")
+
+	World.throwStack(world, ItemStack.new("apple", 2), Throw.newAtRest(at(80, 0, 60)))
+	World.moveGroundItemTo(world, flying, at(80.5, 0, 60))
+	local apples = groundStacks(world, "apple")
+	check(
+		#apples == 1 and is(apples[1].stack, "apple", 5) and apples[1].position.x == 80,
+		"moveGroundItemTo: a ground item that comes to lie beside its own kind joins it"
+	)
+	World.moveGroundItemTo(world, flying, at(0, 0, 0))
+	World.moveGroundItemTo(world, 999, at(0, 0, 0))
+	check(
+		groundItemCount(world) == 1 and onGround(world, "apple") == 5,
+		"moveGroundItemTo: does nothing for an id that no ground item has"
+	)
 end
 
 do -- closing a player's screen
@@ -278,7 +345,7 @@ do -- closing a player's screen
 		"closeScreen: and nothing lands on the ground when the pack has room"
 	)
 
-	-- A pack with no room for the carried stack: it lands at the player's drop position.
+	-- A pack with no room for the carried stack: it is thrown as the player's throw says.
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(state.pack, slot, ItemStack.new("stove", 1))
 	end
@@ -287,8 +354,14 @@ do -- closing a player's screen
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	World.closeScreen(world, state)
 	local fish = groundStacks(world, "fish")
-	check(#fish == 1 and is(fish[1].stack, "fish", 5), "closeScreen: what the pack has no room for lies on the ground")
-	check(fish[1].position.x == 12 and fish[1].position.z == 0, "closeScreen: at the player's drop position")
+	check(
+		#fish == 1 and is(fish[1].stack, "fish", 5),
+		"closeScreen: what the pack has no room for is loose in the world"
+	)
+	check(
+		fish[1].throw == state.throw and leavesFrom(fish[1].throw, 6, Throw.CHARACTER_THROW_HEIGHT, 0),
+		"closeScreen: thrown as the player's throw says"
+	)
 	check(state.screen == nil, "closeScreen: and the screen is closed all the same")
 
 	-- A part fits and the rest is left over.
@@ -476,6 +549,119 @@ do -- placing an item
 	)
 end
 
+do -- placing an item where ground items lie
+	-- Tile 3, 3 reaches from 8 to 12 along x and z, and its middle is 10, 10. A ground item touches
+	-- the side of what stands on it when its middle is 2.6 from the tile's middle along x or z.
+	local touching = (Plot.TILE_SIZE + GroundItems.ITEM_SIZE) / 2
+	local function lyingAt(world: World.World, itemId: string, x: number, y: number, z: number): number
+		return GroundItems.throwStack(world.groundItems, ItemStack.new(itemId, 1), Throw.newAtRest(at(x, y, z)), 0)
+	end
+
+	local world = newWorld()
+	local inside = lyingAt(world, "apple", 9, 0, 10.5)
+	local outside = lyingAt(world, "fish", 10 - touching, 0, 10)
+	local onNextTile = lyingAt(world, "post", 14, 0, 10)
+	World.advanceTo(world, 140)
+	check(World.placeItem(world, "crate", 3, 3) ~= nil, "placeItem: (set up) a crate is placed where an apple lies")
+	check(
+		world.groundItems.itemsById[inside] == nil,
+		"placeItem: the ground item that lay there is taken out of the world"
+	)
+	local apples = groundStacks(world, "apple")
+	check(#apples == 1 and is(apples[1].stack, "apple", 1), "placeItem: and its stack is thrown again, whole")
+	check(
+		leavesFrom(apples[1].throw, 10 - touching, 0, 10.5),
+		"placeItem: from just outside the nearest side of the tile, no higher and no further along that side"
+	)
+	check(
+		apples[1].throw.velocity.x == -Throw.PUSH_SPEED
+			and apples[1].throw.velocity.y == 0
+			and apples[1].throw.velocity.z == 0,
+		"placeItem: along the ground and away from the tile"
+	)
+	check(apples[1].droppedAt == 140, "placeItem: dropped at the world's time")
+	check(
+		world.groundItems.itemsById[outside] ~= nil and world.groundItems.itemsById[onNextTile] ~= nil,
+		"placeItem: a ground item that only touches the tile's side stays, and so does one on the next tile"
+	)
+	check(inWorld(world, "apple") == 1 and inWorld(world, "fish") == 6, "placeItem: nothing is made or lost")
+
+	-- The nearest side is taken, so the next nearest is used.
+	local blocked = newWorld()
+	World.placeItem(blocked, "post", 2, 3)
+	lyingAt(blocked, "apple", 9, 0, 10.5)
+	World.placeItem(blocked, "crate", 3, 3)
+	local pushed = groundStacks(blocked, "apple")[1]
+	check(
+		leavesFrom(pushed.throw, 9, 0, 10 + touching) and pushed.throw.velocity.z == Throw.PUSH_SPEED,
+		"placeItem: a side with a placed item against it is not used, and the next nearest is"
+	)
+
+	-- Every side is taken, so the ground item is let go on top.
+	local walled = newWorld()
+	for _, tile in { { 2, 3 }, { 4, 3 }, { 3, 2 }, { 3, 4 } } do
+		World.placeItem(walled, "post", tile[1], tile[2])
+	end
+	lyingAt(walled, "apple", 9, 0, 10.5)
+	World.placeItem(walled, "crate", 3, 3)
+	local lifted = groundStacks(walled, "apple")[1]
+	check(
+		leavesFrom(lifted.throw, 9, Plot.TILE_SIZE, 10.5) and isAtRest(lifted.throw),
+		"placeItem: with a placed item against all four sides, it is let go on top"
+	)
+
+	-- How far in a ground item must reach, and how high it may be.
+	local edges = newWorld()
+	local justIn = lyingAt(edges, "apple", 10 - touching + 0.11, 0, 10)
+	local justOut = lyingAt(edges, "fish", 10, 0, 10 + touching - 0.09)
+	local onTop = lyingAt(edges, "post", 10, Plot.TILE_SIZE - 0.09, 10)
+	local inTheAir = lyingAt(edges, "stove", 10, Plot.TILE_SIZE - 0.11, 10)
+	World.placeItem(edges, "crate", 3, 3)
+	check(
+		edges.groundItems.itemsById[justIn] == nil and edges.groundItems.itemsById[inTheAir] == nil,
+		"placeItem: a ground item that reaches more than a tenth of a stud into the placed item is pushed out"
+	)
+	check(
+		edges.groundItems.itemsById[justOut] ~= nil and edges.groundItems.itemsById[onTop] ~= nil,
+		"placeItem: one that reaches in less than that, from the side or from above, is left alone"
+	)
+
+	-- The edge of the plot: there is nothing off the plot to be in the way.
+	local corner = newWorld()
+	lyingAt(corner, "apple", 0.5, 0, 2)
+	World.placeItem(corner, "crate", 1, 1)
+	check(
+		leavesFrom(groundStacks(corner, "apple")[1].throw, 2 - touching, 0, 2),
+		"placeItem: at the edge of the plot a ground item is pushed off the plot"
+	)
+
+	-- Several at once, and a placing that is refused.
+	local several = newWorld()
+	lyingAt(several, "apple", 9, 0, 10)
+	lyingAt(several, "apple", 9, 0, 10)
+	lyingAt(several, "fish", 11, 0, 10)
+	lyingAt(several, "stove", 10, 0, 9)
+	World.placeItem(several, "crate", 3, 3)
+	check(
+		onGround(several, "apple") == 2 and onGround(several, "fish") == 1 and onGround(several, "stove") == 1,
+		"placeItem: every ground item that lay there is pushed out, and none is lost"
+	)
+	for _, groundItem in several.groundItems.itemsById do
+		local alongX = math.abs(groundItem.position.x - 10)
+		local alongZ = math.abs(groundItem.position.z - 10)
+		check(
+			math.max(alongX, alongZ) >= touching - 1e-9,
+			"placeItem: each ground item is clear of the placed item afterwards"
+		)
+	end
+	local refused = newWorld()
+	local stays = lyingAt(refused, "apple", 6, 0, 6.5)
+	check(
+		World.placeItem(refused, "post", 2, 2) == nil and refused.groundItems.itemsById[stays] ~= nil,
+		"placeItem: a placing that is refused pushes nothing"
+	)
+end
+
 do -- taking a placed item off
 	local world, state, ids = newWorld()
 	local other = World.addPlayer(world, 2, at(0, 0, 0))
@@ -497,25 +683,34 @@ do -- taking a placed item off
 		"removePlacedItem: what a player carried is back in their pack"
 	)
 	local crates = groundStacks(world, "crate")
-	check(#crates == 1 and is(crates[1].stack, "crate", 1), "removePlacedItem: the item lies on the ground, one of it")
 	check(
-		crates[1].position.x == 6 and crates[1].position.z == 6 and crates[1].droppedAt == 100,
-		"removePlacedItem: at the middle of its tile, dropped at the world's time"
+		#crates == 1 and is(crates[1].stack, "crate", 1),
+		"removePlacedItem: the item is loose in the world, one of it"
 	)
-	check(onGround(world, "fish") == 2, "removePlacedItem: what was left in it lies on the ground")
-	for _, groundItem in groundStacks(world, "fish") do
-		check(
-			math.abs(Position.getGroundDistance(groundItem.position, at(6, 0, 6)) - 1.7) < 0.001,
-			"removePlacedItem: each stack from inside lies in a ring around the middle of the tile"
-		)
-	end
+	local middleHeight = (Plot.TILE_SIZE - GroundItems.ITEM_SIZE) / 2
+	check(
+		leavesFrom(crates[1].throw, 6, middleHeight, 6) and crates[1].droppedAt == 100,
+		"removePlacedItem: it leaves from the middle of where it stood, dropped at the world's time"
+	)
+	local fish = groundStacks(world, "fish")
+	check(#fish == 1 and is(fish[1].stack, "fish", 2), "removePlacedItem: what was left in it is loose in the world")
+	check(leavesFrom(fish[1].throw, 6, middleHeight, 6), "removePlacedItem: and leaves from the same place")
+	check(
+		crates[1].throw.velocity.y == Throw.SPILL_LIFT and fish[1].throw.velocity.y == Throw.SPILL_LIFT,
+		"removePlacedItem: the item and what was in it are thrown upwards"
+	)
+	check(
+		crates[1].throw.velocity.x == Throw.newSpill(at(0, 0, 0), 1).velocity.x
+			and fish[1].throw.velocity.x == Throw.newSpill(at(0, 0, 0), 2).velocity.x,
+		"removePlacedItem: the item spills first, and what was in it after"
+	)
 	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 1, "removePlacedItem: nothing was made or lost")
 	check(
 		Plot.canPlaceItem(world.plot, "stove", 2, 2) and World.placeItem(world, "stove", 2, 2) ~= nil,
 		"removePlacedItem: and the tile holds nothing, so another item can be placed there"
 	)
 
-	-- Each stack from inside has a place of its own.
+	-- Each stack from inside is thrown a way of its own.
 	local ring = Plot.new(3, 3)
 	local ringCrate = Plot.placeItem(ring, "crate", 2, 2) :: number
 	local inRing = ring.placedItemsById[ringCrate].inventory :: Inventory.Inventory
@@ -524,41 +719,49 @@ do -- taking a placed item off
 	Inventory.setStack(inRing, 20, ItemStack.new("log", 4))
 	local ringWorld = World.new(ring, at(0, 0, 0), 0)
 	World.removePlacedItem(ringWorld, ringCrate)
-	local spots: { [string]: boolean } = {}
-	local spotCount = 0
+	local ways: { [string]: boolean } = {}
+	local wayCount = 0
 	for _, groundItem in ringWorld.groundItems.itemsById do
-		local key = string.format("%.3f %.3f", groundItem.position.x, groundItem.position.z)
-		if not spots[key] then
-			spots[key] = true
-			spotCount += 1
+		local key = string.format("%.3f %.3f", groundItem.throw.velocity.x, groundItem.throw.velocity.z)
+		if not ways[key] then
+			ways[key] = true
+			wayCount += 1
 		end
 	end
 	check(
-		spotCount == 4,
-		"removePlacedItem: the item and each of the three stacks that were in it lie in a place of their own"
+		wayCount == 4,
+		"removePlacedItem: the item and each of the three stacks that were in it are thrown a way of their own"
 	)
 	check(
 		onGround(ringWorld, "fish") == 2 and onGround(ringWorld, "apple") == 3 and onGround(ringWorld, "log") == 4,
 		"removePlacedItem: and each is whole"
 	)
 
+	-- Two part stacks of one kind that were inside come out as one.
+	local parts = Plot.new(3, 3)
+	local partsCrate = Plot.placeItem(parts, "crate", 2, 2) :: number
+	local inParts = parts.placedItemsById[partsCrate].inventory :: Inventory.Inventory
+	Inventory.setStack(inParts, 3, ItemStack.new("fish", 2))
+	Inventory.setStack(inParts, 8, ItemStack.new("fish", 5))
+	Inventory.setStack(inParts, 9, ItemStack.new("fish", 8))
+	local partsWorld = World.new(parts, at(0, 0, 0), 0)
+	World.removePlacedItem(partsWorld, partsCrate)
+	local spilled = groundStacks(partsWorld, "fish")
+	check(
+		#spilled == 2 and is(spilled[1].stack, "fish", 7) and is(spilled[2].stack, "fish", 8),
+		"removePlacedItem: two part stacks of one kind spill as one, and a full stack apart"
+	)
+
 	-- A placed item with nothing in it, and one with nothing to hold.
 	World.removePlacedItem(world, ids.stove)
 	check(
 		world.plot.placedItemsById[ids.stove] == nil and #groundStacks(world, "stove") == 1,
-		"removePlacedItem: a placed item that holds nothing just becomes an item on the ground"
+		"removePlacedItem: a placed item that holds nothing just becomes a ground item"
 	)
-	local groundBefore = 0
-	for _ in world.groundItems.itemsById do
-		groundBefore += 1
-	end
+	local groundBefore = groundItemCount(world)
 	World.removePlacedItem(world, 999)
 	World.removePlacedItem(world, ids.stove)
-	local groundAfter = 0
-	for _ in world.groundItems.itemsById do
-		groundAfter += 1
-	end
-	check(groundAfter == groundBefore, "removePlacedItem: does nothing for an id that no placed item has")
+	check(groundItemCount(world) == groundBefore, "removePlacedItem: does nothing for an id that no placed item has")
 	check(world.plot.placedItemsById[ids.oven] ~= nil, "removePlacedItem: and takes nothing else off the plot")
 
 	-- A player's screen open on something else is left alone.
@@ -592,7 +795,7 @@ end
 
 do -- time passing: picking up
 	local world, state = newWorld()
-	World.dropStackAt(world, ItemStack.new("apple", 3), at(7, 0, 1))
+	World.throwStack(world, ItemStack.new("apple", 3), Throw.newAtRest(at(7, 0, 1)))
 	World.advanceTo(world, 100.5)
 	check(world.now == 100.5, "advanceTo: the world moves on to the time it was given")
 	check(Inventory.countItems(state.pack, "apple") == 0, "advanceTo: a ground item just dropped is not picked up yet")
@@ -606,7 +809,7 @@ do -- time passing: picking up
 	World.addPlayer(world, -5, at(0, 0, 0))
 	World.setPlayerPosition(world, 2, at(30, 0, 30))
 	World.setPlayerPosition(world, -5, at(30, 0, 30))
-	World.dropStackAt(world, ItemStack.new("stove", 1), at(31, 0, 30))
+	World.throwStack(world, ItemStack.new("stove", 1), Throw.newAtRest(at(31, 0, 30)))
 	World.advanceTo(world, 110)
 	check(
 		Inventory.countItems(world.players[-5].pack, "stove") == 1
@@ -615,9 +818,9 @@ do -- time passing: picking up
 	)
 
 	World.setPlayerPosition(world, -5, nil)
-	World.dropStackAt(world, ItemStack.new("stove", 1), at(100, 0, 100))
+	World.throwStack(world, ItemStack.new("stove", 1), Throw.newAtRest(at(100, 0, 100)))
 	World.setPlayerPosition(world, 2, at(100, 0, 100))
-	World.dropStackAt(world, ItemStack.new("fish", 2), at(30, 0, 30))
+	World.throwStack(world, ItemStack.new("fish", 2), Throw.newAtRest(at(30, 0, 30)))
 	World.advanceTo(world, 120)
 	check(
 		Inventory.countItems(world.players[2].pack, "stove") == 1,
@@ -636,7 +839,7 @@ end
 
 do -- time passing: ground items expire
 	local world = newWorld()
-	World.dropStackAt(world, ItemStack.new("fish", 2), at(30, 0, 30))
+	World.throwStack(world, ItemStack.new("fish", 2), Throw.newAtRest(at(30, 0, 30)))
 	World.advanceTo(world, 100 + GroundItems.LIFETIME_SECONDS - 0.01)
 	check(onGround(world, "fish") == 2, "advanceTo: a ground item lies until its time is up")
 	World.advanceTo(world, 100 + GroundItems.LIFETIME_SECONDS)
@@ -653,7 +856,7 @@ do -- time passing: screens close
 	World.advanceTo(world, 102)
 	check(state.screen == nil and state.openedPlacedItemId == nil, "advanceTo: and closes once the player is beyond it")
 
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 	World.openPlacedItem(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	World.setPlayerPosition(world, 1, nil)
@@ -661,7 +864,7 @@ do -- time passing: screens close
 	check(state.screen == nil, "advanceTo: a screen closes when the player has no character")
 	check(Inventory.countItems(state.pack, "fish") == 5, "advanceTo: and what they carried is in their pack")
 
-	World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
+	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
 	World.openPlacedItem(world, state, ids.crate)
 	Plot.removePlacedItem(world.plot, ids.crate)
 	World.advanceTo(world, 104)
@@ -681,19 +884,22 @@ do -- time passing: screens close
 	World.advanceTo(world, 107)
 	check(state.screen ~= nil, "advanceTo: and with no character")
 
-	-- The pack is full, so what is carried lands on the ground where drops land.
+	-- The pack is full, so what is carried is thrown as the player's throw says.
 	local full, fullState, fullIds = newWorld()
 	World.openPlacedItem(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
-	World.setPlayerPosition(full, 1, at(6, 0, 200), at(7, 0, 200))
+	World.setPlayerPosition(full, 1, at(6, 0, 200), { x = 0, z = 1 })
 	World.advanceTo(full, 101)
 	local fish = groundStacks(full, "fish")
 	check(
-		fullState.screen == nil and #fish == 1 and fish[1].position.x == 7 and fish[1].position.z == 200,
-		"advanceTo: a screen closed for want of a character puts what is left of the carried stack on the ground"
+		fullState.screen == nil
+			and #fish == 1
+			and fish[1].throw == fullState.throw
+			and leavesFrom(fish[1].throw, 6, Throw.CHARACTER_THROW_HEIGHT, 200),
+		"advanceTo: a screen closed for being out of reach throws what is left of the carried stack into the world"
 	)
 end
 
@@ -792,9 +998,9 @@ do -- a player leaves
 	local fish = groundStacks(full, "fish")
 	check(
 		#fish == 1 and is(fish[1].stack, "fish", 5),
-		"removePlayer: a carried stack the pack has no room for is left on the ground"
+		"removePlayer: a carried stack the pack has no room for is thrown into the world"
 	)
-	check(fish[1].position.x == 12 and fish[1].position.z == 0, "removePlayer: where their drops land")
+	check(fish[1].throw == fullState.throw, "removePlayer: as their throw says")
 end
 
 do -- several players, several things at once, and no item is made or lost
@@ -867,7 +1073,7 @@ do -- several players, several things at once, and no item is made or lost
 					else
 						local standing = at(random(28) - 2, 0, random(28) - 2)
 						run(function()
-							World.setPlayerPosition(world, playerId, standing, at(standing.x + 6, 0, standing.z))
+							World.setPlayerPosition(world, playerId, standing, if random(2) == 1 then ALONG_X else nil)
 						end)
 					end
 				end
@@ -973,19 +1179,21 @@ do -- several players, several things at once, and no item is made or lost
 						else
 							local taken = InventoryScreen.takeCarriedStack(screen, random(4))
 							if taken ~= nil then
-								World.dropStackAt(world, taken, (state :: PlayerState.PlayerState).dropPosition)
+								World.throwStack(world, taken, (state :: PlayerState.PlayerState).throw)
 							end
 						end
 					end)
 				end
 			else
-				-- Drop part of a slot of the pack onto the ground.
+				-- Drop part of a slot of the pack, or say that a ground item has moved.
 				if state ~= nil then
 					run(function()
 						local taken = Inventory.takeFromSlot(state.pack, random(PlayerState.PACK_SLOT_COUNT), random(4))
 						if taken ~= nil then
-							World.dropStackAt(world, taken, state.dropPosition)
+							World.throwStack(world, taken, state.throw)
 						end
+						local moved = random(math.max(world.groundItems.nextId - 1, 1))
+						World.moveGroundItemTo(world, moved, at(random(28) - 2, 0, random(28) - 2))
 					end)
 				end
 			end

@@ -15,7 +15,7 @@ local Inventory = require(Shared.inventory.Inventory)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local Plot = require(Shared.plots.Plot)
-local Throw = require(Shared.world.Throw)
+local Throw = require(Shared.Throw)
 
 local PlaceholderWorld = {}
 

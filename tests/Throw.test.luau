@@ -1,8 +1,8 @@
 --!strict
--- Tests for Throw. Run from the repository root: lune run tests/world/Throw.test.luau
+-- Tests for Throw. Run from the repository root: lune run tests/Throw.test.luau
 
-local Check = require("../Check")
-local Throw = require("../../src/shared/world/Throw")
+local Check = require("./Check")
+local Throw = require("../src/shared/Throw")
 
 local check = Check.that
 

@@ -13,7 +13,7 @@
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
-local Throw = require("./Throw")
+local Throw = require("../Throw")
 
 local GroundItems = {}
 
