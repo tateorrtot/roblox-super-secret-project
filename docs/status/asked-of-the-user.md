@@ -20,6 +20,7 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **Personal or group ownership, and a brand name.**
 
 ## Things only they can do
+- **How to add the Roblox skills they pointed at** (`docs/roblox/studio.md`): run the plugin's two install commands themselves, or say yes to Claude copying six folders of text into `.claude/skills/` in this repository after reading every file in full.
 - **Run the one-line download of Roblox's type definitions,** since the app refused it for Claude. The command is in `docs/roblox/studio.md`. With it the server's and the client's scripts can be type-checked.
 - **For saving, when it is the next piece:** publish the place and switch on Studio's access (the steps are in `docs/roblox/studio.md`), and a clear yes to downloading ProfileStore, which the survey in docs/research/13 recommends wrapping behind a module of ours.
 - **One Blockbench model with a stepped animation,** in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.
