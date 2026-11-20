@@ -22,14 +22,19 @@ def sheet_for(path):
     text = io.open(path, encoding='utf-8').read()
     module = os.path.basename(path).split('.')[0]
     lines = [module]
-    for name, body in re.findall(r'^export type (\w+) = \{\n(.*?)^\}', text, re.MULTILINE | re.DOTALL):
-        fields = re.findall(r'^\t(?:read )?(\w+): ', body, re.MULTILINE)
+    # A type may take type parameters, as `Signal<T...>` does, and may be written on one line or on several.
+    types = []
+    for found in re.finditer(r'^export type (\w+)(?:<[^>\n]*>)? = \{\n(.*?)^\}', text, re.MULTILINE | re.DOTALL):
+        types.append((found.start(), found.group(1), re.findall(r'^\t(?:read )?(\w+): ', found.group(2), re.MULTILINE)))
+    for found in re.finditer(r'^export type (\w+)(?:<[^>\n]*>)? = \{ (.*) \}$', text, re.MULTILINE):
+        types.append((found.start(), found.group(1), re.findall(r'(?:^|, )(?:read )?(\w+): ', found.group(2))))
+    for _, name, fields in sorted(types):
         if fields:
             lines.append(f'  a {name} has: ' + ', '.join(fields))
     constants = re.findall(r'^' + module + r'\.([A-Z][A-Z0-9_]*) = ', text, re.MULTILINE)
     if constants:
         lines.append('  constants: ' + ', '.join(constants))
-    functions = re.findall(r'^function ' + module + r'\.(\w+)\(', text, re.MULTILINE)
+    functions = re.findall(r'^function ' + module + r'\.(\w+)(?:<[^>\n]*>)?\(', text, re.MULTILINE)
     if functions:
         lines.append('  functions: ' + ', '.join(functions))
     return module, '\n'.join(lines)
