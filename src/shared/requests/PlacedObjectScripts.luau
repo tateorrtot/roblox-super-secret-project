@@ -1,6 +1,6 @@
 --!strict
 --- The script of each kind of placed object: what happens when a player interacts with an object
---- of that kind, and when a player breaks one.
+--- of that kind, and when one is broken.
 ---
 --- A script is a table of functions, one for each thing a player can do to an object of the
 --- kind. It is registered once, when the game starts, under the id of its kind, with `register`,
@@ -11,15 +11,15 @@ local World = require("../world/World")
 
 local PlacedObjectScripts = {}
 
---- What one kind of placed object does when a player acts on an object of that kind. A script
---- has only the functions that its kind has a use for.
+--- What one kind of placed object does when an object of that kind is acted on. A script has
+--- only the functions that its kind has a use for.
 export type PlacedObjectScript = {
 	--- Called when `player` interacts with the placed object that has the id `placedObjectId`,
 	--- which is of the script's kind and stands on the plot of `world`.
 	read interact: ((world: World.World, player: PlayerState.PlayerState, placedObjectId: number) -> ())?,
-	--- Called when `player` breaks the placed object that has the id `placedObjectId`, which is
-	--- of the script's kind and stands on the plot of `world`.
-	read breakPlacedObject: ((world: World.World, player: PlayerState.PlayerState, placedObjectId: number) -> ())?,
+	--- Called when the placed object that has the id `placedObjectId`, which is of the script's
+	--- kind and stands on the plot of `world`, is broken. It is not told who or what broke it.
+	read breakPlacedObject: ((world: World.World, placedObjectId: number) -> ())?,
 }
 
 local scriptsByKindId: { [string]: PlacedObjectScript } = {}

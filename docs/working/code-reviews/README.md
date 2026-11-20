@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code ten times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code eleven times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 The number in a file's name counts the reviews of 2026-11-20, so it is one less than the review's place in this list.
 
@@ -16,13 +16,14 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 | 8 | `2026-11-20-7-the-item-decides.md` | "Shouldnt it be the item itself that determines what happens when it breaks?" Composition, not inheritance. "You cant just... invent nouns out of nowhere". Roblox's word, or Godot's. "Did you fix what they found?" |
 | 9 | `2026-11-20-8-two-systems.md` | Items and placed objects are "two v e r y different systems that shouldnt rely on or mention eachother". Glue lives outside both. Roblox's style. "Why? Just why this class name?" A question they could not read: "Uh what? Im confused" |
 | 10 | `2026-11-20-9-simple-things-and-glue.md` | "why do PlaceableItems still exist". Items, and events that code is attached to: "Just keep it generic." "Systems shouldnt know about eachother. Dont pull out abstractions." Compose with glue; the FoxFabric-addon test; "You dont make something for every combination" |
+| 11 | `2026-11-20-10-who-said.md` | "who said an item was always going to be tied to a player. Or a hotbar?" Things stay dumb. The tool in the hand is not the item. Glue is fine; one module requiring another is not. "who said tiles werent 3D?" Two sentences they could not read |
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
-Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code, which they have still not read.
+Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read.
 
 ## What to check before showing them code
-These are Claude's readings of the ten reviews. The quotes are in the files.
+These are Claude's readings of the eleven reviews. The quotes are in the files.
 
 - **Read each class alone,** as `python tools/bare_names.py <Module>` prints it: its name and its members' names, and nothing else. Each name must say what it is, or what it acts on and where. If you would have to ask "... what?", so will they. A guess is a failure.
 - **A class is a noun.** If no noun works, the class is wrong.
@@ -38,6 +39,9 @@ These are Claude's readings of the ten reviews. The quotes are in the files.
 - **The general code never asks what sort of thing a thing is.** No table, flag or type that says an item places or a placed object holds things. Look for one before showing them code: Claude kept `PlaceableItems` through a whole split and reported it as glue.
 - **A generic hook is not building ahead of need. A shared helper is.** "Just keep it generic. You cant pull out and abstract ... until you have a pattern of it." The hook is what lets the next thing be added without touching general code.
 - **No combination gets a piece of its own.** "What we dont do is go ah we need cat and grep. Lets make catgrep".
+- **Read each thing's requires and ask "who said?" of each.** Who said this thing is held by a player, kept in a hotbar, stands on a flat tile? If nobody did, the script is handed too much. `lune run tools/requires` lists them.
+- **Things stay dumb.** A script is handed only what it uses and answers whoever called it. The caller acts on the answer.
+- **When saying a thing is wrong, say the file, the function and one example.** "Picking up is one function across ground items and inventories" left them asking where it lives and whether it meant merging.
 - **Say whether a list is how things are, or what was done.** They asked: "are you stating the issues currently and that youve fixed them?"
 - **A question to them is in plain words and can be read alone.** No label coined a page earlier.
 - **Use their words for the game:** "interact" and "break", not Claude's "use", "hit" or "knocked off the plot".
@@ -59,4 +63,4 @@ These are Claude's readings of the ten reviews. The quotes are in the files.
 - **Have a helper apply their latest review to the result,** told to assume the author thinks it is mended and to quote the words each finding goes against. After the tenth, that helper found twelve things where the two ordinary reviewers found none of them.
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
-Each of the ten reviews found something the checks before it had passed. Expect an eleventh.
+Each of the eleven reviews found something the checks before it had passed. Expect a twelfth.

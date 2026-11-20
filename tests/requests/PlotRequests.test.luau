@@ -20,15 +20,14 @@ local World = require("../../src/shared/world/World")
 local check = Check.that
 local at = Position.new
 
--- One call of a function of a script: its name, what it was called with, and whether the request
--- that called it was one that its comment allows.
+-- One call of a function of a script: its name and what it was called with. An item's script is
+-- handed no player, so a call of one has none.
 type Call = {
 	name: string,
 	world: World.World,
-	player: PlayerState.PlayerState,
+	player: PlayerState.PlayerState?,
 	first: number,
 	second: number?,
-	allowed: boolean,
 }
 local calls: { Call } = {}
 
@@ -39,48 +38,59 @@ local function takeCalls(): { Call }
 	return made
 end
 
--- A function for an item's script, which records each call under `name`. A call is allowed if the
--- plot has the tile and `itemId` is in the player's selected hotbar slot.
-local function recordTileCall(name: string, itemId: string)
-	return function(world: World.World, player: PlayerState.PlayerState, tileX: number, tileZ: number)
-		local selected = Hotbar.getSelectedStack(player.hotbar)
-		local allowed = Plot.hasTile(world.plot, tileX, tileZ) and selected ~= nil and selected.itemId == itemId
-		table.insert(calls, {
-			name = name,
-			world = world,
-			player = player,
-			first = tileX,
-			second = tileZ,
-			allowed = allowed,
-		})
+-- How many seeds the seed's script says each interaction uses up. The tests change it.
+local seedsUsedUp = 1
+
+-- A function for an item's script, which records each call under `name` and returns what
+-- `getUsedUp` returns: how many of the item the interaction used up.
+local function recordTileCall(name: string, getUsedUp: () -> number)
+	return function(world: World.World, tileX: number, tileZ: number): number
+		table.insert(calls, { name = name, world = world, first = tileX, second = tileZ })
+		return getUsedUp()
 	end
 end
 
--- A function for a placed object's script, which records each call under `name`. A call is allowed
--- if a placed object of the kind `kindId` has the id.
-local function recordPlacedObjectCall(name: string, kindId: string)
+-- A function for a placed object's script, which records each call of `interact` under `name`.
+local function recordInteractCall(name: string)
 	return function(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
-		local placedObject = world.plot.placedObjectsById[placedObjectId]
-		local allowed = placedObject ~= nil and placedObject.kindId == kindId
-		table.insert(calls, { name = name, world = world, player = player, first = placedObjectId, allowed = allowed })
+		table.insert(calls, { name = name, world = world, player = player, first = placedObjectId })
 	end
 end
 
--- A wand has a script, a stick has a script with no function, and a feather has no script.
+-- A function for a placed object's script, which records each call of `breakPlacedObject` under
+-- `name`. It is handed no player.
+local function recordBreakCall(name: string)
+	return function(world: World.World, placedObjectId: number)
+		table.insert(calls, { name = name, world = world, first = placedObjectId })
+	end
+end
+
+-- A wand's script uses up no wand. A seed's script uses up `seedsUsedUp` seeds. A stick has a
+-- script with no function, and a feather has no script.
 ItemRegistry.register({ id = "wand", stackSize = 1 })
+ItemRegistry.register({ id = "seed", stackSize = 16 })
 ItemRegistry.register({ id = "stick", stackSize = 16 })
 ItemRegistry.register({ id = "feather", stackSize = 16 })
-ItemScripts.register("wand", { interactWithTile = recordTileCall("wand.interactWithTile", "wand") })
+ItemScripts.register("wand", {
+	interactWithTile = recordTileCall("wand.interactWithTile", function()
+		return 0
+	end),
+})
+ItemScripts.register("seed", {
+	interactWithTile = recordTileCall("seed.interactWithTile", function()
+		return seedsUsedUp
+	end),
+})
 ItemScripts.register("stick", {})
 
 -- A bell's script has both functions, a gong's has `interact` only, a vase's has
 -- `breakPlacedObject` only, a post's has neither, and a rock has no script.
 PlacedObjectScripts.register("bell", {
-	interact = recordPlacedObjectCall("bell.interact", "bell"),
-	breakPlacedObject = recordPlacedObjectCall("bell.breakPlacedObject", "bell"),
+	interact = recordInteractCall("bell.interact"),
+	breakPlacedObject = recordBreakCall("bell.breakPlacedObject"),
 })
-PlacedObjectScripts.register("gong", { interact = recordPlacedObjectCall("gong.interact", "gong") })
-PlacedObjectScripts.register("vase", { breakPlacedObject = recordPlacedObjectCall("vase.breakPlacedObject", "vase") })
+PlacedObjectScripts.register("gong", { interact = recordInteractCall("gong.interact") })
+PlacedObjectScripts.register("vase", { breakPlacedObject = recordBreakCall("vase.breakPlacedObject") })
 PlacedObjectScripts.register("post", {})
 
 -- The requests are called with whatever a player's machine might send, so they are called through
@@ -95,6 +105,11 @@ local badIds: { any } = { 0, -1, 99, 1.5, 0 / 0, math.huge, -math.huge, "1", tru
 
 type PlacedObjectIds = { bell: number, gong: number, vase: number, post: number, rock: number }
 
+-- True if `stack` is `count` of the item `itemId`.
+local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): boolean
+	return stack ~= nil and stack.itemId == itemId and stack.count == count
+end
+
 -- How many placed objects stand on a world's plot.
 local function placedCount(world: World.World): number
 	local count = 0
@@ -106,8 +121,9 @@ end
 
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
 -- tile x, z is at x * 4 - 2, z * 4 - 2. A bell stands on tile 2, 2 (its middle is 6, 6), a gong on
--- 3, 2, a vase on 4, 2, a post on 2, 3 and a rock on 3, 3. Player 1 stands at 6, 0, 0, with a wand in
--- hotbar slot 1, 3 sticks in slot 2 and 5 feathers in slot 3.
+-- 3, 2, a vase on 4, 2, a post on 2, 3 and a rock on 3, 3. Player 1 stands at 6, 0, 0, within reach of
+-- all five, with a wand in hotbar slot 1, 3 sticks in slot 2, 5 feathers in slot 3 and 5 seeds in
+-- slot 4.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlacedObjectIds)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
 	local ids = {
@@ -121,27 +137,24 @@ local function newWorld(): (World.World, PlayerState.PlayerState, PlacedObjectId
 	Inventory.setStack(player.pack, 1, ItemStack.new("wand", 1))
 	Inventory.setStack(player.pack, 2, ItemStack.new("stick", 3))
 	Inventory.setStack(player.pack, 3, ItemStack.new("feather", 5))
+	Inventory.setStack(player.pack, 4, ItemStack.new("seed", 5))
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	return world, player, ids
 end
 
--- True if nothing a request might have changed by itself has changed: the pack, the screen and the
--- plot are as `newWorld` made them.
+-- True if nothing a request might have changed has changed: the pack, the screen and the plot are
+-- as `newWorld` made them.
 local function isAsNew(world: World.World, player: PlayerState.PlayerState): boolean
-	local wand, sticks, feathers =
-		Inventory.getStack(player.pack, 1), Inventory.getStack(player.pack, 2), Inventory.getStack(player.pack, 3)
-	return wand ~= nil
-		and wand.count == 1
-		and sticks ~= nil
-		and sticks.count == 3
-		and feathers ~= nil
-		and feathers.count == 5
+	return is(Inventory.getStack(player.pack, 1), "wand", 1)
+		and is(Inventory.getStack(player.pack, 2), "stick", 3)
+		and is(Inventory.getStack(player.pack, 3), "feather", 5)
+		and is(Inventory.getStack(player.pack, 4), "seed", 5)
 		and player.screen == nil
 		and placedCount(world) == 5
 		and next(world.groundItems.itemsById) == nil
 end
 
-do -- interactWithTile
+do -- interactWithTile: which script is called, and with what
 	local world, player = newWorld()
 	send("interactWithTile", world, player, 5, 1)
 	local made = takeCalls()
@@ -150,31 +163,21 @@ do -- interactWithTile
 		"interactWithTile: calls the interactWithTile of the script of the item in the selected hotbar slot, once"
 	)
 	check(
-		#made == 1
-			and made[1].world == world
-			and made[1].player == player
-			and made[1].first == 5
-			and made[1].second == 1,
-		"interactWithTile: with the world, the player and the tile"
+		#made == 1 and made[1].world == world and made[1].first == 5 and made[1].second == 1,
+		"interactWithTile: with the world and the tile"
 	)
-	check(isAsNew(world, player), "interactWithTile: and changes nothing itself")
+	check(isAsNew(world, player), "interactWithTile: and takes nothing when the script says it used none up")
 
 	send("interactWithTile", world, player, 2, 2)
 	check(#takeCalls() == 1, "interactWithTile: it does not ask whether anything stands on the tile")
 	send("interactWithTile", world, player, 2, 1)
 	check(#takeCalls() == 1, "interactWithTile: or whether a player stands on it")
-	World.setCharacterPosition(world, 1, at(500, 0, 500))
-	send("interactWithTile", world, player, 6, 6)
-	check(#takeCalls() == 1, "interactWithTile: or how far from the tile the player stands")
-	World.removeCharacter(world, 1)
-	send("interactWithTile", world, player, 6, 6)
-	check(#takeCalls() == 1, "interactWithTile: or whether the player has a character")
-	World.setCharacterPosition(world, 1, at(6, 0, 0))
-
 	for _, corner in { { 1, 1 }, { 6, 1 }, { 1, 6 }, { 6, 6 } } do
+		World.setCharacterPosition(world, 1, at(corner[1] * 4 - 2, 0, corner[2] * 4 - 2))
 		send("interactWithTile", world, player, corner[1], corner[2])
 	end
 	check(#takeCalls() == 4, "interactWithTile: every tile of the plot is one, out to its corners")
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	for _, bad in { 0, 7, -1, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
 		send("interactWithTile", world, player, bad, 1)
 		send("interactWithTile", world, player, 1, bad)
@@ -204,6 +207,64 @@ do -- interactWithTile
 	PlayerState.openScreen(player)
 	send("interactWithTile", world, player, 5, 1)
 	check(#takeCalls() == 1, "interactWithTile: it does not ask whether the player has a screen open")
+end
+
+do -- interactWithTile: how far the player stands
+	local world, player = newWorld()
+	-- The middle of tile 6, 1 is at 22, 2. Standing at 6, 2 it is exactly 16 studs away.
+	World.setCharacterPosition(world, 1, at(5.99, 0, 2))
+	send("interactWithTile", world, player, 6, 1)
+	check(#takeCalls() == 0, "interactWithTile: does nothing for a tile just beyond the character's reach")
+	World.setCharacterPosition(world, 1, at(6, 0, 2))
+	send("interactWithTile", world, player, 6, 1)
+	check(#takeCalls() == 1, "interactWithTile: calls the script for a tile exactly at reach")
+	World.removeCharacter(world, 1)
+	send("interactWithTile", world, player, 3, 1)
+	check(#takeCalls() == 0, "interactWithTile: does nothing for a player with no character")
+end
+
+do -- interactWithTile: what the script says it used up leaves the selected slot
+	local world, player = newWorld()
+	Hotbar.selectSlot(player.hotbar, 4)
+	Inventory.setStack(player.pack, 5, ItemStack.new("seed", 7))
+	seedsUsedUp = 1
+	send("interactWithTile", world, player, 5, 1)
+	check(
+		#takeCalls() == 1 and is(Inventory.getStack(player.pack, 4), "seed", 4),
+		"interactWithTile: one item leaves the selected slot when the script says it used one up"
+	)
+	seedsUsedUp = 2
+	send("interactWithTile", world, player, 5, 1)
+	check(is(Inventory.getStack(player.pack, 4), "seed", 2), "interactWithTile: and two when it says two")
+	seedsUsedUp = 0
+	send("interactWithTile", world, player, 5, 1)
+	check(
+		#takeCalls() == 2 and is(Inventory.getStack(player.pack, 4), "seed", 2),
+		"interactWithTile: and none when it says none"
+	)
+	check(
+		is(Inventory.getStack(player.pack, 5), "seed", 7) and is(Inventory.getStack(player.pack, 1), "wand", 1),
+		"interactWithTile: they are taken from the selected slot and no other"
+	)
+
+	seedsUsedUp = 1
+	World.setCharacterPosition(world, 1, at(500, 0, 500))
+	send("interactWithTile", world, player, 5, 1)
+	check(
+		#takeCalls() == 0 and is(Inventory.getStack(player.pack, 4), "seed", 2),
+		"interactWithTile: nothing is taken when the script is not called"
+	)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
+
+	seedsUsedUp = 5
+	send("interactWithTile", world, player, 5, 1)
+	check(
+		Inventory.getStack(player.pack, 4) == nil and is(Inventory.getStack(player.pack, 5), "seed", 7),
+		"interactWithTile: no more is taken than the selected slot holds"
+	)
+	send("interactWithTile", world, player, 5, 1)
+	check(#takeCalls() == 1, "interactWithTile: and with the slot emptied, the script is not called again")
+	seedsUsedUp = 1
 end
 
 do -- interactWithPlacedObject
@@ -237,20 +298,21 @@ do -- interactWithPlacedObject
 	check(#takeCalls() == 0, "interactWithPlacedObject: does nothing for an id that is not a placed object's")
 	check(isAsNew(world, player), "interactWithPlacedObject: and changes nothing itself")
 
-	World.setCharacterPosition(world, 1, at(500, 0, 500))
+	-- The middle of the bell's tile is at 6, 6. Standing at 6, 22 it is exactly 16 studs away.
+	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
 	send("interactWithPlacedObject", world, player, ids.bell)
-	check(
-		#takeCalls() == 1,
-		"interactWithPlacedObject: it does not ask how far from the placed object the player stands"
-	)
+	check(#takeCalls() == 0, "interactWithPlacedObject: not from beyond reach")
+	World.setCharacterPosition(world, 1, at(6, 0, 22))
+	send("interactWithPlacedObject", world, player, ids.bell)
+	check(#takeCalls() == 1, "interactWithPlacedObject: from exactly at reach")
 	World.removeCharacter(world, 1)
 	send("interactWithPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "interactWithPlacedObject: or whether the player has a character")
+	check(#takeCalls() == 0, "interactWithPlacedObject: not by a player with no character")
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	PlayerState.openScreen(player)
 	send("interactWithPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "interactWithPlacedObject: or whether the player has a screen open")
+	check(#takeCalls() == 1, "interactWithPlacedObject: it does not ask whether the player has a screen open")
 	Hotbar.selectSlot(player.hotbar, 9)
 	send("interactWithPlacedObject", world, player, ids.bell)
 	check(#takeCalls() == 1, "interactWithPlacedObject: or what is in their selected hotbar slot")
@@ -269,8 +331,8 @@ do -- breakPlacedObject
 		"breakPlacedObject: calls the breakPlacedObject of the script of the placed object's kind, once"
 	)
 	check(
-		#made == 1 and made[1].world == world and made[1].player == player and made[1].first == ids.bell,
-		"breakPlacedObject: with the world, the player and the placed object's id"
+		#made == 1 and made[1].world == world and made[1].player == nil and made[1].first == ids.bell,
+		"breakPlacedObject: with the world and the placed object's id, and no player"
 	)
 	check(
 		world.plot.placedObjectsById[ids.bell] ~= nil and isAsNew(world, player),
@@ -295,24 +357,27 @@ do -- breakPlacedObject
 	check(#takeCalls() == 0, "breakPlacedObject: does nothing for an id that is not a placed object's")
 	check(isAsNew(world, player), "breakPlacedObject: and none of those raises an error or changes anything")
 
-	World.setCharacterPosition(world, 1, at(500, 0, 500))
+	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
 	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "breakPlacedObject: it does not ask how far from the placed object the player stands")
+	check(#takeCalls() == 0, "breakPlacedObject: not from beyond reach")
+	World.setCharacterPosition(world, 1, at(6, 0, 22))
+	send("breakPlacedObject", world, player, ids.bell)
+	check(#takeCalls() == 1, "breakPlacedObject: from exactly at reach")
 	World.removeCharacter(world, 1)
 	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "breakPlacedObject: or whether the player has a character")
+	check(#takeCalls() == 0, "breakPlacedObject: not by a player with no character")
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	PlayerState.openScreen(player)
 	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "breakPlacedObject: or whether the player has a screen open")
+	check(#takeCalls() == 1, "breakPlacedObject: it does not ask whether the player has a screen open")
 
 	Plot.removePlacedObject(world.plot, ids.bell)
 	send("breakPlacedObject", world, player, ids.bell)
 	check(#takeCalls() == 0, "breakPlacedObject: not for a placed object that has been taken off the plot")
 end
 
-do -- whatever a player's machine sends, nothing raises an error, and a script is called only as allowed
+do -- whatever a player's machine sends, nothing raises an error, and a script is called only as the request says
 	local seed = 4121
 	local function random(limit: number): number
 		seed = (seed * 16807) % 2147483647
@@ -352,14 +417,41 @@ do -- whatever a player's machine sends, nothing raises an error, and a script i
 	end
 	table.sort(names)
 
+	-- True if a call was one that the request may make: of the script of the item the player who
+	-- asked held, for a tile the plot has, or of the script of the kind of a placed object that
+	-- stands there, for that player, and in both cases within that player's reach.
+	local function isAllowed(
+		call: Call,
+		world: World.World,
+		player: PlayerState.PlayerState,
+		held: ItemStack.ItemStack?
+	): boolean
+		local second = call.second
+		if call.world ~= world then
+			return false
+		elseif second ~= nil then
+			return held ~= nil
+				and call.name == held.itemId .. ".interactWithTile"
+				and Plot.hasTile(world.plot, call.first, second)
+				and World.canReachTile(world, player, call.first, second)
+		end
+		local placedObject = world.plot.placedObjectsById[call.first]
+		local isInteract = string.find(call.name, ".interact", 1, true) ~= nil
+		return call.player == (if isInteract then player else nil)
+			and placedObject ~= nil
+			and string.find(call.name, placedObject.kindId .. ".", 1, true) == 1
+			and World.canReachTile(world, player, placedObject.tileX, placedObject.tileZ)
+	end
+
 	local errors, firstError = 0, ""
 	local callCounts: { [string]: number } = {}
-	local allAllowed, allAsNew = true, true
+	local allAllowed, nothingPlaced = true, true
 	for _ = 1, 40 do
 		local world, firstPlayer = newWorld()
 		local secondPlayer = World.addPlayer(world, 2)
 		World.setCharacterPosition(world, 2, at(10, 0, 10))
 		Inventory.setStack(secondPlayer.pack, 4, ItemStack.new("wand", 1))
+		Inventory.setStack(secondPlayer.pack, 5, ItemStack.new("seed", 16))
 		local players = { firstPlayer, secondPlayer }
 		for _ = 1, 300 do
 			local playerId = random(2)
@@ -379,6 +471,7 @@ do -- whatever a player's machine sends, nothing raises an error, and a script i
 			elseif random(5) == 1 then
 				World.closeScreen(world, player)
 			end
+			local held = Hotbar.getSelectedStack(player.hotbar)
 			local name = names[random(#names)]
 			local ok, result = pcall(send, name, world, player, argument(), argument(), argument())
 			if not ok then
@@ -387,20 +480,21 @@ do -- whatever a player's machine sends, nothing raises an error, and a script i
 			end
 			for _, call in takeCalls() do
 				callCounts[call.name] = (callCounts[call.name] or 0) + 1
-				allAllowed = allAllowed and call.allowed and call.world == world and call.player == player
+				allAllowed = allAllowed and isAllowed(call, world, player, held)
 			end
-			allAsNew = allAsNew and placedCount(world) == 5 and next(world.groundItems.itemsById) == nil
+			nothingPlaced = nothingPlaced and placedCount(world) == 5 and next(world.groundItems.itemsById) == nil
 		end
 	end
 	check(errors == 0, "random run: none of 12,000 requests raises an error (first: " .. firstError .. ")")
 	check(
 		allAllowed,
-		"random run: a script is called only for the player who asked, with a tile or a placed object that is there"
+		"random run: a script is called only for what the player who asked holds or reaches, on a tile or a placed object that is there"
 	)
-	check(allAsNew, "random run: and no request places or removes anything itself")
+	check(nothingPlaced, "random run: and no request places or removes anything itself")
 	for _, name in
 		{
 			"wand.interactWithTile",
+			"seed.interactWithTile",
 			"bell.interact",
 			"bell.breakPlacedObject",
 			"gong.interact",

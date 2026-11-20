@@ -1,11 +1,8 @@
 --!strict
---- The crate item: an item that a player stands on a tile of the plot as a crate.
+--- The crate item: an item that is stood on a tile of the plot as a crate.
 ---
---- `interactWithTile` is what happens when a player interacts with a tile while the crate item is
---- in their selected hotbar slot.
+--- `interactWithTile` is what happens when someone holding the crate item interacts with a tile.
 local Crate = require("./Crate")
-local Hotbar = require("../inventory/Hotbar")
-local PlayerState = require("../players/PlayerState")
 local World = require("../world/World")
 
 local CrateItem = {}
@@ -13,18 +10,17 @@ local CrateItem = {}
 --- The id of the crate item.
 CrateItem.ITEM_ID = "crate"
 
---- A player interacts with the tile `tileX`, `tileZ` of the world's plot. If
---- `World.canReachTile` says that the player's character reaches the tile, and
---- `World.canPlaceObject` says that an object can be placed on it, a crate is placed on the tile
---- as `Crate.place` does, and one item is taken out of the player's selected hotbar slot.
---- Otherwise nothing happens.
---- Note: it is for a player whose selected hotbar slot holds the crate item. It does not look at
---- what that slot holds.
-function CrateItem.interactWithTile(world: World.World, player: PlayerState.PlayerState, tileX: number, tileZ: number)
-	if World.canReachTile(world, player, tileX, tileZ) and World.canPlaceObject(world, tileX, tileZ) then
-		Crate.place(world, tileX, tileZ)
-		Hotbar.takeFromSelectedSlot(player.hotbar, 1)
+--- Someone holding the crate item interacts with the tile `tileX`, `tileZ` of the world's plot. If
+--- `World.canPlaceObject` says that an object can be placed on the tile, a crate is placed on it as
+--- `Crate.place` does, and 1 is returned: one crate item was used up. Otherwise nothing happens, and
+--- 0 is returned.
+--- Note: it takes the item from nowhere. Whoever held it takes away what was used up.
+function CrateItem.interactWithTile(world: World.World, tileX: number, tileZ: number): number
+	if not World.canPlaceObject(world, tileX, tileZ) then
+		return 0
 	end
+	Crate.place(world, tileX, tileZ)
+	return 1
 end
 
 return CrateItem

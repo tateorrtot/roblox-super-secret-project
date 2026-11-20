@@ -7,13 +7,14 @@ As of the end of 2026-11-20. This file holds only what is true now. What is over
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | On the branch `placed-objects`, cut from `dropped-items`, which was cut from `first-pieces`. None is merged, and nothing is pushed |
-| **Checked** | `lune run tools/check` passes, with 2,244 test checks. The play test passes 93 of 93 in Studio, on the last code commit |
+| **Checked** | `lune run tools/check` passes, with 2,244 test checks. The play test passed 93 of 93 in Studio on the last commit that touched the server's or the client's scripts. The rules have changed since, and it was not run again |
 | **Not checked** | A phone. A gamepad. Two players. A real server. How a thrown item looks from another player's machine |
 | **Waiting on the user** | To read the code. Then their feedback on the game. The open questions are in `asked-of-the-user.md` |
 | **Approved, not built** | Prediction on the player's machine (`next.md`) |
 
 ## With the user
-- **They have reviewed the code ten times,** nine of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **They have reviewed the code eleven times,** ten of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **The eleventh was of one script, `CrateItem`:** "who said an item was always going to be tied to a player. Or a hotbar?" It now knows neither. In the same message they proposed that what a character holds be a Roblox `Tool`, apart from the items; asked who said tiles were flat; and asked to be shown what moving a placed object's things out of `World` would look like. Claude showed it. None of the three is built, and each waits on their word (`asked-of-the-user.md`).
 - **The tenth was about how Claude breaks a problem up:** "Systems shouldnt know about eachother. Dont pull out abstractions. ... You compose simple things and systems together and use glue code." It began with a table Claude had kept, `PlaceableItems`, which let an item in the hand do one thing only.
 - **What was built in answer** is in `history/2026-11-20-scripts-and-input.md`: a script for each item and for each kind of placed object, the game's own things in a folder that no system requires, and the clicks on the world on Roblox's input actions. They have read none of it. Its shared machinery was written without being shown first, on their "Just keep it generic" and "Yes that sounds good": the names and shapes that are Claude's are in `claudes-calls.md`.
 - **What they said to leave is left:** `World` stays one big piece of glue, and `Station` stays a furnace until a second process shows what the kinds share. A reviewer who applied their own test found `World` to be the largest thing still fused (below).
@@ -63,6 +64,10 @@ Found by the reviewer who applied the user's test, and left. Each is a place whe
 - **What a player's machine is told has a field for a station's progress,** and the inventory screen draws the furnace's gauges for any other inventory of three slots. A second kind of screen needs the screens to be the kind's own.
 - **The server's `PlotParts` makes any station that burns glow.**
 - **An item's script is told of one thing: a bare tile interacted with.** An item used on the open air, or on a placed object, needs a new request and a new function of the script. That is one change for each new sort of target, and none for each new item.
+- **An item's script can say only how many of itself were used up.** A bucket that fills, or a tool that wears, needs more.
+- **How far a character reaches is one number in the request, for every thing.**
+- **The two ghosts on the player's machine each ask reach for themselves,** while the server asks it once in the request. `Main.client` already works out what is in reach, for the outline.
+- **A tile is two loose numbers, `tileX` and `tileZ`, in twelve files,** and a placed object is a cube on one tile. The user asked who said tiles were flat: Claude did.
 - **`GroundItems.moveNearbyStacksToInventory` joins two systems in one function,** so `groundItems` requires `inventory`. Picking up belongs in the glue.
 - **`PlayerState` is a pack, a hotbar, an open screen and a character's position in one record.**
 - **`PlaceholderWorld`, on the server, names the crate, the stove and five items.** It goes when there is a real map.

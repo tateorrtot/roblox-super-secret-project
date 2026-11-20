@@ -46,10 +46,10 @@ THINGS: the game's own, and the one place that names them
 
 ## How an interaction reaches the thing's own script
 1. On the player's machine, Roblox fires the input action `Interact`. `Main.client.luau` asks `PlotPointer` what the pointer is over, and sends `interactWithPlacedObject` or `interactWithTile`. A click of `Break` sends `breakPlacedObject`.
-2. `PlotRequests` checks what was sent, and nothing else.
-   - For a placed object: that one with that id stands on the plot. It asks `PlacedObjectScripts` for the script of the object's kind, and calls its `interact` or `breakPlacedObject`.
-   - For a tile: that the plot has it. It asks `ItemScripts` for the script of the item in the selected hotbar slot, and calls its `interactWithTile`.
-3. The script does the rest, by calling systems. `CrateItem.interactWithTile` asks whether the character reaches the tile and whether an object can stand there, then calls `Crate.place` and takes one item from the slot. `Crate.breakPlacedObject` asks whether the character reaches the crate, takes every stack out of the crate's inventory, takes the crate off the plot, and has the world throw a crate item and those stacks from its tile.
+2. `PlotRequests` checks what was sent and what is about the player: that they have a character, and that it reaches the tile or the placed object.
+   - For a placed object: it asks `PlacedObjectScripts` for the script of the object's kind, and calls its `interact` or `breakPlacedObject`.
+   - For a tile: it asks `ItemScripts` for the script of the item in the selected hotbar slot, calls its `interactWithTile`, and takes out of that slot as many items as the script says were used up.
+3. The script does the rest, by calling systems. `CrateItem.interactWithTile` asks whether an object can stand on the tile, calls `Crate.place`, and returns 1. It knows no player and no hotbar. `Crate.breakPlacedObject` takes every stack out of the crate's inventory, takes the crate off the plot, and has the world throw a crate item and those stacks from its tile.
 4. The plot fires `placedObjectRemoved`. The world closes the screens open on the crate, and drops the inventory it kept for it.
 
 Nothing happens for a thing with no script, or whose script lacks the function. A request, a registry and a system each know nothing of crates.

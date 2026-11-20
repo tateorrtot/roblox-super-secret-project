@@ -335,7 +335,8 @@ end
 --- Returns `true` if an object can be placed on the tile `tileX`, `tileZ` of the plot:
 --- `Plot.canPlaceObject` says the plot can take one there, and no player's character stands on the
 --- tile.
---- Note: `Plot.placeObject` does not ask this. A request from a player's machine does.
+--- Note: `Plot.placeObject` does not ask this. Whoever places an object asks it first, if a
+--- player standing on the tile should stop them.
 function World.canPlaceObject(world: World, tileX: number, tileZ: number): boolean
 	return Plot.canPlaceObject(world.plot, tileX, tileZ) and not World.isTileStoodOn(world, tileX, tileZ)
 end

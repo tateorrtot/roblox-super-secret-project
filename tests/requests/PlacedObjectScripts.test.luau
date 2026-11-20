@@ -13,7 +13,9 @@ type PlacedObjectScript = PlacedObjectScripts.PlacedObjectScript
 
 local function doNothing(_world: World.World, _player: PlayerState.PlayerState, _placedObjectId: number) end
 
-local bell: PlacedObjectScript = { interact = doNothing, breakPlacedObject = doNothing }
+local function breakNothing(_world: World.World, _placedObjectId: number) end
+
+local bell: PlacedObjectScript = { interact = doNothing, breakPlacedObject = breakNothing }
 local gong: PlacedObjectScript = { interact = doNothing }
 local post: PlacedObjectScript = {}
 

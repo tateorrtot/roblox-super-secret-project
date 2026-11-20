@@ -138,16 +138,12 @@ do -- interact
 		"interact: and what was carried on the old screen is in the player's pack"
 	)
 
-	-- The middle of the crate's tile is at 6, 6. Standing at 6, 22 it is exactly 16 studs away.
 	World.closeScreen(world, player)
-	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
-	Crate.interact(world, player, crateId)
-	check(player.screen == nil, "interact: nothing happens for a player who stands just beyond reach")
-	World.setCharacterPosition(world, 1, at(6, 0, 22))
+	World.setCharacterPosition(world, 1, at(500, 0, 500))
 	Crate.interact(world, player, crateId)
 	check(
 		World.getOpenedPlacedObjectId(world, player) == crateId,
-		"interact: the screen opens for a player who stands exactly at reach"
+		"interact: it does not ask how far from the crate the player stands"
 	)
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 
@@ -160,9 +156,14 @@ do -- interact
 	)
 
 	local second = World.addPlayer(world, 2)
-	check(Check.errorFrom(function()
-		Crate.interact(world, second, crateId)
-	end) == nil and second.screen == nil, "interact: nothing happens for a player with no character")
+	check(
+		string.find(Check.errorFrom(function()
+			Crate.interact(world, second, crateId)
+		end) or "", "a screen can be opened only for a player who has a character", 1, true)
+				~= nil
+			and second.screen == nil,
+		"interact: fails for a player with no character, saying so"
+	)
 	World.setCharacterPosition(world, 2, at(6, 0, 0))
 	Crate.interact(world, second, otherCrateId)
 	check(
@@ -182,23 +183,11 @@ do -- breakPlacedObject
 	Crate.interact(world, watcher, crateId)
 	InventoryScreen.pickUpFromSlot(watcher.screen :: InventoryScreen.InventoryScreen, "other", 3, 2)
 
-	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
-	Crate.breakPlacedObject(world, breaker, crateId)
-	World.removeCharacter(world, 1)
-	Crate.breakPlacedObject(world, breaker, crateId)
-	check(
-		world.plot.placedObjectsById[crateId] ~= nil
-			and groundItemCount(world) == 0
-			and Inventory.countItems(inventory, "fish") == 3
-			and watcher.screen ~= nil,
-		"breakPlacedObject: nothing happens for a player just beyond reach, or with no character"
-	)
-	World.setCharacterPosition(world, 1, at(6, 0, 22))
-
-	Crate.breakPlacedObject(world, breaker, crateId)
+	World.setCharacterPosition(world, 1, at(500, 0, 500))
+	Crate.breakPlacedObject(world, crateId)
 	check(
 		world.plot.placedObjectsById[crateId] == nil,
-		"breakPlacedObject: the crate is off the plot, broken from exactly at reach"
+		"breakPlacedObject: the crate is off the plot, though no player stands near it"
 	)
 	check(Plot.canPlaceObject(world.plot, 2, 2), "breakPlacedObject: and its tile holds nothing")
 	check(
@@ -255,8 +244,8 @@ do -- breakPlacedObject
 	)
 
 	local emptyCrateId = Crate.place(world, 4, 4)
-	World.setCharacterPosition(world, 1, at(14, 0, 6))
-	Crate.breakPlacedObject(world, breaker, emptyCrateId)
+	World.removeCharacter(world, 1)
+	Crate.breakPlacedObject(world, emptyCrateId)
 	check(
 		groundItemCount(world) == 4 and is(ground[4].stack, Crate.ITEM_ID_WHEN_BROKEN, 1),
 		"breakPlacedObject: a crate that holds nothing leaves one of the item ITEM_ID_WHEN_BROKEN and no more"
@@ -277,7 +266,7 @@ do -- a placed object of the crate's kind that `place` did not place
 	check(player.screen == nil, "interact: and opens no screen for it")
 	check(
 		Check.raises(message, function()
-			Crate.breakPlacedObject(world, player, bareId)
+			Crate.breakPlacedObject(world, bareId)
 		end),
 		"breakPlacedObject: fails for a placed object of the crate's kind that place did not place"
 	)

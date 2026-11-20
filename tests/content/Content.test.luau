@@ -186,6 +186,11 @@ do -- the crate item and the crate, through the requests
 	)
 	check(Inventory.getStack(player.pack, 1) == nil, "interactWithTile: and the crate item has left the slot")
 	check(inWorld(world, "crate") == 3, "interactWithTile: and no crate was made or lost")
+	carryOut(world, 2, "interactWithTile", 1, 1)
+	check(
+		world.plot.nextId == crateId + 1 and is(Inventory.getStack(world.players[2].pack, 1), "crate", 1),
+		"interactWithTile: on a tile that is taken nothing is placed, and the crate item stays in the slot"
+	)
 
 	carryOut(world, 1, "interactWithPlacedObject", crateId)
 	local screen = player.screen

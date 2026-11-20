@@ -6,7 +6,10 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - **Whether the keys move onto Roblox's input actions next, before prediction** (`next.md`). Asked on 2026-11-20.
 - **Whether the scripts read right to them:** `ItemScripts` and `PlacedObjectScripts`, and the game's things in `src/shared/content`. The names and shapes that are Claude's are in `claudes-calls.md`, with the four names a cold reader doubted in `history/2026-11-20-scripts-and-input.md`.
-- **Whether `World` should now stop keeping a store for each sort of thing a placed object can be given.** They said to leave `World` as one piece of glue. A reviewer applying their tenth review found it the largest thing still fused, and the shape that would mend it is in `docs/game/placed-objects.md`.
+- **Whether to build what Claude showed them for `World` on 2026-11-20:** a kind makes its own object with what it has on it (a crate with its inventory, a stove with its station), the plot holds it, and `World` drops its two stores. They asked to be shown it: "Is this to debloat World as our big singleton?"
+- **Whether to try a Roblox `Tool` for what the character holds,** as they proposed. The first step is a short measurement in Studio of what Roblox's documentation leaves unsaid (`docs/roblox/input.md`).
+- **Whether tiles should be three-dimensional,** and if so whether now. They asked who said tiles were flat.
+- **Whether `Crate` should be `CratePlacedObject`,** to pair with `CrateItem`. They asked whether `CrateItem` is the best name.
 - **A name for `InventoryControls`.** `UseAndHit` went when the clicks on the world moved to Roblox's input actions, and the same may be true of this one when the keys move.
 - **Which of the words that are neither Roblox's nor Godot's they want changed:** `put` and `take`, `advance` and `advanceTo`, `validate`, `pack` where Roblox says `Backpack`, and `spawn`, which in Roblox means something else. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
 - **Whether they would rather read the code in the method form** (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).

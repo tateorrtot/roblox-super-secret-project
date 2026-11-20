@@ -5,7 +5,6 @@
 local Check = require("../Check")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemScripts = require("../../src/shared/requests/ItemScripts")
-local PlayerState = require("../../src/shared/players/PlayerState")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -17,9 +16,11 @@ ItemRegistry.register({ id = "stick", stackSize = 16 })
 ItemRegistry.register({ id = "big_wand", stackSize = 1 })
 ItemRegistry.register({ id = "feather", stackSize = 16 })
 
-local function doNothing(_world: World.World, _player: PlayerState.PlayerState, _tileX: number, _tileZ: number) end
+local function useNoneUp(_world: World.World, _tileX: number, _tileZ: number): number
+	return 0
+end
 
-local wand: ItemScript = { interactWithTile = doNothing }
+local wand: ItemScript = { interactWithTile = useNoneUp }
 local stick: ItemScript = {}
 
 do -- an empty registry

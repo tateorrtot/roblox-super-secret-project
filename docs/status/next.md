@@ -5,10 +5,15 @@ The work that is approved or owed, in the order Claude means to do it. What is o
 On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
 ## 0. If the user says so: `World` stops keeping what a placed object is given
-Asked on 2026-11-20 (`asked-of-the-user.md`). They had said to leave `World` as one piece of glue. A reviewer applying their tenth review found it the largest thing still fused: a store for inventories, a store for stations, and a loop that advances every station.
-- **What it should leave:** `World` knowing nothing of inventories or stations. A kind's own module keeps what its objects have, hears from the plot that one was taken off, and hears that time passed.
-- **It is shared machinery,** so its shape is shown to the user before it is written. There are choices in it: where a kind keeps what belongs to one object, who tells a kind that time passed, and how a kind's screen reaches the player's machine.
-- The same change is what lets the stove's glow and the furnace's gauges become the stove's own (`docs/game/placed-objects.md`).
+Shown to them on 2026-11-20, when they asked to see it (`asked-of-the-user.md`). They had said to leave `World` as one piece of glue. A reviewer applying their tenth review found it the largest thing still fused: a store for inventories, a store for stations, and a loop that advances every station.
+- **Step 1, what was shown:** a kind's `place` makes the object itself, with what it has on it, and hands it to the plot. The plot reads only its kind and its tile. `World` loses its two stores, the two functions that fill them, and the two lines that empty them.
+- **Step 2, time:** a kind's script may have a third function, called when time passes, as a Godot node may have `_process`. `World` says that time passed and no longer knows what a station is. Who calls the function is the one choice left in it.
+- **Later, with screens:** what a player's machine is told of a stove, and the glow, become the stove's own.
+
+## 0b. If the user says so: what a character holds is a Roblox `Tool`
+Their proposal of 2026-11-20. Items stay a system of their own; the held tool is another; glue says which tool a selected stack puts in the hand.
+- **First, measure in Studio** the five things Roblox's documentation leaves unsaid (`docs/roblox/input.md`). It takes the mouse for a few minutes.
+- It would give a thing shown in the hand to every player, and `Activated` on a mouse, a touch screen and a gamepad, which the game's own input does not cover.
 
 ## 1. The keys onto Roblox's input actions
 The clicks on the world are input actions; E, Q, 1 to 9 and the mouse on the inventory screen still go through `UserInputService` (`docs/roblox/input.md`).

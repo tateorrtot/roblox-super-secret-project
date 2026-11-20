@@ -63,7 +63,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `move` | Takes items from where they are to somewhere else | How many items moved |
 | `spawn` | Makes a thing appear in the world at a position | Its id |
 | `place` | Stands an object on a tile of a plot | The placed object's id |
-| `interact`, `break` | A player does it to a thing. What follows is for that thing's script to say: it may do nothing at all | Nothing |
+| `interact`, `break` | Someone does it to a thing. What follows is for that thing's script to say: it may do nothing at all | Nothing, but for an item's script, which returns how many of the item were used up |
 | `merge` | Makes things of one kind into one | Given two stacks, the stack that holds both, and then what did not fit. Given every ground item, nothing |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing. `can` with an action's name asks whether that action could be carried out now: `canPlaceObject` before `placeObject` | `true` or `false` |

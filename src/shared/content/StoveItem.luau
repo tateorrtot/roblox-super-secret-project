@@ -1,10 +1,7 @@
 --!strict
---- The stove item: an item that a player stands on a tile of the plot as a stove.
+--- The stove item: an item that is stood on a tile of the plot as a stove.
 ---
---- `interactWithTile` is what happens when a player interacts with a tile while the stove item is
---- in their selected hotbar slot.
-local Hotbar = require("../inventory/Hotbar")
-local PlayerState = require("../players/PlayerState")
+--- `interactWithTile` is what happens when someone holding the stove item interacts with a tile.
 local Stove = require("./Stove")
 local World = require("../world/World")
 
@@ -13,18 +10,17 @@ local StoveItem = {}
 --- The id of the stove item.
 StoveItem.ITEM_ID = "stove"
 
---- A player interacts with the tile `tileX`, `tileZ` of the world's plot. If
---- `World.canReachTile` says that the player's character reaches the tile, and
---- `World.canPlaceObject` says that an object can be placed on it, a stove is placed on the tile
---- as `Stove.place` does, and one item is taken out of the player's selected hotbar slot.
---- Otherwise nothing happens.
---- Note: it is for a player whose selected hotbar slot holds the stove item. It does not look at
---- what that slot holds.
-function StoveItem.interactWithTile(world: World.World, player: PlayerState.PlayerState, tileX: number, tileZ: number)
-	if World.canReachTile(world, player, tileX, tileZ) and World.canPlaceObject(world, tileX, tileZ) then
-		Stove.place(world, tileX, tileZ)
-		Hotbar.takeFromSelectedSlot(player.hotbar, 1)
+--- Someone holding the stove item interacts with the tile `tileX`, `tileZ` of the world's plot. If
+--- `World.canPlaceObject` says that an object can be placed on the tile, a stove is placed on it as
+--- `Stove.place` does, and 1 is returned: one stove item was used up. Otherwise nothing happens, and
+--- 0 is returned.
+--- Note: it takes the item from nowhere. Whoever held it takes away what was used up.
+function StoveItem.interactWithTile(world: World.World, tileX: number, tileZ: number): number
+	if not World.canPlaceObject(world, tileX, tileZ) then
+		return 0
 	end
+	Stove.place(world, tileX, tileZ)
+	return 1
 end
 
 return StoveItem

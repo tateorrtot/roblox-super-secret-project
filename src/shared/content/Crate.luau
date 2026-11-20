@@ -2,10 +2,10 @@
 --- A crate: a placed object that holds stacks of items.
 ---
 --- `place` stands a crate on a tile of the world's plot and gives it an inventory. `interact`
---- and `breakPlacedObject` are what happens when a player interacts with a crate and breaks one:
---- if the player's character reaches it, the first opens that inventory on the player's screen,
---- and the second takes the crate off the plot and throws a crate item and everything that was in
---- the crate onto the ground.
+--- and `breakPlacedObject` are what happens when a player interacts with a crate, and when one is
+--- broken:
+--- the first opens that inventory on the player's screen, and the second takes the crate off the
+--- plot and throws a crate item and everything that was in the crate onto the ground.
 ---
 --- Note: `interact` and `breakPlacedObject` are for a crate that `place` placed. A placed object
 --- of the crate's kind that was put on the plot any other way has no inventory, and both fail
@@ -41,32 +41,19 @@ local function getInventory(world: World.World, placedObjectId: number): Invento
 		or error(`the placed object {placedObjectId} is not a crate that Crate.place placed`, 3)
 end
 
-local function canPlayerReach(world: World.World, player: PlayerState.PlayerState, placedObjectId: number): boolean
-	local placedObject = world.plot.placedObjectsById[placedObjectId]
-	return World.canReachTile(world, player, placedObject.tileX, placedObject.tileZ)
-end
-
---- A player interacts with the crate that has the id `placedObjectId`. If `World.canReachTile`
---- says that the player's character reaches the crate's tile, the crate's inventory opens on the
---- player's screen, beside their pack, in place of any screen they had open, and every slot of it
---- takes every item. Otherwise nothing happens.
+--- A player interacts with the crate that has the id `placedObjectId`. The crate's inventory
+--- opens on the player's screen, beside their pack, in place of any screen they had open, and
+--- every slot of it takes every item. Fails if the player has no character.
 function Crate.interact(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
-	local inventory = getInventory(world, placedObjectId)
-	if canPlayerReach(world, player, placedObjectId) then
-		World.openPlacedObjectScreen(world, player, placedObjectId, inventory)
-	end
+	World.openPlacedObjectScreen(world, player, placedObjectId, getInventory(world, placedObjectId))
 end
 
---- A player breaks the crate that has the id `placedObjectId`. If `World.canReachTile` says that
---- the player's character reaches the crate's tile, the crate is taken off the plot, which closes
---- every screen that was open on it. One of the item `ITEM_ID_WHEN_BROKEN`, and then each stack
---- that was in the crate from the lowest slot up, is thrown onto the ground from the middle of the
---- crate's tile, upwards and outwards, each a different way. Otherwise nothing happens.
-function Crate.breakPlacedObject(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
+--- The crate that has the id `placedObjectId` is broken. The crate is taken off the plot,
+--- which closes every screen that was open on it. One of the item `ITEM_ID_WHEN_BROKEN`, and then
+--- each stack that was in the crate from the lowest slot up, is thrown onto the ground from the
+--- middle of the crate's tile, upwards and outwards, each a different way.
+function Crate.breakPlacedObject(world: World.World, placedObjectId: number)
 	local inventory = getInventory(world, placedObjectId)
-	if not canPlayerReach(world, player, placedObjectId) then
-		return
-	end
 	local placedObject = world.plot.placedObjectsById[placedObjectId]
 	local stacks = Inventory.takeEveryStack(inventory)
 	table.insert(stacks, 1, ItemStack.new(Crate.ITEM_ID_WHEN_BROKEN, 1))
