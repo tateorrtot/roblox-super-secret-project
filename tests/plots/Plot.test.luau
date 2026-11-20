@@ -46,7 +46,7 @@ end
 do -- placing
 	local plot = Plot.new(4, 4)
 	check(Plot.canPlaceObject(plot, 2, 3), "canPlaceObject: true for a tile that holds nothing")
-	check(not Plot.isTileTaken(plot, 2, 3), "isTileTaken: false for a tile that holds nothing")
+	check(Plot.isTileTaken(plot, 2, 3) == false, "isTileTaken: false, and not nil, for a tile that holds nothing")
 	local stove = Plot.placeObject(plot, "stove", 2, 3)
 	check(Plot.isTileTaken(plot, 2, 3), "isTileTaken: true once an object stands on the tile")
 	check(not Plot.isTileTaken(plot, 3, 2), "isTileTaken: x and z are not swapped")

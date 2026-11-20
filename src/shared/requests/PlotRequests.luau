@@ -31,8 +31,9 @@ end
 --- row for the item in their selected hotbar slot, an object of the row's kind is placed on the
 --- tile, as that kind's own `place` does, and one of the item is taken out of the slot. Does
 --- nothing if that slot holds nothing, if its item places nothing, if they have a screen open, if
---- the plot has no such tile, if they stand more than `World.CHARACTER_REACH` from it, if a player
---- stands on it, or if something already stands on it.
+--- the plot has no such tile, if they have no character, if they stand more than
+--- `World.CHARACTER_REACH` from the tile, if a player stands on it, or if something already stands
+--- on it.
 function PlotRequests.interactWithTile(world: World, player: PlayerState, tileX: unknown, tileZ: unknown)
 	local selected = Hotbar.getSelectedStack(player.hotbar)
 	local kindId = if selected ~= nil then PlaceableItems[selected.itemId] else nil
@@ -47,8 +48,8 @@ function PlotRequests.interactWithTile(world: World, player: PlayerState, tileX:
 end
 
 --- The player interacts with the placed object that has the id `placedObjectId`: the `interact`
---- of that placed object's kind is called. Does nothing if no placed object has that id, or if
---- the player stands more than `World.CHARACTER_REACH` from it.
+--- of that placed object's kind is called. Does nothing if no placed object has that id, if the
+--- player has no character, or if they stand more than `World.CHARACTER_REACH` from it.
 function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
 	local placedObject = findPlacedObjectInReach(world, player, placedObjectId)
 	if placedObject ~= nil then
@@ -57,8 +58,8 @@ function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState
 end
 
 --- The player breaks the placed object that has the id `placedObjectId`: the `breakPlacedObject`
---- of that placed object's kind is called. Does nothing if no placed object has that id, or if
---- the player stands more than `World.CHARACTER_REACH` from it.
+--- of that placed object's kind is called. Does nothing if no placed object has that id, if the
+--- player has no character, or if they stand more than `World.CHARACTER_REACH` from it.
 function PlotRequests.breakPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
 	local placedObject = findPlacedObjectInReach(world, player, placedObjectId)
 	if placedObject ~= nil then

@@ -55,14 +55,15 @@ local function newWorld(): (World.World, PlayerState.PlayerState, number)
 end
 
 do -- a stove as names, and its recipes
-	check(Stove.KIND_ID == "stove", 'KIND_ID: a stove is of the kind "stove"')
+	check(Stove.PLACED_OBJECT_KIND_ID == "stove", 'PLACED_OBJECT_KIND_ID: a stove is of the kind "stove"')
+	check(Stove.STATION_KIND_ID == "stove", 'STATION_KIND_ID: a stove is a station of the kind "stove"')
 	check(
-		PlaceableItems[Stove.ITEM_ID] == Stove.KIND_ID,
-		"ITEM_ID: the item that a broken stove leaves is the item that places a stove"
+		PlaceableItems[Stove.ITEM_ID_WHEN_BROKEN] == Stove.PLACED_OBJECT_KIND_ID,
+		"ITEM_ID_WHEN_BROKEN: the item that a broken stove leaves is the item that places a stove"
 	)
 	for index, recipe in RecipeDefinitions do
 		check(
-			recipe.station == Stove.KIND_ID,
+			recipe.station == Stove.STATION_KIND_ID,
 			"RecipeDefinitions: row " .. index .. " is a recipe for the stove, the one kind of station there is"
 		)
 	end
@@ -73,11 +74,14 @@ do -- place
 	local id = Stove.place(world, 2, 3)
 	local placed = world.plot.placedObjectsById[id]
 	check(
-		placed ~= nil and placed.kindId == Stove.KIND_ID and placed.tileX == 2 and placed.tileZ == 3,
+		placed ~= nil and placed.kindId == Stove.PLACED_OBJECT_KIND_ID and placed.tileX == 2 and placed.tileZ == 3,
 		"place: a placed object of the stove's kind stands on the tile, and its id is returned"
 	)
 	local station = world.stations[id]
-	check(station ~= nil and station.kindId == Stove.KIND_ID, "place: the stove is made a station of its own kind")
+	check(
+		station ~= nil and station.kindId == Stove.STATION_KIND_ID,
+		"place: the stove is made a station of the kind STATION_KIND_ID"
+	)
 	check(
 		station ~= nil and station.inventory.slotCount == Station.SLOT_COUNT and Inventory.isEmpty(station.inventory),
 		"place: with a station's slots, holding nothing"
@@ -196,7 +200,10 @@ do -- breakPlacedObject
 		groundItemCount(world) == 3,
 		"breakPlacedObject: one ground item for the stove and one for each stack in its slots"
 	)
-	check(is(ground[1].stack, Stove.ITEM_ID, 1), "breakPlacedObject: one of the item ITEM_ID is thrown first")
+	check(
+		is(ground[1].stack, Stove.ITEM_ID_WHEN_BROKEN, 1),
+		"breakPlacedObject: one of the item ITEM_ID_WHEN_BROKEN is thrown first"
+	)
 	check(
 		is(ground[2].stack, "fish", 3) and is(ground[3].stack, "log", 3),
 		"breakPlacedObject: then each stack that was in its slots, from the lowest slot up"
@@ -242,8 +249,8 @@ do -- breakPlacedObject
 	local emptyWorld, emptyBreaker, emptyStoveId = newWorld()
 	Stove.breakPlacedObject(emptyWorld, emptyBreaker, emptyStoveId)
 	check(
-		groundItemCount(emptyWorld) == 1 and is(emptyWorld.groundItems.itemsById[1].stack, Stove.ITEM_ID, 1),
-		"breakPlacedObject: a stove whose slots hold nothing leaves one of the item ITEM_ID and no more"
+		groundItemCount(emptyWorld) == 1 and is(emptyWorld.groundItems.itemsById[1].stack, Stove.ITEM_ID_WHEN_BROKEN, 1),
+		"breakPlacedObject: a stove whose slots hold nothing leaves one of the item ITEM_ID_WHEN_BROKEN and no more"
 	)
 end
 

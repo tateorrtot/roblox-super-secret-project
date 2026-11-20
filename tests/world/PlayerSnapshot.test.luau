@@ -201,6 +201,10 @@ do -- the pack open alone, with a stack carried
 		"decode: the stack that was carried is carried"
 	)
 	check(is(Inventory.getStack(view.pack, 7), "apple", 1), "decode: and what stayed in the pack is in the pack")
+	check(
+		view.screen ~= nil and view.screen.otherSlotAcceptsItem == nil,
+		"decode: the screen read back has no rule for the slots of another inventory"
+	)
 end
 
 do -- a crate open

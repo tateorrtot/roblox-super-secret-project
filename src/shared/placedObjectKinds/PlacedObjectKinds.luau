@@ -18,17 +18,17 @@ export type PlacedObjectKind = {
 	--- whatever an object of this kind has, and returns the placed object's id. Fails if
 	--- `Plot.canPlaceObject` would return `false` for that tile.
 	read place: (world: World.World, tileX: number, tileZ: number) -> number,
-	--- A player interacts with the placed object that has the id `placedObjectId`, which is of
-	--- this kind and stands on the world's plot.
+	--- A player interacts with the placed object that has the id `placedObjectId`, which this
+	--- kind's `place` placed and which still stands on the world's plot.
 	read interact: (world: World.World, player: PlayerState.PlayerState, placedObjectId: number) -> (),
-	--- A player breaks the placed object that has the id `placedObjectId`, which is of this kind
-	--- and stands on the world's plot.
+	--- A player breaks the placed object that has the id `placedObjectId`, which this kind's
+	--- `place` placed and which still stands on the world's plot.
 	read breakPlacedObject: (world: World.World, player: PlayerState.PlayerState, placedObjectId: number) -> (),
 }
 
 local kindsById: { [string]: PlacedObjectKind } = {
-	[Crate.KIND_ID] = Crate,
-	[Stove.KIND_ID] = Stove,
+	[Crate.PLACED_OBJECT_KIND_ID] = Crate,
+	[Stove.PLACED_OBJECT_KIND_ID] = Stove,
 }
 
 --- Returns the kind of placed object with the id `kindId`. Fails if no kind has that id.

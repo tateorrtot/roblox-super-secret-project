@@ -21,7 +21,7 @@ for _, definition in ItemDefinitions do
 end
 
 -- Every kind there is, as the modules these tests know of.
-local kindIds = { Crate.KIND_ID, Stove.KIND_ID }
+local kindIds = { Crate.PLACED_OBJECT_KIND_ID, Stove.PLACED_OBJECT_KIND_ID }
 
 -- True if a kind of placed object has the id `kindId`.
 local function isKind(kindId: string): boolean
@@ -32,14 +32,17 @@ end
 
 do -- get
 	check(
-		PlacedObjectKinds.get(Crate.KIND_ID) == Crate :: any,
+		PlacedObjectKinds.get(Crate.PLACED_OBJECT_KIND_ID) == Crate :: any,
 		"get: the kind with the crate's id is the crate's module"
 	)
 	check(
-		PlacedObjectKinds.get(Stove.KIND_ID) == Stove :: any,
+		PlacedObjectKinds.get(Stove.PLACED_OBJECT_KIND_ID) == Stove :: any,
 		"get: the kind with the stove's id is the stove's module"
 	)
-	check(Crate.KIND_ID ~= Stove.KIND_ID, "KIND_ID: each kind has an id of its own")
+	check(
+		Crate.PLACED_OBJECT_KIND_ID ~= Stove.PLACED_OBJECT_KIND_ID,
+		"PLACED_OBJECT_KIND_ID: each kind has an id of its own"
+	)
 	check(
 		Check.raises('no kind of placed object has the id "anvil"', function()
 			PlacedObjectKinds.get("anvil")

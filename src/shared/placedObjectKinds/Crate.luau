@@ -4,6 +4,10 @@
 --- `place` stands a crate on a tile of the world's plot and gives it an inventory. `interact`
 --- opens that inventory on a player's screen. `breakPlacedObject` takes the crate off the plot,
 --- and throws a crate item and everything that was in the crate onto the ground.
+---
+--- Note: `interact` and `breakPlacedObject` are for a crate that `place` placed. A placed object
+--- of the crate's kind that was put on the plot any other way has no inventory, and both fail
+--- for it.
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
 local PlayerState = require("../players/PlayerState")
@@ -13,10 +17,10 @@ local World = require("../world/World")
 local Crate = {}
 
 --- The id of the kind of placed object that a crate is.
-Crate.KIND_ID = "crate"
+Crate.PLACED_OBJECT_KIND_ID = "crate"
 
 --- The id of the item that a broken crate leaves.
-Crate.ITEM_ID = "crate"
+Crate.ITEM_ID_WHEN_BROKEN = "crate"
 
 --- How many slots a crate's inventory has.
 Crate.SLOT_COUNT = 27
@@ -25,7 +29,7 @@ Crate.SLOT_COUNT = 27
 --- object's id. The crate is given an inventory of `SLOT_COUNT` slots, holding nothing. Fails if
 --- `Plot.canPlaceObject` would return `false` for that tile.
 function Crate.place(world: World.World, tileX: number, tileZ: number): number
-	local placedObjectId = Plot.placeObject(world.plot, Crate.KIND_ID, tileX, tileZ)
+	local placedObjectId = Plot.placeObject(world.plot, Crate.PLACED_OBJECT_KIND_ID, tileX, tileZ)
 	World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(Crate.SLOT_COUNT))
 	return placedObjectId
 end
@@ -38,13 +42,13 @@ function Crate.interact(world: World.World, player: PlayerState.PlayerState, pla
 end
 
 --- A player breaks the crate that has the id `placedObjectId`. The crate is taken off the plot,
---- which closes every screen that was open on it. One of the item `ITEM_ID`, and then each stack
---- that was in the crate from the lowest slot up, is thrown onto the ground from the middle of
---- the crate's tile, upwards and outwards, each a different way.
+--- which closes every screen that was open on it. One of the item `ITEM_ID_WHEN_BROKEN`, and then
+--- each stack that was in the crate from the lowest slot up, is thrown onto the ground from the
+--- middle of the crate's tile, upwards and outwards, each a different way.
 function Crate.breakPlacedObject(world: World.World, _player: PlayerState.PlayerState, placedObjectId: number)
 	local placedObject = world.plot.placedObjectsById[placedObjectId]
 	local stacks = Inventory.takeEveryStack(world.placedObjectInventories[placedObjectId])
-	table.insert(stacks, 1, ItemStack.new(Crate.ITEM_ID, 1))
+	table.insert(stacks, 1, ItemStack.new(Crate.ITEM_ID_WHEN_BROKEN, 1))
 	Plot.removePlacedObject(world.plot, placedObjectId)
 	World.throwStacksFromTile(world, stacks, placedObject.tileX, placedObject.tileZ)
 end

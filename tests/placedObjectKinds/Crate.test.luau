@@ -56,11 +56,11 @@ local function newWorld(): (World.World, PlayerState.PlayerState, number)
 end
 
 do -- a crate as numbers and names
-	check(Crate.KIND_ID == "crate", 'KIND_ID: a crate is of the kind "crate"')
+	check(Crate.PLACED_OBJECT_KIND_ID == "crate", 'PLACED_OBJECT_KIND_ID: a crate is of the kind "crate"')
 	check(Crate.SLOT_COUNT == 27, "SLOT_COUNT: a crate has 27 slots")
 	check(
-		PlaceableItems[Crate.ITEM_ID] == Crate.KIND_ID,
-		"ITEM_ID: the item that a broken crate leaves is the item that places a crate"
+		PlaceableItems[Crate.ITEM_ID_WHEN_BROKEN] == Crate.PLACED_OBJECT_KIND_ID,
+		"ITEM_ID_WHEN_BROKEN: the item that a broken crate leaves is the item that places a crate"
 	)
 end
 
@@ -69,7 +69,7 @@ do -- place
 	local id = Crate.place(world, 2, 3)
 	local placed = world.plot.placedObjectsById[id]
 	check(
-		placed ~= nil and placed.kindId == Crate.KIND_ID and placed.tileX == 2 and placed.tileZ == 3,
+		placed ~= nil and placed.kindId == Crate.PLACED_OBJECT_KIND_ID and placed.tileX == 2 and placed.tileZ == 3,
 		"place: a placed object of the crate's kind stands on the tile, and its id is returned"
 	)
 	local inventory = world.placedObjectInventories[id]
@@ -181,7 +181,10 @@ do -- breakPlacedObject
 		groundItemCount(world) == 3,
 		"breakPlacedObject: one ground item for the crate and one for each stack that was in it"
 	)
-	check(is(ground[1].stack, Crate.ITEM_ID, 1), "breakPlacedObject: one of the item ITEM_ID is thrown first")
+	check(
+		is(ground[1].stack, Crate.ITEM_ID_WHEN_BROKEN, 1),
+		"breakPlacedObject: one of the item ITEM_ID_WHEN_BROKEN is thrown first"
+	)
 	check(
 		is(ground[2].stack, "fish", 3) and is(ground[3].stack, "log", 4),
 		"breakPlacedObject: then each stack that was in the crate, from the lowest slot up"
@@ -216,8 +219,8 @@ do -- breakPlacedObject
 	local emptyCrateId = Crate.place(world, 4, 4)
 	Crate.breakPlacedObject(world, breaker, emptyCrateId)
 	check(
-		groundItemCount(world) == 4 and is(ground[4].stack, Crate.ITEM_ID, 1),
-		"breakPlacedObject: a crate that holds nothing leaves one of the item ITEM_ID and no more"
+		groundItemCount(world) == 4 and is(ground[4].stack, Crate.ITEM_ID_WHEN_BROKEN, 1),
+		"breakPlacedObject: a crate that holds nothing leaves one of the item ITEM_ID_WHEN_BROKEN and no more"
 	)
 	check(placedCount(world) == 0, "breakPlacedObject: and no crate is left standing")
 end

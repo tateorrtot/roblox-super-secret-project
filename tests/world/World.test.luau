@@ -549,6 +549,10 @@ do -- closing a player's screen
 		state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
 		"closeScreen: nothing is open afterwards"
 	)
+	check(
+		next(world.placedObjectIdsByScreen) == nil,
+		"closeScreen: and the world keeps nothing of the screen that was closed"
+	)
 	check(Inventory.countItems(state.pack, "fish") == 5, "closeScreen: what was carried goes back into the pack")
 	check(Inventory.isEmpty(insideOf(world, ids.crate)), "closeScreen: and not into the crate")
 	check(
@@ -1144,6 +1148,10 @@ do -- time passing: screens close
 		state.screen == nil and World.getOpenedPlacedObjectId(world, state) == nil,
 		"Plot.removePlacedObject on the world's plot: a screen open on the placed object closes at once"
 	)
+	check(
+		next(world.placedObjectIdsByScreen) == nil,
+		"Plot.removePlacedObject on the world's plot: and the world keeps nothing of that screen"
+	)
 	World.advanceTo(world, 104)
 
 	openOn(world, state, ids.oven)
@@ -1255,6 +1263,10 @@ do -- a player leaves
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	local removed = World.removePlayer(world, 1)
 	check(removed == state and world.players[1] == nil, "removePlayer: the player is out of the world")
+	check(
+		next(world.placedObjectIdsByScreen) == nil,
+		"removePlayer: and the world keeps nothing of the screen they had open on a placed object"
+	)
 	check(
 		state.screen == nil and Inventory.countItems(state.pack, "fish") == 5,
 		"removePlayer: what they carried is in the pack they leave with"

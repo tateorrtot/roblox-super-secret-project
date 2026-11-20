@@ -25,7 +25,7 @@ export type ScreenSlot = { read side: Side, read slot: number }
 export type InventoryScreen = {
 	--- The player's own inventory.
 	read pack: Inventory,
-	--- The other inventory that is open, such as a crate's. `nil` when the pack is open alone.
+	--- The other inventory that is open beside the pack. `nil` when the pack is open alone.
 	read otherInventory: Inventory?,
 	--- The stack being carried between slots. `nil` when nothing is carried.
 	carriedStack: ItemStack?,

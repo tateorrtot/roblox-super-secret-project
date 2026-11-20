@@ -300,6 +300,11 @@ do -- takeEveryStack
 		is(Inventory.takeEveryStack(pack)[1], "stove", 1) and Inventory.isEmpty(pack),
 		"takeEveryStack: the last slot is taken too"
 	)
+	local firstSlotFull = inventoryOf("log 2, -")
+	check(
+		is(Inventory.takeEveryStack(firstSlotFull)[1], "log", 2) and Inventory.isEmpty(firstSlotFull),
+		"takeEveryStack: and so is the first"
+	)
 end
 
 do -- putInSlot
