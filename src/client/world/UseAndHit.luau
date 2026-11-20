@@ -4,9 +4,9 @@
 --- Use is a left click, or a tap on a touch screen. Hit is a short right click: holding the right
 --- button turns the camera, so only a quick press that did not turn it is a Hit. Hit has no touch
 --- control yet. Both act on the placed object or the bare tile under the pointer, if the player's
---- character stands within `World.REACH` of it. With a mouse, the thing under the pointer is
---- marked while it is in reach: a placed object gets a white outline, and a bare tile gets a faint
---- block if the item in hand places an object.
+--- character stands within `World.CHARACTER_REACH` of it. With a mouse, the thing under the
+--- pointer is marked while it is in reach: a placed object gets a white outline, and a bare tile
+--- gets a faint block if the item in hand places an object.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -49,7 +49,7 @@ local function targetInReach(viewportPoint: Vector2): PlotPointer.Target?
 		return nil
 	end
 	local away = target.center - root.Position
-	return if Vector3.new(away.X, 0, away.Z).Magnitude <= World.REACH then target else nil
+	return if Vector3.new(away.X, 0, away.Z).Magnitude <= World.CHARACTER_REACH then target else nil
 end
 
 local function makeOutline(): SelectionBox

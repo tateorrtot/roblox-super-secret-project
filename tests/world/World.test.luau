@@ -172,7 +172,10 @@ local function knockOff(world: World.World, placedObjectId: number)
 end
 
 do -- the numbers the world goes by
-	check(World.SCREEN_CLOSES_BEYOND == World.REACH + 4, "CLOSES_BEYOND: a screen closes 4 studs beyond reach")
+	check(
+		World.SCREEN_CLOSES_BEYOND == World.CHARACTER_REACH + 4,
+		"CLOSES_BEYOND: a screen closes 4 studs beyond reach"
+	)
 	check(
 		World.TILE_STOOD_ON_WITHIN == Plot.TILE_SIZE * 0.75,
 		"TILE_STOOD_ON_WITHIN: a player stands on a tile within three quarters of its width of its middle"
@@ -713,7 +716,7 @@ do -- reaching a tile
 	World.setCharacterPosition(world, 1, at(6, 5, 2))
 	check(
 		World.canReachTile(world, state, 6, 1),
-		"canReach: a tile exactly World.REACH away is in reach, whatever the height"
+		"canReach: a tile exactly World.CHARACTER_REACH away is in reach, whatever the height"
 	)
 	World.setCharacterPosition(world, 1, at(5.99, 0, 2))
 	check(not World.canReachTile(world, state, 6, 1), "canReach: a tile a little further is not")

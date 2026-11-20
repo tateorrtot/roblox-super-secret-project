@@ -57,12 +57,12 @@ export type World = {
 
 --- How far a player's character may stand from the middle of a tile and still reach it, in
 --- studs along the ground.
-World.REACH = 16
+World.CHARACTER_REACH = 16
 
 --- How far a player may walk from a placed object they have open before its screen closes, in
---- studs along the ground. It is a little more than `REACH`, so that a screen opened from the
---- edge of reach does not close at the first step back.
-World.SCREEN_CLOSES_BEYOND = World.REACH + 4
+--- studs along the ground. It is a little more than `CHARACTER_REACH`, so that a screen opened
+--- from the edge of reach does not close at the first step back.
+World.SCREEN_CLOSES_BEYOND = World.CHARACTER_REACH + 4
 
 --- A player standing this near the middle of a tile, in studs along the ground, stands on it.
 World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
@@ -308,13 +308,13 @@ function World.getOpenedPlacedObjectId(world: World, player: PlayerState): numbe
 	return if screen ~= nil then world.placedObjectIdsByScreen[screen] else nil
 end
 
---- Returns `true` if a player's character stands within `World.REACH` of the middle of the tile
---- `tileX`, `tileZ` of the plot, in studs along the ground. A player with no character reaches
---- nothing.
+--- Returns `true` if a player's character stands within `CHARACTER_REACH` of the middle of the
+--- tile `tileX`, `tileZ` of the plot, in studs along the ground. A player with no character
+--- reaches nothing.
 function World.canReachTile(world: World, player: PlayerState, tileX: number, tileZ: number): boolean
 	local character = player.character
 	local center = tileCenter(world, tileX, tileZ)
-	return character ~= nil and Position.getGroundDistance(character.position, center) <= World.REACH
+	return character ~= nil and Position.getGroundDistance(character.position, center) <= World.CHARACTER_REACH
 end
 
 --- Returns `true` if any player's character stands on the tile `tileX`, `tileZ` of the plot:
