@@ -1,6 +1,6 @@
 --!strict
---- What a player's machine is told about what the player holds: their pack, and their open
---- inventory screen.
+--- What a player's machine is told about what the player holds: their pack, which hotbar slot is
+--- selected, and their open inventory screen.
 ---
 --- `encode` makes plain data on the server, and `decode` reads it back on the player's machine.
 local Inventory = require("../inventory/Inventory")
@@ -13,6 +13,8 @@ local PlayerSnapshot = {}
 
 export type EncodedSnapshot = {
 	pack: Inventory.EncodedInventory,
+	--- The number of the hotbar slot that is selected.
+	selectedHotbarSlot: number,
 	--- The open inventory screen. `nil` when none is open.
 	screen: {
 		--- The other inventory that is open. `nil` when the pack is open alone.
@@ -29,6 +31,8 @@ export type EncodedSnapshot = {
 
 export type PlayerSnapshot = {
 	pack: Inventory.Inventory,
+	--- The number of the hotbar slot that is selected.
+	selectedHotbarSlot: number,
 	--- The open inventory screen, over `pack`. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
 	--- The item id of the placed item whose inventory is shown beside the pack, such as `"crate"`.
@@ -44,8 +48,9 @@ export type PlayerSnapshot = {
 function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSnapshot
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	local screen = player.screen
+	local selectedHotbarSlot = player.hotbar.selectedSlot
 	if screen == nil then
-		return { pack = Inventory.encode(player.pack) }
+		return { pack = Inventory.encode(player.pack), selectedHotbarSlot = selectedHotbarSlot }
 	end
 	local placedItemId = player.openedPlacedItemId
 	local placedItem = if placedItemId then world.plot.placedItemsById[placedItemId] else nil
@@ -53,6 +58,7 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 	local carried = screen.carriedStack
 	return {
 		pack = Inventory.encode(player.pack),
+		selectedHotbarSlot = selectedHotbarSlot,
 		screen = {
 			otherInventory = if screen.otherInventory then Inventory.encode(screen.otherInventory) else nil,
 			otherInventoryItemId = if placedItem then placedItem.itemId else nil,
@@ -68,16 +74,18 @@ function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 	local pack = assert(Inventory.decode(encoded.pack))
 	local encodedScreen = encoded.screen
 	if encodedScreen == nil then
-		return { pack = pack }
+		return { pack = pack, selectedHotbarSlot = encoded.selectedHotbarSlot }
 	end
 	local carried = encodedScreen.carriedStack
 	local screen = InventoryScreen.new(
 		pack,
-		if encodedScreen.otherInventory then assert(Inventory.decode(encodedScreen.otherInventory)) else nil
+		if encodedScreen.otherInventory then assert(Inventory.decode(encodedScreen.otherInventory)) else nil,
+		nil,
+		if carried then ItemStack.new(carried.itemId, carried.count) else nil
 	)
-	screen.carriedStack = if carried then ItemStack.new(carried.itemId, carried.count) else nil
 	return {
 		pack = pack,
+		selectedHotbarSlot = encoded.selectedHotbarSlot,
 		screen = screen,
 		otherInventoryItemId = encodedScreen.otherInventoryItemId,
 		stationProgress = encodedScreen.stationProgress,

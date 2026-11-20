@@ -4,11 +4,11 @@
 --- Each ground item gets one small block in the colour of its item, with a label that says what it
 --- is and how many. `update` makes the blocks match a `GroundItems` as it is now: a block for each
 --- new ground item, a changed label when a stack grew or shrank, and no block for what is gone. A
---- new block starts where its ground item was thrown from, moving as fast as it was thrown. After
+--- new block starts where its ground item is, moving as fast as the ground item was spawned. After
 --- that it is an ordinary unanchored part: Roblox's physics makes it fall, land and come to rest,
---- and shows its motion to every player. Only the server moves it, never a player's machine. A
---- block passes through the other blocks and through characters, and collides with everything
---- else. A pointer passes through it too, to whatever is behind. `getMovedPositions` says where
+--- and shows its motion to every player. Which machine works its motion out is left to Roblox,
+--- which gives a part near a player to that player's machine. A block passes through the other
+--- blocks and through characters, and collides with everything else. A pointer passes through it too, to whatever is behind. `getMovedPositions` says where
 --- the blocks have got to. The blocks are placeholders until items have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -59,12 +59,12 @@ end
 local function makePart(groundItem: GroundItems.GroundItem): Part
 	local itemId = groundItem.stack.itemId
 	local look = ItemLooks[itemId]
-	local side = GroundItems.ITEM_SIZE
-	local from = groundItem.throw.from
+	local width = GroundItems.ITEM_WIDTH
+	local position = groundItem.position
 	local part = Instance.new("Part")
 	part.Name = itemId
-	part.Size = Vector3.new(side, side, side)
-	part.Position = Vector3.new(from.x, from.y + side / 2, from.z)
+	part.Size = Vector3.new(width, width, width)
+	part.Position = Vector3.new(position.x, position.y + width / 2, position.z)
 	part.CollisionGroup = CollisionGroups.GROUND_ITEMS
 	part.CanQuery = false
 	part.CanTouch = false
@@ -75,9 +75,8 @@ local function makePart(groundItem: GroundItems.GroundItem): Part
 	return part
 end
 
-local function throwPart(part: Part, folder: Folder, velocity: { read x: number, read y: number, read z: number })
+local function putPartInWorld(part: Part, folder: Folder, velocity: GroundItems.Velocity)
 	part.Parent = folder
-	part:SetNetworkOwner(nil)
 	part.AssemblyLinearVelocity = Vector3.new(velocity.x, velocity.y, velocity.z)
 end
 
@@ -100,8 +99,8 @@ function GroundItemParts.new(parent: Instance): GroundItemParts
 end
 
 --- Makes the blocks match `groundItems` as it is now. A ground item with no block gets one, where
---- the ground item was thrown from and moving as fast as it was thrown. A block whose stack
---- changed in size is relabelled. A block whose ground item is gone is destroyed.
+--- the ground item is and moving at its `spawnVelocity`. A block whose stack changed in size is
+--- relabelled. A block whose ground item is gone is destroyed.
 function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: GroundItems.GroundItems)
 	local partsById = groundItemParts.partsById
 	for id, groundItem in groundItems.itemsById do
@@ -109,7 +108,7 @@ function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: G
 		if part == nil then
 			part = makePart(groundItem)
 			partsById[id] = part
-			throwPart(part, groundItemParts.folder, groundItem.throw.velocity)
+			putPartInWorld(part, groundItemParts.folder, groundItem.spawnVelocity)
 		elseif part:GetAttribute("count") ~= groundItem.stack.count then
 			showCount(part, groundItem.stack.itemId, groundItem.stack.count)
 		end
@@ -135,7 +134,7 @@ function GroundItemParts.getMovedPositions(
 	local moved = {}
 	for id, part in groundItemParts.partsById do
 		local groundItem = groundItems.itemsById[id]
-		local underside = part.Position - Vector3.new(0, GroundItems.ITEM_SIZE / 2, 0)
+		local underside = part.Position - Vector3.new(0, GroundItems.ITEM_WIDTH / 2, 0)
 		if groundItem ~= nil and hasMoved(groundItem.position, underside) then
 			moved[id] = { x = underside.X, y = underside.Y, z = underside.Z }
 		end

@@ -10,12 +10,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local GroundItems = require(Shared.world.GroundItems)
 local Inventory = require(Shared.inventory.Inventory)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local Plot = require(Shared.plots.Plot)
-local Throw = require(Shared.Throw)
+local World = require(Shared.world.World)
 
 local PlaceholderWorld = {}
 
@@ -136,22 +135,19 @@ function PlaceholderWorld.addStartingItemsToPack(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "crate", 1)
 end
 
---- Drops a stack of a random item on a random tile of the plot. Does nothing if
---- `GROUND_ITEMS_KEPT` ground items already lie about, or if it last chose a tile less than
---- `SECONDS_BETWEEN_RESTOCKS` before `now`. If something stands on the tile it chooses, it drops
+--- Spawns a stack of a random item in the middle of a random tile of the plot, not moving. Does
+--- nothing if `GROUND_ITEMS_KEPT` ground items already lie about, or if it last chose a tile less
+--- than `SECONDS_BETWEEN_RESTOCKS` before the world's time. If something stands on the tile it chooses, it drops
 --- nothing, and waits `SECONDS_BETWEEN_RESTOCKS` before it chooses again. Does nothing while the
 --- Workspace attribute `PlaceholderRestock` is `false`, which the play test sets so that it knows
 --- what lies on the ground.
-function PlaceholderWorld.restockGroundItems(
-	placeholder: PlaceholderWorld,
-	groundItems: GroundItems.GroundItems,
-	now: number
-)
+function PlaceholderWorld.restockGroundItems(placeholder: PlaceholderWorld, world: World.World)
+	local now = world.now
 	if now < nextRestockAt or Workspace:GetAttribute("PlaceholderRestock") == false then
 		return
 	end
 	local lying = 0
-	for _ in groundItems.itemsById do
+	for _ in world.groundItems.itemsById do
 		lying += 1
 	end
 	if lying >= GROUND_ITEMS_KEPT then
@@ -176,7 +172,7 @@ function PlaceholderWorld.restockGroundItems(
 	local definitions = ItemRegistry.getAll()
 	local definition = definitions[random:NextInteger(1, #definitions)]
 	local count = random:NextInteger(1, definition.stackSize)
-	GroundItems.throwStack(groundItems, ItemStack.new(definition.id, count), Throw.newAtRest(spot), now)
+	World.spawnStack(world, ItemStack.new(definition.id, count), spot, { x = 0, y = 0, z = 0 })
 end
 
 return PlaceholderWorld

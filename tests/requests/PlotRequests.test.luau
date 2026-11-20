@@ -86,11 +86,11 @@ local function newWorld(): (World.World, PlayerState.PlayerState, number, number
 	Inventory.addItems(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
 	local postId = Plot.placeItem(plot, "post", 5, 5) :: number
 	local world = World.new(plot, at(0, 0, 0), 100)
-	local state = World.addPlayer(world, 1, at(0, 0, 0))
+	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 2, ItemStack.new("crate", 1))
 	Inventory.setStack(state.pack, 3, ItemStack.new("oven", 1))
-	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
 	return world, state, crateId, postId
 end
 
@@ -160,7 +160,7 @@ do -- placeSelectedItem
 
 	-- The middle of tile 6, 1 is at 22, 2. Standing at 6, 2 it is exactly 16 studs away.
 	state.hotbar.selectedSlot = 3
-	World.setPlayerPosition(world, 1, at(6, 0, 2), ALONG_X)
+	World.setCharacter(world, 1, { position = at(6, 0, 2), facing = ALONG_X })
 	send("placeSelectedItem", world, state, 6, 1)
 	check(Inventory.getStack(state.pack, 3) == nil, "placeSelectedItem: a tile exactly at reach can be placed on")
 	local farId = world.plot.nextId - 1
@@ -174,26 +174,26 @@ end
 do -- reach, and standing on a tile
 	local world, state = newWorld()
 	state.hotbar.selectedSlot = 3
-	World.setPlayerPosition(world, 1, at(5.99, 0, 2))
+	World.setCharacter(world, 1, { position = at(5.99, 0, 2), facing = ALONG_X })
 	send("placeSelectedItem", world, state, 6, 1)
 	check(is(Inventory.getStack(state.pack, 3), "oven", 1), "placeSelectedItem: not a tile just beyond reach")
-	World.setPlayerPosition(world, 1, nil)
+	World.setCharacter(world, 1, nil)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(is(Inventory.getStack(state.pack, 3), "oven", 1), "placeSelectedItem: not by a player with no character")
 
 	-- The middle of tile 3, 1 is at 10, 2. A player 3 studs from it stands on the tile; one a little further does not.
-	World.setPlayerPosition(world, 1, at(2, 0, 2))
-	World.addPlayer(world, 2, at(0, 0, 0))
-	World.setPlayerPosition(world, 2, at(13, 0, 2))
+	World.setCharacter(world, 1, { position = at(2, 0, 2), facing = ALONG_X })
+	World.addPlayer(world, 2)
+	World.setCharacter(world, 2, { position = at(13, 0, 2), facing = ALONG_X })
 	send("placeSelectedItem", world, state, 3, 1)
 	check(is(Inventory.getStack(state.pack, 3), "oven", 1), "placeSelectedItem: not on a tile another player stands on")
-	World.setPlayerPosition(world, 2, at(13.01, 0, 2))
+	World.setCharacter(world, 2, { position = at(13.01, 0, 2), facing = ALONG_X })
 	send("placeSelectedItem", world, state, 3, 1)
 	check(
 		Inventory.getStack(state.pack, 3) == nil,
 		"placeSelectedItem: on the tile once that player has stepped off it"
 	)
-	World.setPlayerPosition(world, 2, nil)
+	World.setCharacter(world, 2, nil)
 	state.hotbar.selectedSlot = 2
 	send("placeSelectedItem", world, state, 4, 1)
 	check(Inventory.getStack(state.pack, 2) == nil, "placeSelectedItem: a player with no character stands on no tile")
@@ -224,7 +224,7 @@ do -- usePlacedItem
 	)
 
 	-- From 18, 10 both the crate and the post are in reach.
-	World.setPlayerPosition(world, 1, at(18, 0, 10), ALONG_X)
+	World.setCharacter(world, 1, { position = at(18, 0, 10), facing = ALONG_X })
 	send("usePlacedItem", world, state, postId)
 	check(
 		(state.screen :: InventoryScreen.InventoryScreen).otherInventory
@@ -232,7 +232,7 @@ do -- usePlacedItem
 			and state.openedPlacedItemId == crateId,
 		"usePlacedItem: ignored for a placed item that holds nothing, even in reach, and what was open stays open"
 	)
-	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
 	for _, bad in badIds do
 		send("usePlacedItem", world, state, bad)
 	end
@@ -240,14 +240,14 @@ do -- usePlacedItem
 	check(state.openedPlacedItemId == crateId, "usePlacedItem: ignored for an id that is not a placed item")
 	World.closeScreen(world, state)
 
-	World.setPlayerPosition(world, 1, at(6, 0, 22.01))
+	World.setCharacter(world, 1, { position = at(6, 0, 22.01), facing = ALONG_X })
 	send("usePlacedItem", world, state, crateId)
 	check(state.screen == nil, "usePlacedItem: not from beyond reach")
-	World.setPlayerPosition(world, 1, at(6, 0, 22))
+	World.setCharacter(world, 1, { position = at(6, 0, 22), facing = ALONG_X })
 	send("usePlacedItem", world, state, crateId)
 	check(state.screen ~= nil, "usePlacedItem: from exactly at reach")
 	World.closeScreen(world, state)
-	World.setPlayerPosition(world, 1, nil)
+	World.setCharacter(world, 1, nil)
 	send("usePlacedItem", world, state, crateId)
 	check(state.screen == nil, "usePlacedItem: not by a player with no character")
 
@@ -265,8 +265,8 @@ do -- usePlacedItem
 	)
 
 	local twoWorld, first, twoCrate = newWorld()
-	local second = World.addPlayer(twoWorld, 2, at(0, 0, 0))
-	World.setPlayerPosition(twoWorld, 2, at(10, 0, 10))
+	local second = World.addPlayer(twoWorld, 2)
+	World.setCharacter(twoWorld, 2, { position = at(10, 0, 10), facing = ALONG_X })
 	send("usePlacedItem", twoWorld, first, twoCrate)
 	local secondCall = requests.usePlacedItem :: (...any) -> ()
 	secondCall(twoWorld, second, twoCrate)
@@ -279,8 +279,8 @@ end
 
 do -- hitPlacedItem
 	local world, state, crateId, postId = newWorld()
-	local other = World.addPlayer(world, 2, at(0, 0, 0))
-	World.setPlayerPosition(world, 2, at(10, 0, 10))
+	local other = World.addPlayer(world, 2)
+	World.setCharacter(world, 2, { position = at(10, 0, 10), facing = ALONG_X })
 	local otherCall = requests.usePlacedItem :: (...any) -> ()
 	otherCall(world, other, crateId)
 	InventoryScreen.pickUpFromSlot(other.screen :: InventoryScreen.InventoryScreen, "other", 1, 3)
@@ -289,13 +289,13 @@ do -- hitPlacedItem
 		"a second player looks into the crate and picks up three fish"
 	)
 
-	World.setPlayerPosition(world, 1, at(6, 0, 22.01))
+	World.setCharacter(world, 1, { position = at(6, 0, 22.01), facing = ALONG_X })
 	send("hitPlacedItem", world, state, crateId)
 	check(world.plot.placedItemsById[crateId] ~= nil, "hitPlacedItem: not from beyond reach")
-	World.setPlayerPosition(world, 1, nil)
+	World.setCharacter(world, 1, nil)
 	send("hitPlacedItem", world, state, crateId)
 	check(world.plot.placedItemsById[crateId] ~= nil, "hitPlacedItem: not by a player with no character")
-	World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
 	for _, bad in badIds do
 		send("hitPlacedItem", world, state, bad)
 	end
@@ -317,14 +317,14 @@ do -- hitPlacedItem
 	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 2, "hitPlacedItem: nothing was made or lost")
 	local allNear = true
 	for _, groundItem in world.groundItems.itemsById do
-		if Position.getGroundDistance(groundItem.position, at(6, 0, 6)) > 2 or groundItem.droppedAt ~= 100 then
+		if Position.getGroundDistance(groundItem.position, at(6, 0, 6)) > 2 or groundItem.spawnTime ~= 100 then
 			allNear = false
 		end
 	end
 	check(allNear, "hitPlacedItem: it all lies on the crate's tile, dropped at the world's time")
 	check(Plot.canPlaceItem(world.plot, "post", 2, 2), "hitPlacedItem: and its tile holds nothing")
 
-	World.setPlayerPosition(world, 1, at(18, 0, 10))
+	World.setCharacter(world, 1, { position = at(18, 0, 10), facing = ALONG_X })
 	send("hitPlacedItem", world, state, postId)
 	check(
 		world.plot.placedItemsById[postId] == nil and onGround(world, "post") == 1,
@@ -349,18 +349,18 @@ do -- hitPlacedItem
 	Inventory.addItems(inRingCrate, "apple", 3)
 	Inventory.addItems(inRingCrate, "log", 4)
 	local ringWorld = World.new(ring, at(0, 0, 0), 0)
-	local ringState = World.addPlayer(ringWorld, 1, at(0, 0, 0))
-	World.setPlayerPosition(ringWorld, 1, at(0, 0, 0))
+	local ringState = World.addPlayer(ringWorld, 1)
+	World.setCharacter(ringWorld, 1, { position = at(0, 0, 0), facing = ALONG_X })
 	send("hitPlacedItem", ringWorld, ringState, ringCrate)
 	local ways: { [string]: boolean } = {}
 	local wayCount, fromMiddle = 0, true
 	for _, groundItem in ringWorld.groundItems.itemsById do
-		local key = string.format("%.3f %.3f", groundItem.throw.velocity.x, groundItem.throw.velocity.z)
+		local key = string.format("%.3f %.3f", groundItem.spawnVelocity.x, groundItem.spawnVelocity.z)
 		if not ways[key] then
 			ways[key] = true
 			wayCount += 1
 		end
-		if Position.getGroundDistance(groundItem.throw.from, at(6, 0, 6)) > 0 or groundItem.throw.velocity.y <= 0 then
+		if Position.getGroundDistance(groundItem.position, at(6, 0, 6)) > 0 or groundItem.spawnVelocity.y <= 0 then
 			fromMiddle = false
 		end
 	end
@@ -415,8 +415,8 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	local allConserved, placedOnTheGround = true, 0
 	for _ = 1, 40 do
 		local world, firstPlayer = newWorld()
-		local secondPlayer = World.addPlayer(world, 2, at(0, 0, 0))
-		World.setPlayerPosition(world, 2, at(10, 0, 10))
+		local secondPlayer = World.addPlayer(world, 2)
+		World.setCharacter(world, 2, { position = at(10, 0, 10), facing = ALONG_X })
 		local players = { firstPlayer, secondPlayer }
 		for _, player in players do
 			for slot = 4, 12 do
@@ -435,9 +435,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			-- Players walk about, and now and then lose their character.
 			if random(4) == 1 then
 				if random(8) == 1 then
-					World.setPlayerPosition(world, playerId, nil)
+					World.setCharacter(world, playerId, nil)
 				else
-					World.setPlayerPosition(world, playerId, at(random(30), 0, random(30)))
+					World.setCharacter(world, playerId, { position = at(random(30), 0, random(30)), facing = ALONG_X })
 				end
 			end
 			-- Players change what is in hand, and open a screen, as other requests would.

@@ -46,14 +46,22 @@ local function slotsOf(side: Side, inventory: Inventory?): { ScreenSlot }
 	return slots
 end
 
---- Returns a screen that shows `pack`, and `otherInventory` beside it if one is given, with nothing
---- carried. `otherSlotAcceptsItem` says which items each slot of `otherInventory` accepts.
+--- Returns a screen that shows `pack`, and `otherInventory` beside it if one is given.
+--- `otherSlotAcceptsItem` says which items each slot of `otherInventory` accepts. The screen starts
+--- with `carriedStack` carried, or with nothing carried if none is given.
+--- Note: `carriedStack` is not taken from anywhere.
 function InventoryScreen.new(
 	pack: Inventory,
 	otherInventory: Inventory?,
-	otherSlotAcceptsItem: ((slot: number, itemId: string) -> boolean)?
+	otherSlotAcceptsItem: ((slot: number, itemId: string) -> boolean)?,
+	carriedStack: ItemStack?
 ): InventoryScreen
-	return { pack = pack, otherInventory = otherInventory, otherSlotAcceptsItem = otherSlotAcceptsItem }
+	return {
+		pack = pack,
+		otherInventory = otherInventory,
+		otherSlotAcceptsItem = otherSlotAcceptsItem,
+		carriedStack = carriedStack,
+	}
 end
 
 --- Returns the inventory on a side. Fails if `side` is `"other"` and no other inventory is open.

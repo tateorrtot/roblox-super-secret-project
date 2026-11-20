@@ -4,7 +4,8 @@
 ---
 --- Each function is one request. `world` is the world and `player` is the player who asks. Every
 --- argument after them is what the player's machine sent, and may be any value at all. A request
---- that makes no sense for the player as they are now does nothing.
+--- that makes no sense for the player as they are now does nothing. A player with no character
+--- can open no screen and drop nothing.
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -27,22 +28,20 @@ local function screenWithSlot(player: PlayerState, side: unknown, slot: unknown)
 	return if screen ~= nil and InventoryScreen.hasSlot(screen, side, slot) then screen else nil
 end
 
-local function throwFromPlayer(world: World, player: PlayerState, stack: ItemStack.ItemStack?)
+local function throwFromCharacter(world: World, character: PlayerState.Character, stack: ItemStack.ItemStack?)
 	if stack ~= nil then
-		World.throwStack(world, stack, player.throw)
+		World.throwStackFromCharacter(world, character, stack)
 	end
 end
 
 --- Opens the player's inventory screen on their pack alone. Does nothing if they have a screen
 --- open.
 function InventoryRequests.openPack(_world: World, player: PlayerState)
-	if player.screen == nil then
-		player.screen = InventoryScreen.new(player.pack)
-	end
+	PlayerState.openPackScreen(player)
 end
 
 --- Closes the player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit is thrown into the world as the player's `throw` says.
+--- and what does not fit is thrown into the world from their character.
 function InventoryRequests.closeScreen(world: World, player: PlayerState)
 	World.closeScreen(world, player)
 end
@@ -155,21 +154,23 @@ function InventoryRequests.spreadCarriedStackOverSlots(
 end
 
 --- Drops up to `count` items of the carried stack, or all of it if `count` is `nil`: they are
---- thrown into the world as the player's `throw` says.
+--- thrown into the world from the player's character.
 function InventoryRequests.dropCarriedStack(world: World, player: PlayerState, count: unknown)
 	local screen = player.screen
-	if screen ~= nil and isCountOrNil(count) then
-		throwFromPlayer(world, player, InventoryScreen.takeCarriedStack(screen, count :: any))
+	local character = player.character
+	if screen ~= nil and character ~= nil and isCountOrNil(count) then
+		throwFromCharacter(world, character, InventoryScreen.takeCarriedStack(screen, count :: any))
 	end
 end
 
 --- Drops up to `count` items out of a slot of the open screen, or everything in the slot if
---- `count` is `nil`: they are thrown into the world as the player's `throw` says.
+--- `count` is `nil`: they are thrown into the world from the player's character.
 function InventoryRequests.dropFromSlot(world: World, player: PlayerState, side: unknown, slot: unknown, count: unknown)
 	local screen = screenWithSlot(player, side, slot)
-	if screen ~= nil and isCountOrNil(count) then
+	local character = player.character
+	if screen ~= nil and character ~= nil and isCountOrNil(count) then
 		local inventory = InventoryScreen.getInventoryOnSide(screen, side :: any)
-		throwFromPlayer(world, player, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
+		throwFromCharacter(world, character, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
 	end
 end
 
@@ -181,10 +182,11 @@ function InventoryRequests.selectHotbarSlot(_world: World, player: PlayerState, 
 end
 
 --- Drops up to `count` items out of the selected hotbar slot, or everything in the slot if
---- `count` is `nil`: they are thrown into the world as the player's `throw` says.
+--- `count` is `nil`: they are thrown into the world from the player's character.
 function InventoryRequests.dropFromSelectedSlot(world: World, player: PlayerState, count: unknown)
-	if isCountOrNil(count) then
-		throwFromPlayer(world, player, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any))
+	local character = player.character
+	if character ~= nil and isCountOrNil(count) then
+		throwFromCharacter(world, character, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any))
 	end
 end
 

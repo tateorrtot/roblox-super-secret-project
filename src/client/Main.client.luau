@@ -2,8 +2,7 @@
 --- Starts the game on a player's machine. This is the only LocalScript.
 ---
 --- It draws what the server says the player holds, and turns what the player does with the keys
---- and the mouse into requests to the server. The only thing it decides by itself is which hotbar
---- slot is selected, and it tells the server that too.
+--- and the mouse into requests to the server. It decides nothing about the game by itself.
 ---
 --- Keys: E opens the pack or closes the inventory screen, 1 to 9 select a hotbar slot, and Q drops
 --- one of what is in hand, or all of it with the left Ctrl key held. With the inventory screen
@@ -39,11 +38,12 @@ local remotes = Remotes.waitForAll()
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 --- What the server last said the player holds.
-local snapshot: PlayerSnapshot.PlayerSnapshot = { pack = Inventory.new(PlayerState.PACK_SLOT_COUNT) }
+local snapshot: PlayerSnapshot.PlayerSnapshot = {
+	pack = Inventory.new(PlayerState.PACK_SLOT_COUNT),
+	selectedHotbarSlot = 1,
+}
 --- How far the world's clock is ahead of this machine's own, in seconds, as of the last snapshot.
 local worldClockLead = 0
---- The hotbar slot in the player's hand.
-local selectedSlot = 1
 local gestures = SlotGestures.new()
 
 local hotbarGui: HotbarGui.HotbarGui
@@ -74,9 +74,7 @@ local function send(request: InventoryControls.Request?)
 end
 
 local function selectSlot(slot: number)
-	selectedSlot = slot
 	remotes.selectHotbarSlot:FireServer(slot)
-	HotbarGui.update(hotbarGui, snapshot.pack, selectedSlot)
 end
 
 local function toggleScreen()
@@ -102,7 +100,7 @@ local function controlsScreen(screen: InventoryScreen.InventoryScreen): Inventor
 end
 
 local function placeableInHand(): string?
-	local held = Inventory.getStack(snapshot.pack, selectedSlot)
+	local held = Inventory.getStack(snapshot.pack, snapshot.selectedHotbarSlot)
 	return if held ~= nil and ItemRegistry.get(held.itemId).placeable then held.itemId else nil
 end
 
@@ -143,7 +141,7 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 	snapshot = PlayerSnapshot.decode(encoded)
 	worldClockLead = sentAt - os.clock()
 	local screen = snapshot.screen
-	HotbarGui.update(hotbarGui, snapshot.pack, selectedSlot)
+	HotbarGui.update(hotbarGui, snapshot.pack, snapshot.selectedHotbarSlot)
 	if (screen ~= nil) ~= wasOpen then
 		onScreenOpenedOrClosed(screen ~= nil)
 	end

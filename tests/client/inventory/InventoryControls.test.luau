@@ -400,8 +400,13 @@ local DROP_AT = Position.new(0, 0, 0)
 -- screen has another inventory of that size beside the pack.
 local function openedWorld(otherSlotCount: number?): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(3, 3), DROP_AT, 0)
-	local state = World.addPlayer(world, 1, DROP_AT)
-	state.screen = InventoryScreen.new(state.pack, if otherSlotCount then Inventory.new(otherSlotCount) else nil)
+	local state = World.addPlayer(world, 1)
+	World.setCharacter(world, 1, { position = DROP_AT, facing = { x = 1, z = 0 } })
+	if otherSlotCount ~= nil then
+		PlayerState.openPlacedItemScreen(state, 1, Inventory.new(otherSlotCount))
+	else
+		PlayerState.openPackScreen(state)
+	end
 	return world, state
 end
 

@@ -47,7 +47,8 @@ end
 -- The player has 12 logs in pack slot 1, 5 fish in slot 2 and 4 logs in slot 10, and no screen open.
 local function newWorld(): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
-	local state = World.addPlayer(world, 1, at(12, 0, 0))
+	local state = World.addPlayer(world, 1)
+	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 2, ItemStack.new("fish", 5))
 	Inventory.setStack(state.pack, 10, ItemStack.new("log", 4))
@@ -70,7 +71,7 @@ end
 -- returns what is inside it.
 local function openPlaced(world: World.World, state: PlayerState.PlayerState, itemId: string): Inventory.Inventory
 	local placedItemId = World.placeItem(world, itemId, 6, 6) :: number
-	World.openPlacedItem(world, state, placedItemId)
+	World.openPlacedItemScreen(world, state, placedItemId)
 	return world.plot.placedItemsById[placedItemId].inventory :: Inventory.Inventory
 end
 
@@ -156,8 +157,11 @@ do -- closeScreen
 	)
 	for _, groundItem in fullWorld.groundItems.itemsById do
 		check(
-			groundItem.position.x == 12 and groundItem.position.z == 0 and groundItem.droppedAt == 100,
-			"closeScreen: it lands at the player's drop position, at the world's time"
+			groundItem.position.x == 6
+				and groundItem.position.y == World.CHARACTER_THROW_HEIGHT
+				and groundItem.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
+				and groundItem.spawnTime == 100,
+			"closeScreen: it is thrown from the player's character, at the world's time"
 		)
 	end
 
@@ -770,10 +774,12 @@ do -- dropCarriedStack
 	local landed = next(world.groundItems.itemsById)
 	local groundItem = world.groundItems.itemsById[landed :: number]
 	check(
-		groundItem.position.x == 12 and groundItem.position.y == 0 and groundItem.position.z == 0,
-		"dropCarriedStack: where the player's drops land"
+		groundItem.position.x == 6
+			and groundItem.position.y == World.CHARACTER_THROW_HEIGHT
+			and groundItem.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED,
+		"dropCarriedStack: thrown from the player's character, the way it faces"
 	)
-	check(groundItem.droppedAt == 100, "dropCarriedStack: dropped at the world's time")
+	check(groundItem.spawnTime == 100, "dropCarriedStack: dropped at the world's time")
 	send("dropCarriedStack", world, state, 0)
 	check(
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
@@ -801,21 +807,31 @@ do -- dropCarriedStack
 	check(onGround(allWorld, "log") == 12, "dropCarriedStack: and again drops nothing")
 
 	local movedWorld, moved = newWorld()
-	World.setPlayerPosition(movedWorld, 1, at(1, 0, 1), { x = 0, z = 1 })
+	World.setCharacter(movedWorld, 1, { position = at(1, 0, 1), facing = { x = 0, z = 1 } })
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
 	send("dropCarriedStack", movedWorld, moved, nil)
 	local movedItem = movedWorld.groundItems.itemsById[next(movedWorld.groundItems.itemsById) :: number]
 	check(
-		movedItem.throw == moved.throw and movedItem.position.x == 1 and movedItem.throw.velocity.z > 0,
-		"dropCarriedStack: throws as the player's throw says now"
+		movedItem.position.x == 1
+			and movedItem.position.y == World.CHARACTER_THROW_HEIGHT
+			and movedItem.spawnVelocity.z == World.CHARACTER_THROW_FORWARD_SPEED,
+		"dropCarriedStack: throws from the player's character where it is now, the way it faces"
 	)
-	World.setPlayerPosition(movedWorld, 1, nil)
+	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 10)
-	send("dropCarriedStack", movedWorld, moved, nil)
+	World.setCharacter(movedWorld, 1, nil)
 	check(
-		onGround(movedWorld, "log") == 16,
-		"dropCarriedStack: a player with no character can drop, thrown as their throw last said"
+		moved.screen == nil and Inventory.countItems(moved.pack, "log") == 4,
+		"dropCarriedStack: (set up) a player who loses their character has their screen closed, the carried stack back in the pack"
+	)
+	send("openPack", movedWorld, moved)
+	send("dropCarriedStack", movedWorld, moved, nil)
+	send("dropFromSlot", movedWorld, moved, "pack", 10, nil)
+	send("dropFromSelectedSlot", movedWorld, moved, nil)
+	check(
+		moved.screen == nil and onGround(movedWorld, "log") == 12 and Inventory.countItems(moved.pack, "log") == 4,
+		"a player with no character can open no screen and drop nothing"
 	)
 end
 
@@ -835,8 +851,11 @@ do -- dropFromSlot
 	)
 	local landed = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
-		landed.position.x == 12 and landed.position.z == 0 and landed.droppedAt == 100,
-		"dropFromSlot: at the player's drop position, at the world's time"
+		landed.position.x == 6
+			and landed.position.y == World.CHARACTER_THROW_HEIGHT
+			and landed.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
+			and landed.spawnTime == 100,
+		"dropFromSlot: thrown from the player's character, at the world's time"
 	)
 	send("dropFromSlot", world, state, "pack", 1, 99)
 	check(
@@ -910,8 +929,11 @@ do -- dropFromSelectedSlot
 	)
 	local landed = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
-		landed.position.x == 12 and landed.position.z == 0 and landed.droppedAt == 100,
-		"dropFromSelectedSlot: at the player's drop position, at the world's time"
+		landed.position.x == 6
+			and landed.position.y == World.CHARACTER_THROW_HEIGHT
+			and landed.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
+			and landed.spawnTime == 100,
+		"dropFromSelectedSlot: thrown from the player's character, at the world's time"
 	)
 	send("dropFromSelectedSlot", world, state, 99)
 	check(
@@ -1003,7 +1025,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	local allConserved, allValid = true, true
 	for _ = 1, 40 do
 		local world, state = newWorld()
-		World.setPlayerPosition(world, 1, at(6, 0, 0), ALONG_X)
+		World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
 		local crateId = World.placeItem(world, "crate", 6, 6) :: number
 		local ovenId = World.placeItem(world, "oven", 6, 5) :: number
 		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory
@@ -1019,7 +1041,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		for _ = 1, 300 do
 			-- Now and then the world itself opens a screen for the player, as using a placed item would.
 			if state.screen == nil and random(12) == 1 then
-				World.openPlacedItem(world, state, if random(2) == 1 then crateId else ovenId)
+				World.openPlacedItemScreen(world, state, if random(2) == 1 then crateId else ovenId)
 			end
 			local name = names[random(#names)]
 			local ok, result =

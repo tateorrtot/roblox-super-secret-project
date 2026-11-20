@@ -40,16 +40,21 @@ end
 --- has that id, if it has no inventory, or if the player stands more than `World.REACH` from it.
 function PlotRequests.usePlacedItem(world: World, player: PlayerState, placedItemId: unknown)
 	if isPlacedItemInReach(world, player, placedItemId) then
-		World.openPlacedItem(world, player, placedItemId :: number)
+		World.openPlacedItemScreen(world, player, placedItemId :: number)
 	end
 end
 
 --- The player hits the placed item with the id `placedItemId`, which knocks it off the plot: it
---- spills out of where it stood as a ground item, and what was inside it spills out after it. Does
---- nothing if no placed item has that id, or if the player stands more than `World.REACH` from it.
+--- is taken off the plot and thrown into the world as a ground item, and so is every stack that
+--- was inside it. Any screen open on it closes. Does nothing if no placed item has that id, or if
+--- the player stands more than `World.REACH` from it.
 function PlotRequests.hitPlacedItem(world: World, player: PlayerState, placedItemId: unknown)
-	if isPlacedItemInReach(world, player, placedItemId) then
-		World.removePlacedItem(world, placedItemId :: number)
+	if not isPlacedItemInReach(world, player, placedItemId) then
+		return
+	end
+	local placedItem = World.takePlacedItemOffPlot(world, placedItemId :: number)
+	if placedItem ~= nil then
+		World.throwPlacedItemAndContents(world, placedItem)
 	end
 end
 

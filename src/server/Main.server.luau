@@ -84,20 +84,22 @@ local function isFinitePoint(point: Vector3): boolean
 	return point == point and point.Magnitude < math.huge
 end
 
-local function tellPosition(player: Player)
+local function tellCharacter(player: Player)
 	local root, humanoid = getLivingCharacter(player)
 	if root == nil or humanoid == nil or not isFinitePoint(root.Position) then
-		World.setPlayerPosition(world, player.UserId, nil)
+		World.setCharacter(world, player.UserId, nil)
 		return
 	end
 	local look = root.CFrame.LookVector
 	local facing = Direction.new(look.X, look.Z)
-	World.setPlayerPosition(world, player.UserId, toPosition(getFeet(root, humanoid)), facing)
+	if facing ~= nil then
+		World.setCharacter(world, player.UserId, { position = toPosition(getFeet(root, humanoid)), facing = facing })
+	end
 end
 
 local function tellGroundItemPositions()
 	for id, position in GroundItemParts.getMovedPositions(groundItemParts, world.groundItems) do
-		World.moveGroundItemTo(world, id, position)
+		World.setGroundItemPosition(world, id, position)
 	end
 end
 
@@ -140,7 +142,7 @@ end
 for _, name in Requests.NAMES do
 	remotes[name].OnServerEvent:Connect(function(player: Player, ...: any)
 		if countRequest(player) then
-			tellPosition(player)
+			tellCharacter(player)
 			Requests.carryOut(world, player.UserId, name, ...)
 			needsShow = true
 		end
@@ -158,7 +160,7 @@ local function addPlayer(player: Player)
 	if world.players[player.UserId] ~= nil then
 		return
 	end
-	local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
+	local state = World.addPlayer(world, player.UserId)
 	PlaceholderWorld.addStartingItemsToPack(state.pack)
 	player.CharacterAdded:Connect(CollisionGroups.addCharacter)
 	if player.Character ~= nil then
@@ -181,12 +183,12 @@ end
 local function advanceWorld()
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
-			try("reading where a player stands", tellPosition, player)
+			try("reading where a player's character is", tellCharacter, player)
 		end
 	end
 	try("reading where the ground items are", tellGroundItemPositions)
 	try("advancing the World", World.advanceTo, world, os.clock())
-	try("restocking the plot", PlaceholderWorld.restockGroundItems, placeholder, world.groundItems, world.now)
+	try("restocking the plot", PlaceholderWorld.restockGroundItems, placeholder, world)
 	showWorldToPlayers()
 end
 

@@ -15,6 +15,7 @@ local StationProgress = require("../../src/shared/stations/StationProgress")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
+local ALONG_X = { x = 1, z = 0 }
 
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
@@ -74,10 +75,10 @@ local function newWorld(): (World.World, number, number)
 	Inventory.setStack(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, 1, ItemStack.new("fish", 5))
 	local ovenId = Plot.placeItem(plot, "oven", 4, 2) :: number
 	local world = World.new(plot, at(0, 0, 0), 0)
-	local state = World.addPlayer(world, 1, at(0, 0, 0))
+	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 7, ItemStack.new("apple", 4))
-	World.setPlayerPosition(world, 1, at(6, 0, 0))
+	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
 	return world, crateId, ovenId
 end
 
@@ -171,7 +172,7 @@ end
 do -- a crate open
 	local world, crateId = newWorld()
 	local state = world.players[1]
-	World.openPlacedItem(world, state, crateId)
+	World.openPlacedItemScreen(world, state, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
 	check(screen ~= nil and screen.otherInventoryItemId == "crate", "encode: says what kind of placed item is open")
@@ -234,7 +235,7 @@ do -- an oven open
 	local inside = world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	World.openPlacedItem(world, state, ovenId)
+	World.openPlacedItemScreen(world, state, ovenId)
 
 	local idle = PlayerSnapshot.encode(world, 1)
 	check(
@@ -322,7 +323,7 @@ do -- a player watching a lit oven is told again only when something happens
 	local inside = world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	World.openPlacedItem(world, world.players[1], ovenId)
+	World.openPlacedItemScreen(world, world.players[1], ovenId)
 
 	local told = describe(PlayerSnapshot.encode(world, 1))
 	World.advanceTo(world, 0.1)
@@ -350,7 +351,7 @@ end
 
 do -- the placed item is not on the plot any more
 	local world, crateId = newWorld()
-	World.openPlacedItem(world, world.players[1], crateId)
+	World.openPlacedItemScreen(world, world.players[1], crateId)
 	Plot.removePlacedItem(world.plot, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(
@@ -375,23 +376,29 @@ do -- a player that is not in the world, and data that cannot be read
 
 	local good = PlayerSnapshot.encode(world, 1)
 	local badPack = Check.errorFrom(function()
-		PlayerSnapshot.decode({ pack = { slotCount = 0, stacks = {} } })
+		PlayerSnapshot.decode({ pack = { slotCount = 0, stacks = {} }, selectedHotbarSlot = 1 })
 	end)
 	check(badPack ~= nil, "decode: fails if the pack cannot be read")
 	local badOther = Check.errorFrom(function()
 		PlayerSnapshot.decode({
 			pack = good.pack,
+			selectedHotbarSlot = 1,
 			screen = { otherInventory = { slotCount = 3, stacks = { { slot = 9, itemId = "log", count = 1 } } } },
 		})
 	end)
 	check(badOther ~= nil, "decode: fails if the other inventory cannot be read")
 	local badCarried = Check.errorFrom(function()
-		PlayerSnapshot.decode({ pack = good.pack, screen = { carriedStack = { itemId = "log", count = 0 } } })
+		PlayerSnapshot.decode({
+			pack = good.pack,
+			selectedHotbarSlot = 1,
+			screen = { carriedStack = { itemId = "log", count = 0 } },
+		})
 	end)
 	check(badCarried ~= nil, "decode: fails if the carried stack cannot be read")
 	local unknownCarried = Check.errorFrom(function()
 		PlayerSnapshot.decode({
 			pack = good.pack,
+			selectedHotbarSlot = 1,
 			screen = { carriedStack = { itemId = "nothing_like_it", count = 1 } },
 		})
 	end)
@@ -412,7 +419,7 @@ do -- whatever the world holds, a view decodes to the same
 	for _ = 1, 300 do
 		local kind = random(4)
 		if kind == 1 then
-			World.openPlacedItem(world, state, ids[random(#ids)])
+			World.openPlacedItemScreen(world, state, ids[random(#ids)])
 		elseif kind == 2 then
 			World.closeScreen(world, state)
 		elseif kind == 3 then
