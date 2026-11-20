@@ -120,7 +120,7 @@ end
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
 -- tile x, z is at x * 4 - 2, z * 4 - 2. A crate holding 5 fish stands on tile 2, 2 (its middle is 6, 6),
 -- a stove on tile 5, 5 (its middle is 18, 18) and an oven on tile 4, 2 (its middle is 14, 6). Player 1
--- has 12 logs in their first slot, and their character is at 6, 0, facing along x.
+-- has 12 logs in their first slot, and their character is at 6, 0.
 local function newWorld(): (World.World, PlayerState.PlayerState, { crate: number, stove: number, oven: number })
 	local plot = Plot.new(6, 6)
 	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
@@ -130,7 +130,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, { crate: numbe
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	return world, state, { crate = crateId, stove = stoveId, oven = ovenId }
 end
 
@@ -234,22 +234,21 @@ do -- a player's character
 	local world, state = newWorld()
 	local character = state.character
 	check(
-		character ~= nil and character.position.x == 6 and character.facing == ALONG_X,
-		"setCharacterPositionAndFacing: the player's character is at the position and faces the way given"
+		character ~= nil and character.position.x == 6 and character.position.z == 0,
+		"setCharacterPosition: the player's character is at the position given"
 	)
-	local awayAlongZ = { x = 0, z = -1 }
-	World.setCharacterPositionAndFacing(world, 1, at(3, 0, 3), awayAlongZ)
+	World.setCharacterPosition(world, 1, at(3, 0, 3))
 	local moved = state.character
 	check(
-		moved ~= nil and moved.position.x == 3 and moved.position.z == 3 and moved.facing == awayAlongZ,
-		"setCharacterPositionAndFacing: a later position and facing take their place"
+		moved ~= nil and moved.position.x == 3 and moved.position.z == 3,
+		"setCharacterPosition: a later position takes its place"
 	)
 	World.removeCharacter(world, 1)
 	check(state.character == nil, "removeCharacter: the player has no character")
 	World.removeCharacter(world, 1)
 	check(state.character == nil, "removeCharacter: does nothing for a player with no character")
-	World.setCharacterPositionAndFacing(world, 1, at(3, 0, 3), awayAlongZ)
-	check(state.character ~= nil, "setCharacterPositionAndFacing: a player who had no character has one from now on")
+	World.setCharacterPosition(world, 1, at(3, 0, 3))
+	check(state.character ~= nil, "setCharacterPosition: a player who had no character has one from now on")
 	local nobodyToRemove = Check.errorFrom(function()
 		World.removeCharacter(world, 2)
 	end)
@@ -258,11 +257,11 @@ do -- a player's character
 		"removeCharacter: fails if no player has that id"
 	)
 	local nobody = Check.errorFrom(function()
-		World.setCharacterPositionAndFacing(world, 2, at(0, 0, 0), ALONG_X)
+		World.setCharacterPosition(world, 2, at(0, 0, 0))
 	end)
 	check(
 		nobody ~= nil and string.find(nobody, "no player has the id 2", 1, true) ~= nil,
-		"setCharacterPositionAndFacing: fails if no player has that id"
+		"setCharacterPosition: fails if no player has that id"
 	)
 
 	-- Losing the character closes the screen, while there is still a character to throw from.
@@ -303,7 +302,7 @@ end
 
 do -- throwing a stack from a character
 	local world = newWorld()
-	World.throwStackFromCharacter(world, { position = at(60, 2, 60), facing = ALONG_X }, ItemStack.new("apple", 3))
+	World.throwStackFromCharacter(world, ItemStack.new("apple", 3), at(60, 2, 60), ALONG_X)
 	local apples = groundStacks(world, "apple")
 	check(#apples == 1 and is(apples[1].stack, "apple", 3), "throwStackFromCharacter: the stack is a ground item")
 	check(
@@ -312,13 +311,9 @@ do -- throwing a stack from a character
 	)
 	check(
 		wasSpawnedMovingAt(apples[1], World.CHARACTER_THROW_FORWARD_SPEED, World.CHARACTER_THROW_UPWARD_SPEED, 0),
-		"throwStackFromCharacter: moving the way the character faces, and upwards"
+		"throwStackFromCharacter: moving the way the direction points along the ground, and upwards"
 	)
-	World.throwStackFromCharacter(
-		world,
-		{ position = at(0, 0, 0), facing = { x = 0, z = -1 } },
-		ItemStack.new("fish", 1)
-	)
+	World.throwStackFromCharacter(world, ItemStack.new("fish", 1), at(0, 0, 0), { x = 0, z = -1 })
 	check(
 		wasSpawnedMovingAt(
 			groundStacks(world, "fish")[1],
@@ -326,7 +321,7 @@ do -- throwing a stack from a character
 			World.CHARACTER_THROW_UPWARD_SPEED,
 			-World.CHARACTER_THROW_FORWARD_SPEED
 		),
-		"throwStackFromCharacter: a character facing another way throws that way"
+		"throwStackFromCharacter: another direction throws that way"
 	)
 	check(
 		World.CHARACTER_THROW_START_HEIGHT == 3
@@ -426,7 +421,7 @@ do -- closing a player's screen
 		"closeScreen: and nothing lands on the ground when the pack has room"
 	)
 
-	-- A pack with no room for the carried stack: it is thrown from the player's character.
+	-- A pack with no room for the carried stack: it is dropped at the player's character.
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(state.pack, slot, ItemStack.new("stove", 1))
 	end
@@ -440,9 +435,8 @@ do -- closing a player's screen
 		"closeScreen: what the pack has no room for is loose in the world"
 	)
 	check(
-		isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0)
-			and wasSpawnedMovingAt(fish[1], World.CHARACTER_THROW_FORWARD_SPEED, World.CHARACTER_THROW_UPWARD_SPEED, 0),
-		"closeScreen: thrown from the player's character, the way it faces"
+		isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0) and wasSpawnedMovingAt(fish[1], 0, 0, 0),
+		"closeScreen: dropped where a throw from the player's character starts, not moving"
 	)
 	check(state.screen == nil, "closeScreen: and the screen is closed all the same")
 
@@ -548,7 +542,7 @@ do -- opening a placed item
 		not World.openPlacedItemScreen(world, other, ids.oven) and other.screen == nil,
 		"openPlacedItemScreen: returns false for a player with no character, and opens nothing"
 	)
-	World.setCharacterPositionAndFacing(world, 2, at(14, 0, 6), ALONG_X)
+	World.setCharacterPosition(world, 2, at(14, 0, 6))
 	check(
 		World.openPlacedItemScreen(world, other, ids.oven),
 		"openPlacedItemScreen: two players may have the same oven open"
@@ -563,18 +557,18 @@ do -- reaching a tile
 	local world, state = newWorld()
 	check(World.canReachTile(world, state, 2, 2), "canReach: a tile near the player is in reach")
 	-- Tile 6, 1 has its middle at 22, 2. From 6, 2 it is exactly 16 studs away.
-	World.setCharacterPositionAndFacing(world, 1, at(6, 5, 2), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 5, 2))
 	check(
 		World.canReachTile(world, state, 6, 1),
 		"canReach: a tile exactly World.REACH away is in reach, whatever the height"
 	)
-	World.setCharacterPositionAndFacing(world, 1, at(5.99, 0, 2), ALONG_X)
+	World.setCharacterPosition(world, 1, at(5.99, 0, 2))
 	check(not World.canReachTile(world, state, 6, 1), "canReach: a tile a little further is not")
 	World.removeCharacter(world, 1)
 	check(not World.canReachTile(world, state, 2, 2), "canReach: a player with no character reaches nothing")
 	local corner = World.new(Plot.new(3, 3), at(100, 0, 100), 0)
 	local cornerState = World.addPlayer(corner, 1)
-	World.setCharacterPositionAndFacing(corner, 1, at(102, 0, 102), ALONG_X)
+	World.setCharacterPosition(corner, 1, at(102, 0, 102))
 	check(World.canReachTile(corner, cornerState, 1, 1), "canReach: measured from the plot's own corner")
 	check(not World.canReachTile(corner, cornerState, 100, 100), "canReach: a tile far off the plot is not in reach")
 end
@@ -583,19 +577,19 @@ do -- standing on a tile
 	local world, state = newWorld()
 	-- The middle of tile 3, 1 is at 10, 2.
 	check(World.isTileStoodOn(world, 3, 1) == false, "isTileStoodOn: a tile nobody is near is not stood on")
-	World.setCharacterPositionAndFacing(world, 1, at(13, 0, 2), ALONG_X)
+	World.setCharacterPosition(world, 1, at(13, 0, 2))
 	check(
 		World.isTileStoodOn(world, 3, 1),
 		"isTileStoodOn: a player exactly STANDS_ON_WITHIN from its middle stands on it"
 	)
-	World.setCharacterPositionAndFacing(world, 1, at(13.01, 0, 2), ALONG_X)
+	World.setCharacterPosition(world, 1, at(13.01, 0, 2))
 	check(not World.isTileStoodOn(world, 3, 1), "isTileStoodOn: a little further they do not")
-	World.setCharacterPositionAndFacing(world, 1, at(10, 40, 2), ALONG_X)
+	World.setCharacterPosition(world, 1, at(10, 40, 2))
 	check(World.isTileStoodOn(world, 3, 1), "isTileStoodOn: height does not matter")
 	World.removeCharacter(world, 1)
 	check(not World.isTileStoodOn(world, 3, 1), "isTileStoodOn: a player with no character stands on nothing")
 	local second = World.addPlayer(world, 2)
-	World.setCharacterPositionAndFacing(world, 2, at(10, 0, 2), ALONG_X)
+	World.setCharacterPosition(world, 2, at(10, 0, 2))
 	check(World.isTileStoodOn(world, 3, 1), "isTileStoodOn: any player will do")
 	check(
 		second.character ~= nil and state.character == nil,
@@ -625,7 +619,7 @@ do -- placing an item
 	check(world.plot.nextId == (placedItemId :: number) + 1, "placeItem: and places nothing then")
 
 	-- Tile 3, 3 has its middle at 10, 10. Player 1 stands 3 studs from it.
-	World.setCharacterPositionAndFacing(world, 1, at(13, 0, 10), ALONG_X)
+	World.setCharacterPosition(world, 1, at(13, 0, 10))
 	local nextId = world.plot.nextId
 	check(World.placeItem(world, "stove", 3, 3) == nil, "placeItem: returns nil for a tile a player stands on")
 	check(
@@ -634,7 +628,7 @@ do -- placing an item
 			and world.plot.placedItemsById[nextId] == nil,
 		"placeItem: and places nothing then"
 	)
-	World.setCharacterPositionAndFacing(world, 1, at(13.01, 0, 10), ALONG_X)
+	World.setCharacterPosition(world, 1, at(13.01, 0, 10))
 	check(World.placeItem(world, "stove", 3, 3) ~= nil, "placeItem: but places on it once the player has stepped off")
 
 	-- A world needs no player to place in it.
@@ -676,7 +670,7 @@ end
 do -- taking a placed item off
 	local world, state, ids = newWorld()
 	local other = World.addPlayer(world, 2)
-	World.setCharacterPositionAndFacing(world, 2, at(10, 0, 10), ALONG_X)
+	World.setCharacterPosition(world, 2, at(10, 0, 10))
 	World.openPlacedItemScreen(world, state, ids.crate)
 	World.openPlacedItemScreen(world, other, ids.crate)
 	InventoryScreen.pickUpFromSlot(other.screen :: any, "other", 1, 3)
@@ -882,8 +876,8 @@ do -- time passing: picking up
 
 	World.addPlayer(world, 2)
 	World.addPlayer(world, -5)
-	World.setCharacterPositionAndFacing(world, 2, at(30, 0, 30), ALONG_X)
-	World.setCharacterPositionAndFacing(world, -5, at(30, 0, 30), ALONG_X)
+	World.setCharacterPosition(world, 2, at(30, 0, 30))
+	World.setCharacterPosition(world, -5, at(30, 0, 30))
 	World.spawnStack(world, ItemStack.new("stove", 1), at(31, 0, 30), STILL)
 	World.advanceTo(world, 110)
 	check(
@@ -894,7 +888,7 @@ do -- time passing: picking up
 
 	World.removeCharacter(world, -5)
 	World.spawnStack(world, ItemStack.new("stove", 1), at(100, 0, 100), STILL)
-	World.setCharacterPositionAndFacing(world, 2, at(100, 0, 100), ALONG_X)
+	World.setCharacterPosition(world, 2, at(100, 0, 100))
 	World.spawnStack(world, ItemStack.new("fish", 2), at(30, 0, 30), STILL)
 	World.advanceTo(world, 120)
 	check(
@@ -903,8 +897,8 @@ do -- time passing: picking up
 	)
 	check(onGround(world, "fish") == 2, "advanceTo: a player with no character picks nothing up")
 
-	World.setCharacterPositionAndFacing(world, -5, at(30, 0, 30), ALONG_X)
-	World.setCharacterPositionAndFacing(world, 2, at(500, 0, 500), ALONG_X)
+	World.setCharacterPosition(world, -5, at(30, 0, 30))
+	World.setCharacterPosition(world, 2, at(500, 0, 500))
 	World.advanceTo(world, 121)
 	check(
 		Inventory.countItems(world.players[-5].pack, "fish") == 2,
@@ -924,14 +918,14 @@ end
 do -- time passing: screens close
 	local world, state, ids = newWorld()
 	World.openPlacedItemScreen(world, state, ids.crate)
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND))
 	World.advanceTo(world, 101)
 	check(state.screen ~= nil, "advanceTo: a screen stays open at exactly the distance it closes beyond")
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND))
 	World.advanceTo(world, 102)
 	check(state.screen == nil and state.openedPlacedItemId == nil, "advanceTo: and closes once the player is beyond it")
 
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	World.openPlacedItemScreen(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	World.removeCharacter(world, 1)
@@ -942,41 +936,41 @@ do -- time passing: screens close
 	World.advanceTo(world, 103)
 	check(Inventory.countItems(state.pack, "fish") == 5, "advanceTo: and what they carried is in their pack")
 
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	World.openPlacedItemScreen(world, state, ids.crate)
 	Plot.removePlacedItem(world.plot, ids.crate)
 	World.advanceTo(world, 104)
 	check(state.screen == nil, "advanceTo: a screen closes when its placed item is no longer on the plot")
 
 	World.openPlacedItemScreen(world, state, ids.oven)
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 6), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 6))
 	World.advanceTo(world, 105)
 	check(state.screen ~= nil, "advanceTo: a screen stays open for a player who stays near")
 
 	World.closeScreen(world, state)
 	PlayerState.openPackScreen(state)
-	World.setCharacterPositionAndFacing(world, 1, at(500, 0, 500), ALONG_X)
+	World.setCharacterPosition(world, 1, at(500, 0, 500))
 	World.advanceTo(world, 106)
 	check(state.screen ~= nil, "advanceTo: the pack open alone stays open wherever the player goes")
 	World.removeCharacter(world, 1)
 	check(state.screen == nil, "removeCharacter: the pack open alone closes too when the player loses their character")
 
-	-- The pack is full, so what is carried is thrown from the player's character.
+	-- The pack is full, so what is carried is dropped at the player's character.
 	local full, fullState, fullIds = newWorld()
 	World.openPlacedItemScreen(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
-	World.setCharacterPositionAndFacing(full, 1, at(6, 0, 200), { x = 0, z = 1 })
+	World.setCharacterPosition(full, 1, at(6, 0, 200))
 	World.advanceTo(full, 101)
 	local fish = groundStacks(full, "fish")
 	check(
 		fullState.screen == nil
 			and #fish == 1
 			and isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 200)
-			and wasSpawnedMovingAt(fish[1], 0, World.CHARACTER_THROW_UPWARD_SPEED, World.CHARACTER_THROW_FORWARD_SPEED),
-		"advanceTo: a screen closed for being out of reach throws what is left of the carried stack into the world"
+			and wasSpawnedMovingAt(fish[1], 0, 0, 0),
+		"advanceTo: a screen closed for being out of reach drops what is left of the carried stack at the character"
 	)
 end
 
@@ -1075,12 +1069,11 @@ do -- a player leaves
 	local fish = groundStacks(full, "fish")
 	check(
 		#fish == 1 and is(fish[1].stack, "fish", 5),
-		"removePlayer: a carried stack the pack has no room for is thrown into the world"
+		"removePlayer: a carried stack the pack has no room for is dropped into the world"
 	)
 	check(
-		isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0)
-			and wasSpawnedMovingAt(fish[1], World.CHARACTER_THROW_FORWARD_SPEED, World.CHARACTER_THROW_UPWARD_SPEED, 0),
-		"removePlayer: from their character, the way it faces"
+		isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0) and wasSpawnedMovingAt(fish[1], 0, 0, 0),
+		"removePlayer: where a throw from their character starts, not moving"
 	)
 end
 
@@ -1154,8 +1147,7 @@ do -- several players, several things at once, and no item is made or lost
 					else
 						local standing = at(random(28) - 2, 0, random(28) - 2)
 						run(function()
-							local facing = if random(2) == 1 then ALONG_X else { x = 0, z = -1 }
-							World.setCharacterPositionAndFacing(world, playerId, standing, facing)
+							World.setCharacterPosition(world, playerId, standing)
 						end)
 					end
 				end
@@ -1263,7 +1255,7 @@ do -- several players, several things at once, and no item is made or lost
 							local character = (state :: PlayerState.PlayerState).character
 							expect(character ~= nil, "a player with a screen open has a character")
 							if taken ~= nil and character ~= nil then
-								World.throwStackFromCharacter(world, character, taken)
+								World.throwStackFromCharacter(world, taken, character.position, ALONG_X)
 							end
 						end
 					end)
@@ -1277,7 +1269,7 @@ do -- several players, several things at once, and no item is made or lost
 							then Inventory.takeFromSlot(state.pack, random(PlayerState.PACK_SLOT_COUNT), random(4))
 							else nil
 						if taken ~= nil and character ~= nil then
-							World.throwStackFromCharacter(world, character, taken)
+							World.throwStackFromCharacter(world, taken, character.position, ALONG_X)
 						end
 						local moved = random(math.max(world.groundItems.nextId - 1, 1))
 						World.setGroundItemPosition(world, moved, at(random(28) - 2, 0, random(28) - 2))

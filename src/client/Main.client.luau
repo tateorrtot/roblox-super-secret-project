@@ -12,8 +12,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Direction = require(Shared.Direction)
 local Inventory = require(Shared.inventory.Inventory)
 local InventoryScreen = require(Shared.inventory.InventoryScreen)
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
@@ -67,6 +69,18 @@ local mouseButtons: { [Enum.UserInputType]: SlotGestures.Button } = {
 	[Enum.UserInputType.Touch] = "left",
 }
 
+--- The way a stack the player drops is thrown: the way the camera looks along the ground. If the
+--- camera looks straight up or straight down, it is the way the player's character faces. `nil` if
+--- neither can be told.
+local function getThrowDirection(): Direction.Direction?
+	local camera = Workspace.CurrentCamera
+	local look = if camera then camera.CFrame.LookVector else Vector3.zero
+	local character = Players.LocalPlayer.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	local facing = if root and root:IsA("BasePart") then root.CFrame.LookVector else Vector3.zero
+	return Direction.new(look.X, look.Z) or Direction.new(facing.X, facing.Z)
+end
+
 local function send(request: InventoryControls.Request?)
 	if request ~= nil then
 		remotes[request.name]:FireServer(table.unpack(request.arguments))
@@ -118,7 +132,10 @@ inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOT_COUNT, {
 		InventoryGui.setHighlightedSlots(inventoryGui, SlotGestures.getDraggedSlots(gestures))
 	end,
 	onOutsideClicked = function(button)
-		send(InventoryControls.getRequestForOutsideClick(button))
+		local direction = getThrowDirection()
+		if direction ~= nil then
+			send(InventoryControls.getRequestForOutsideClick(button, direction))
+		end
 	end,
 	onCloseClicked = function()
 		remotes.closeScreen:FireServer()
@@ -196,10 +213,14 @@ UseAndHit.startListening({
 local function onDropKey()
 	local over = inventoryGui.hoveredSlot
 	local wholeStack = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+	local direction = getThrowDirection()
+	if direction == nil then
+		return
+	end
 	if snapshot.screen == nil then
-		remotes.dropFromSelectedSlot:FireServer(if wholeStack then nil else 1)
+		remotes.dropFromSelectedSlot:FireServer(direction, if wholeStack then nil else 1)
 	elseif over ~= nil then
-		send(InventoryControls.getRequestForDropKeyOverSlot(over, wholeStack))
+		send(InventoryControls.getRequestForDropKeyOverSlot(over, direction, wholeStack))
 	end
 end
 

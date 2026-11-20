@@ -4,7 +4,6 @@
 ---
 --- `openPackScreen` and `openPlacedItemScreen` open the player's inventory screen, and
 --- `closeScreen` closes it. Only a player with a character can have a screen open.
-local Direction = require("../Direction")
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -13,12 +12,10 @@ local Position = require("../Position")
 
 local PlayerState = {}
 
---- A player's character in the world: where it is, and which way it faces.
+--- A player's character in the world.
 export type Character = {
-	--- The point at its feet.
+	--- Where it is: the point at its feet.
 	read position: Position.Position,
-	--- The way it faces along the ground.
-	read facing: Direction.Direction,
 }
 
 export type PlayerState = {
@@ -51,19 +48,14 @@ function PlayerState.new(pack: Inventory.Inventory?): PlayerState
 	}
 end
 
---- Sets where the player's character is, at its feet, and which way it faces along the ground. A
---- player who had no character has one from now on.
-function PlayerState.setCharacterPositionAndFacing(
-	player: PlayerState,
-	position: Position.Position,
-	facing: Direction.Direction
-)
-	player.character = table.freeze({ position = position, facing = facing })
+--- Sets where the player's character is, at its feet. A player who had no character has one from
+--- now on.
+function PlayerState.setCharacterPosition(player: PlayerState, position: Position.Position)
+	player.character = table.freeze({ position = position })
 end
 
---- Removes the player's character: they have none until `setCharacterPositionAndFacing` is next
---- called. Does nothing if they have no character. Fails if the player has a screen open: close it
---- first.
+--- Removes the player's character: they have none until `setCharacterPosition` is next called.
+--- Does nothing if they have no character. Fails if the player has a screen open: close it first.
 function PlayerState.removeCharacter(player: PlayerState)
 	if player.screen ~= nil then
 		error("a player with a screen open must keep their character", 2)

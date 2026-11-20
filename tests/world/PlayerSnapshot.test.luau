@@ -17,7 +17,6 @@ local StationProgress = require("../../src/shared/stations/StationProgress")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
-local ALONG_X = { x = 1, z = 0 }
 
 ItemRegistry.register({ id = "log", stackSize = 16, burnSeconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
@@ -80,7 +79,7 @@ local function newWorld(): (World.World, number, number)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 7, ItemStack.new("apple", 4))
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	return world, crateId, ovenId
 end
 

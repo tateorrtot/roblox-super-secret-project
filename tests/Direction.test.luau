@@ -25,6 +25,14 @@ do -- making one
 	local tiny = Direction.new(-1e-6, 1e-6) :: Direction.Direction
 	check(isNear(tiny.x, -math.sqrt(0.5)) and isNear(tiny.z, math.sqrt(0.5)), "new: two very small numbers still point")
 
+	-- Numbers whose squares are too small or too large for a number to hold.
+	local faint = Direction.new(2.7e-162, 0) :: Direction.Direction
+	check(faint.x == 1 and faint.z == 0, "new: a number too small to square still points, with a length of 1")
+	local fainter = Direction.new(1e-170, -1e-170) :: Direction.Direction
+	check(isNear(fainter.x, math.sqrt(0.5)) and isNear(fainter.z, -math.sqrt(0.5)), "new: so do two of them")
+	local vast = Direction.new(-3e200, 4e200) :: Direction.Direction
+	check(isNear(vast.x, -0.6) and isNear(vast.z, 0.8), "new: numbers too large to square point with a length of 1")
+
 	check(Direction.new(0, 0) == nil, "new: nil when both numbers are 0, which points nowhere")
 end
 

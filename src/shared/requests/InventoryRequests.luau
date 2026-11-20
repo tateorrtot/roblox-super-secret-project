@@ -6,6 +6,11 @@
 --- argument after them is what the player's machine sent, and may be any value at all. A request
 --- that makes no sense for the player as they are now does nothing. A player with no character
 --- can open no screen and drop nothing.
+---
+--- A request that drops takes a `direction`: the way the stack is thrown along the ground, chosen
+--- by the player's machine. It is a table with numbers from -1 to 1 under `x` and `z`, not both 0.
+--- Only the way it points counts, not its length.
+local Direction = require("../Direction")
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -23,14 +28,29 @@ local function isCountOrNil(value: unknown): boolean
 	return value == nil or (type(value) == "number" and value % 1 == 0 and value >= 0)
 end
 
+local function isFromMinusOneToOne(value: unknown): boolean
+	return type(value) == "number" and value >= -1 and value <= 1
+end
+
+local function toDirection(sent: unknown): Direction.Direction?
+	local x = if type(sent) == "table" then (sent :: any).x else nil
+	local z = if type(sent) == "table" then (sent :: any).z else nil
+	return if isFromMinusOneToOne(x) and isFromMinusOneToOne(z) then Direction.new(x, z) else nil
+end
+
 local function screenWithSlot(player: PlayerState, side: unknown, slot: unknown): InventoryScreen?
 	local screen = player.screen
 	return if screen ~= nil and InventoryScreen.hasSlot(screen, side, slot) then screen else nil
 end
 
-local function throwFromCharacter(world: World, character: PlayerState.Character, stack: ItemStack.ItemStack?)
+local function throwFromCharacter(
+	world: World,
+	stack: ItemStack.ItemStack?,
+	character: PlayerState.Character,
+	direction: Direction.Direction
+)
 	if stack ~= nil then
-		World.throwStackFromCharacter(world, character, stack)
+		World.throwStackFromCharacter(world, stack, character.position, direction)
 	end
 end
 
@@ -41,7 +61,7 @@ function InventoryRequests.openPack(_world: World, player: PlayerState)
 end
 
 --- Closes the player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit is thrown into the world from their character.
+--- and what does not fit is dropped into the world at their character.
 function InventoryRequests.closeScreen(world: World, player: PlayerState)
 	World.closeScreen(world, player)
 end
@@ -154,23 +174,33 @@ function InventoryRequests.spreadCarriedStackOverSlots(
 end
 
 --- Drops up to `count` items of the carried stack, or all of it if `count` is `nil`: they are
---- thrown into the world from the player's character.
-function InventoryRequests.dropCarriedStack(world: World, player: PlayerState, count: unknown)
+--- thrown into the world from the player's character, the way `direction` points.
+function InventoryRequests.dropCarriedStack(world: World, player: PlayerState, direction: unknown, count: unknown)
 	local screen = player.screen
 	local character = player.character
-	if screen ~= nil and character ~= nil and isCountOrNil(count) then
-		throwFromCharacter(world, character, InventoryScreen.takeCarriedStack(screen, count :: any))
+	local way = toDirection(direction)
+	if screen ~= nil and character ~= nil and way ~= nil and isCountOrNil(count) then
+		throwFromCharacter(world, InventoryScreen.takeCarriedStack(screen, count :: any), character, way)
 	end
 end
 
 --- Drops up to `count` items out of a slot of the open screen, or everything in the slot if
---- `count` is `nil`: they are thrown into the world from the player's character.
-function InventoryRequests.dropFromSlot(world: World, player: PlayerState, side: unknown, slot: unknown, count: unknown)
+--- `count` is `nil`: they are thrown into the world from the player's character, the way
+--- `direction` points.
+function InventoryRequests.dropFromSlot(
+	world: World,
+	player: PlayerState,
+	side: unknown,
+	slot: unknown,
+	direction: unknown,
+	count: unknown
+)
 	local screen = screenWithSlot(player, side, slot)
 	local character = player.character
-	if screen ~= nil and character ~= nil and isCountOrNil(count) then
+	local way = toDirection(direction)
+	if screen ~= nil and character ~= nil and way ~= nil and isCountOrNil(count) then
 		local inventory = InventoryScreen.getInventoryOnSide(screen, side :: any)
-		throwFromCharacter(world, character, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
+		throwFromCharacter(world, Inventory.takeFromSlot(inventory, slot :: any, count :: any), character, way)
 	end
 end
 
@@ -182,11 +212,13 @@ function InventoryRequests.selectHotbarSlot(_world: World, player: PlayerState, 
 end
 
 --- Drops up to `count` items out of the selected hotbar slot, or everything in the slot if
---- `count` is `nil`: they are thrown into the world from the player's character.
-function InventoryRequests.dropFromSelectedSlot(world: World, player: PlayerState, count: unknown)
+--- `count` is `nil`: they are thrown into the world from the player's character, the way
+--- `direction` points.
+function InventoryRequests.dropFromSelectedSlot(world: World, player: PlayerState, direction: unknown, count: unknown)
 	local character = player.character
-	if character ~= nil and isCountOrNil(count) then
-		throwFromCharacter(world, character, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any))
+	local way = toDirection(direction)
+	if character ~= nil and way ~= nil and isCountOrNil(count) then
+		throwFromCharacter(world, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any), character, way)
 	end
 end
 

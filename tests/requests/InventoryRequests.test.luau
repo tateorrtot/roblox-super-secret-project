@@ -48,7 +48,7 @@ end
 local function newWorld(): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1)
-	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 2, ItemStack.new("fish", 5))
 	Inventory.setStack(state.pack, 10, ItemStack.new("log", 4))
@@ -159,9 +159,10 @@ do -- closeScreen
 		check(
 			groundItem.position.x == 6
 				and groundItem.position.y == World.CHARACTER_THROW_START_HEIGHT
-				and groundItem.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
+				and groundItem.spawnVelocity.x == 0
+				and groundItem.spawnVelocity.y == 0
 				and groundItem.spawnTime == 100,
-			"closeScreen: it is thrown from the player's character, at the world's time"
+			"closeScreen: it is dropped at the player's character, not moving, at the world's time"
 		)
 	end
 
@@ -758,15 +759,15 @@ end
 
 do -- dropCarriedStack
 	local world, state = newWorld()
-	send("dropCarriedStack", world, state, 1)
+	send("dropCarriedStack", world, state, ALONG_X, 1)
 	check(onGround(world, "log") == 0, "dropCarriedStack: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("dropCarriedStack", world, state, 1)
+	send("dropCarriedStack", world, state, ALONG_X, 1)
 	check(onGround(world, "log") == 0, "dropCarriedStack: does nothing when nothing is carried")
 
 	send("pickUpFromSlot", world, state, "pack", 1)
-	send("dropCarriedStack", world, state, 5)
+	send("dropCarriedStack", world, state, ALONG_X, 5)
 	check(
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
 		"dropCarriedStack: puts that many of the carried items on the ground"
@@ -777,22 +778,22 @@ do -- dropCarriedStack
 		groundItem.position.x == 6
 			and groundItem.position.y == World.CHARACTER_THROW_START_HEIGHT
 			and groundItem.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED,
-		"dropCarriedStack: thrown from the player's character, the way it faces"
+		"dropCarriedStack: thrown from the player's character, the way the direction points"
 	)
 	check(groundItem.spawnTime == 100, "dropCarriedStack: dropped at the world's time")
-	send("dropCarriedStack", world, state, 0)
+	send("dropCarriedStack", world, state, ALONG_X, 0)
 	check(
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
 		"dropCarriedStack: a count of 0 drops nothing"
 	)
 	for _, bad in badCounts do
-		send("dropCarriedStack", world, state, bad)
+		send("dropCarriedStack", world, state, ALONG_X, bad)
 	end
 	check(
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
 		"dropCarriedStack: ignored with a count that is not a whole number of 0 or more"
 	)
-	send("dropCarriedStack", world, state, 99)
+	send("dropCarriedStack", world, state, ALONG_X, 99)
 	check(
 		onGround(world, "log") == 12 and carriedBy(state) == nil,
 		"dropCarriedStack: a count of more than is carried drops all of it"
@@ -801,22 +802,22 @@ do -- dropCarriedStack
 	local allWorld, all = newWorld()
 	send("openPack", allWorld, all)
 	send("pickUpFromSlot", allWorld, all, "pack", 1)
-	send("dropCarriedStack", allWorld, all, nil)
+	send("dropCarriedStack", allWorld, all, ALONG_X, nil)
 	check(onGround(allWorld, "log") == 12 and carriedBy(all) == nil, "dropCarriedStack: with no count drops all of it")
-	send("dropCarriedStack", allWorld, all)
+	send("dropCarriedStack", allWorld, all, ALONG_X)
 	check(onGround(allWorld, "log") == 12, "dropCarriedStack: and again drops nothing")
 
 	local movedWorld, moved = newWorld()
-	World.setCharacterPositionAndFacing(movedWorld, 1, at(1, 0, 1), { x = 0, z = 1 })
+	World.setCharacterPosition(movedWorld, 1, at(1, 0, 1))
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
-	send("dropCarriedStack", movedWorld, moved, nil)
+	send("dropCarriedStack", movedWorld, moved, { x = 0, z = 1 }, nil)
 	local movedItem = movedWorld.groundItems.itemsById[next(movedWorld.groundItems.itemsById) :: number]
 	check(
 		movedItem.position.x == 1
 			and movedItem.position.y == World.CHARACTER_THROW_START_HEIGHT
 			and movedItem.spawnVelocity.z == World.CHARACTER_THROW_FORWARD_SPEED,
-		"dropCarriedStack: throws from the player's character where it is now, the way it faces"
+		"dropCarriedStack: throws from the player's character where it is now, the way the direction points"
 	)
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 10)
@@ -826,9 +827,9 @@ do -- dropCarriedStack
 		"dropCarriedStack: (set up) a player who loses their character has their screen closed, the carried stack back in the pack"
 	)
 	send("openPack", movedWorld, moved)
-	send("dropCarriedStack", movedWorld, moved, nil)
-	send("dropFromSlot", movedWorld, moved, "pack", 10, nil)
-	send("dropFromSelectedSlot", movedWorld, moved, nil)
+	send("dropCarriedStack", movedWorld, moved, ALONG_X, nil)
+	send("dropFromSlot", movedWorld, moved, "pack", 10, ALONG_X, nil)
+	send("dropFromSelectedSlot", movedWorld, moved, ALONG_X, nil)
 	check(
 		moved.screen == nil and onGround(movedWorld, "log") == 12 and Inventory.countItems(moved.pack, "log") == 4,
 		"a player with no character can open no screen and drop nothing"
@@ -837,14 +838,14 @@ end
 
 do -- dropFromSlot
 	local world, state = newWorld()
-	send("dropFromSlot", world, state, "pack", 1, 1)
+	send("dropFromSlot", world, state, "pack", 1, ALONG_X, 1)
 	check(
 		onGround(world, "log") == 0 and is(inSlot(state, 1), "log", 12),
 		"dropFromSlot: does nothing when no screen is open"
 	)
 
 	send("openPack", world, state)
-	send("dropFromSlot", world, state, "pack", 1, 1)
+	send("dropFromSlot", world, state, "pack", 1, ALONG_X, 1)
 	check(
 		onGround(world, "log") == 1 and is(inSlot(state, 1), "log", 11),
 		"dropFromSlot: puts that many items out of the slot on the ground"
@@ -857,29 +858,29 @@ do -- dropFromSlot
 			and landed.spawnTime == 100,
 		"dropFromSlot: thrown from the player's character, at the world's time"
 	)
-	send("dropFromSlot", world, state, "pack", 1, 99)
+	send("dropFromSlot", world, state, "pack", 1, ALONG_X, 99)
 	check(
 		onGround(world, "log") == 12 and inSlot(state, 1) == nil,
 		"dropFromSlot: a count of more than the slot holds drops all of it"
 	)
-	send("dropFromSlot", world, state, "pack", 2)
+	send("dropFromSlot", world, state, "pack", 2, ALONG_X)
 	check(
 		onGround(world, "fish") == 5 and inSlot(state, 2) == nil,
 		"dropFromSlot: with no count drops everything in the slot"
 	)
-	send("dropFromSlot", world, state, "pack", 2)
-	send("dropFromSlot", world, state, "pack", 3, 1)
+	send("dropFromSlot", world, state, "pack", 2, ALONG_X)
+	send("dropFromSlot", world, state, "pack", 3, ALONG_X, 1)
 	check(onGround(world, "fish") == 5, "dropFromSlot: a slot that holds nothing drops nothing")
-	send("dropFromSlot", world, state, "pack", 10, 0)
+	send("dropFromSlot", world, state, "pack", 10, ALONG_X, 0)
 	check(is(inSlot(state, 10), "log", 4), "dropFromSlot: a count of 0 drops nothing")
 	for _, bad in badCounts do
-		send("dropFromSlot", world, state, "pack", 10, bad)
+		send("dropFromSlot", world, state, "pack", 10, ALONG_X, bad)
 	end
 	for _, side in { "other", "Pack", "", 1, true, {} } :: { any } do
-		send("dropFromSlot", world, state, side, 10, 1)
+		send("dropFromSlot", world, state, side, 10, ALONG_X, 1)
 	end
 	for _, slot in { 0, -1, 37, 99, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
-		send("dropFromSlot", world, state, "pack", slot, 1)
+		send("dropFromSlot", world, state, "pack", slot, ALONG_X, 1)
 	end
 	send("dropFromSlot", world, state)
 	check(
@@ -888,13 +889,13 @@ do -- dropFromSlot
 	)
 
 	send("pickUpFromSlot", world, state, "pack", 10)
-	send("dropFromSlot", world, state, "pack", 10, 1)
+	send("dropFromSlot", world, state, "pack", 10, ALONG_X, 1)
 	check(is(carriedBy(state), "log", 4), "dropFromSlot: what is carried is not dropped")
 
 	local crateWorld, withCrate = newWorld()
 	local crate = openPlaced(crateWorld, withCrate, "crate")
 	Inventory.setStack(crate, 3, ItemStack.new("fish", 4))
-	send("dropFromSlot", crateWorld, withCrate, "other", 3, 3)
+	send("dropFromSlot", crateWorld, withCrate, "other", 3, ALONG_X, 3)
 	check(
 		onGround(crateWorld, "fish") == 3 and is(Inventory.getStack(crate, 3), "fish", 1),
 		"dropFromSlot: drops out of the other inventory too"
@@ -920,9 +921,65 @@ do -- selectHotbarSlot
 	check(state.hotbar.selectedSlot == 3, "selectHotbarSlot: also while a screen is open")
 end
 
+do -- the direction a drop is thrown in
+	local badDirections: { any } = {
+		false,
+		"x",
+		7,
+		{},
+		{ x = 1 },
+		{ z = 1 },
+		{ x = 0, z = 0 },
+		{ x = 2, z = 0 },
+		{ x = 0, z = -1.5 },
+		{ x = 0 / 0, z = 1 },
+		{ x = math.huge, z = 0 },
+		{ x = "1", z = 0 },
+	}
+	for _, bad in badDirections do
+		local world, state = newWorld()
+		send("dropFromSelectedSlot", world, state, bad, 1)
+		send("openPack", world, state)
+		send("dropFromSlot", world, state, "pack", 1, bad, 1)
+		send("pickUpFromSlot", world, state, "pack", 1)
+		send("dropCarriedStack", world, state, bad, 1)
+		check(
+			onGround(world, "log") == 0 and is(carriedBy(state), "log", 12),
+			"a drop with a direction that is not two numbers from -1 to 1, not both 0, drops nothing"
+		)
+	end
+
+	local world, state = newWorld()
+	send("dropFromSelectedSlot", world, state, { x = 0.3, z = -0.4 }, 1)
+	local thrown = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
+	check(
+		math.abs(thrown.spawnVelocity.x - 0.6 * World.CHARACTER_THROW_FORWARD_SPEED) < 1e-9
+			and math.abs(thrown.spawnVelocity.z + 0.8 * World.CHARACTER_THROW_FORWARD_SPEED) < 1e-9
+			and thrown.spawnVelocity.y == World.CHARACTER_THROW_UPWARD_SPEED,
+		"a drop is thrown at full speed the way its direction points, whatever the direction's length"
+	)
+	check(is(inSlot(state, 1), "log", 11), "a drop with a short direction still takes the item from the slot")
+
+	local edgeWorld, edgeState = newWorld()
+	send("dropFromSelectedSlot", edgeWorld, edgeState, { x = -1, z = 0 }, 1)
+	send("dropFromSelectedSlot", edgeWorld, edgeState, { x = 0, z = 1 }, 1)
+	send("dropFromSelectedSlot", edgeWorld, edgeState, { x = 2.7e-162, z = 0 }, 1)
+	local speeds = {}
+	for _, groundItem in edgeWorld.groundItems.itemsById do
+		table.insert(speeds, math.sqrt(groundItem.spawnVelocity.x ^ 2 + groundItem.spawnVelocity.z ^ 2))
+	end
+	check(#speeds == 3, "a drop with a direction of exactly -1 or 1 along one axis, or a very faint one, is thrown")
+	for _, speed in speeds do
+		check(
+			math.abs(speed - World.CHARACTER_THROW_FORWARD_SPEED) < 1e-9,
+			"no direction a player's machine can send throws faster or slower than a throw goes"
+		)
+	end
+end
+
 do -- dropFromSelectedSlot
 	local world, state = newWorld()
-	send("dropFromSelectedSlot", world, state, 1)
+	send("dropFromSelectedSlot", world, state, ALONG_X, 1)
 	check(
 		is(inSlot(state, 1), "log", 11) and onGround(world, "log") == 1,
 		"dropFromSelectedSlot: puts that many of what is in hand on the ground"
@@ -935,35 +992,35 @@ do -- dropFromSelectedSlot
 			and landed.spawnTime == 100,
 		"dropFromSelectedSlot: thrown from the player's character, at the world's time"
 	)
-	send("dropFromSelectedSlot", world, state, 99)
+	send("dropFromSelectedSlot", world, state, ALONG_X, 99)
 	check(
 		inSlot(state, 1) == nil and onGround(world, "log") == 12,
 		"dropFromSelectedSlot: a count of more than is in hand drops all of it"
 	)
-	send("dropFromSelectedSlot", world, state, 1)
-	send("dropFromSelectedSlot", world, state, nil)
+	send("dropFromSelectedSlot", world, state, ALONG_X, 1)
+	send("dropFromSelectedSlot", world, state, ALONG_X, nil)
 	check(onGround(world, "log") == 12, "dropFromSelectedSlot: an empty hand drops nothing")
 
 	send("selectHotbarSlot", world, state, 10)
 	send("selectHotbarSlot", world, state, 9)
 	Inventory.setStack(state.pack, 9, ItemStack.new("fish", 7))
-	send("dropFromSelectedSlot", world, state)
+	send("dropFromSelectedSlot", world, state, ALONG_X)
 	check(
 		onGround(world, "fish") == 7 and inSlot(state, 9) == nil,
 		"dropFromSelectedSlot: with no count drops the whole stack in hand"
 	)
 
 	local zeroWorld, zero = newWorld()
-	send("dropFromSelectedSlot", zeroWorld, zero, 0)
+	send("dropFromSelectedSlot", zeroWorld, zero, ALONG_X, 0)
 	for _, bad in badCounts do
-		send("dropFromSelectedSlot", zeroWorld, zero, bad)
+		send("dropFromSelectedSlot", zeroWorld, zero, ALONG_X, bad)
 	end
 	check(
 		is(inSlot(zero, 1), "log", 12) and onGround(zeroWorld, "log") == 0,
 		"dropFromSelectedSlot: a count of 0, or one that is not a whole number of 0 or more, drops nothing"
 	)
 	send("openPack", zeroWorld, zero)
-	send("dropFromSelectedSlot", zeroWorld, zero, 2)
+	send("dropFromSelectedSlot", zeroWorld, zero, ALONG_X, 2)
 	check(
 		is(inSlot(zero, 1), "log", 10) and onGround(zeroWorld, "log") == 2,
 		"dropFromSelectedSlot: works while a screen is open too"
@@ -1025,7 +1082,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	local allConserved, allValid = true, true
 	for _ = 1, 40 do
 		local world, state = newWorld()
-		World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
+		World.setCharacterPosition(world, 1, at(6, 0, 0))
 		local crateId = World.placeItem(world, "crate", 6, 6) :: number
 		local ovenId = World.placeItem(world, "oven", 6, 5) :: number
 		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory

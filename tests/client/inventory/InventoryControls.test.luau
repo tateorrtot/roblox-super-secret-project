@@ -15,6 +15,7 @@ local SlotGestures = require("../../../src/client/inventory/SlotGestures")
 local World = require("../../../src/shared/world/World")
 
 local check = Check.that
+local ALONG_X = { x = 1, z = 0 }
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
 ItemRegistry.register({ id = "stone", stackSize = 16 })
@@ -370,24 +371,31 @@ do -- getRequestForDigitKeyOverSlot
 end
 
 do -- getRequestForDropKeyOverSlot
+	local one = InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), ALONG_X, false)
 	check(
-		describe(InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), false), 3) == "dropFromSlot(pack, 4, 1)",
-		"getRequestForDropKeyOverSlot: drops one item from the slot"
+		one.name == "dropFromSlot" and one.arguments[1] == "pack" and one.arguments[2] == 4,
+		"getRequestForDropKeyOverSlot: asks to drop from the slot"
 	)
 	check(
-		describe(InventoryControls.getRequestForDropKeyOverSlot(at("other", 7), true), 3)
-			== "dropFromSlot(other, 7, nil)",
+		one.arguments[3] == ALONG_X and one.arguments[4] == 1,
+		"getRequestForDropKeyOverSlot: one item, thrown the way given"
+	)
+	local whole = InventoryControls.getRequestForDropKeyOverSlot(at("other", 7), ALONG_X, true)
+	check(
+		whole.arguments[1] == "other" and whole.arguments[3] == ALONG_X and whole.arguments[4] == nil,
 		"getRequestForDropKeyOverSlot: with the whole stack asked for, drops everything in the slot"
 	)
 end
 
 do -- getRequestForOutsideClick
+	local all = InventoryControls.getRequestForOutsideClick("left", ALONG_X)
 	check(
-		describe(InventoryControls.getRequestForOutsideClick("left"), 1) == "dropCarriedStack(nil)",
-		"getRequestForOutsideClick: a left click drops all of the carried stack"
+		all.name == "dropCarriedStack" and all.arguments[1] == ALONG_X and all.arguments[2] == nil,
+		"getRequestForOutsideClick: a left click drops all of the carried stack, thrown the way given"
 	)
+	local single = InventoryControls.getRequestForOutsideClick("right", ALONG_X)
 	check(
-		describe(InventoryControls.getRequestForOutsideClick("right"), 1) == "dropCarriedStack(1)",
+		single.arguments[1] == ALONG_X and single.arguments[2] == 1,
 		"getRequestForOutsideClick: a right click drops one item of it"
 	)
 end
@@ -401,7 +409,7 @@ local DROP_AT = Position.new(0, 0, 0)
 local function openedWorld(otherSlotCount: number?): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(3, 3), DROP_AT, 0)
 	local state = World.addPlayer(world, 1)
-	World.setCharacterPositionAndFacing(world, 1, DROP_AT, { x = 1, z = 0 })
+	World.setCharacterPosition(world, 1, DROP_AT)
 	if otherSlotCount ~= nil then
 		PlayerState.openPlacedItemScreen(state, 1, Inventory.new(otherSlotCount))
 	else
@@ -740,30 +748,30 @@ end
 do -- the drop key and a click outside
 	local world, state = openedWorld(nil)
 	put(state, "pack", 4, "log 5")
-	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), false))
+	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), ALONG_X, false))
 	check(held(state, "pack", 4) == "log 4" and onGround(world) == "log 1", "the drop key drops one item of the slot")
-	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), true))
+	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), ALONG_X, true))
 	check(
 		held(state, "pack", 4) == "-" and onGround(world) == "log 5",
 		"the drop key with the whole stack asked for drops all of it"
 	)
-	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), false))
+	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), ALONG_X, false))
 	check(onGround(world) == "log 5", "the drop key over an empty slot drops nothing")
 
 	put(state, "pack", 6, "stone 6")
 	local gestures = SlotGestures.new()
 	mouse(world, state, gestures, "left", { at("pack", 6) })
-	send(world, InventoryControls.getRequestForOutsideClick("right"))
+	send(world, InventoryControls.getRequestForOutsideClick("right", ALONG_X))
 	check(
 		carriedBy(state) == "stone 5" and onGround(world) == "log 5, stone 1",
 		"a right click outside the screen drops one item of the carried stack"
 	)
-	send(world, InventoryControls.getRequestForOutsideClick("left"))
+	send(world, InventoryControls.getRequestForOutsideClick("left", ALONG_X))
 	check(
 		carriedBy(state) == "-" and onGround(world) == "log 5, stone 6",
 		"a left click outside the screen drops all of it"
 	)
-	send(world, InventoryControls.getRequestForOutsideClick("left"))
+	send(world, InventoryControls.getRequestForOutsideClick("left", ALONG_X))
 	check(onGround(world) == "log 5, stone 6", "a click outside the screen with nothing carried drops nothing")
 end
 
@@ -786,8 +794,8 @@ do -- every request the controls make is one the server knows
 			gestureOf("drag", "left", false, { at("pack", 6), at("pack", 7) }, nil)
 		),
 		InventoryControls.getRequestForDigitKeyOverSlot(at("pack", 3), 2),
-		InventoryControls.getRequestForDropKeyOverSlot(at("pack", 3), true),
-		InventoryControls.getRequestForOutsideClick("left"),
+		InventoryControls.getRequestForDropKeyOverSlot(at("pack", 3), ALONG_X, true),
+		InventoryControls.getRequestForOutsideClick("left", ALONG_X),
 		InventoryControls.getRequestForGesture(
 			screenOf({ ["pack 3"] = "log 5" }, nil, 27),
 			click("left", at("pack", 3))
@@ -873,9 +881,9 @@ do -- a long run of random mouse and key use: no item is made and none is lost
 			elseif kind == 6 then
 				send(world, InventoryControls.getRequestForDigitKeyOverSlot(randomSlot(), random(9)))
 			elseif kind == 7 then
-				send(world, InventoryControls.getRequestForDropKeyOverSlot(randomSlot(), random(2) == 1))
+				send(world, InventoryControls.getRequestForDropKeyOverSlot(randomSlot(), ALONG_X, random(2) == 1))
 			else
-				send(world, InventoryControls.getRequestForOutsideClick(button))
+				send(world, InventoryControls.getRequestForOutsideClick(button, ALONG_X))
 			end
 			local after = everything(world, state)
 			if after ~= total then

@@ -113,6 +113,13 @@ end
 return HttpService:JSONEncode(world)
 '''
 
+# The way the camera looks along the ground, as "x,z" with a length of 1. A dropped stack is thrown that way.
+CAMERA_HEADING = '''
+local look = workspace.CurrentCamera.CFrame.LookVector
+local heading = Vector3.new(look.X, 0, look.Z).Unit
+return string.format("%f,%f", heading.X, heading.Z)
+'''
+
 SCREEN_POINT = '''
 local point, onScreen = workspace.CurrentCamera:WorldToScreenPoint(Vector3.new(%f, %f, %f))
 return string.format("%%d,%%d,%%s", point.X, point.Y, tostring(onScreen))
@@ -408,6 +415,7 @@ class Playtest:
         check(view['pack'].get('s1') == 'Apple 4' and view['pack'].get('s3') == 'Log 4' and view['carried'] == '',
               'swapped back, and a stack put on its own kind tops it up', view['pack'])
         self.hover(PANEL + 'PackSlot3')
+        look_x, look_z = (float(part) for part in self.studio.luau(CAMERA_HEADING, 'Client').strip().split(','))
         self.keys('Q')
         check(self.view()['pack'].get('s3') == 'Log 3' and self.ground('log') == [1], 'Q over a slot drops one from it',
               self.world()['ground'])
@@ -415,9 +423,10 @@ class Playtest:
         thrown = [entry for entry in world['ground'] if entry['item'] == 'log']
         player = world['players'][0]
         if thrown:
-            ahead = (thrown[0]['x'] - player['x']) * player['lookX'] + (thrown[0]['z'] - player['z']) * player['lookZ']
-            aside = abs((thrown[0]['x'] - player['x']) * player['lookZ'] - (thrown[0]['z'] - player['z']) * player['lookX'])
-            check(4 < ahead < 14 and aside < 2, 'it is thrown the way the character faces, and comes to rest some way ahead',
+            ahead = (thrown[0]['x'] - player['x']) * look_x + (thrown[0]['z'] - player['z']) * look_z
+            aside = abs((thrown[0]['x'] - player['x']) * look_z - (thrown[0]['z'] - player['z']) * look_x)
+            check(4 < ahead < 14 and aside < 2,
+                  'it is thrown the way the camera looks along the ground, and comes to rest some way ahead',
                   {'studs ahead': ahead, 'studs aside': aside})
             check(thrown[0]['speed'] < 0.05 and thrown[0]['y'] < 1.5, 'on the ground, and still', thrown[0])
         self.hover(PANEL + 'PackSlot12')

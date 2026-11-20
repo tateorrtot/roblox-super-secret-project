@@ -729,6 +729,24 @@ do -- merging the ground items that moved
 		"mergeMovedItems: of two that moved, the one with the lower id is merged first"
 	)
 
+	-- The order holds whatever order the ids are kept in. Thirty single logs with ids 101 to 130 lie
+	-- in one place: each merges into the next, the stack is full at the sixteenth, and the rest
+	-- gather in the last.
+	local many = GroundItems.new()
+	for index = 1, 100 do
+		GroundItems.spawnStack(many, ItemStack.new("stove", 1), at(500 + index * 10, 0, 500), STILL, 0)
+	end
+	GroundItems.removeExpiredItems(many, LIFETIME)
+	GroundItems.mergeMovedItems(many)
+	for _ = 1, 30 do
+		GroundItems.spawnStack(many, ItemStack.new("log", 1), at(0, 0, 0), STILL, LIFETIME)
+	end
+	GroundItems.mergeMovedItems(many)
+	check(
+		groundItemCount(many) == 2 and holds(many, 116, "log", 16) and holds(many, 130, "log", 14),
+		"mergeMovedItems: the ground items that moved are merged in the order of their ids, lowest first"
+	)
+
 	-- A ground item that has lain still is not looked at. A full stack and a part stack lie side by
 	-- side; some of the full one is then picked up, which leaves room, and moves neither.
 	local still = GroundItems.new()

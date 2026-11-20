@@ -10,13 +10,16 @@ local Direction = {}
 export type Direction = { read x: number, read z: number }
 
 --- Returns the direction in which `x` and `z` point, whatever their length, as a value that cannot
---- be changed. Returns `nil` if both are 0, which points nowhere.
+--- be changed. `x` and `z` are any two numbers that are not infinite, however small or large.
+--- Returns `nil` if both are 0, which points nowhere.
 function Direction.new(x: number, z: number): Direction?
-	local length = math.sqrt(x * x + z * z)
-	if length == 0 then
+	local largest = math.max(math.abs(x), math.abs(z))
+	if largest == 0 then
 		return nil
 	end
-	return table.freeze({ x = x / length, z = z / length })
+	local scaledX, scaledZ = x / largest, z / largest
+	local length = math.sqrt(scaledX * scaledX + scaledZ * scaledZ)
+	return table.freeze({ x = scaledX / length, z = scaledZ / length })
 end
 
 return Direction

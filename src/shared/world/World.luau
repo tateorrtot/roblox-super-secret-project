@@ -3,7 +3,7 @@
 --- players.
 ---
 --- The server keeps one world. It adds and removes players, says where each player's character is
---- with `setCharacterPositionAndFacing` and where each ground item has got to with
+--- with `setCharacterPosition` and where each ground item has got to with
 --- `setGroundItemPosition`, and moves time on with `advanceTo`. The other functions are what can be done in the world: spawning
 --- a stack, throwing one from a character, opening and closing a player's screen, placing an item
 --- on the plot and taking it off again.
@@ -57,8 +57,8 @@ World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
 --- How far above a character's feet a stack that the character throws starts, in studs.
 World.CHARACTER_THROW_START_HEIGHT = 3
 
---- How fast a stack that a character throws starts moving the way the character faces, in studs a
---- second.
+--- How fast a stack that a character throws starts moving along the ground, the way it is thrown,
+--- in studs a second.
 World.CHARACTER_THROW_FORWARD_SPEED = 24
 
 --- How fast a stack that a character throws starts moving upwards, in studs a second.
@@ -73,6 +73,7 @@ World.PLACED_ITEM_THROW_OUTWARD_SPEED = 6
 World.PLACED_ITEM_THROW_UPWARD_SPEED = 20
 
 local RADIANS_BETWEEN_THROWN_STACKS = 2.4
+local NO_VELOCITY: GroundItems.Velocity = table.freeze({ x = 0, y = 0, z = 0 })
 
 local function tileCenter(world: World, x: number, z: number): Position
 	return Plot.getTileCenter(world.plotCorner, x, z)
@@ -145,41 +146,49 @@ function World.setGroundItemPosition(world: World, groundItemId: number, positio
 	GroundItems.setItemPosition(world.groundItems, groundItemId, position)
 end
 
---- Throws a stack into the world from a character: it spawns `CHARACTER_THROW_START_HEIGHT` above the
---- character's feet, moving the way the character faces at `CHARACTER_THROW_FORWARD_SPEED` and
---- upwards at `CHARACTER_THROW_UPWARD_SPEED`.
+local function getThrowStart(characterPosition: Position): Position
+	local height = characterPosition.y + World.CHARACTER_THROW_START_HEIGHT
+	return Position.new(characterPosition.x, height, characterPosition.z)
+end
+
+--- Throws a stack into the world from a character whose feet are at `characterPosition`: it
+--- spawns `CHARACTER_THROW_START_HEIGHT` above them, moving the way `direction` points along the
+--- ground at `CHARACTER_THROW_FORWARD_SPEED`, and upwards at `CHARACTER_THROW_UPWARD_SPEED`.
 --- Note: it does not take the stack from anywhere.
-function World.throwStackFromCharacter(world: World, character: PlayerState.Character, stack: ItemStack)
-	local feet = character.position
-	local facing = character.facing
-	World.spawnStack(world, stack, Position.new(feet.x, feet.y + World.CHARACTER_THROW_START_HEIGHT, feet.z), {
-		x = facing.x * World.CHARACTER_THROW_FORWARD_SPEED,
+function World.throwStackFromCharacter(
+	world: World,
+	stack: ItemStack,
+	characterPosition: Position,
+	direction: Direction
+)
+	World.spawnStack(world, stack, getThrowStart(characterPosition), {
+		x = direction.x * World.CHARACTER_THROW_FORWARD_SPEED,
 		y = World.CHARACTER_THROW_UPWARD_SPEED,
-		z = facing.z * World.CHARACTER_THROW_FORWARD_SPEED,
+		z = direction.z * World.CHARACTER_THROW_FORWARD_SPEED,
 	})
 end
 
 --- Closes a player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit is thrown from their character, as `throwStackFromCharacter` does. Does
---- nothing if they have no screen open.
+--- and what does not fit is dropped: it spawns `CHARACTER_THROW_START_HEIGHT` above their
+--- character's feet, not moving. Does nothing if they have no screen open.
 function World.closeScreen(world: World, player: PlayerState)
 	local leftover = PlayerState.closeScreen(player)
 	if leftover ~= nil then
 		local character = assert(player.character, "a player who had a screen open has a character")
-		World.throwStackFromCharacter(world, character, leftover)
+		World.spawnStack(world, leftover, getThrowStart(character.position), NO_VELOCITY)
 	end
 end
 
---- Sets where a player's character is, at its feet, and which way it faces along the ground. A
---- player who had no character has one from now on. Fails if no player has that id.
-function World.setCharacterPositionAndFacing(world: World, playerId: number, position: Position, facing: Direction)
+--- Sets where a player's character is, at its feet. A player who had no character has one from
+--- now on. Fails if no player has that id.
+function World.setCharacterPosition(world: World, playerId: number, position: Position)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
-	PlayerState.setCharacterPositionAndFacing(player, position, facing)
+	PlayerState.setCharacterPosition(player, position)
 end
 
---- Removes a player's character: they have none until `setCharacterPositionAndFacing` is next
---- called for them. Their screen is closed first, as `closeScreen` does, while there is still a
---- character to throw from. Does nothing if they have no character. Fails if no player has that
+--- Removes a player's character: they have none until `setCharacterPosition` is next called for
+--- them. Their screen is closed first, as `closeScreen` does, while there is still a character to
+--- drop the carried stack at. Does nothing if they have no character. Fails if no player has that
 --- id.
 function World.removeCharacter(world: World, playerId: number)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)

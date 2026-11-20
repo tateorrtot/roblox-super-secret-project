@@ -84,7 +84,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.Pl
 		Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 		Inventory.setStack(state.pack, 2, ItemStack.new("fish", 5))
 		Inventory.setStack(state.pack, 3, ItemStack.new("crate", 1))
-		World.setCharacterPositionAndFacing(world, playerId, position, ALONG_X)
+		World.setCharacterPosition(world, playerId, position)
 		players[playerId] = state
 	end
 	return world, players[1], players[2], crateId
@@ -232,7 +232,7 @@ do -- carryOut
 	)
 	for _, playerId in { 0, 3, -1, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
 		carryOut(world, playerId, "openPack")
-		carryOut(world, playerId, "dropFromSelectedSlot", 1)
+		carryOut(world, playerId, "dropFromSelectedSlot", ALONG_X, 1)
 	end
 	carryOut(world, nil, "openPack")
 	check(
@@ -306,7 +306,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	for _ = 1, 40 do
 		local world, _, _, crateId = newWorld()
 		World.addPlayer(world, 3)
-		World.setCharacterPositionAndFacing(world, 3, at(20, 0, 20), ALONG_X)
+		World.setCharacterPosition(world, 3, at(20, 0, 20))
 		local total: { [string]: number } = {}
 		for _, itemId in itemIds do
 			total[itemId] = inWorld(world, itemId)
@@ -319,7 +319,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				if random(8) == 1 then
 					World.removeCharacter(world, playerId)
 				else
-					World.setCharacterPositionAndFacing(world, playerId, at(random(30), 0, random(30)), ALONG_X)
+					World.setCharacterPosition(world, playerId, at(random(30), 0, random(30)))
 				end
 			end
 			local playerId: any = if random(10) == 1 then junk[random(#junk)] else random(4)

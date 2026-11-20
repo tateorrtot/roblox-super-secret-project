@@ -10,6 +10,9 @@ local InventoryControls = {}
 
 type Slot = SlotGestures.Slot
 
+--- A way along the ground: numbers under `x` and `z` that together have a length of 1.
+export type Direction = { read x: number, read z: number }
+
 --- A stack as the controls see it.
 export type Stack = { read itemId: string, read count: number }
 
@@ -111,15 +114,16 @@ function InventoryControls.getRequestForDigitKeyOverSlot(over: Slot, digit: numb
 end
 
 --- Returns the request that the drop key asks for while the pointer is over a slot: one item is
---- dropped from the slot, or the whole stack if `wholeStack` is `true`.
-function InventoryControls.getRequestForDropKeyOverSlot(over: Slot, wholeStack: boolean): Request
-	return request("dropFromSlot", over.side, over.slot, if wholeStack then nil else 1)
+--- dropped from the slot, or the whole stack if `wholeStack` is `true`. `direction` is the way it
+--- is thrown.
+function InventoryControls.getRequestForDropKeyOverSlot(over: Slot, direction: Direction, wholeStack: boolean): Request
+	return request("dropFromSlot", over.side, over.slot, direction, if wholeStack then nil else 1)
 end
 
 --- Returns the request that a click outside the screen asks for: the carried stack is dropped
---- with the left button, and one item of it with the right.
-function InventoryControls.getRequestForOutsideClick(button: SlotGestures.Button): Request
-	return request("dropCarriedStack", if button == "left" then nil else 1)
+--- with the left button, and one item of it with the right. `direction` is the way it is thrown.
+function InventoryControls.getRequestForOutsideClick(button: SlotGestures.Button, direction: Direction): Request
+	return request("dropCarriedStack", direction, if button == "left" then nil else 1)
 end
 
 return InventoryControls

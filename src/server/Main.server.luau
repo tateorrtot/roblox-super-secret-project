@@ -2,9 +2,9 @@
 --- Starts the game on the server and runs it. This is the only Script.
 ---
 --- The rules are in ReplicatedStorage.Shared, and one World holds the whole game. This script
---- tells the World what happens: a player joins or leaves, where each character is and which way
---- it faces, where Roblox's physics has carried each ground item, what a player's machine asks
---- for, and that time has passed. Then it draws the World, and tells each player's machine what
+--- tells the World what happens: a player joins or leaves, where each character is, where
+--- Roblox's physics has carried each ground item, what a player's machine asks for, and that time
+--- has passed. Then it draws the World, and tells each player's machine what
 --- that player holds.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -13,7 +13,6 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Direction = require(Shared.Direction)
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
@@ -90,11 +89,7 @@ local function tellCharacter(player: Player)
 		World.removeCharacter(world, player.UserId)
 		return
 	end
-	local look = root.CFrame.LookVector
-	local facing = Direction.new(look.X, look.Z)
-	if facing ~= nil then
-		World.setCharacterPositionAndFacing(world, player.UserId, toPosition(getFeet(root, humanoid)), facing)
-	end
+	World.setCharacterPosition(world, player.UserId, toPosition(getFeet(root, humanoid)))
 end
 
 local function tellGroundItemPositions()
