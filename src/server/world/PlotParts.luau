@@ -1,34 +1,14 @@
 --!strict
---[=[
-	Shows a plot in the world: thin lines on its slab that mark the tiles, and
-	one plain block, a tile wide, for each item standing on the plot, in the
-	colour of its item and with its name above it.
-
-	The rules in Plot know nothing of this. [method update] reads them and
-	makes the blocks match: a new block for each newly placed item, and no
-	block for one that was removed. Call it after anything may have changed
-	what is placed.
-
-	A player's machine has to tell what the pointer is over, so two things
-	are written where it can read them:
-	- The slab the plot lies on gets the tag `Plot`, and attributes `width`
-	  and `depth` in tiles, and `cornerX`, `cornerY` and `cornerZ`: the
-	  position of the plot's corner, as `Plot.tileAt` wants it.
-	- Each block gets the attribute `placedId`, the id of its placed item.
-
-	The plot must lie square to the world's x and z, not turned.
-
-	A station whose fire is burning glows, and its block has the attribute
-	`burning` set to true.
-
-	The blocks are placeholders. They stand in until items have models.
-
-	```lua
-	local plotParts = PlotParts.new(slab, plot)
-	Plot.place(plot, "crate", 3, 5)
-	PlotParts.update(plotParts, plot) -- a crate-coloured block stands on that tile
-	```
-]=]
+--- Blocks that show a plot in the world.
+---
+--- Draws thin lines on the plot's slab to mark the tiles, and one block a tile wide for each item
+--- standing on the plot, in the colour of its item and with its name above it. `update` makes the
+--- blocks match what is placed: a new block for each newly placed item and none for one that was
+--- removed. The slab is tagged `Plot` and has the attributes `width` and `depth` in tiles and
+--- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.tileAt` wants it. Each block has
+--- the attribute `placedId`, the id of its placed item, and a station's block has the attribute
+--- `burning`. The blocks are placeholders until items have models, and the plot must lie square to
+--- the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -50,6 +30,25 @@ export type PlotParts = {
 	read partsById: { [number]: Part },
 }
 
+local function makeLabel(part: Part, text: string, side: number)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "Label"
+	billboard.Size = UDim2.fromOffset(200, 26)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, side / 2 + 1.2, 0)
+	billboard.MaxDistance = 70
+	billboard.Parent = part
+	local label = Instance.new("TextLabel")
+	label.Name = "Text"
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 17
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.2
+	label.Text = text
+	label.Parent = billboard
+end
+
 local function makePart(itemId: string, id: number, center: Plot.Position): Part
 	local look = ItemLooks[itemId]
 	local side = Plot.TILE_SIZE
@@ -64,65 +63,51 @@ local function makePart(itemId: string, id: number, center: Plot.Position): Part
 	part.Color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
 	part:SetAttribute("placedId", id)
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(200, 26)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, side / 2 + 1.2, 0)
-	billboard.MaxDistance = 70
-	billboard.Parent = part
-	local text = Instance.new("TextLabel")
-	text.Name = "Text"
-	text.Size = UDim2.fromScale(1, 1)
-	text.BackgroundTransparency = 1
-	text.Font = Enum.Font.GothamBold
-	text.TextSize = 17
-	text.TextColor3 = Color3.new(1, 1, 1)
-	text.TextStrokeTransparency = 0.2
-	text.Text = look.name
-	text.Parent = billboard
+	makeLabel(part, look.name, side)
 	return part
 end
 
--- Draws the lines between a plot's tiles as thin strips lying on the slab. They are only to be looked at:
--- nothing collides with them, and a pointer goes through them to the slab.
+local function makeTileLine(folder: Folder, color: Color3, size: Vector3, position: Vector3)
+	local line = Instance.new("Part")
+	line.Name = "TileLine"
+	line.Anchored = true
+	line.CanCollide = false
+	line.CanQuery = false
+	line.CanTouch = false
+	line.CastShadow = false
+	line.Material = Enum.Material.SmoothPlastic
+	line.Color = color
+	line.Size = size
+	line.Position = position
+	line.Parent = folder
+end
+
 local function makeTileLines(folder: Folder, corner: Plot.Position, plot: Plot.Plot, color: Color3)
 	local side = Plot.TILE_SIZE
-	local function makeLine(size: Vector3, position: Vector3)
-		local line = Instance.new("Part")
-		line.Name = "TileLine"
-		line.Anchored = true
-		line.CanCollide = false
-		line.CanQuery = false
-		line.CanTouch = false
-		line.CastShadow = false
-		line.Material = Enum.Material.SmoothPlastic
-		line.Color = color
-		line.Size = size
-		line.Position = position
-		line.Parent = folder
-	end
 	local length = plot.depth * side
 	for index = 0, plot.width do
-		makeLine(Vector3.new(0.12, 0.04, length), Vector3.new(corner.x + index * side, corner.y, corner.z + length / 2))
+		makeTileLine(
+			folder,
+			color,
+			Vector3.new(0.12, 0.04, length),
+			Vector3.new(corner.x + index * side, corner.y, corner.z + length / 2)
+		)
 	end
 	local breadth = plot.width * side
 	for index = 0, plot.depth do
-		makeLine(
+		makeTileLine(
+			folder,
+			color,
 			Vector3.new(breadth, 0.04, 0.12),
 			Vector3.new(corner.x + breadth / 2, corner.y, corner.z + index * side)
 		)
 	end
 end
 
---[=[
-	Returns a new set of blocks for the plot that lies on `slab`, with none
-	made yet, and draws the lines between the plot's tiles. The blocks and the
-	lines are kept in a folder called `PlacedItems` beside the slab.
-
-	`plot` is read once, for its size. The slab's top must be at least as
-	large as the plot's tiles; the plot starts at the slab's corner of least
-	x and z.
-]=]
+--- Returns a new set of blocks for the plot that lies on `slab`, with no block made yet, and draws
+--- the lines between the plot's tiles. The blocks and the lines are kept in a folder called
+--- `PlacedItems` beside the slab. `plot` is read once, for its size. The plot starts at the slab's
+--- corner of least x and z, and the slab's top must be at least as large as the plot.
 function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	local corner = table.freeze({
 		x = slab.Position.X - slab.Size.X / 2,
@@ -143,7 +128,6 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	return { slab = slab, corner = corner, folder = folder, partsById = {} }
 end
 
--- Makes a station's block glow while its fire burns, and look as it did before when the fire is out.
 local function showFire(part: Part, burning: boolean)
 	local color = ItemLooks[part.Name].color
 	local unlit = Color3.fromRGB(color[1], color[2], color[3])
@@ -162,34 +146,46 @@ local function showFire(part: Part, burning: boolean)
 	end
 end
 
---[=[
-	Makes the blocks match what is placed on `plot` now, and makes each
-	station in `stations` glow if its fire is burning. `stations` is the
-	World's record of them, by placed item id.
-]=]
-function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, stations: { [number]: Station.Station })
-	local partsById = plotParts.partsById
+local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
 	for id, placedItem in plot.placedById do
-		if partsById[id] == nil then
+		if plotParts.partsById[id] == nil then
 			local center = Plot.tileCenter(plotParts.corner, placedItem.x, placedItem.z)
 			local part = makePart(placedItem.itemId, id, center)
-			partsById[id] = part
+			plotParts.partsById[id] = part
 			part.Parent = plotParts.folder
 		end
 	end
-	for id, part in partsById do
+end
+
+local function showFireIfChanged(part: Part, station: Station.Station?)
+	local burning = station ~= nil and Station.isBurning(station)
+	if part:GetAttribute("burning") ~= burning then
+		part:SetAttribute("burning", burning)
+		showFire(part, burning)
+	end
+end
+
+local function removeStalePartsAndShowFires(
+	plotParts: PlotParts,
+	plot: Plot.Plot,
+	stations: { [number]: Station.Station }
+)
+	for id, part in plotParts.partsById do
 		if plot.placedById[id] == nil then
 			part:Destroy()
-			partsById[id] = nil
+			plotParts.partsById[id] = nil
 		else
-			local station = stations[id]
-			local burning = station ~= nil and Station.isBurning(station)
-			if part:GetAttribute("burning") ~= burning then
-				part:SetAttribute("burning", burning)
-				showFire(part, burning)
-			end
+			showFireIfChanged(part, stations[id])
 		end
 	end
+end
+
+--- Makes the blocks match what is placed on `plot` now: a new block for each placed item that has
+--- none, and no block for an item that is gone. Each station's block glows while its fire is
+--- burning. `stations` holds the station of each placed item that has one, by placed item id.
+function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, stations: { [number]: Station.Station })
+	addMissingParts(plotParts, plot)
+	removeStalePartsAndShowFires(plotParts, plot, stations)
 end
 
 return PlotParts

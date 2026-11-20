@@ -1,15 +1,9 @@
 --!strict
---[=[
-	Keeps the game's own screens the right size for the window they are in.
-
-	The screens are laid out in pixels for a window 900 wide and 620 tall. In
-	a smaller window, such as a phone's, everything shrinks to fit, and in a
-	larger one it grows a little.
-
-	```lua
-	ScreenScale.apply(panel) -- the panel and everything in it now fits this window, and stays fitted
-	```
-]=]
+--- Keeps the game's own screens the right size for the window they are in.
+---
+--- The screens are laid out in pixels for a window 900 wide and 620 tall. `apply` makes a screen
+--- shrink in a smaller window and grow a little in a larger one, and keeps it fitted when the
+--- window changes size. `current` returns the factor that is used.
 local Workspace = game:GetService("Workspace")
 
 local ScreenScale = {}
@@ -19,10 +13,9 @@ local DESIGN_HEIGHT = 620
 local SMALLEST = 0.45
 local LARGEST = 1.3
 
---[=[
-	Returns how much larger than their laid-out size the screens are drawn in
-	this window now: 1 is the laid-out size, and 0.5 is half of it.
-]=]
+--- Returns the factor the screens are scaled by in this window now: 1 draws them at their laid-out
+--- size, and 0.5 at half of it. The factor is never below 0.45 or above 1.3, and is 1 while there
+--- is no camera.
 function ScreenScale.current(): number
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
@@ -32,7 +25,6 @@ function ScreenScale.current(): number
 	return math.clamp(math.min(size.X / DESIGN_WIDTH, size.Y / DESIGN_HEIGHT), SMALLEST, LARGEST)
 end
 
--- Every UIScale this has made, kept right by the two connections below.
 local uiScales: { UIScale } = {}
 local viewportChanged: RBXScriptConnection? = nil
 
@@ -43,7 +35,6 @@ local function refresh()
 	end
 end
 
--- Follows the size of the camera there is now. Called again whenever the camera turns up or is replaced.
 local function followCamera()
 	if viewportChanged ~= nil then
 		viewportChanged:Disconnect()
@@ -59,11 +50,8 @@ end
 Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(followCamera)
 followCamera()
 
---[=[
-	Scales `guiObject`, and everything inside it, to fit this window, and
-	keeps it fitted when the window changes size. Returns the UIScale that
-	does it.
-]=]
+--- Scales `guiObject`, and everything inside it, to fit this window, and keeps it fitted when the
+--- window changes size. Returns the `UIScale` that does it, which is now a child of `guiObject`.
 function ScreenScale.apply(guiObject: GuiObject): UIScale
 	local uiScale = Instance.new("UIScale")
 	uiScale.Scale = ScreenScale.current()

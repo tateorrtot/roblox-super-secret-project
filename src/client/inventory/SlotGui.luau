@@ -1,18 +1,9 @@
 --!strict
---[=[
-	One inventory slot drawn on the screen: a square button that shows the
-	stack in the slot, or nothing when the slot holds nothing.
-
-	The square is `slotGui.button`. Code that wants its clicks connects to
-	that button's `MouseButton1Click` and `MouseButton2Click`.
-
-	```lua
-	local slotGui = SlotGui.new(row)
-	slotGui.button.Position = UDim2.fromOffset(0, 0)
-	SlotGui.show(slotGui, Inventory.getStack(pack, 1))
-	SlotGui.setSelected(slotGui, true) -- a bright edge, as on the hotbar slot in hand
-	```
-]=]
+--- One inventory slot drawn on the screen: a square button that shows the stack in the slot, or
+--- nothing when the slot holds nothing.
+---
+--- The square is `button`: it is placed by setting its `Position`, and a click on the slot is a
+--- click on it. `show` changes what the slot shows, and `setSelected` gives it a bright edge.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -23,11 +14,11 @@ local StackIcon = require(script.Parent.StackIcon)
 local SlotGui = {}
 
 export type SlotGui = {
-	--- The square itself.
+	--- The square itself. It is a child of the parent given to `new`.
 	read button: TextButton,
-	--- The picture of the stack inside it.
+	--- The picture of the stack inside the square.
 	read icon: StackIcon.StackIcon,
-	--- The square's edge.
+	--- The line around the square. It is bright while the slot is selected.
 	read edge: UIStroke,
 }
 
@@ -39,10 +30,7 @@ local FILL_UNDER_POINTER = Color3.fromRGB(104, 105, 114)
 local EDGE = Color3.fromRGB(22, 22, 26)
 local EDGE_SELECTED = Color3.fromRGB(255, 255, 255)
 
---[=[
-	Returns a new slot inside `parent`, showing nothing, at the top left.
-	Place it by setting `slotGui.button.Position`.
-]=]
+--- Returns a new slot inside `parent`, showing nothing, at the top left of `parent`.
 function SlotGui.new(parent: Instance): SlotGui
 	local button = Instance.new("TextButton")
 	button.Name = "Slot"
@@ -74,16 +62,12 @@ function SlotGui.new(parent: Instance): SlotGui
 	return { button = button, icon = icon, edge = edge }
 end
 
---[=[
-	Makes the slot show `stack`, or nothing if `stack` is `nil`.
-]=]
+--- Makes the slot show `stack`, or nothing if `stack` is `nil`.
 function SlotGui.show(slotGui: SlotGui, stack: ItemStack.ItemStack?)
 	StackIcon.show(slotGui.icon, stack)
 end
 
---[=[
-	Gives the slot a bright edge if `selected` is `true`, and its plain edge if not.
-]=]
+--- Gives the slot a bright, thicker edge if `selected` is `true`, and its plain edge if not.
 function SlotGui.setSelected(slotGui: SlotGui, selected: boolean)
 	slotGui.edge.Color = if selected then EDGE_SELECTED else EDGE
 	slotGui.edge.Thickness = if selected then 3 else 2

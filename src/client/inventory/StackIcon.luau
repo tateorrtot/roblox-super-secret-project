@@ -1,18 +1,9 @@
 --!strict
---[=[
-	The picture of a stack on the screen: a block in the item's colour with
-	the item's name across it, and the count in the corner as Minecraft
-	writes it. A stack of one shows no number.
-
-	It stands in for an icon until items have art. It takes no clicks, so
-	what lies under it still gets them.
-
-	```lua
-	local icon = StackIcon.new(slotButton) -- fills the button, a little inside its edge
-	StackIcon.show(icon, ItemStack.new("log", 12)) -- a brown block that says Log and 12
-	StackIcon.show(icon, nil) -- nothing
-	```
-]=]
+--- The picture of a stack on the screen: a block in the item's colour with the item's name across
+--- it and the count in the corner.
+---
+--- `show` makes it show a stack, or nothing. A stack of one shows no count. The block stands in
+--- for an icon until items have art.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -22,16 +13,16 @@ local ItemStack = require(Shared.items.ItemStack)
 local StackIcon = {}
 
 export type StackIcon = {
-	--- The coloured block. It is hidden when there is no stack to show.
+	--- The coloured block. It is hidden while there is no stack to show.
 	read block: Frame,
+	--- The item's name, across the block.
 	read nameLabel: TextLabel,
+	--- The number of items, in the corner of the block. It is empty for a stack of one.
 	read countLabel: TextLabel,
 }
 
---[=[
-	Returns a new picture inside `parent`, filling it a little inside its
-	edge, and showing nothing yet.
-]=]
+--- Returns a new picture inside `parent`, filling it to a little inside its edge, and showing
+--- nothing yet.
 function StackIcon.new(parent: Instance): StackIcon
 	local block = Instance.new("Frame")
 	block.Name = "StackIcon"
@@ -78,9 +69,7 @@ function StackIcon.new(parent: Instance): StackIcon
 	return { block = block, nameLabel = nameLabel, countLabel = countLabel }
 end
 
---[=[
-	Makes the picture show `stack`, or nothing if `stack` is `nil`.
-]=]
+--- Makes the picture show `stack`, or nothing if `stack` is `nil`.
 function StackIcon.show(icon: StackIcon, stack: ItemStack.ItemStack?)
 	if stack == nil then
 		icon.block.Visible = false

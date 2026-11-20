@@ -1,22 +1,10 @@
 --!strict
---[=[
-	A grey stand-in for the world, to build and test the game's machinery on:
-	a flat plot beside the place where players appear, with a post at each
-	corner, a crate and a stove standing on it, and items that keep turning
-	up on the ground.
-
-	None of this is the game's world. It is made by code so that the project
-	folder alone is enough to run the game, and it goes when there is a real
-	map. What it puts in the crate, on the ground and in a new player's pack
-	is there so that a tester has something to move about.
-
-	```lua
-	local placeholder = PlaceholderWorld.build()
-	placeholder.plot -- the plot's rules: a crate with things in it, and a stove
-	placeholder.slab -- the part the plot lies on
-	PlaceholderWorld.restock(placeholder, groundItems, now) -- call often; it drops something now and then
-	```
-]=]
+--- A grey stand-in for the game's world.
+---
+--- `build` makes a flat plot beside the place where players appear, with a post at each corner and
+--- a crate and a stove standing on it. `restock` keeps a few stacks of items lying on the plot, and
+--- `fillPack` gives a new player something to hold. All of it is placeholder content, made by code
+--- so that the project folder alone is enough to run the game, and it goes when there is a real map.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -62,23 +50,15 @@ local function makeBlock(name: string, size: Vector3, position: Vector3, color: 
 	return part
 end
 
---[=[
-	Builds the placeholder world in the Workspace and returns it.
-
-	Makes a ground to stand on and a place to appear only if the Workspace
-	has none, so it works both in an empty place and in Studio's baseplate
-	template. Call it once, after the items are registered.
-]=]
-function PlaceholderWorld.build(): PlaceholderWorld
-	local folder = Instance.new("Folder")
-	folder.Name = "PlaceholderWorld"
-
+local function addGroundIfMissing(folder: Folder)
 	if Workspace:FindFirstChild("Baseplate") == nil then
 		local ground =
 			makeBlock("Baseplate", Vector3.new(1024, 16, 1024), Vector3.new(0, -8, 0), Color3.fromRGB(91, 93, 105))
 		ground.Parent = folder
 	end
+end
 
+local function findOrMakeSpawnPoint(folder: Folder): Vector3
 	local spawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
 	if spawnLocation == nil then
 		local newSpawn = Instance.new("SpawnLocation")
@@ -89,12 +69,10 @@ function PlaceholderWorld.build(): PlaceholderWorld
 		newSpawn.Parent = folder
 		spawnLocation = newSpawn
 	end
-	local spawnPoint = (spawnLocation :: SpawnLocation).Position
+	return (spawnLocation :: SpawnLocation).Position
+end
 
-	-- The plot lies beside the place where players appear, not under it, so that nothing placed on
-	-- the plot can be where a player is about to appear.
-	local side = PlaceholderWorld.PLOT_TILES * Plot.TILE_SIZE
-	local center = Vector3.new(spawnPoint.X + side / 2 + PLOT_FROM_SPAWN, 0, spawnPoint.Z)
+local function makeSlab(folder: Folder, center: Vector3, side: number): Part
 	local slab = makeBlock(
 		"Plot",
 		Vector3.new(side, SLAB_HEIGHT, side),
@@ -102,6 +80,10 @@ function PlaceholderWorld.build(): PlaceholderWorld
 		Color3.fromRGB(150, 151, 156)
 	)
 	slab.Parent = folder
+	return slab
+end
+
+local function makePosts(folder: Folder, center: Vector3, side: number)
 	for _, corner in { Vector3.new(1, 0, 1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(-1, 0, -1) } do
 		local post = makeBlock(
 			"Post",
@@ -111,7 +93,9 @@ function PlaceholderWorld.build(): PlaceholderWorld
 		)
 		post.Parent = folder
 	end
+end
 
+local function makeStockedPlot(): Plot.Plot
 	local plot = Plot.new(PlaceholderWorld.PLOT_TILES, PlaceholderWorld.PLOT_TILES)
 	local crateId = Plot.place(plot, "crate", 13, 7) :: number
 	local inCrate = plot.placedById[crateId].inventory :: Inventory.Inventory
@@ -120,27 +104,42 @@ function PlaceholderWorld.build(): PlaceholderWorld
 	Inventory.addItems(inCrate, "crystal", 40)
 	Inventory.addItems(inCrate, "crate", 1)
 	Plot.place(plot, "stove", 6, 13)
+	return plot
+end
+
+--- Builds the placeholder world in the Workspace and returns it. Makes a ground and a place to
+--- appear only if the Workspace has none, so it works in an empty place and in Studio's baseplate
+--- template. The plot lies beside the place where players appear, not under it. Call it once, after
+--- the items are registered.
+function PlaceholderWorld.build(): PlaceholderWorld
+	local folder = Instance.new("Folder")
+	folder.Name = "PlaceholderWorld"
+	addGroundIfMissing(folder)
+	local spawnPoint = findOrMakeSpawnPoint(folder)
+
+	local side = PlaceholderWorld.PLOT_TILES * Plot.TILE_SIZE
+	local center = Vector3.new(spawnPoint.X + side / 2 + PLOT_FROM_SPAWN, 0, spawnPoint.Z)
+	local slab = makeSlab(folder, center, side)
+	makePosts(folder, center, side)
+	local plot = makeStockedPlot()
 
 	folder.Parent = Workspace
 	return { slab = slab, plot = plot, spawnPoint = spawnPoint }
 end
 
---[=[
-	Puts a few things in a new player's pack, so that their hotbar is not bare.
-]=]
+--- Adds a few items to `pack`, so that a new player's hotbar is not bare.
 function PlaceholderWorld.fillPack(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "apple", 4)
 	Inventory.addItems(pack, "log", 20)
 	Inventory.addItems(pack, "crate", 1)
 end
 
---[=[
-	Drops a stack of some item on a random tile of the plot, if fewer than a
-	handful of ground items lie about and one was not dropped a moment ago.
-	Call it often: it keeps the plot stocked however long the game runs.
-]=]
+--- Drops a stack of a random item on a random tile of the plot, unless `GROUND_ITEMS_KEPT` ground
+--- items already lie about, a stack was dropped less than `SECONDS_BETWEEN_RESTOCKS` before `now`,
+--- or a crate could not be placed on the chosen tile because something stands there, in which case
+--- nothing is dropped until the next call. Does nothing while the Workspace attribute
+--- `PlaceholderRestock` is `false`, which the play test sets so that it knows what lies on the ground.
 function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: GroundItems.GroundItems, now: number)
-	-- The play test in tools/playtest.py switches this off, so that it knows exactly what lies on the ground.
 	if now < nextRestockAt or Workspace:GetAttribute("PlaceholderRestock") == false then
 		return
 	end
@@ -163,8 +162,6 @@ function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: Gr
 		z = slab.Position.Z - slab.Size.Z / 2,
 	}
 	local spot = Plot.tileCenter(corner, tileX, tileZ)
-	-- Nothing lands on a tile that something stands on: a tile a crate could go on is a tile that
-	-- holds nothing. A tile that will not do is skipped until the next time.
 	if not Plot.canPlace(plot, "crate", tileX, tileZ) then
 		return
 	end
