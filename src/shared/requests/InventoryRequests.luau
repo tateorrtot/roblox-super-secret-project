@@ -29,7 +29,7 @@ end
 
 local function dropAtPlayer(world: World, player: PlayerState, stack: ItemStack.ItemStack?)
 	if stack ~= nil then
-		World.dropStack(world, stack, player.dropPosition)
+		World.dropStackAt(world, stack, player.dropPosition)
 	end
 end
 
@@ -167,7 +167,7 @@ end
 function InventoryRequests.dropFromSlot(world: World, player: PlayerState, side: unknown, slot: unknown, count: unknown)
 	local screen = screenWithSlot(player, side, slot)
 	if screen ~= nil and isCountOrNil(count) then
-		local inventory = InventoryScreen.getInventory(screen, side :: any)
+		local inventory = InventoryScreen.getInventoryOnSide(screen, side :: any)
 		dropAtPlayer(world, player, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
 	end
 end

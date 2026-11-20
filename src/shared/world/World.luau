@@ -91,8 +91,8 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 end
 
 --- Puts a stack on the ground at a position.
-function World.dropStack(world: World, stack: ItemStack, position: Position)
-	GroundItems.dropStack(world.groundItems, stack, position, world.now)
+function World.dropStackAt(world: World, stack: ItemStack, position: Position)
+	GroundItems.dropStackAt(world.groundItems, stack, position, world.now)
 end
 
 --- Closes a player's inventory screen. The stack they were carrying goes back into their pack,
@@ -106,7 +106,7 @@ function World.closeScreen(world: World, player: PlayerState)
 	local carried = InventoryScreen.takeCarriedStack(screen)
 	local leftover = if carried then Inventory.addStack(player.pack, carried) else nil
 	if leftover ~= nil then
-		World.dropStack(world, leftover, player.dropPosition)
+		World.dropStackAt(world, leftover, player.dropPosition)
 	end
 	player.screen = nil
 	player.openedPlacedItemId = nil
@@ -219,7 +219,7 @@ local function spill(world: World, inventory: Inventory, center: Position)
 			local angle = spilled * SPILL_ANGLE
 			local x = center.x + math.cos(angle) * SPILL_DISTANCE
 			local z = center.z + math.sin(angle) * SPILL_DISTANCE
-			World.dropStack(world, stack, { x = x, y = center.y, z = z })
+			World.dropStackAt(world, stack, { x = x, y = center.y, z = z })
 		end
 	end
 end
@@ -237,16 +237,16 @@ function World.removePlacedItem(world: World, placedItemId: number)
 	Plot.removePlacedItem(world.plot, placedItemId)
 	world.stations[placedItemId] = nil
 	local center = tileCenter(world, placedItem.x, placedItem.z)
-	World.dropStack(world, ItemStack.new(placedItem.itemId, 1), center)
+	World.dropStackAt(world, ItemStack.new(placedItem.itemId, 1), center)
 	if placedItem.inventory ~= nil then
 		spill(world, placedItem.inventory, center)
 	end
 end
 
-local function pickUpNear(world: World, player: PlayerState)
+local function pickUpNearbyStacks(world: World, player: PlayerState)
 	local position = player.position
 	if position ~= nil then
-		GroundItems.pickUpStacksNear(world.groundItems, position, player.pack, world.now)
+		GroundItems.moveNearbyStacksToInventory(world.groundItems, position, player.pack, world.now)
 	end
 end
 
@@ -277,7 +277,7 @@ function World.advanceTo(world: World, now: number)
 	world.now = now
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
-		pickUpNear(world, player)
+		pickUpNearbyStacks(world, player)
 		closeIfOutOfReach(world, player)
 	end
 	for _, station in world.stations do

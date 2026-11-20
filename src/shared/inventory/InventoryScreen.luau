@@ -55,7 +55,7 @@ function InventoryScreen.new(
 end
 
 --- Returns the inventory on a side. Fails if `side` is `"other"` and no other inventory is open.
-function InventoryScreen.getInventory(screen: InventoryScreen, side: Side): Inventory
+function InventoryScreen.getInventoryOnSide(screen: InventoryScreen, side: Side): Inventory
 	return assert(if side == "pack" then screen.pack else screen.other, "no other inventory is open")
 end
 
@@ -94,7 +94,7 @@ end
 --- carried stack has room for. Moves nothing if the slot holds nothing, or if a different item is
 --- carried.
 function InventoryScreen.pickUpFromSlot(screen: InventoryScreen, side: Side, slot: number, count: number?): number
-	local inventory = InventoryScreen.getInventory(screen, side)
+	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
 	local there = Inventory.getStack(inventory, slot)
 	local carried = screen.carriedStack
 	if there == nil or (carried ~= nil and not ItemStack.isSameItem(carried, there)) then
@@ -115,7 +115,7 @@ end
 --- slot has room for. Moves nothing if nothing is carried, if the slot holds a different item, or
 --- if the slot does not accept the carried item.
 function InventoryScreen.putDownInSlot(screen: InventoryScreen, side: Side, slot: number, count: number?): number
-	local inventory = InventoryScreen.getInventory(screen, side)
+	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
 	local there = Inventory.getStack(inventory, slot)
 	local carried = screen.carriedStack
 	if carried == nil or (there ~= nil and not ItemStack.isSameItem(there, carried)) then
@@ -141,7 +141,7 @@ end
 --- `false`, changing nothing, if the slot does not accept the carried item, or if nothing is
 --- carried and the slot holds nothing.
 function InventoryScreen.swapCarriedStackWithSlot(screen: InventoryScreen, side: Side, slot: number): boolean
-	local inventory = InventoryScreen.getInventory(screen, side)
+	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
 	local there = Inventory.getStack(inventory, slot)
 	local carried = screen.carriedStack
 	if carried ~= nil and not InventoryScreen.slotAcceptsItem(screen, side, slot, carried.itemId) then
@@ -162,8 +162,8 @@ function InventoryScreen.swapSlots(
 	withSide: Side,
 	withSlot: number
 ): boolean
-	local inventory = InventoryScreen.getInventory(screen, side)
-	local withInventory = InventoryScreen.getInventory(screen, withSide)
+	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
+	local withInventory = InventoryScreen.getInventoryOnSide(screen, withSide)
 	local stack = Inventory.getStack(inventory, slot)
 	local withStack = Inventory.getStack(withInventory, withSlot)
 	if withStack ~= nil and not InventoryScreen.slotAcceptsItem(screen, side, slot, withStack.itemId) then
@@ -205,8 +205,8 @@ function InventoryScreen.moveFromSlotToInventory(
 	toSide: Side,
 	toSlots: { number }?
 ): number
-	local from = InventoryScreen.getInventory(screen, side)
-	local to = InventoryScreen.getInventory(screen, toSide)
+	local from = InventoryScreen.getInventoryOnSide(screen, side)
+	local to = InventoryScreen.getInventoryOnSide(screen, toSide)
 	local stack = Inventory.takeFromSlot(from, slot)
 	if stack == nil then
 		return 0
@@ -221,7 +221,7 @@ function InventoryScreen.moveFromSlotToInventory(
 end
 
 local function holdsFullStack(screen: InventoryScreen, screenSlot: ScreenSlot): boolean
-	local there = Inventory.getStack(InventoryScreen.getInventory(screen, screenSlot.side), screenSlot.slot)
+	local there = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, screenSlot.side), screenSlot.slot)
 	return there ~= nil and ItemStack.isFull(there)
 end
 
@@ -256,7 +256,7 @@ function InventoryScreen.fillCarriedStackFromAllSlots(screen: InventoryScreen): 
 end
 
 local function canSpreadInto(screen: InventoryScreen, carried: ItemStack, screenSlot: ScreenSlot): boolean
-	local there = Inventory.getStack(InventoryScreen.getInventory(screen, screenSlot.side), screenSlot.slot)
+	local there = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, screenSlot.side), screenSlot.slot)
 	return (there == nil or ItemStack.isSameItem(there, carried))
 		and InventoryScreen.slotAcceptsItem(screen, screenSlot.side, screenSlot.slot, carried.itemId)
 end

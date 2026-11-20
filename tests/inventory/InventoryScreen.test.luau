@@ -91,19 +91,22 @@ do -- new
 	check(both.carriedStack == nil, "new: nothing is carried when another inventory is open")
 end
 
-do -- getInventory
+do -- getInventoryOnSide
 	local pack, crate = Inventory.new(2), Inventory.new(3)
 	local screen = InventoryScreen.new(pack, crate)
-	check(InventoryScreen.getInventory(screen, "pack") == pack, "getInventory: the pack is the pack")
-	check(InventoryScreen.getInventory(screen, "other") == crate, "getInventory: other is the other inventory")
+	check(InventoryScreen.getInventoryOnSide(screen, "pack") == pack, "getInventoryOnSide: the pack is the pack")
+	check(
+		InventoryScreen.getInventoryOnSide(screen, "other") == crate,
+		"getInventoryOnSide: other is the other inventory"
+	)
 	local alone = InventoryScreen.new(pack)
-	check(InventoryScreen.getInventory(alone, "pack") == pack, "getInventory: the pack, when open alone")
+	check(InventoryScreen.getInventoryOnSide(alone, "pack") == pack, "getInventoryOnSide: the pack, when open alone")
 	local message = Check.errorFrom(function()
-		return InventoryScreen.getInventory(alone, "other")
+		return InventoryScreen.getInventoryOnSide(alone, "other")
 	end)
 	check(
 		message ~= nil and string.find(message, "no other inventory is open", 1, true) ~= nil,
-		"getInventory: fails for the other side when the pack is open alone"
+		"getInventoryOnSide: fails for the other side when the pack is open alone"
 	)
 end
 

@@ -411,7 +411,7 @@ local function put(state: PlayerState.PlayerState, side: string, slot: number, t
 	local itemId, count = string.match(text, "^(%S+) (%d+)$")
 	assert(itemId and count, "bad test stack: " .. text)
 	Inventory.setStack(
-		InventoryScreen.getInventory(screen, side :: any),
+		InventoryScreen.getInventoryOnSide(screen, side :: any),
 		slot,
 		ItemStack.new(itemId, tonumber(count) :: number)
 	)
@@ -420,7 +420,7 @@ end
 -- Describes what a slot of the screen holds, such as "log 5" or "-".
 local function held(state: PlayerState.PlayerState, side: string, slot: number): string
 	local screen = state.screen :: InventoryScreen.InventoryScreen
-	local stack = Inventory.getStack(InventoryScreen.getInventory(screen, side :: any), slot)
+	local stack = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, side :: any), slot)
 	return if stack then stack.itemId .. " " .. stack.count else "-"
 end
 
@@ -453,7 +453,7 @@ local function screenOfPlayer(state: PlayerState.PlayerState): Screen
 		otherSlots = if screen.other then screen.other.slotCount else nil,
 		carriedStack = screen.carriedStack,
 		getStack = function(slot: Slot): InventoryControls.Stack?
-			return Inventory.getStack(InventoryScreen.getInventory(screen, slot.side :: any), slot.slot)
+			return Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, slot.side :: any), slot.slot)
 		end,
 	}
 end

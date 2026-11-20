@@ -67,7 +67,7 @@ end
 
 --- Starts listening for Use and Hit and marking what the mouse is over. Each action is reported
 --- through `callbacks`, and nothing is reported or marked while `callbacks.isBlocked` returns `true`.
-function UseAndHit.start(callbacks: Callbacks)
+function UseAndHit.startListening(callbacks: Callbacks)
 	local ghost = PlacementGhost.new()
 	local outline = makeOutline()
 	local rightPressedAt: number? = nil

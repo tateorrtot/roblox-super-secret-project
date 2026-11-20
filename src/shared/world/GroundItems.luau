@@ -2,8 +2,8 @@
 --- The stacks of items lying on the ground in one running game.
 ---
 --- A ground item is a stack, the position where it lies and the time it was dropped. Ground items
---- are numbered from 1 in the order they were dropped, and a number is never used twice. `dropStack`
---- puts a stack on the ground, `pickUpStacksNear` moves ground items into an inventory, and `removeExpiredStacks`
+--- are numbered from 1 in the order they were dropped, and a number is never used twice. `dropStackAt`
+--- puts a stack on the ground, `moveNearbyStacksToInventory` moves ground items into an inventory, and `removeExpiredStacks`
 --- removes the ones that have lain too long. Time is a number of seconds, passed in as `now`, from
 --- any clock that only goes forward. Positions and distances are in studs. Ground items are never
 --- saved.
@@ -45,7 +45,7 @@ GroundItems.LIFETIME_SECONDS = 300
 --- How long after it was dropped a ground item cannot be picked up, in seconds.
 GroundItems.PICKUP_DELAY_SECONDS = 1.5
 
---- How near a position must be to a ground item for `pickUpStacksNear` to pick it up, in studs.
+--- How near a position must be to a ground item for `moveNearbyStacksToInventory` to pick it up, in studs.
 GroundItems.PICKUP_RADIUS = 4
 
 --- How near a stack must be dropped to a ground item of the same item to join it, in studs.
@@ -78,9 +78,9 @@ end
 --- stays where it lies and counts as dropped at `now`. With several such ground items it joins the
 --- nearest, and of two equally near, the one with the lower id. Otherwise a new ground item is
 --- made at `position`.
---- Note: `dropStack` does not take the stack from anywhere. A stack that is also left where it came
+--- Note: `dropStackAt` does not take the stack from anywhere. A stack that is also left where it came
 --- from exists twice.
-function GroundItems.dropStack(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
+function GroundItems.dropStackAt(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
 	for _, id in idsNearestFirst(groundItems, position, GroundItems.MERGE_RADIUS) do
 		local joined = groundItems.byId[id]
 		if ItemStack.isSameItem(joined.stack, stack) and ItemStack.getSpaceLeft(joined.stack) >= stack.count then
@@ -125,7 +125,7 @@ end
 --- with the lower id. In the inventory, stacks of the same item are topped up first and then
 --- slots that hold nothing are filled, lowest slot first. When only part of a ground item fits, the
 --- rest stays on the ground under the same id, dropped at the same time.
-function GroundItems.pickUpStacksNear(
+function GroundItems.moveNearbyStacksToInventory(
 	groundItems: GroundItems,
 	position: Position,
 	inventory: Inventory,

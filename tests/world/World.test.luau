@@ -238,16 +238,16 @@ end
 
 do -- dropping a stack
 	local world = newWorld()
-	World.dropStack(world, ItemStack.new("apple", 3), at(60, 0, 60))
+	World.dropStackAt(world, ItemStack.new("apple", 3), at(60, 0, 60))
 	local apples = groundStacks(world, "apple")
-	check(#apples == 1 and is(apples[1].stack, "apple", 3), "dropStack: the stack lies on the ground")
-	check(apples[1].position.x == 60 and apples[1].position.z == 60, "dropStack: at the position it was dropped at")
-	check(apples[1].droppedAt == 100, "dropStack: dropped at the world's time")
+	check(#apples == 1 and is(apples[1].stack, "apple", 3), "dropStackAt: the stack lies on the ground")
+	check(apples[1].position.x == 60 and apples[1].position.z == 60, "dropStackAt: at the position it was dropped at")
+	check(apples[1].droppedAt == 100, "dropStackAt: dropped at the world's time")
 	World.advanceTo(world, 150)
-	World.dropStack(world, ItemStack.new("apple", 2), at(60.5, 0, 60))
+	World.dropStackAt(world, ItemStack.new("apple", 2), at(60.5, 0, 60))
 	apples = groundStacks(world, "apple")
-	check(#apples == 1 and is(apples[1].stack, "apple", 5), "dropStack: a stack dropped beside its own kind joins it")
-	check(apples[1].droppedAt == 150, "dropStack: and counts as dropped now, at the time the world has reached")
+	check(#apples == 1 and is(apples[1].stack, "apple", 5), "dropStackAt: a stack dropped beside its own kind joins it")
+	check(apples[1].droppedAt == 150, "dropStackAt: and counts as dropped now, at the time the world has reached")
 end
 
 do -- closing a player's screen
@@ -585,7 +585,7 @@ end
 
 do -- time passing: picking up
 	local world, state = newWorld()
-	World.dropStack(world, ItemStack.new("apple", 3), at(7, 0, 1))
+	World.dropStackAt(world, ItemStack.new("apple", 3), at(7, 0, 1))
 	World.advanceTo(world, 100.5)
 	check(world.now == 100.5, "advanceTo: the world moves on to the time it was given")
 	check(Inventory.countItems(state.pack, "apple") == 0, "advanceTo: a ground item just dropped is not picked up yet")
@@ -599,7 +599,7 @@ do -- time passing: picking up
 	World.addPlayer(world, -5, at(0, 0, 0))
 	World.setPlayerPosition(world, 2, at(30, 0, 30))
 	World.setPlayerPosition(world, -5, at(30, 0, 30))
-	World.dropStack(world, ItemStack.new("stove", 1), at(31, 0, 30))
+	World.dropStackAt(world, ItemStack.new("stove", 1), at(31, 0, 30))
 	World.advanceTo(world, 110)
 	check(
 		Inventory.countItems(world.players[-5].pack, "stove") == 1
@@ -608,9 +608,9 @@ do -- time passing: picking up
 	)
 
 	World.setPlayerPosition(world, -5, nil)
-	World.dropStack(world, ItemStack.new("stove", 1), at(100, 0, 100))
+	World.dropStackAt(world, ItemStack.new("stove", 1), at(100, 0, 100))
 	World.setPlayerPosition(world, 2, at(100, 0, 100))
-	World.dropStack(world, ItemStack.new("fish", 2), at(30, 0, 30))
+	World.dropStackAt(world, ItemStack.new("fish", 2), at(30, 0, 30))
 	World.advanceTo(world, 120)
 	check(
 		Inventory.countItems(world.players[2].pack, "stove") == 1,
@@ -629,7 +629,7 @@ end
 
 do -- time passing: ground items expire
 	local world = newWorld()
-	World.dropStack(world, ItemStack.new("fish", 2), at(30, 0, 30))
+	World.dropStackAt(world, ItemStack.new("fish", 2), at(30, 0, 30))
 	World.advanceTo(world, 100 + GroundItems.LIFETIME_SECONDS - 0.01)
 	check(onGround(world, "fish") == 2, "advanceTo: a ground item lies until its time is up")
 	World.advanceTo(world, 100 + GroundItems.LIFETIME_SECONDS)
@@ -942,7 +942,7 @@ do -- several players, several things at once, and no item is made or lost
 						local side: InventoryScreen.Side = if screen.other ~= nil and random(2) == 1
 							then "other"
 							else "pack"
-						local inventory = InventoryScreen.getInventory(screen, side)
+						local inventory = InventoryScreen.getInventoryOnSide(screen, side)
 						local slot = random(inventory.slotCount)
 						local kind = random(5)
 						if kind == 1 then
@@ -966,7 +966,7 @@ do -- several players, several things at once, and no item is made or lost
 						else
 							local taken = InventoryScreen.takeCarriedStack(screen, random(4))
 							if taken ~= nil then
-								World.dropStack(world, taken, (state :: PlayerState.PlayerState).dropPosition)
+								World.dropStackAt(world, taken, (state :: PlayerState.PlayerState).dropPosition)
 							end
 						end
 					end)
@@ -977,7 +977,7 @@ do -- several players, several things at once, and no item is made or lost
 					run(function()
 						local taken = Inventory.takeFromSlot(state.pack, random(PlayerState.PACK_SLOTS), random(4))
 						if taken ~= nil then
-							World.dropStack(world, taken, state.dropPosition)
+							World.dropStackAt(world, taken, state.dropPosition)
 						end
 					end)
 				end

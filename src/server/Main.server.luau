@@ -153,7 +153,7 @@ end)
 local function addPlayer(player: Player)
 	if world.players[player.UserId] == nil then
 		local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
-		PlaceholderWorld.addStartingItems(state.pack)
+		PlaceholderWorld.addStartingItemsToPack(state.pack)
 	end
 end
 

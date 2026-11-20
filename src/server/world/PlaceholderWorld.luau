@@ -3,7 +3,7 @@
 ---
 --- `build` makes a flat plot beside the place where players appear, with a post at each corner and
 --- a crate and a stove standing on it. `restockGroundItems` keeps a few stacks of items lying on the plot, and
---- `addStartingItems` gives a new player something to hold. All of it is placeholder content, made by code
+--- `addStartingItemsToPack` gives a new player something to hold. All of it is placeholder content, made by code
 --- so that the project folder alone is enough to run the game, and it goes when there is a real map.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -128,7 +128,7 @@ function PlaceholderWorld.build(): PlaceholderWorld
 end
 
 --- Adds a few items to `pack`, so that a new player's hotbar is not bare.
-function PlaceholderWorld.addStartingItems(pack: Inventory.Inventory)
+function PlaceholderWorld.addStartingItemsToPack(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "apple", 4)
 	Inventory.addItems(pack, "log", 20)
 	Inventory.addItems(pack, "crate", 1)
@@ -173,7 +173,7 @@ function PlaceholderWorld.restockGroundItems(
 	local definitions = ItemRegistry.getAll()
 	local definition = definitions[random:NextInteger(1, #definitions)]
 	local count = random:NextInteger(1, definition.stackSize)
-	GroundItems.dropStack(groundItems, ItemStack.new(definition.id, count), spot, now)
+	GroundItems.dropStackAt(groundItems, ItemStack.new(definition.id, count), spot, now)
 end
 
 return PlaceholderWorld

@@ -92,7 +92,7 @@ local function controlsScreen(screen: InventoryScreen.InventoryScreen): Inventor
 		otherSlots = if other then other.slotCount else nil,
 		carriedStack = screen.carriedStack,
 		getStack = function(slot)
-			return Inventory.getStack(InventoryScreen.getInventory(screen, slot.side :: any), slot.slot)
+			return Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, slot.side :: any), slot.slot)
 		end,
 	}
 end
@@ -160,7 +160,7 @@ remotes.askForSnapshot:FireServer()
 -- Roblox's own backpack bar would sit on top of ours, and its tools are not our items.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-UseAndHit.start({
+UseAndHit.startListening({
 	isBlocked = function()
 		return snapshot.screen ~= nil
 	end,
