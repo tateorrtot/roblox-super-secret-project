@@ -40,7 +40,7 @@ do -- a new player
 		"new: the hotbar has 9 slots, slot 1 selected"
 	)
 	check(player.screen == nil, "new: no inventory screen is open")
-	check(player.openedPlacedItemId == nil, "new: no placed item is open")
+	check(player.openedPlacedObjectId == nil, "new: no placed object is open")
 	check(player.character == nil, "new: the player has no character")
 	check(PlayerState.new().pack ~= player.pack, "new: each player has a pack of their own")
 
@@ -114,7 +114,7 @@ do -- opening the pack
 		"openPackScreen: the screen shows the pack alone"
 	)
 	check(screen ~= nil and screen.carriedStack == nil, "openPackScreen: with nothing carried")
-	check(player.openedPlacedItemId == nil, "openPackScreen: and no placed item is open")
+	check(player.openedPlacedObjectId == nil, "openPackScreen: and no placed object is open")
 	check(not PlayerState.canOpenScreen(player), "canOpenScreen: false while a screen is open")
 	check(
 		Check.raises("a screen can be opened only for a player with a character and no screen open", function()
@@ -133,51 +133,51 @@ do -- opening the pack
 	check(PlayerState.canOpenScreen(player), "canOpenScreen: true again once the screen is closed")
 end
 
-do -- opening a placed item
+do -- opening a placed object
 	local player = newPlayerWithCharacter()
 	local inside = Inventory.new(3)
 	local accepts = function(slot: number, itemId: string): boolean
 		return slot == 1 and itemId == "log"
 	end
-	PlayerState.openPlacedItemScreen(player, 7, inside, accepts)
+	PlayerState.openPlacedObjectScreen(player, 7, inside, accepts)
 	local screen = player.screen
 	check(
 		screen ~= nil and screen.pack == player.pack and screen.otherInventory == inside,
-		"openPlacedItemScreen: the screen shows the pack and the inventory given"
+		"openPlacedObjectScreen: the screen shows the pack and the inventory given"
 	)
-	check(player.openedPlacedItemId == 7, "openPlacedItemScreen: the player has that placed item open")
+	check(player.openedPlacedObjectId == 7, "openPlacedObjectScreen: the player has that placed object open")
 	check(
 		screen ~= nil
 			and InventoryScreen.slotAcceptsItem(screen, "other", 1, "log")
 			and not InventoryScreen.slotAcceptsItem(screen, "other", 2, "log"),
-		"openPlacedItemScreen: its slots take what the rule given says"
+		"openPlacedObjectScreen: its slots take what the rule given says"
 	)
 	check(
 		Check.raises("a screen can be opened only for a player with a character and no screen open", function()
-			PlayerState.openPlacedItemScreen(player, 8, Inventory.new(3))
+			PlayerState.openPlacedObjectScreen(player, 8, Inventory.new(3))
 		end),
-		"openPlacedItemScreen: fails when a screen is open already"
+		"openPlacedObjectScreen: fails when a screen is open already"
 	)
 	check(
-		player.screen == screen and player.openedPlacedItemId == 7,
-		"openPlacedItemScreen: and leaves that screen as it was"
+		player.screen == screen and player.openedPlacedObjectId == 7,
+		"openPlacedObjectScreen: and leaves that screen as it was"
 	)
 
 	local plain = newPlayerWithCharacter()
-	PlayerState.openPlacedItemScreen(plain, 2, Inventory.new(3))
+	PlayerState.openPlacedObjectScreen(plain, 2, Inventory.new(3))
 	check(
 		plain.screen ~= nil and InventoryScreen.slotAcceptsItem(plain.screen, "other", 2, "stove"),
-		"openPlacedItemScreen: with no rule given, every slot takes every item"
+		"openPlacedObjectScreen: with no rule given, every slot takes every item"
 	)
 
 	local noCharacter = PlayerState.new()
 	check(
 		Check.raises("a screen can be opened only for a player with a character and no screen open", function()
-			PlayerState.openPlacedItemScreen(noCharacter, 7, inside)
+			PlayerState.openPlacedObjectScreen(noCharacter, 7, inside)
 		end)
 			and noCharacter.screen == nil
-			and noCharacter.openedPlacedItemId == nil,
-		"openPlacedItemScreen: fails for a player with no character"
+			and noCharacter.openedPlacedObjectId == nil,
+		"openPlacedObjectScreen: fails for a player with no character"
 	)
 end
 
@@ -185,11 +185,11 @@ do -- closing the screen
 	local player = newPlayerWithCharacter()
 	check(PlayerState.closeScreen(player) == nil, "closeScreen: returns nil when no screen is open")
 
-	PlayerState.openPlacedItemScreen(player, 7, Inventory.new(3))
+	PlayerState.openPlacedObjectScreen(player, 7, Inventory.new(3))
 	check(PlayerState.closeScreen(player) == nil, "closeScreen: returns nil when nothing was carried")
 	check(
-		player.screen == nil and player.openedPlacedItemId == nil,
-		"closeScreen: no screen and no placed item is open afterwards"
+		player.screen == nil and player.openedPlacedObjectId == nil,
+		"closeScreen: no screen and no placed object is open afterwards"
 	)
 
 	Inventory.setStack(player.pack, 1, ItemStack.new("log", 12))
@@ -207,7 +207,7 @@ do -- closing the screen
 	end
 	local crate = Inventory.new(3)
 	Inventory.setStack(crate, 1, ItemStack.new("log", 5))
-	PlayerState.openPlacedItemScreen(full, 7, crate)
+	PlayerState.openPlacedObjectScreen(full, 7, crate)
 	InventoryScreen.pickUpFromSlot(full.screen :: any, "other", 1)
 	local leftover = PlayerState.closeScreen(full)
 	check(
@@ -226,7 +226,7 @@ do -- closing the screen
 	Inventory.setStack(partly.pack, 10, ItemStack.new("log", 14))
 	local other = Inventory.new(3)
 	Inventory.setStack(other, 1, ItemStack.new("log", 5))
-	PlayerState.openPlacedItemScreen(partly, 7, other)
+	PlayerState.openPlacedObjectScreen(partly, 7, other)
 	InventoryScreen.pickUpFromSlot(partly.screen :: any, "other", 1)
 	local rest = PlayerState.closeScreen(partly)
 	check(

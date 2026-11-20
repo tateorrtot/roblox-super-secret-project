@@ -73,7 +73,7 @@ end
 
 -- Places a crate on tile 3, 3 and pushes the ground items out of that tile at the time `now`.
 local function placeCrateAndPush(plot: Plot.Plot, groundItems: GroundItems.GroundItems, now: number)
-	Plot.placeItem(plot, "crate", 3, 3)
+	Plot.placeObject(plot, "crate", 3, 3)
 	PlotCollision.pushGroundItemsOutOfTile(groundItems, plot, CORNER, 3, 3, now)
 end
 
@@ -118,15 +118,15 @@ do -- a ground item in the tile, one touching it and one on the next tile
 end
 
 do -- which side a ground item is pushed out of
-	-- The nearest side has a placed item against it, so the next nearest is used.
+	-- The nearest side has a placed object against it, so the next nearest is used.
 	local plot, groundItems = newPlot()
-	Plot.placeItem(plot, "post", 2, 3)
+	Plot.placeObject(plot, "post", 2, 3)
 	lyingAt(groundItems, "apple", 9, 0, 10.5)
 	placeCrateAndPush(plot, groundItems, 0)
 	local pushed = groundStacks(groundItems, "apple")[1]
 	check(
 		isAt(pushed, 9, 0, 10 + TOUCHING) and wasSpawnedMovingAt(pushed, 0, 0, SPEED),
-		"pushGroundItemsOutOfTile: a side with a placed item against it is not used, and the next nearest is"
+		"pushGroundItemsOutOfTile: a side with a placed object against it is not used, and the next nearest is"
 	)
 
 	-- Each of the four sides is used when it is the nearest.
@@ -157,35 +157,35 @@ do -- which side a ground item is pushed out of
 		"pushGroundItemsOutOfTile: one nearest the side of lesser z, out of that side"
 	)
 
-	-- A side along z has a placed item against it, so it is not used either.
+	-- A side along z has a placed object against it, so it is not used either.
 	local alongZPlot, alongZ = newPlot()
-	Plot.placeItem(alongZPlot, "post", 3, 4)
+	Plot.placeObject(alongZPlot, "post", 3, 4)
 	lyingAt(alongZ, "apple", 10, 0, 11)
 	placeCrateAndPush(alongZPlot, alongZ, 0)
 	check(
 		isAt(groundStacks(alongZ, "apple")[1], 10 + TOUCHING, 0, 11),
-		"pushGroundItemsOutOfTile: a side along z with a placed item against it is not used"
+		"pushGroundItemsOutOfTile: a side along z with a placed object against it is not used"
 	)
 
-	-- Every side has a placed item against it, so the stack is spawned on top.
+	-- Every side has a placed object against it, so the stack is spawned on top.
 	local walledPlot, walled = newPlot()
 	for _, tile in { { 2, 3 }, { 4, 3 }, { 3, 2 }, { 3, 4 } } do
-		Plot.placeItem(walledPlot, "post", tile[1], tile[2])
+		Plot.placeObject(walledPlot, "post", tile[1], tile[2])
 	end
 	lyingAt(walled, "apple", 9, 0, 10.5)
 	placeCrateAndPush(walledPlot, walled, 0)
 	local lifted = groundStacks(walled, "apple")[1]
 	check(
 		isAt(lifted, 9, Plot.TILE_SIZE, 10.5) and wasSpawnedMovingAt(lifted, 0, 0, 0),
-		"pushGroundItemsOutOfTile: with a placed item against all four sides, the stack is spawned on top, not moving"
+		"pushGroundItemsOutOfTile: with a placed object against all four sides, the stack is spawned on top, not moving"
 	)
 
 	-- Equally near every side: the sides are tried towards greater x, lesser x, greater z, then
-	-- lesser z, and one with a placed item against it is passed over.
+	-- lesser z, and one with a placed object against it is passed over.
 	local function pushedFromMiddle(blocked: { { number } }): GroundItems.GroundItem
 		local tiePlot, tie = newPlot()
 		for _, tile in blocked do
-			Plot.placeItem(tiePlot, "post", tile[1], tile[2])
+			Plot.placeObject(tiePlot, "post", tile[1], tile[2])
 		end
 		lyingAt(tie, "fish", 10, 0, 10)
 		placeCrateAndPush(tiePlot, tie, 0)
@@ -220,7 +220,7 @@ do -- which side a ground item is pushed out of
 	-- The edge of the plot: there is nothing off the plot to be in the way.
 	local cornerPlot, corner = newPlot()
 	lyingAt(corner, "apple", 0.5, 0, 2)
-	Plot.placeItem(cornerPlot, "crate", 1, 1)
+	Plot.placeObject(cornerPlot, "crate", 1, 1)
 	PlotCollision.pushGroundItemsOutOfTile(corner, cornerPlot, CORNER, 1, 1, 0)
 	check(
 		isAt(groundStacks(corner, "apple")[1], 2 - TOUCHING, 0, 2),
@@ -230,7 +230,7 @@ do -- which side a ground item is pushed out of
 	-- The plot's corner is not at the origin.
 	local movedPlot, moved = newPlot()
 	lyingAt(moved, "apple", 109, 50, 210.5)
-	Plot.placeItem(movedPlot, "crate", 3, 3)
+	Plot.placeObject(movedPlot, "crate", 3, 3)
 	PlotCollision.pushGroundItemsOutOfTile(moved, movedPlot, at(100, 50, 200), 3, 3, 0)
 	check(
 		isAt(groundStacks(moved, "apple")[1], 110 - TOUCHING, 50, 210.5),

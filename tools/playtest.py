@@ -95,10 +95,10 @@ local slab = placeholder and placeholder:FindFirstChild("Plot")
 if slab then
 	world.plot = { x = slab:GetAttribute("cornerX"), y = slab:GetAttribute("cornerY"), z = slab:GetAttribute("cornerZ") }
 end
-local placedFolder = placeholder and placeholder:FindFirstChild("PlacedItems")
+local placedFolder = placeholder and placeholder:FindFirstChild("PlacedObjects")
 if placedFolder then
 	for _, part in placedFolder:GetChildren() do
-		local id = part:GetAttribute("placedItemId")
+		local id = part:GetAttribute("placedObjectId")
 		if id ~= nil then
 			table.insert(world.placed, { item = part.Name, id = id, x = part.Position.X, y = part.Position.Y, z = part.Position.Z, burning = part:GetAttribute("burning") })
 		end
@@ -173,7 +173,7 @@ task.wait(1)
 return tostring(sent)
 '''
 
-# Asks the server outright to use or to hit a placed item, whatever the player's own machine thinks of it.
+# Asks the server outright to use or to hit a placed object, whatever the player's own machine thinks of it.
 ASK_OUTRIGHT = '''
 game:GetService("ReplicatedStorage").Remotes.%s:FireServer(%d)
 task.wait(0.5)
@@ -368,7 +368,7 @@ class Playtest:
     def ground_at_rest(self, item):
         return sorted(entry['count'] for entry in self.world_at_rest()['ground'] if entry['item'] == item)
 
-    # How far the test character stands from a placed item, along the ground, in studs.
+    # How far the test character stands from a placed object, along the ground, in studs.
     def distance_to(self, placed):
         player = self.world()['players'][0]
         return ((player['x'] - placed['x']) ** 2 + (player['z'] - placed['z']) ** 2) ** 0.5
@@ -628,7 +628,7 @@ class Playtest:
                   {'log': logs, 'tile middle': [center_x, center_z], 'clear at': clear})
             check(len(logs) == 1 and logs[0]['y'] < world['plot']['y'] + 0.5, 'onto the ground beside it', logs)
             if on_tile:
-                self.studio.luau(ASK_OUTRIGHT % ('hitPlacedItem', on_tile[0]['id']), 'Client')
+                self.studio.luau(ASK_OUTRIGHT % ('hitPlacedObject', on_tile[0]['id']), 'Client')
             world = self.world_at_rest()
             spilled = [entry for entry in world['ground'] if entry['item'] == 'crate']
             check(len(spilled) == 1 and ((spilled[0]['x'] - center_x) ** 2 + (spilled[0]['z'] - center_z) ** 2) ** 0.5 < 8
@@ -735,12 +735,12 @@ class Playtest:
         check(on_screen and away > 16.5, 'the crate is in view from out of reach', {'studs away': away, 'at': point})
         self.click(point)
         check(not self.view()['open'], 'a click on it from there opens nothing')
-        self.studio.luau(ASK_OUTRIGHT % ('usePlacedItem', crate['id']), 'Client')
-        self.studio.luau(ASK_OUTRIGHT % ('hitPlacedItem', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('usePlacedObject', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('hitPlacedObject', crate['id']), 'Client')
         check(not self.view()['open'] and any(entry['id'] == crate['id'] for entry in self.world()['placed']),
               'and nor does asking the server outright to use it and to hit it, as a tampered machine might')
         self.walk_to(crate['x'] - 7, crate['z'] + 5)
-        self.studio.luau(ASK_OUTRIGHT % ('usePlacedItem', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('usePlacedObject', crate['id']), 'Client')
         view = self.view()
         check(view['open'] and view['title'] == 'Crate', 'the same request from within reach opens it',
               {'studs away': self.distance_to(crate), 'title': view['title']})

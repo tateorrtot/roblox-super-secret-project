@@ -213,14 +213,14 @@ UseAndHit.startListening({
 		return snapshot.screen ~= nil
 	end,
 	getPlaceableInHand = placeableInHand,
-	onPlacedItemUsed = function(placedItemId)
-		remotes.usePlacedItem:FireServer(placedItemId)
+	onPlacedObjectUsed = function(placedObjectId)
+		remotes.usePlacedObject:FireServer(placedObjectId)
 	end,
 	onTileUsed = function(x, z)
 		remotes.placeSelectedItem:FireServer(x, z)
 	end,
-	onPlacedItemHit = function(placedItemId)
-		remotes.hitPlacedItem:FireServer(placedItemId)
+	onPlacedObjectHit = function(placedObjectId)
+		remotes.hitPlacedObject:FireServer(placedObjectId)
 	end,
 })
 

@@ -70,9 +70,9 @@ end
 -- Places the item `itemId` on tile 6, 6, opens it on the player's screen beside their pack, and
 -- returns what is inside it.
 local function openPlaced(world: World.World, state: PlayerState.PlayerState, itemId: string): Inventory.Inventory
-	local placedItemId = Plot.placeItem(world.plot, itemId, 6, 6) :: number
-	World.openPlacedItemScreen(world, state, placedItemId)
-	return world.plot.placedItemsById[placedItemId].inventory :: Inventory.Inventory
+	local placedObjectId = Plot.placeObject(world.plot, itemId, 6, 6) :: number
+	World.openPlacedObjectScreen(world, state, placedObjectId)
+	return world.plot.placedObjectsById[placedObjectId].inventory :: Inventory.Inventory
 end
 
 -- How many of one item lie on the ground, in all.
@@ -97,12 +97,12 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedItem in world.plot.placedItemsById do
-		if placedItem.itemId == itemId then
+	for _, placedObject in world.plot.placedObjectsById do
+		if placedObject.itemId == itemId then
 			count += 1
 		end
-		if placedItem.inventory ~= nil then
-			count += Inventory.countItems(placedItem.inventory, itemId)
+		if placedObject.inventory ~= nil then
+			count += Inventory.countItems(placedObject.inventory, itemId)
 		end
 	end
 	return count
@@ -170,7 +170,7 @@ do -- closeScreen
 	openPlaced(placedWorld, placedState, "crate")
 	send("closeScreen", placedWorld, placedState)
 	check(
-		placedState.screen == nil and placedState.openedPlacedItemId == nil,
+		placedState.screen == nil and placedState.openedPlacedObjectId == nil,
 		"closeScreen: a player who had a crate open has nothing open any more"
 	)
 end
@@ -1130,9 +1130,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	for _ = 1, 40 do
 		local world, state = newWorld()
 		World.setCharacterPosition(world, 1, at(6, 0, 0))
-		local crateId = Plot.placeItem(world.plot, "crate", 6, 6) :: number
-		local ovenId = Plot.placeItem(world.plot, "oven", 6, 5) :: number
-		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory
+		local crateId = Plot.placeObject(world.plot, "crate", 6, 6) :: number
+		local ovenId = Plot.placeObject(world.plot, "oven", 6, 5) :: number
+		local crate = world.plot.placedObjectsById[crateId].inventory :: Inventory.Inventory
 		for _ = 1, 10 do
 			local itemId = itemIds[random(#itemIds)]
 			local target = if random(3) == 1 then crate else state.pack
@@ -1143,9 +1143,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			total[itemId] = inWorld(world, itemId)
 		end
 		for _ = 1, 300 do
-			-- Now and then the world itself opens a screen for the player, as using a placed item would.
+			-- Now and then the world itself opens a screen for the player, as using a placed object would.
 			if state.screen == nil and random(12) == 1 then
-				World.openPlacedItemScreen(world, state, if random(2) == 1 then crateId else ovenId)
+				World.openPlacedObjectScreen(world, state, if random(2) == 1 then crateId else ovenId)
 			end
 			local name = names[random(#names)]
 			local ok, result =
@@ -1160,7 +1160,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				end
 			end
 			for _, inventory in
-				{ state.pack, crate, world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory }
+				{ state.pack, crate, world.plot.placedObjectsById[ovenId].inventory :: Inventory.Inventory }
 			do
 				for slot, stack in inventory.slots do
 					if ItemStack.validate(stack) ~= nil or not Inventory.hasSlot(inventory, slot) then
@@ -1179,7 +1179,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		allConserved,
 		"random run: after every request every item is in a pack, carried, standing on the plot, inside it, or on the ground"
 	)
-	check(allValid, "random run: every stack in a pack or a placed item is a valid stack in a slot that exists")
+	check(allValid, "random run: every stack in a pack or a placed object is a valid stack in a slot that exists")
 end
 
 Check.finish("InventoryRequests")

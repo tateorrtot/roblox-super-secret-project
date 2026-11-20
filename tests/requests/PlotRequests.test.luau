@@ -35,7 +35,7 @@ local function send(name: string, world: World.World, state: PlayerState.PlayerS
 	(requests[name] :: (...any) -> ())(world, state, ...)
 end
 
--- Something that is not the id of a placed item.
+-- Something that is not the id of a placed object.
 local badIds: { any } = { 0, -1, 99, 1.5, 0 / 0, math.huge, -math.huge, "1", true, {} }
 
 -- True if `stack` is `count` of the item `itemId`.
@@ -65,12 +65,12 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedItem in world.plot.placedItemsById do
-		if placedItem.itemId == itemId then
+	for _, placedObject in world.plot.placedObjectsById do
+		if placedObject.itemId == itemId then
 			count += 1
 		end
-		if placedItem.inventory ~= nil then
-			count += Inventory.countItems(placedItem.inventory, itemId)
+		if placedObject.inventory ~= nil then
+			count += Inventory.countItems(placedObject.inventory, itemId)
 		end
 	end
 	return count
@@ -82,9 +82,9 @@ end
 -- an oven in their first three hotbar slots, and drops land 6 studs further along x.
 local function newWorld(): (World.World, PlayerState.PlayerState, number, number)
 	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
-	Inventory.addItems(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
-	local postId = Plot.placeItem(plot, "post", 5, 5) :: number
+	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
+	Inventory.addItems(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
+	local postId = Plot.placeObject(plot, "post", 5, 5) :: number
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
@@ -98,8 +98,8 @@ do -- placeSelectedItem
 	local world, state = newWorld()
 	Hotbar.selectSlot(state.hotbar, 2)
 	send("placeSelectedItem", world, state, 1, 1)
-	local placedItemId = world.plot.nextId - 1
-	local placed = world.plot.placedItemsById[placedItemId]
+	local placedObjectId = world.plot.nextId - 1
+	local placed = world.plot.placedObjectsById[placedObjectId]
 	check(
 		placed ~= nil and placed.itemId == "crate" and placed.x == 1 and placed.z == 1,
 		"placeSelectedItem: the item in hand stands on the tile"
@@ -124,25 +124,25 @@ do -- placeSelectedItem
 	send("placeSelectedItem", world, state, 3)
 	send("placeSelectedItem", world, state)
 	check(
-		is(Inventory.getStack(state.pack, 3), "oven", 1) and world.plot.nextId == placedItemId + 1,
+		is(Inventory.getStack(state.pack, 3), "oven", 1) and world.plot.nextId == placedObjectId + 1,
 		"placeSelectedItem: not on a tile that is not on the plot, or with nonsense"
 	)
 
 	Hotbar.selectSlot(state.hotbar, 1)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(
-		is(Inventory.getStack(state.pack, 1), "log", 12) and world.plot.nextId == placedItemId + 1,
+		is(Inventory.getStack(state.pack, 1), "log", 12) and world.plot.nextId == placedObjectId + 1,
 		"placeSelectedItem: not an item that cannot be placed"
 	)
 	Hotbar.selectSlot(state.hotbar, 9)
 	send("placeSelectedItem", world, state, 3, 1)
-	check(world.plot.nextId == placedItemId + 1, "placeSelectedItem: not with an empty hand")
+	check(world.plot.nextId == placedObjectId + 1, "placeSelectedItem: not with an empty hand")
 
 	Hotbar.selectSlot(state.hotbar, 3)
 	PlayerState.openPackScreen(state)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(
-		is(Inventory.getStack(state.pack, 3), "oven", 1) and world.plot.nextId == placedItemId + 1,
+		is(Inventory.getStack(state.pack, 3), "oven", 1) and world.plot.nextId == placedObjectId + 1,
 		"placeSelectedItem: not while the inventory screen is open"
 	)
 	PlayerState.closeScreen(state)
@@ -154,7 +154,7 @@ do -- placeSelectedItem
 	check(inWorld(world, "post") == 4, "placeSelectedItem: and the rest of the stack is still in hand")
 	local postId = world.plot.nextId - 1
 	check(
-		world.plot.placedItemsById[postId].itemId == "post" and world.plot.placedItemsById[postId].inventory == nil,
+		world.plot.placedObjectsById[postId].itemId == "post" and world.plot.placedObjectsById[postId].inventory == nil,
 		"placeSelectedItem: an item with no slots is placed with no inventory"
 	)
 
@@ -164,7 +164,7 @@ do -- placeSelectedItem
 	send("placeSelectedItem", world, state, 6, 1)
 	check(Inventory.getStack(state.pack, 3) == nil, "placeSelectedItem: a tile exactly at reach can be placed on")
 	local farId = world.plot.nextId - 1
-	check(world.plot.placedItemsById[farId].x == 6, "placeSelectedItem: and the item stands there")
+	check(world.plot.placedObjectsById[farId].x == 6, "placeSelectedItem: and the item stands there")
 	check(
 		world.stations[farId] ~= nil and world.stations[farId].itemId == "oven",
 		"placeSelectedItem: an oven placed is a station"
@@ -199,89 +199,89 @@ do -- reach, and standing on a tile
 	check(Inventory.getStack(state.pack, 2) == nil, "placeSelectedItem: a player with no character stands on no tile")
 end
 
-do -- usePlacedItem
+do -- usePlacedObject
 	local world, state, crateId, postId = newWorld()
-	send("usePlacedItem", world, state, crateId)
+	send("usePlacedObject", world, state, crateId)
 	local screen = state.screen
 	check(
 		screen ~= nil
-			and screen.otherInventory == world.plot.placedItemsById[crateId].inventory
+			and screen.otherInventory == world.plot.placedObjectsById[crateId].inventory
 			and screen.pack == state.pack,
-		"usePlacedItem: opens the crate's inventory on the player's screen, beside their pack"
+		"usePlacedObject: opens the crate's inventory on the player's screen, beside their pack"
 	)
-	check(state.openedPlacedItemId == crateId, "usePlacedItem: and the player has that crate open")
+	check(state.openedPlacedObjectId == crateId, "usePlacedObject: and the player has that crate open")
 	check(
 		screen ~= nil and screen.otherSlotAcceptsItem == nil,
-		"usePlacedItem: every slot of a crate accepts every item"
+		"usePlacedObject: every slot of a crate accepts every item"
 	)
 
 	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "other", 1)
-	send("usePlacedItem", world, state, crateId)
-	check(state.screen ~= screen and state.screen ~= nil, "usePlacedItem: using it again opens a screen afresh")
+	send("usePlacedObject", world, state, crateId)
+	check(state.screen ~= screen and state.screen ~= nil, "usePlacedObject: using it again opens a screen afresh")
 	check(
 		Inventory.countItems(state.pack, "fish") == 5,
-		"usePlacedItem: after putting what was carried back in the pack"
+		"usePlacedObject: after putting what was carried back in the pack"
 	)
 
 	-- From 18, 10 both the crate and the post are in reach.
 	World.setCharacterPosition(world, 1, at(18, 0, 10))
-	send("usePlacedItem", world, state, postId)
+	send("usePlacedObject", world, state, postId)
 	check(
 		(state.screen :: InventoryScreen.InventoryScreen).otherInventory
-				== world.plot.placedItemsById[crateId].inventory
-			and state.openedPlacedItemId == crateId,
-		"usePlacedItem: ignored for a placed item that holds nothing, even in reach, and what was open stays open"
+				== world.plot.placedObjectsById[crateId].inventory
+			and state.openedPlacedObjectId == crateId,
+		"usePlacedObject: ignored for a placed object that holds nothing, even in reach, and what was open stays open"
 	)
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	for _, bad in badIds do
-		send("usePlacedItem", world, state, bad)
+		send("usePlacedObject", world, state, bad)
 	end
-	send("usePlacedItem", world, state)
-	check(state.openedPlacedItemId == crateId, "usePlacedItem: ignored for an id that is not a placed item")
+	send("usePlacedObject", world, state)
+	check(state.openedPlacedObjectId == crateId, "usePlacedObject: ignored for an id that is not a placed object")
 	World.closeScreen(world, state)
 
 	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
-	send("usePlacedItem", world, state, crateId)
-	check(state.screen == nil, "usePlacedItem: not from beyond reach")
+	send("usePlacedObject", world, state, crateId)
+	check(state.screen == nil, "usePlacedObject: not from beyond reach")
 	World.setCharacterPosition(world, 1, at(6, 0, 22))
-	send("usePlacedItem", world, state, crateId)
-	check(state.screen ~= nil, "usePlacedItem: from exactly at reach")
+	send("usePlacedObject", world, state, crateId)
+	check(state.screen ~= nil, "usePlacedObject: from exactly at reach")
 	World.closeScreen(world, state)
 	World.removeCharacter(world, 1)
-	send("usePlacedItem", world, state, crateId)
-	check(state.screen == nil, "usePlacedItem: not by a player with no character")
+	send("usePlacedObject", world, state, crateId)
+	check(state.screen == nil, "usePlacedObject: not by a player with no character")
 
 	local ovenWorld, withOven = newWorld()
-	local ovenId = Plot.placeItem(ovenWorld.plot, "oven", 3, 1) :: number
-	send("usePlacedItem", ovenWorld, withOven, ovenId)
+	local ovenId = Plot.placeObject(ovenWorld.plot, "oven", 3, 1) :: number
+	send("usePlacedObject", ovenWorld, withOven, ovenId)
 	local ovenScreen = withOven.screen
 	check(
-		ovenScreen ~= nil and ovenScreen.otherInventory == ovenWorld.plot.placedItemsById[ovenId].inventory,
-		"usePlacedItem: opens an oven's slots beside the pack"
+		ovenScreen ~= nil and ovenScreen.otherInventory == ovenWorld.plot.placedObjectsById[ovenId].inventory,
+		"usePlacedObject: opens an oven's slots beside the pack"
 	)
 	check(
 		ovenScreen ~= nil and ovenScreen.otherSlotAcceptsItem ~= nil and not ovenScreen.otherSlotAcceptsItem(1, "log"),
-		"usePlacedItem: and the slots take only what an oven works on or burns"
+		"usePlacedObject: and the slots take only what an oven works on or burns"
 	)
 
 	local twoWorld, first, twoCrate = newWorld()
 	local second = World.addPlayer(twoWorld, 2)
 	World.setCharacterPosition(twoWorld, 2, at(10, 0, 10))
-	send("usePlacedItem", twoWorld, first, twoCrate)
-	local secondCall = requests.usePlacedItem :: (...any) -> ()
+	send("usePlacedObject", twoWorld, first, twoCrate)
+	local secondCall = requests.usePlacedObject :: (...any) -> ()
 	secondCall(twoWorld, second, twoCrate)
 	check(
 		(first.screen :: InventoryScreen.InventoryScreen).otherInventory
 			== (second.screen :: InventoryScreen.InventoryScreen).otherInventory,
-		"usePlacedItem: two players may have the same crate open"
+		"usePlacedObject: two players may have the same crate open"
 	)
 end
 
-do -- hitPlacedItem
+do -- hitPlacedObject
 	local world, state, crateId, postId = newWorld()
 	local other = World.addPlayer(world, 2)
 	World.setCharacterPosition(world, 2, at(10, 0, 10))
-	local otherCall = requests.usePlacedItem :: (...any) -> ()
+	local otherCall = requests.usePlacedObject :: (...any) -> ()
 	otherCall(world, other, crateId)
 	InventoryScreen.pickUpFromSlot(other.screen :: InventoryScreen.InventoryScreen, "other", 1, 3)
 	check(
@@ -290,68 +290,68 @@ do -- hitPlacedItem
 	)
 
 	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
-	send("hitPlacedItem", world, state, crateId)
-	check(world.plot.placedItemsById[crateId] ~= nil, "hitPlacedItem: not from beyond reach")
+	send("hitPlacedObject", world, state, crateId)
+	check(world.plot.placedObjectsById[crateId] ~= nil, "hitPlacedObject: not from beyond reach")
 	World.removeCharacter(world, 1)
-	send("hitPlacedItem", world, state, crateId)
-	check(world.plot.placedItemsById[crateId] ~= nil, "hitPlacedItem: not by a player with no character")
+	send("hitPlacedObject", world, state, crateId)
+	check(world.plot.placedObjectsById[crateId] ~= nil, "hitPlacedObject: not by a player with no character")
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	for _, bad in badIds do
-		send("hitPlacedItem", world, state, bad)
+		send("hitPlacedObject", world, state, bad)
 	end
-	send("hitPlacedItem", world, state)
+	send("hitPlacedObject", world, state)
 	check(
-		world.plot.placedItemsById[crateId] ~= nil and world.plot.placedItemsById[postId] ~= nil,
-		"hitPlacedItem: ignored for an id that is not a placed item"
+		world.plot.placedObjectsById[crateId] ~= nil and world.plot.placedObjectsById[postId] ~= nil,
+		"hitPlacedObject: ignored for an id that is not a placed object"
 	)
 
-	send("hitPlacedItem", world, state, crateId)
-	check(world.plot.placedItemsById[crateId] == nil, "hitPlacedItem: the crate is off the plot")
+	send("hitPlacedObject", world, state, crateId)
+	check(world.plot.placedObjectsById[crateId] == nil, "hitPlacedObject: the crate is off the plot")
 	check(
-		other.screen == nil and other.openedPlacedItemId == nil,
-		"hitPlacedItem: the player who was looking into it is not any more"
+		other.screen == nil and other.openedPlacedObjectId == nil,
+		"hitPlacedObject: the player who was looking into it is not any more"
 	)
-	check(Inventory.countItems(other.pack, "fish") == 3, "hitPlacedItem: what they carried is in their pack")
-	check(onGround(world, "crate") == 1, "hitPlacedItem: the crate lies on the ground as an item")
-	check(onGround(world, "fish") == 2, "hitPlacedItem: what was left in it is spilled on the ground")
-	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 2, "hitPlacedItem: nothing was made or lost")
+	check(Inventory.countItems(other.pack, "fish") == 3, "hitPlacedObject: what they carried is in their pack")
+	check(onGround(world, "crate") == 1, "hitPlacedObject: the crate lies on the ground as an item")
+	check(onGround(world, "fish") == 2, "hitPlacedObject: what was left in it is spilled on the ground")
+	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 2, "hitPlacedObject: nothing was made or lost")
 	local allNear = true
 	for _, groundItem in world.groundItems.itemsById do
 		if Position.getGroundDistance(groundItem.position, at(6, 0, 6)) > 2 or groundItem.spawnTime ~= 100 then
 			allNear = false
 		end
 	end
-	check(allNear, "hitPlacedItem: it all lies on the crate's tile, dropped at the world's time")
-	check(Plot.canPlaceItem(world.plot, "post", 2, 2), "hitPlacedItem: and its tile holds nothing")
+	check(allNear, "hitPlacedObject: it all lies on the crate's tile, dropped at the world's time")
+	check(Plot.canPlaceObject(world.plot, "post", 2, 2), "hitPlacedObject: and its tile holds nothing")
 
 	World.setCharacterPosition(world, 1, at(18, 0, 10))
-	send("hitPlacedItem", world, state, postId)
+	send("hitPlacedObject", world, state, postId)
 	check(
-		world.plot.placedItemsById[postId] == nil and onGround(world, "post") == 1,
-		"hitPlacedItem: a placed item that holds nothing just becomes an item"
+		world.plot.placedObjectsById[postId] == nil and onGround(world, "post") == 1,
+		"hitPlacedObject: a placed object that holds nothing just becomes an item"
 	)
-	check(state.screen == nil, "hitPlacedItem: the player who hit it has no screen open")
+	check(state.screen == nil, "hitPlacedObject: the player who hit it has no screen open")
 
 	local ovenWorld, withOven = newWorld()
-	local ovenId = Plot.placeItem(ovenWorld.plot, "oven", 3, 1) :: number
-	send("hitPlacedItem", ovenWorld, withOven, ovenId)
+	local ovenId = Plot.placeObject(ovenWorld.plot, "oven", 3, 1) :: number
+	send("hitPlacedObject", ovenWorld, withOven, ovenId)
 	check(
-		ovenWorld.plot.placedItemsById[ovenId] == nil
+		ovenWorld.plot.placedObjectsById[ovenId] == nil
 			and ovenWorld.stations[ovenId] == nil
 			and onGround(ovenWorld, "oven") == 1,
-		"hitPlacedItem: an oven is taken off the plot and stops being a station"
+		"hitPlacedObject: an oven is taken off the plot and stops being a station"
 	)
 
 	local ring = Plot.new(3, 3)
-	local ringCrate = Plot.placeItem(ring, "crate", 2, 2) :: number
-	local inRingCrate = ring.placedItemsById[ringCrate].inventory :: Inventory.Inventory
+	local ringCrate = Plot.placeObject(ring, "crate", 2, 2) :: number
+	local inRingCrate = ring.placedObjectsById[ringCrate].inventory :: Inventory.Inventory
 	Inventory.addItems(inRingCrate, "fish", 2)
 	Inventory.addItems(inRingCrate, "apple", 3)
 	Inventory.addItems(inRingCrate, "log", 4)
 	local ringWorld = World.new(ring, at(0, 0, 0), 0)
 	local ringState = World.addPlayer(ringWorld, 1)
 	World.setCharacterPosition(ringWorld, 1, at(0, 0, 0))
-	send("hitPlacedItem", ringWorld, ringState, ringCrate)
+	send("hitPlacedObject", ringWorld, ringState, ringCrate)
 	local ways: { [string]: boolean } = {}
 	local wayCount, fromMiddle = 0, true
 	for _, groundItem in ringWorld.groundItems.itemsById do
@@ -366,9 +366,9 @@ do -- hitPlacedItem
 	end
 	check(
 		wayCount == 4,
-		"hitPlacedItem: the crate and each of the three stacks that were in it are thrown a way of their own"
+		"hitPlacedObject: the crate and each of the three stacks that were in it are thrown a way of their own"
 	)
-	check(fromMiddle, "hitPlacedItem: each upwards, out of the middle of the tile")
+	check(fromMiddle, "hitPlacedObject: each upwards, out of the middle of the tile")
 end
 
 do -- whatever a player's machine sends, nothing raises an error and no item is made or lost

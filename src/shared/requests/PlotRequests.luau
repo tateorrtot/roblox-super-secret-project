@@ -14,9 +14,9 @@ local PlotRequests = {}
 type World = World.World
 type PlayerState = PlayerState.PlayerState
 
-local function isPlacedItemInReach(world: World, player: PlayerState, placedItemId: unknown): boolean
-	local placedItem = world.plot.placedItemsById[placedItemId :: number]
-	return placedItem ~= nil and World.canReachTile(world, player, placedItem.x, placedItem.z)
+local function isPlacedObjectInReach(world: World, player: PlayerState, placedObjectId: unknown): boolean
+	local placedObject = world.plot.placedObjectsById[placedObjectId :: number]
+	return placedObject ~= nil and World.canReachTile(world, player, placedObject.x, placedObject.z)
 end
 
 --- Places one of the item in the player's selected hotbar slot on the tile `x`, `z` of the plot,
@@ -31,35 +31,35 @@ function PlotRequests.placeSelectedItem(world: World, player: PlayerState, x: un
 	end
 	local tileX, tileZ = x :: number, z :: number
 	local canPlace = World.canReachTile(world, player, tileX, tileZ)
-		and World.canPlaceItem(world, selected.itemId, tileX, tileZ)
+		and World.canPlaceObject(world, selected.itemId, tileX, tileZ)
 	if canPlace then
-		Plot.placeItem(world.plot, selected.itemId, tileX, tileZ)
+		Plot.placeObject(world.plot, selected.itemId, tileX, tileZ)
 		Hotbar.takeFromSelectedSlot(player.hotbar, 1)
 	end
 end
 
---- The player uses the placed item with the id `placedItemId`: its inventory opens on their
---- screen, beside their pack, in place of any screen they had open. Does nothing if no placed item
+--- The player uses the placed object with the id `placedObjectId`: its inventory opens on their
+--- screen, beside their pack, in place of any screen they had open. Does nothing if no placed object
 --- has that id, if it has no inventory, or if the player stands more than `World.REACH` from it.
-function PlotRequests.usePlacedItem(world: World, player: PlayerState, placedItemId: unknown)
-	local canOpen = isPlacedItemInReach(world, player, placedItemId)
-		and World.canOpenPlacedItemScreen(world, player, placedItemId :: number)
+function PlotRequests.usePlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
+	local canOpen = isPlacedObjectInReach(world, player, placedObjectId)
+		and World.canOpenPlacedObjectScreen(world, player, placedObjectId :: number)
 	if canOpen then
-		World.openPlacedItemScreen(world, player, placedItemId :: number)
+		World.openPlacedObjectScreen(world, player, placedObjectId :: number)
 	end
 end
 
---- The player hits the placed item with the id `placedItemId`, which knocks it off the plot: it
+--- The player hits the placed object with the id `placedObjectId`, which knocks it off the plot: it
 --- is taken off the plot and thrown into the world as a ground item, and so is every stack that
---- was inside it. Any screen open on it closes. Does nothing if no placed item has that id, or if
+--- was inside it. Any screen open on it closes. Does nothing if no placed object has that id, or if
 --- the player stands more than `World.REACH` from it.
-function PlotRequests.hitPlacedItem(world: World, player: PlayerState, placedItemId: unknown)
-	if not isPlacedItemInReach(world, player, placedItemId) then
+function PlotRequests.hitPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
+	if not isPlacedObjectInReach(world, player, placedObjectId) then
 		return
 	end
-	local placedItem = Plot.removePlacedItem(world.plot, placedItemId :: number)
-	if placedItem ~= nil then
-		World.throwPlacedItemAndContents(world, placedItem)
+	local placedObject = Plot.removePlacedObject(world.plot, placedObjectId :: number)
+	if placedObject ~= nil then
+		World.throwPlacedObjectAndContents(world, placedObject)
 	end
 end
 

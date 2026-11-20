@@ -2,10 +2,10 @@
 --- A grid of square tiles with the items standing on them.
 ---
 --- A plot is `width` tiles along x and `depth` tiles along z. A tile is named by two whole numbers
---- counted from 1, so the corner tile is x 1, z 1. Each tile holds one placed item or nothing.
---- `placeItem` stands an item on a tile and `removePlacedItem` takes it off, and the plot fires a
---- signal for each: `placedItemAdded` and `placedItemRemoved`. A placed item whose definition has a
---- `slotCount` has an inventory inside it. Placed items are numbered from 1 in the
+--- counted from 1, so the corner tile is x 1, z 1. Each tile holds one placed object or nothing.
+--- `placeObject` stands an item on a tile and `removePlacedObject` takes it off, and the plot fires a
+--- signal for each: `placedObjectAdded` and `placedObjectRemoved`. A placed object whose definition has a
+--- `slotCount` has an inventory inside it. Placed objects are numbered from 1 in the
 --- order they were placed, and a number is never used twice. `getTileAt` and `getTileCenter` turn a
 --- position in the world into a tile and back.
 local Inventory = require("../inventory/Inventory")
@@ -21,7 +21,7 @@ type Inventory = Inventory.Inventory
 export type Position = Position.Position
 
 --- One item standing on a tile.
-export type PlacedItem = {
+export type PlacedObject = {
 	--- The id of the item it is, such as `"crate"`.
 	read itemId: string,
 	--- The number of the tile it stands on along x.
@@ -38,17 +38,17 @@ export type Plot = {
 	read width: number,
 	--- How many tiles it has along z.
 	read depth: number,
-	--- Fired when an item has been placed, with the placed item's id and the placed item.
-	read placedItemAdded: Signal.Signal<number, PlacedItem>,
-	--- Fired when a placed item has been taken off the plot, with the id it had and the placed
+	--- Fired when an item has been placed, with the placed object's id and the placed object.
+	read placedObjectAdded: Signal.Signal<number, PlacedObject>,
+	--- Fired when a placed object has been taken off the plot, with the id it had and the placed
 	--- item, whose inventory is still inside it.
-	read placedItemRemoved: Signal.Signal<number, PlacedItem>,
-	--- The id the next placed item will get.
+	read placedObjectRemoved: Signal.Signal<number, PlacedObject>,
+	--- The id the next placed object will get.
 	nextId: number,
-	--- Every placed item, by id. An id with no entry is not on the plot.
-	--- Note: ids are not consecutive once an item has been removed, so `#placedItemsById` is not
-	--- the number of placed items.
-	placedItemsById: { [number]: PlacedItem },
+	--- Every placed object, by id. An id with no entry is not on the plot.
+	--- Note: ids are not consecutive once an item has been removed, so `#placedObjectsById` is not
+	--- the number of placed objects.
+	placedObjectsById: { [number]: PlacedObject },
 }
 
 --- The length of a tile's side, in studs.
@@ -64,10 +64,10 @@ function Plot.new(width: number, depth: number): Plot
 	return {
 		width = width,
 		depth = depth,
-		placedItemAdded = Signal.new(),
-		placedItemRemoved = Signal.new(),
+		placedObjectAdded = Signal.new(),
+		placedObjectRemoved = Signal.new(),
 		nextId = 1,
-		placedItemsById = {},
+		placedObjectsById = {},
 	}
 end
 
@@ -82,11 +82,11 @@ function Plot.hasTile(plot: Plot, x: unknown, z: unknown): boolean
 		and (z :: number) <= plot.depth
 end
 
---- Returns `true` if a placed item stands on the tile `x`, `z`. A tile the plot does not have
+--- Returns `true` if a placed object stands on the tile `x`, `z`. A tile the plot does not have
 --- holds nothing, so it is never taken.
 function Plot.isTileTaken(plot: Plot, x: number, z: number): boolean
-	for _, placedItem in plot.placedItemsById do
-		if placedItem.x == x and placedItem.z == z then
+	for _, placedObject in plot.placedObjectsById do
+		if placedObject.x == x and placedObject.z == z then
 			return true
 		end
 	end
@@ -96,44 +96,44 @@ end
 --- Returns `true` if the item `itemId` could be placed on the tile `x`, `z`: the plot has that
 --- tile, the item's definition says it is `placeable`, and the tile holds nothing. Fails if no
 --- item has that id.
-function Plot.canPlaceItem(plot: Plot, itemId: string, x: number, z: number): boolean
+function Plot.canPlaceObject(plot: Plot, itemId: string, x: number, z: number): boolean
 	local isPlaceable = ItemRegistry.get(itemId).placeable == true
 	return isPlaceable and Plot.hasTile(plot, x, z) and not Plot.isTileTaken(plot, x, z)
 end
 
---- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed item. If
---- the item's definition has a `slotCount`, the placed item gets a new inventory of that many
---- slots, holding nothing. Fires `placedItemAdded` once the item stands there. Fails if
---- `canPlaceItem` would return `false`: a tile holds one item, and only an item that can be placed
+--- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed object. If
+--- the item's definition has a `slotCount`, the placed object gets a new inventory of that many
+--- slots, holding nothing. Fires `placedObjectAdded` once the item stands there. Fails if
+--- `canPlaceObject` would return `false`: a tile holds one item, and only an item that can be placed
 --- stands on the plot. Fails if no item has that id.
-function Plot.placeItem(plot: Plot, itemId: string, x: number, z: number): number
-	if not Plot.canPlaceItem(plot, itemId, x, z) then
+function Plot.placeObject(plot: Plot, itemId: string, x: number, z: number): number
+	if not Plot.canPlaceObject(plot, itemId, x, z) then
 		error(`the item "{itemId}" cannot be placed on the tile {x}, {z}`, 2)
 	end
 	local definition = ItemRegistry.get(itemId)
 	local id = plot.nextId
-	plot.placedItemsById[id] = table.freeze({
+	plot.placedObjectsById[id] = table.freeze({
 		itemId = itemId,
 		x = x,
 		z = z,
 		inventory = if definition.slotCount ~= nil then Inventory.new(definition.slotCount) else nil,
 	})
 	plot.nextId = id + 1
-	Signal.fire(plot.placedItemAdded, id, plot.placedItemsById[id])
+	Signal.fire(plot.placedObjectAdded, id, plot.placedObjectsById[id])
 	return id
 end
 
---- Takes the placed item with the id `id` off the plot and returns it, with its inventory still
+--- Takes the placed object with the id `id` off the plot and returns it, with its inventory still
 --- inside it. Its tile then holds nothing, and its id is never given out again. Fires
---- `placedItemRemoved` once it is off. Returns `nil`, changing nothing and firing nothing, if no
---- placed item has that id.
-function Plot.removePlacedItem(plot: Plot, id: number): PlacedItem?
-	local placedItem = plot.placedItemsById[id]
-	plot.placedItemsById[id] = nil
-	if placedItem ~= nil then
-		Signal.fire(plot.placedItemRemoved, id, placedItem)
+--- `placedObjectRemoved` once it is off. Returns `nil`, changing nothing and firing nothing, if no
+--- placed object has that id.
+function Plot.removePlacedObject(plot: Plot, id: number): PlacedObject?
+	local placedObject = plot.placedObjectsById[id]
+	plot.placedObjectsById[id] = nil
+	if placedObject ~= nil then
+		Signal.fire(plot.placedObjectRemoved, id, placedObject)
 	end
-	return placedItem
+	return placedObject
 end
 
 --- Returns the `x` and `z` of the tile that `position` is over, for a plot whose tile x 1, z 1 has

@@ -98,13 +98,13 @@ end
 
 local function makeStockedPlot(): Plot.Plot
 	local plot = Plot.new(PlaceholderWorld.PLOT_SIZE_IN_TILES, PlaceholderWorld.PLOT_SIZE_IN_TILES)
-	local crateId = Plot.placeItem(plot, "crate", 13, 7) :: number
-	local inCrate = plot.placedItemsById[crateId].inventory :: Inventory.Inventory
+	local crateId = Plot.placeObject(plot, "crate", 13, 7) :: number
+	local inCrate = plot.placedObjectsById[crateId].inventory :: Inventory.Inventory
 	Inventory.addItems(inCrate, "cheese", 8)
 	Inventory.addItems(inCrate, "fish", 5)
 	Inventory.addItems(inCrate, "crystal", 40)
 	Inventory.addItems(inCrate, "crate", 1)
-	Plot.placeItem(plot, "stove", 6, 13)
+	Plot.placeObject(plot, "stove", 6, 13)
 	return plot
 end
 
@@ -137,7 +137,7 @@ end
 
 --- Spawns a stack of a random item in the middle of a random tile of the plot, not moving. Does
 --- nothing if `GROUND_ITEMS_KEPT` ground items already lie about, or if it last chose a tile less
---- than `SECONDS_BETWEEN_RESTOCKS` before the world's time. If a placed item stands on the tile it
+--- than `SECONDS_BETWEEN_RESTOCKS` before the world's time. If a placed object stands on the tile it
 --- chooses, it spawns nothing, and waits `SECONDS_BETWEEN_RESTOCKS` before it chooses again. Does
 --- nothing while the Workspace attribute `PlaceholderRestock` is `false`, which the play test sets
 --- so that it knows what lies on the ground.
@@ -165,7 +165,7 @@ function PlaceholderWorld.restockGroundItems(placeholder: PlaceholderWorld, worl
 		z = slab.Position.Z - slab.Size.Z / 2,
 	}
 	local spot = Plot.getTileCenter(corner, tileX, tileZ)
-	if not Plot.canPlaceItem(plot, "crate", tileX, tileZ) then
+	if not Plot.canPlaceObject(plot, "crate", tileX, tileZ) then
 		return
 	end
 

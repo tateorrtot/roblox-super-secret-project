@@ -1,5 +1,5 @@
 --!strict
---- A placed item that turns one item into another while its fire burns: a stove.
+--- A placed object that turns one item into another while its fire burns: a stove.
 ---
 --- A station has three slots. `INPUT_SLOT` holds what is to be worked on, `FUEL_SLOT` holds fuel,
 --- and what is made collects in `OUTPUT_SLOT`. `advance` burns the fire and does the work. The fire

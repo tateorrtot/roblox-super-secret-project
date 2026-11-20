@@ -3,9 +3,9 @@
 ---
 --- Use is a left click, or a tap on a touch screen. Hit is a short right click: holding the right
 --- button turns the camera, so only a quick press that did not turn it is a Hit. Hit has no touch
---- control yet. Both act on the placed item or the bare tile under the pointer, if the player's
+--- control yet. Both act on the placed object or the bare tile under the pointer, if the player's
 --- character stands within `World.REACH` of it. With a mouse, the thing under the pointer is
---- marked while it is in reach: a placed item gets a white outline, and a bare tile gets a faint
+--- marked while it is in reach: a placed object gets a white outline, and a bare tile gets a faint
 --- block if the item in hand can be placed.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
@@ -25,12 +25,12 @@ export type Callbacks = {
 	isBlocked: () -> boolean,
 	--- Returns the id of the item in the player's hand if it can be placed, or `nil`.
 	getPlaceableInHand: () -> string?,
-	--- Called with a placed item's id when the player uses it.
-	onPlacedItemUsed: (placedItemId: number) -> (),
+	--- Called with a placed object's id when the player uses it.
+	onPlacedObjectUsed: (placedObjectId: number) -> (),
 	--- Called with a tile when the player uses it while an item that can be placed is in hand.
 	onTileUsed: (x: number, z: number) -> (),
-	--- Called with a placed item's id when the player hits it.
-	onPlacedItemHit: (placedItemId: number) -> (),
+	--- Called with a placed object's id when the player hits it.
+	onPlacedObjectHit: (placedObjectId: number) -> (),
 }
 
 --- A right click is a Hit only if the button comes up within this many seconds.
@@ -79,16 +79,16 @@ function UseAndHit.startListening(callbacks: Callbacks)
 	end
 
 	local function use(target: PlotPointer.Target?)
-		if target ~= nil and target.kind == "placedItem" then
-			callbacks.onPlacedItemUsed(target.placedItemId)
+		if target ~= nil and target.kind == "placedObject" then
+			callbacks.onPlacedObjectUsed(target.placedObjectId)
 		elseif target ~= nil and target.kind == "tile" and callbacks.getPlaceableInHand() ~= nil then
 			callbacks.onTileUsed(target.x, target.z)
 		end
 	end
 
 	local function hit(target: PlotPointer.Target?)
-		if target ~= nil and target.kind == "placedItem" then
-			callbacks.onPlacedItemHit(target.placedItemId)
+		if target ~= nil and target.kind == "placedObject" then
+			callbacks.onPlacedObjectHit(target.placedObjectId)
 		end
 	end
 
@@ -100,7 +100,7 @@ function UseAndHit.startListening(callbacks: Callbacks)
 		else
 			PlacementGhost.hide(ghost)
 		end
-		outline.Adornee = if target ~= nil and target.kind == "placedItem" then target.part else nil
+		outline.Adornee = if target ~= nil and target.kind == "placedObject" then target.part else nil
 	end)
 
 	UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewhere: boolean)

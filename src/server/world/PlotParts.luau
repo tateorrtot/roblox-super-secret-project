@@ -3,10 +3,10 @@
 ---
 --- Draws thin lines on the plot's slab to mark the tiles, and one block a tile wide for each item
 --- standing on the plot, in the colour of its item and with its name above it. `update` makes the
---- blocks match what is placed: a new block for each newly placed item and none for one that was
+--- blocks match what is placed: a new block for each newly placed object and none for one that was
 --- removed. The slab is tagged `Plot` and has the attributes `width` and `depth` in tiles and
 --- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.getTileAt` wants it. Each block
---- has the attribute `placedItemId`, the id of its placed item, and the attribute `burning`, which
+--- has the attribute `placedObjectId`, the id of its placed object, and the attribute `burning`, which
 --- is `true` while the block is a station whose fire is burning. The blocks are placeholders until
 --- items have models, and the plot must lie square to the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
@@ -26,7 +26,7 @@ export type PlotParts = {
 	read corner: Plot.Position,
 	--- The folder that holds the blocks, and the lines between the tiles.
 	read folder: Folder,
-	--- The block that shows each placed item, by the placed item's id.
+	--- The block that shows each placed object, by the placed object's id.
 	read partsById: { [number]: Part },
 }
 
@@ -61,7 +61,7 @@ local function makePart(itemId: string, id: number, center: Plot.Position): Part
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
-	part:SetAttribute("placedItemId", id)
+	part:SetAttribute("placedObjectId", id)
 
 	makeLabel(part, look.name, side)
 	return part
@@ -106,7 +106,7 @@ end
 
 --- Returns a new set of blocks for the plot that lies on `slab`, with no block made yet, and draws
 --- the lines between the plot's tiles. The blocks and the lines are kept in a folder called
---- `PlacedItems` beside the slab. `plot` is read once, for its size. The plot starts at the slab's
+--- `PlacedObjects` beside the slab. `plot` is read once, for its size. The plot starts at the slab's
 --- corner of least x and z, and the slab's top must be at least as large as the plot.
 function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	local corner = table.freeze({
@@ -122,7 +122,7 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	CollectionService:AddTag(slab, "Plot")
 
 	local folder = Instance.new("Folder")
-	folder.Name = "PlacedItems"
+	folder.Name = "PlacedObjects"
 	makeTileLines(folder, corner, plot, slab.Color:Lerp(Color3.new(0, 0, 0), 0.18))
 	folder.Parent = slab.Parent
 	return { slab = slab, corner = corner, folder = folder, partsById = {} }
@@ -147,10 +147,10 @@ local function showFire(part: Part, burning: boolean)
 end
 
 local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
-	for id, placedItem in plot.placedItemsById do
+	for id, placedObject in plot.placedObjectsById do
 		if plotParts.partsById[id] == nil then
-			local center = Plot.getTileCenter(plotParts.corner, placedItem.x, placedItem.z)
-			local part = makePart(placedItem.itemId, id, center)
+			local center = Plot.getTileCenter(plotParts.corner, placedObject.x, placedObject.z)
+			local part = makePart(placedObject.itemId, id, center)
 			plotParts.partsById[id] = part
 			part.Parent = plotParts.folder
 		end
@@ -167,7 +167,7 @@ end
 
 local function removeStaleParts(plotParts: PlotParts, plot: Plot.Plot)
 	for id, part in plotParts.partsById do
-		if plot.placedItemsById[id] == nil then
+		if plot.placedObjectsById[id] == nil then
 			part:Destroy()
 			plotParts.partsById[id] = nil
 		end
@@ -180,9 +180,9 @@ local function showFires(plotParts: PlotParts, stations: { [number]: Station.Sta
 	end
 end
 
---- Makes the blocks match what is placed on `plot` now: a new block for each placed item that has
+--- Makes the blocks match what is placed on `plot` now: a new block for each placed object that has
 --- none, and no block for an item that is gone. Each station's block glows while its fire is
---- burning. `stations` holds the station of each placed item that has one, by placed item id.
+--- burning. `stations` holds the station of each placed object that has one, by placed object id.
 function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, stations: { [number]: Station.Station })
 	addMissingParts(plotParts, plot)
 	removeStaleParts(plotParts, plot)

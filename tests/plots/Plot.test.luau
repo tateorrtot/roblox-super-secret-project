@@ -14,10 +14,10 @@ ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
 ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
 ItemRegistry.register({ id = "pouch", stackSize = 1, placeable = true, slotCount = 2 })
 
--- How many placed items a plot has.
+-- How many placed objects a plot has.
 local function placedCount(plot: Plot.Plot): number
 	local count = 0
-	for _ in plot.placedItemsById :: any do
+	for _ in plot.placedObjectsById :: any do
 		count += 1
 	end
 	return count
@@ -30,7 +30,7 @@ end
 do -- a new plot
 	local plot = Plot.new(18, 12)
 	check(plot.width == 18 and plot.depth == 12, "new: has the size asked for")
-	check(plot.nextId == 1 and placedCount(plot) == 0, "new: nothing is placed, and the first placed item will be 1")
+	check(plot.nextId == 1 and placedCount(plot) == 0, "new: nothing is placed, and the first placed object will be 1")
 	check(Plot.new(1, 1).width == 1, "new: a plot may be a single tile")
 end
 
@@ -52,87 +52,90 @@ end
 
 do -- placing
 	local plot = Plot.new(4, 4)
-	check(Plot.canPlaceItem(plot, "stove", 2, 3), "canPlaceItem: a placeable item on a tile that holds nothing")
+	check(Plot.canPlaceObject(plot, "stove", 2, 3), "canPlaceObject: a placeable item on a tile that holds nothing")
 	check(not Plot.isTileTaken(plot, 2, 3), "isTileTaken: false for a tile that holds nothing")
-	local stove = Plot.placeItem(plot, "stove", 2, 3)
+	local stove = Plot.placeObject(plot, "stove", 2, 3)
 	check(Plot.isTileTaken(plot, 2, 3), "isTileTaken: true once an item stands on the tile")
 	check(not Plot.isTileTaken(plot, 3, 2), "isTileTaken: x and z are not swapped")
 	check(
 		not Plot.isTileTaken(plot, 0, 3) and not Plot.isTileTaken(plot, 5, 3) and not Plot.isTileTaken(plot, 2, -1),
 		"isTileTaken: false for a tile the plot does not have"
 	)
-	check(stove == 1 and plot.nextId == 2, "placeItem: the first placed item is 1, and the next will be 2")
-	local placed = plot.placedItemsById[1]
-	check(placed.itemId == "stove" and placed.x == 2 and placed.z == 3, "placeItem: it is that item on that tile")
-	check(placed.inventory == nil, "placeItem: an item with no slotCount has no inventory")
-	check(table.isfrozen(placed), "placeItem: a placed item's record never changes")
+	check(stove == 1 and plot.nextId == 2, "placeObject: the first placed object is 1, and the next will be 2")
+	local placed = plot.placedObjectsById[1]
+	check(placed.itemId == "stove" and placed.x == 2 and placed.z == 3, "placeObject: it is that item on that tile")
+	check(placed.inventory == nil, "placeObject: an item with no slotCount has no inventory")
+	check(table.isfrozen(placed), "placeObject: a placed object's record never changes")
 
-	check(not Plot.canPlaceItem(plot, "crate", 2, 3), "canPlaceItem: not on a tile that is taken")
+	check(not Plot.canPlaceObject(plot, "crate", 2, 3), "canPlaceObject: not on a tile that is taken")
 	check(
 		Check.raises('the item "crate" cannot be placed on the tile 2, 3', function()
-			Plot.placeItem(plot, "crate", 2, 3)
+			Plot.placeObject(plot, "crate", 2, 3)
 		end),
-		"placeItem: fails on a tile that is taken"
+		"placeObject: fails on a tile that is taken"
 	)
-	check(placedCount(plot) == 1 and plot.nextId == 2, "placeItem: a placing that fails changes nothing")
-	check(Plot.canPlaceItem(plot, "crate", 3, 2), "canPlaceItem: x and z are not swapped")
+	check(placedCount(plot) == 1 and plot.nextId == 2, "placeObject: a placing that fails changes nothing")
+	check(Plot.canPlaceObject(plot, "crate", 3, 2), "canPlaceObject: x and z are not swapped")
 
-	check(not Plot.canPlaceItem(plot, "apple", 1, 1), "canPlaceItem: not an item that cannot be placed")
+	check(not Plot.canPlaceObject(plot, "apple", 1, 1), "canPlaceObject: not an item that cannot be placed")
 	check(
 		Check.raises('the item "apple" cannot be placed on the tile 1, 1', function()
-			Plot.placeItem(plot, "apple", 1, 1)
+			Plot.placeObject(plot, "apple", 1, 1)
 		end),
-		"placeItem: fails for an item that cannot be placed"
+		"placeObject: fails for an item that cannot be placed"
 	)
-	check(placedCount(plot) == 1 and plot.nextId == 2, "placeItem: and again nothing changes")
+	check(placedCount(plot) == 1 and plot.nextId == 2, "placeObject: and again nothing changes")
 
-	local crate = Plot.placeItem(plot, "crate", 1, 1)
-	check(crate == 2, "placeItem: ids count up")
-	local inside = plot.placedItemsById[2].inventory
+	local crate = Plot.placeObject(plot, "crate", 1, 1)
+	check(crate == 2, "placeObject: ids count up")
+	local inside = plot.placedObjectsById[2].inventory
 	check(
 		inside ~= nil and inside.slotCount == 27 and Inventory.isEmpty(inside),
-		"placeItem: a crate has 27 slots, holding nothing"
+		"placeObject: a crate has 27 slots, holding nothing"
 	)
-	local pouch = Plot.placeItem(plot, "pouch", 4, 4)
-	local pouchInside = plot.placedItemsById[pouch :: number].inventory
-	check(pouchInside ~= nil and pouchInside.slotCount == 2, "placeItem: the inventory has the slotCount of its item")
-	local second = Plot.placeItem(plot, "crate", 1, 2)
+	local pouch = Plot.placeObject(plot, "pouch", 4, 4)
+	local pouchInside = plot.placedObjectsById[pouch :: number].inventory
+	check(pouchInside ~= nil and pouchInside.slotCount == 2, "placeObject: the inventory has the slotCount of its item")
+	local second = Plot.placeObject(plot, "crate", 1, 2)
 	check(
-		plot.placedItemsById[second :: number].inventory ~= inside,
-		"placeItem: each placed crate has an inventory of its own"
+		plot.placedObjectsById[second :: number].inventory ~= inside,
+		"placeObject: each placed crate has an inventory of its own"
 	)
 	check(
-		Plot.placeItem(plot, "stove", 4, 1) == 5 and Plot.placeItem(plot, "stove", 1, 4) == 6,
-		"placeItem: the corner tiles can be used"
+		Plot.placeObject(plot, "stove", 4, 1) == 5 and Plot.placeObject(plot, "stove", 1, 4) == 6,
+		"placeObject: the corner tiles can be used"
 	)
 end
 
 do -- removing
 	local plot = Plot.new(4, 4)
-	local crate = Plot.placeItem(plot, "crate", 3, 3) :: number
-	local stove = Plot.placeItem(plot, "stove", 1, 1) :: number
-	local inside = plot.placedItemsById[crate].inventory :: Inventory.Inventory
+	local crate = Plot.placeObject(plot, "crate", 3, 3) :: number
+	local stove = Plot.placeObject(plot, "stove", 1, 1) :: number
+	local inside = plot.placedObjectsById[crate].inventory :: Inventory.Inventory
 	Inventory.addItems(inside, "apple", 20)
 
-	local removed = Plot.removePlacedItem(plot, crate)
+	local removed = Plot.removePlacedObject(plot, crate)
 	check(
 		removed ~= nil and removed.itemId == "crate" and removed.x == 3 and removed.z == 3,
-		"removePlacedItem: returns the placed item"
+		"removePlacedObject: returns the placed object"
 	)
-	check(removed ~= nil and removed.inventory == inside, "removePlacedItem: with its inventory")
-	check(Inventory.countItems(inside, "apple") == 20, "removePlacedItem: and what was in it")
+	check(removed ~= nil and removed.inventory == inside, "removePlacedObject: with its inventory")
+	check(Inventory.countItems(inside, "apple") == 20, "removePlacedObject: and what was in it")
 	check(
-		plot.placedItemsById[crate] == nil and placedCount(plot) == 1,
-		"removePlacedItem: it is no longer on the plot"
+		plot.placedObjectsById[crate] == nil and placedCount(plot) == 1,
+		"removePlacedObject: it is no longer on the plot"
 	)
-	check(plot.placedItemsById[stove] ~= nil, "removePlacedItem: other placed items stay")
-	check(Plot.removePlacedItem(plot, crate) == nil, "removePlacedItem: nil for an id that is no longer on the plot")
-	check(Plot.removePlacedItem(plot, 99) == nil, "removePlacedItem: nil for an id that never was")
-	check(placedCount(plot) == 1, "removePlacedItem: a removal that found nothing changes nothing")
+	check(plot.placedObjectsById[stove] ~= nil, "removePlacedObject: other placed objects stay")
+	check(
+		Plot.removePlacedObject(plot, crate) == nil,
+		"removePlacedObject: nil for an id that is no longer on the plot"
+	)
+	check(Plot.removePlacedObject(plot, 99) == nil, "removePlacedObject: nil for an id that never was")
+	check(placedCount(plot) == 1, "removePlacedObject: a removal that found nothing changes nothing")
 
-	check(Plot.canPlaceItem(plot, "stove", 3, 3), "canPlaceItem: the tile holds nothing again")
+	check(Plot.canPlaceObject(plot, "stove", 3, 3), "canPlaceObject: the tile holds nothing again")
 	check(not Plot.isTileTaken(plot, 3, 3), "isTileTaken: false again once the item is taken off")
-	check(Plot.placeItem(plot, "stove", 3, 3) == 3, "placeItem: a new placed item gets a new id, not the old one")
+	check(Plot.placeObject(plot, "stove", 3, 3) == 3, "placeObject: a new placed object gets a new id, not the old one")
 end
 
 do -- where a plot's tiles are in the world
@@ -172,52 +175,52 @@ do -- a tile the plot does not have
 	local offPlot = { { 0, 1 }, { 4, 1 }, { 1, 3 }, { 1, 0 }, { 1.5, 1 }, { 1, "2" } } :: { { any } }
 	for _, tile in offPlot do
 		check(
-			not Plot.canPlaceItem(plot, "stove", tile[1], tile[2]),
+			not Plot.canPlaceObject(plot, "stove", tile[1], tile[2]),
 			`canPlace: false for tile x {tile[1]}, z {tile[2]}, which the plot does not have`
 		)
 		check(Check.errorFrom(function()
-			Plot.placeItem(plot, "stove", tile[1], tile[2])
-		end) ~= nil, `placeItem: fails for tile x {tile[1]}, z {tile[2]}, which the plot does not have`)
+			Plot.placeObject(plot, "stove", tile[1], tile[2])
+		end) ~= nil, `placeObject: fails for tile x {tile[1]}, z {tile[2]}, which the plot does not have`)
 	end
-	check(placedCount(plot) == 0 and plot.nextId == 1, "placeItem: a placing that fails changes nothing")
+	check(placedCount(plot) == 0 and plot.nextId == 1, "placeObject: a placing that fails changes nothing")
 end
 
 do -- the two signals
 	local plot = Plot.new(4, 4)
 	local heard: { string } = {}
-	Signal.connect(plot.placedItemAdded, function(id: number, placedItem: Plot.PlacedItem)
-		local stands = plot.placedItemsById[id] == placedItem
-		table.insert(heard, `added {id} {placedItem.itemId} {placedItem.x} {placedItem.z} {stands}`)
+	Signal.connect(plot.placedObjectAdded, function(id: number, placedObject: Plot.PlacedObject)
+		local stands = plot.placedObjectsById[id] == placedObject
+		table.insert(heard, `added {id} {placedObject.itemId} {placedObject.x} {placedObject.z} {stands}`)
 	end)
-	Signal.connect(plot.placedItemRemoved, function(id: number, placedItem: Plot.PlacedItem)
-		local gone = plot.placedItemsById[id] == nil
-		table.insert(heard, `removed {id} {placedItem.itemId} {gone}`)
+	Signal.connect(plot.placedObjectRemoved, function(id: number, placedObject: Plot.PlacedObject)
+		local gone = plot.placedObjectsById[id] == nil
+		table.insert(heard, `removed {id} {placedObject.itemId} {gone}`)
 	end)
-	local crate = Plot.placeItem(plot, "crate", 2, 3)
+	local crate = Plot.placeObject(plot, "crate", 2, 3)
 	check(
 		#heard == 1 and heard[1] == `added {crate} crate 2 3 true`,
-		"placeItem: fires placedItemAdded with the id and the placed item, once the item stands on the plot"
+		"placeObject: fires placedObjectAdded with the id and the placed object, once the item stands on the plot"
 	)
 	Check.errorFrom(function()
-		Plot.placeItem(plot, "stove", 2, 3)
+		Plot.placeObject(plot, "stove", 2, 3)
 	end)
-	check(#heard == 1, "placeItem: a placing that fails fires nothing")
-	local removed = Plot.removePlacedItem(plot, crate)
+	check(#heard == 1, "placeObject: a placing that fails fires nothing")
+	local removed = Plot.removePlacedObject(plot, crate)
 	check(
 		#heard == 2 and heard[2] == `removed {crate} crate true`,
-		"removePlacedItem: fires placedItemRemoved with the id and the placed item, once it is off the plot"
+		"removePlacedObject: fires placedObjectRemoved with the id and the placed object, once it is off the plot"
 	)
 	check(
 		removed ~= nil and removed.inventory ~= nil,
-		"removePlacedItem: the placed item still has its inventory inside it"
+		"removePlacedObject: the placed object still has its inventory inside it"
 	)
-	Plot.removePlacedItem(plot, crate)
-	Plot.removePlacedItem(plot, 99)
-	check(#heard == 2, "removePlacedItem: fires nothing for an id that no placed item has")
+	Plot.removePlacedObject(plot, crate)
+	Plot.removePlacedObject(plot, 99)
+	check(#heard == 2, "removePlacedObject: fires nothing for an id that no placed object has")
 
 	local quiet = Plot.new(2, 2)
-	Plot.placeItem(quiet, "stove", 1, 1)
-	check(#heard == 2, "placeItem: one plot's signals are not fired by another plot")
+	Plot.placeObject(quiet, "stove", 1, 1)
+	check(#heard == 2, "placeObject: one plot's signals are not fired by another plot")
 end
 
 Check.finish("Plot")

@@ -9,8 +9,8 @@
 --- a player's screen.
 ---
 --- A world listens to its plot, and items are placed and removed with the plot's own
---- `Plot.placeItem` and `Plot.removePlacedItem`. When an item is placed, the world makes it a
---- station if it is one, and pushes the ground items out of its tile. When a placed item is taken
+--- `Plot.placeObject` and `Plot.removePlacedObject`. When an item is placed, the world makes it a
+--- station if it is one, and pushes the ground items out of its tile. When a placed object is taken
 --- off, the world closes every screen open on it, and ends its station.
 local Direction = require("../Direction")
 local GroundItems = require("./GroundItems")
@@ -41,8 +41,8 @@ export type World = {
 	read groundItems: GroundItems.GroundItems,
 	--- Every player in the world, by id. On Roblox the id is the UserId.
 	read players: { [number]: PlayerState },
-	--- The station that each placed item which is one works as, by the placed item's id. A
-	--- placed item that is not a station has no entry.
+	--- The station that each placed object which is one works as, by the placed object's id. A
+	--- placed object that is not a station has no entry.
 	read stations: { [number]: Station.Station },
 	--- The time `advanceTo` was last given, in seconds.
 	now: number,
@@ -52,7 +52,7 @@ export type World = {
 --- studs along the ground.
 World.REACH = 16
 
---- How far a player may walk from a placed item they have open before its screen closes, in
+--- How far a player may walk from a placed object they have open before its screen closes, in
 --- studs along the ground. It is a little more than `REACH`, so that a screen opened from the
 --- edge of reach does not close at the first step back.
 World.SCREEN_CLOSES_BEYOND = World.REACH + 4
@@ -71,13 +71,13 @@ World.CHARACTER_THROW_FORWARD_SPEED = 24
 --- way it is thrown, in studs a second.
 World.CHARACTER_THROW_UPWARD_SPEED = 8
 
---- How fast a placed item that `throwPlacedItemAndContents` throws, and each stack that was in it,
+--- How fast a placed object that `throwPlacedObjectAndContents` throws, and each stack that was in it,
 --- starts moving outwards along the ground, in studs a second.
-World.PLACED_ITEM_THROW_OUTWARD_SPEED = 6
+World.PLACED_OBJECT_THROW_OUTWARD_SPEED = 6
 
---- How fast a placed item that `throwPlacedItemAndContents` throws, and each stack that was in it,
+--- How fast a placed object that `throwPlacedObjectAndContents` throws, and each stack that was in it,
 --- starts moving upwards, in studs a second.
-World.PLACED_ITEM_THROW_UPWARD_SPEED = 20
+World.PLACED_OBJECT_THROW_UPWARD_SPEED = 20
 
 local RADIANS_BETWEEN_THROWN_STACKS = 2.4
 local NO_VELOCITY: GroundItems.Velocity = table.freeze({ x = 0, y = 0, z = 0 })
@@ -95,36 +95,36 @@ local function sortedPlayerIds(world: World): { number }
 	return ids
 end
 
-local function newStationFor(placedItem: Plot.PlacedItem): Station.Station?
-	local inventory = placedItem.inventory
-	local isStation = RecipeRegistry.isStation(placedItem.itemId)
-	return if inventory ~= nil and isStation then Station.new(placedItem.itemId, inventory) else nil
+local function newStationFor(placedObject: Plot.PlacedObject): Station.Station?
+	local inventory = placedObject.inventory
+	local isStation = RecipeRegistry.isStation(placedObject.itemId)
+	return if inventory ~= nil and isStation then Station.new(placedObject.itemId, inventory) else nil
 end
 
-local function closeScreensOn(world: World, placedItemId: number)
+local function closeScreensOn(world: World, placedObjectId: number)
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
-		if player.openedPlacedItemId == placedItemId then
+		if player.openedPlacedObjectId == placedObjectId then
 			World.closeScreen(world, player)
 		end
 	end
 end
 
-local function onPlacedItemAdded(world: World, placedItemId: number, placedItem: Plot.PlacedItem)
-	world.stations[placedItemId] = newStationFor(placedItem)
+local function onPlacedObjectAdded(world: World, placedObjectId: number, placedObject: Plot.PlacedObject)
+	world.stations[placedObjectId] = newStationFor(placedObject)
 	PlotCollision.pushGroundItemsOutOfTile(
 		world.groundItems,
 		world.plot,
 		world.plotCorner,
-		placedItem.x,
-		placedItem.z,
+		placedObject.x,
+		placedObject.z,
 		world.now
 	)
 end
 
-local function onPlacedItemRemoved(world: World, placedItemId: number)
-	closeScreensOn(world, placedItemId)
-	world.stations[placedItemId] = nil
+local function onPlacedObjectRemoved(world: World, placedObjectId: number)
+	closeScreensOn(world, placedObjectId)
+	world.stations[placedObjectId] = nil
 end
 
 --- Returns a new world with no players and nothing on the ground, at the time `now`. `plot` is
@@ -135,9 +135,9 @@ end
 --- - An item placed on the plot is a station with no fire if it is one. The ground items that lie
 ---   where it now stands are pushed out of its tile: each is taken out of the world and its stack
 ---   is spawned again, as a new ground item with a new id, just outside the tile and moving away
----   from it along the ground, or on top of the placed item, not moving, if it is closed in on
+---   from it along the ground, or on top of the placed object, not moving, if it is closed in on
 ---   all four sides.
---- - A placed item taken off the plot has every screen open on it closed, as `closeScreen` does.
+--- - A placed object taken off the plot has every screen open on it closed, as `closeScreen` does.
 ---   If it was a station it is one no longer: its fire is out, and the fuel that was burning is
 ---   lost.
 function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
@@ -149,14 +149,14 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 		stations = {},
 		now = now,
 	}
-	for placedItemId, placedItem in plot.placedItemsById do
-		world.stations[placedItemId] = newStationFor(placedItem)
+	for placedObjectId, placedObject in plot.placedObjectsById do
+		world.stations[placedObjectId] = newStationFor(placedObject)
 	end
-	Signal.connect(plot.placedItemAdded, function(placedItemId: number, placedItem: Plot.PlacedItem)
-		onPlacedItemAdded(world, placedItemId, placedItem)
+	Signal.connect(plot.placedObjectAdded, function(placedObjectId: number, placedObject: Plot.PlacedObject)
+		onPlacedObjectAdded(world, placedObjectId, placedObject)
 	end)
-	Signal.connect(plot.placedItemRemoved, function(placedItemId: number)
-		onPlacedItemRemoved(world, placedItemId)
+	Signal.connect(plot.placedObjectRemoved, function(placedObjectId: number)
+		onPlacedObjectRemoved(world, placedObjectId)
 	end)
 	return world
 end
@@ -246,30 +246,33 @@ function World.removeCharacter(world: World, playerId: number)
 	PlayerState.removeCharacter(player)
 end
 
---- Returns `true` if a placed item's screen can be opened for a player: the placed item is on the
+--- Returns `true` if a placed object's screen can be opened for a player: the placed object is on the
 --- plot and has an inventory, and the player has a character.
-function World.canOpenPlacedItemScreen(world: World, player: PlayerState, placedItemId: number): boolean
-	local placedItem = world.plot.placedItemsById[placedItemId]
-	return placedItem ~= nil and placedItem.inventory ~= nil and player.character ~= nil
+function World.canOpenPlacedObjectScreen(world: World, player: PlayerState, placedObjectId: number): boolean
+	local placedObject = world.plot.placedObjectsById[placedObjectId]
+	return placedObject ~= nil and placedObject.inventory ~= nil and player.character ~= nil
 end
 
---- Opens a player's inventory screen on their pack with the inventory of a placed item beside it.
---- Any screen they had open is closed first, as `closeScreen` does. If the placed item is a
+--- Opens a player's inventory screen on their pack with the inventory of a placed object beside it.
+--- Any screen they had open is closed first, as `closeScreen` does. If the placed object is a
 --- station, each of its slots takes only what a station's slot takes. Fails if
---- `canOpenPlacedItemScreen` would return `false`.
-function World.openPlacedItemScreen(world: World, player: PlayerState, placedItemId: number)
-	assert(World.canOpenPlacedItemScreen(world, player, placedItemId), "this placed item's screen cannot be opened")
-	local placedItem = world.plot.placedItemsById[placedItemId]
+--- `canOpenPlacedObjectScreen` would return `false`.
+function World.openPlacedObjectScreen(world: World, player: PlayerState, placedObjectId: number)
+	assert(
+		World.canOpenPlacedObjectScreen(world, player, placedObjectId),
+		"this placed object's screen cannot be opened"
+	)
+	local placedObject = world.plot.placedObjectsById[placedObjectId]
 	World.closeScreen(world, player)
-	local itemId = placedItem.itemId
+	local itemId = placedObject.itemId
 	local stationSlotAcceptsItem = function(slot: number, putItemId: string): boolean
 		return Station.slotAcceptsItem(itemId, slot, putItemId)
 	end
-	local isStation = world.stations[placedItemId] ~= nil
-	PlayerState.openPlacedItemScreen(
+	local isStation = world.stations[placedObjectId] ~= nil
+	PlayerState.openPlacedObjectScreen(
 		player,
-		placedItemId,
-		placedItem.inventory :: Inventory,
+		placedObjectId,
+		placedObject.inventory :: Inventory,
 		if isStation then stationSlotAcceptsItem else nil
 	)
 end
@@ -296,12 +299,12 @@ function World.isTileStoodOn(world: World, x: number, z: number): boolean
 	return false
 end
 
---- Returns `true` if an item can be placed on a tile of the plot: `Plot.canPlaceItem` says the
+--- Returns `true` if an item can be placed on a tile of the plot: `Plot.canPlaceObject` says the
 --- plot can take it there, and no player's character stands on the tile. Fails if no item has
 --- that id.
---- Note: `Plot.placeItem` does not ask this. A request from a player's machine does.
-function World.canPlaceItem(world: World, itemId: string, x: number, z: number): boolean
-	return Plot.canPlaceItem(world.plot, itemId, x, z) and not World.isTileStoodOn(world, x, z)
+--- Note: `Plot.placeObject` does not ask this. A request from a player's machine does.
+function World.canPlaceObject(world: World, itemId: string, x: number, z: number): boolean
+	return Plot.canPlaceObject(world.plot, itemId, x, z) and not World.isTileStoodOn(world, x, z)
 end
 
 local function takeEveryStack(inventory: Inventory): { ItemStack }
@@ -315,24 +318,24 @@ local function takeEveryStack(inventory: Inventory): { ItemStack }
 	return stacks
 end
 
---- Throws a placed item into the world, with everything inside it: the item, and then each stack
+--- Throws a placed object into the world, with everything inside it: the item, and then each stack
 --- in its inventory from the lowest slot up, is spawned as `spawnStack` does, and the inventory is
---- left holding nothing. Each spawns in the middle of the tile the placed item stood on, moving
---- upwards at `PLACED_ITEM_THROW_UPWARD_SPEED` and outwards at `PLACED_ITEM_THROW_OUTWARD_SPEED`,
+--- left holding nothing. Each spawns in the middle of the tile the placed object stood on, moving
+--- upwards at `PLACED_OBJECT_THROW_UPWARD_SPEED` and outwards at `PLACED_OBJECT_THROW_OUTWARD_SPEED`,
 --- each a different way from the one before.
---- Note: it does not take the placed item off the plot. For one that still stands there, the item
+--- Note: it does not take the placed object off the plot. For one that still stands there, the item
 --- exists twice.
-function World.throwPlacedItemAndContents(world: World, placedItem: Plot.PlacedItem)
-	local center = tileCenter(world, placedItem.x, placedItem.z)
+function World.throwPlacedObjectAndContents(world: World, placedObject: Plot.PlacedObject)
+	local center = tileCenter(world, placedObject.x, placedObject.z)
 	local middle = Position.new(center.x, center.y + (Plot.TILE_SIZE - GroundItems.ITEM_WIDTH) / 2, center.z)
-	local stacks = if placedItem.inventory then takeEveryStack(placedItem.inventory) else {}
-	table.insert(stacks, 1, ItemStack.new(placedItem.itemId, 1))
+	local stacks = if placedObject.inventory then takeEveryStack(placedObject.inventory) else {}
+	table.insert(stacks, 1, ItemStack.new(placedObject.itemId, 1))
 	for index, stack in stacks do
 		local angle = index * RADIANS_BETWEEN_THROWN_STACKS
 		World.spawnStack(world, stack, middle, {
-			x = math.cos(angle) * World.PLACED_ITEM_THROW_OUTWARD_SPEED,
-			y = World.PLACED_ITEM_THROW_UPWARD_SPEED,
-			z = math.sin(angle) * World.PLACED_ITEM_THROW_OUTWARD_SPEED,
+			x = math.cos(angle) * World.PLACED_OBJECT_THROW_OUTWARD_SPEED,
+			y = World.PLACED_OBJECT_THROW_UPWARD_SPEED,
+			z = math.sin(angle) * World.PLACED_OBJECT_THROW_OUTWARD_SPEED,
 		})
 	end
 end
@@ -345,13 +348,13 @@ local function pickUpNearbyStacks(world: World, player: PlayerState)
 end
 
 local function closeScreenIfOutOfReach(world: World, player: PlayerState)
-	local placedItemId = player.openedPlacedItemId
+	local placedObjectId = player.openedPlacedObjectId
 	local character = player.character
-	if placedItemId == nil or character == nil then
+	if placedObjectId == nil or character == nil then
 		return
 	end
-	local placedItem = world.plot.placedItemsById[placedItemId]
-	local center = tileCenter(world, placedItem.x, placedItem.z)
+	local placedObject = world.plot.placedObjectsById[placedObjectId]
+	local center = tileCenter(world, placedObject.x, placedObject.z)
 	if Position.getGroundDistance(character.position, center) > World.SCREEN_CLOSES_BEYOND then
 		World.closeScreen(world, player)
 	end
@@ -363,7 +366,7 @@ end
 ---   one that has been in the world for another `GroundItems.MERGE_CHECK_SECONDS`. Of two whose
 ---   stacks fit in one stack, the bigger takes in the smaller, and stays where it is.
 --- - Each player with a character, the one with the lowest id first, picks up the ground items
----   near them. If their screen is open on a placed item that they stand more than
+---   near them. If their screen is open on a placed object that they stand more than
 ---   `SCREEN_CLOSES_BEYOND` from, it is then closed, as `closeScreen` does.
 --- - Every station burns and works for the time that has passed. If `now` is earlier than the
 ---   time `advanceTo` was last given, no time passes for the stations.

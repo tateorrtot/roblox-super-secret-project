@@ -58,12 +58,12 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedItem in world.plot.placedItemsById do
-		if placedItem.itemId == itemId then
+	for _, placedObject in world.plot.placedObjectsById do
+		if placedObject.itemId == itemId then
 			count += 1
 		end
-		if placedItem.inventory ~= nil then
-			count += Inventory.countItems(placedItem.inventory, itemId)
+		if placedObject.inventory ~= nil then
+			count += Inventory.countItems(placedObject.inventory, itemId)
 		end
 	end
 	return count
@@ -75,8 +75,8 @@ end
 -- a crate in slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.PlayerState, number)
 	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
-	Inventory.addItems(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
+	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
+	Inventory.addItems(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local players = {}
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10) } do
@@ -187,9 +187,9 @@ do -- carryOut
 		first.screen == nil and Inventory.countItems(first.pack, "log") == 12,
 		"carryOut: more arguments than a request takes are left unused"
 	)
-	carryOut(world, 2, "usePlacedItem", crateId)
+	carryOut(world, 2, "usePlacedObject", crateId)
 	check(
-		second.openedPlacedItemId == crateId and first.openedPlacedItemId == nil,
+		second.openedPlacedObjectId == crateId and first.openedPlacedObjectId == nil,
 		"carryOut: carries out a plot request for the player who asked"
 	)
 	carryOut(world, 2, "selectHotbarSlot", 4)
@@ -330,9 +330,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				errors += 1
 				firstError = if firstError == "" then tostring(name) .. ": " .. tostring(result) else firstError
 			end
-			someTakenOff = someTakenOff or world.plot.placedItemsById[crateId] == nil
+			someTakenOff = someTakenOff or world.plot.placedObjectsById[crateId] == nil
 			for _, state in world.players do
-				someOpened = someOpened or state.openedPlacedItemId ~= nil
+				someOpened = someOpened or state.openedPlacedObjectId ~= nil
 			end
 			now += 0.5
 			World.advanceTo(world, now)

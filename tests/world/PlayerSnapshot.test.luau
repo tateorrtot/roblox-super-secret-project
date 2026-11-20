@@ -72,9 +72,9 @@ end
 -- with 12 logs and 4 apples in their pack.
 local function newWorld(): (World.World, number, number)
 	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
-	Inventory.setStack(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, 1, ItemStack.new("fish", 5))
-	local ovenId = Plot.placeItem(plot, "oven", 4, 2) :: number
+	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
+	Inventory.setStack(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, 1, ItemStack.new("fish", 5))
+	local ovenId = Plot.placeObject(plot, "oven", 4, 2) :: number
 	local world = World.new(plot, at(0, 0, 0), 0)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
@@ -105,7 +105,7 @@ do -- no screen open
 	check(view.screen == nil, "decode: a view with no screen has no screen")
 	check(
 		view.otherInventoryItemId == nil and view.stationProgress == nil,
-		"decode: and no placed item and no progress"
+		"decode: and no placed object and no progress"
 	)
 	check(sameInventory(view.pack, world.players[1].pack), "decode: the pack is what the player holds")
 	check(view.pack ~= world.players[1].pack, "decode: but is a copy of it")
@@ -151,7 +151,7 @@ do -- the pack open alone
 	)
 	check(
 		view.otherInventoryItemId == nil and view.stationProgress == nil,
-		"decode: and no placed item and no progress"
+		"decode: and no placed object and no progress"
 	)
 	check(sameInventory(view.pack, state.pack), "decode: the pack is what the player holds")
 	Hotbar.selectSlot(state.hotbar, 6)
@@ -188,10 +188,10 @@ end
 do -- a crate open
 	local world, crateId = newWorld()
 	local state = world.players[1]
-	World.openPlacedItemScreen(world, state, crateId)
+	World.openPlacedObjectScreen(world, state, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.otherInventoryItemId == "crate", "encode: says what kind of placed item is open")
+	check(screen ~= nil and screen.otherInventoryItemId == "crate", "encode: says what kind of placed object is open")
 	check(
 		screen ~= nil
 			and screen.otherInventory ~= nil
@@ -242,16 +242,16 @@ do -- a crate open
 			and is(Inventory.getStack(carryingView.screen.otherInventory, 1), "fish", 1),
 		"decode: gives back the stack carried and what was left in the crate"
 	)
-	check(carryingView.otherInventoryItemId == "crate", "decode: and the kind of placed item")
+	check(carryingView.otherInventoryItemId == "crate", "decode: and the kind of placed object")
 end
 
 do -- an oven open
 	local world, _, ovenId = newWorld()
 	local state = world.players[1]
-	local inside = world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory
+	local inside = world.plot.placedObjectsById[ovenId].inventory :: Inventory.Inventory
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	World.openPlacedItemScreen(world, state, ovenId)
+	World.openPlacedObjectScreen(world, state, ovenId)
 
 	local idle = PlayerSnapshot.encode(world, 1)
 	check(
@@ -336,10 +336,10 @@ do -- a player watching a lit oven is told again only when something happens
 	end
 
 	local world, _, ovenId = newWorld()
-	local inside = world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory
+	local inside = world.plot.placedObjectsById[ovenId].inventory :: Inventory.Inventory
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	World.openPlacedItemScreen(world, world.players[1], ovenId)
+	World.openPlacedObjectScreen(world, world.players[1], ovenId)
 
 	local told = describe(PlayerSnapshot.encode(world, 1))
 	World.advanceTo(world, 0.1)
@@ -365,14 +365,14 @@ do -- a player watching a lit oven is told again only when something happens
 	check(describe(PlayerSnapshot.encode(world, 1)) ~= told, "encode: and changes again when a fish is done")
 end
 
-do -- the placed item is not on the plot any more
+do -- the placed object is not on the plot any more
 	local world, crateId = newWorld()
-	World.openPlacedItemScreen(world, world.players[1], crateId)
-	Plot.removePlacedItem(world.plot, crateId)
+	World.openPlacedObjectScreen(world, world.players[1], crateId)
+	Plot.removePlacedObject(world.plot, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(
 		encoded.screen == nil,
-		"encode: a player whose placed item was taken off the plot has no screen, since the world closed it"
+		"encode: a player whose placed object was taken off the plot has no screen, since the world closed it"
 	)
 end
 
@@ -431,7 +431,7 @@ do -- whatever the world holds, a view decodes to the same
 	for _ = 1, 300 do
 		local kind = random(4)
 		if kind == 1 then
-			World.openPlacedItemScreen(world, state, ids[random(#ids)])
+			World.openPlacedObjectScreen(world, state, ids[random(#ids)])
 		elseif kind == 2 then
 			World.closeScreen(world, state)
 		elseif kind == 3 then

@@ -91,12 +91,12 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedItem in world.plot.placedItemsById do
-		if placedItem.itemId == itemId then
+	for _, placedObject in world.plot.placedObjectsById do
+		if placedObject.itemId == itemId then
 			count += 1
 		end
-		if placedItem.inventory ~= nil then
-			count += Inventory.countItems(placedItem.inventory, itemId)
+		if placedObject.inventory ~= nil then
+			count += Inventory.countItems(placedObject.inventory, itemId)
 		end
 	end
 	return count
@@ -105,16 +105,16 @@ end
 -- The ids of everything that stands on the plot, lowest first.
 local function placedIds(world: World.World): { number }
 	local ids = {}
-	for id in world.plot.placedItemsById do
+	for id in world.plot.placedObjectsById do
 		table.insert(ids, id)
 	end
 	table.sort(ids)
 	return ids
 end
 
--- The inventory inside a placed item that is known to have one.
-local function insideOf(world: World.World, placedItemId: number): Inventory.Inventory
-	return world.plot.placedItemsById[placedItemId].inventory :: Inventory.Inventory
+-- The inventory inside a placed object that is known to have one.
+local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
+	return world.plot.placedObjectsById[placedObjectId].inventory :: Inventory.Inventory
 end
 
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
@@ -123,10 +123,10 @@ end
 -- has 12 logs in their first slot, and their character is at 6, 0.
 local function newWorld(): (World.World, PlayerState.PlayerState, { crate: number, stove: number, oven: number })
 	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
-	Inventory.addItems(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
-	local stoveId = Plot.placeItem(plot, "stove", 5, 5) :: number
-	local ovenId = Plot.placeItem(plot, "oven", 4, 2) :: number
+	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
+	Inventory.addItems(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
+	local stoveId = Plot.placeObject(plot, "stove", 5, 5) :: number
+	local ovenId = Plot.placeObject(plot, "oven", 4, 2) :: number
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
@@ -134,12 +134,12 @@ local function newWorld(): (World.World, PlayerState.PlayerState, { crate: numbe
 	return world, state, { crate = crateId, stove = stoveId, oven = ovenId }
 end
 
--- Takes a placed item off the plot and throws it into the world with what is inside it, as a hit
+-- Takes a placed object off the plot and throws it into the world with what is inside it, as a hit
 -- does.
-local function knockOff(world: World.World, placedItemId: number)
-	local placedItem = Plot.removePlacedItem(world.plot, placedItemId)
-	if placedItem ~= nil then
-		World.throwPlacedItemAndContents(world, placedItem)
+local function knockOff(world: World.World, placedObjectId: number)
+	local placedObject = Plot.removePlacedObject(world.plot, placedObjectId)
+	if placedObject ~= nil then
+		World.throwPlacedObjectAndContents(world, placedObject)
 	end
 end
 
@@ -165,9 +165,9 @@ end
 
 do -- a station gets its record when the world is made or when it is placed
 	local plot = Plot.new(4, 4)
-	local ovenId = Plot.placeItem(plot, "oven", 1, 1) :: number
-	local crateId = Plot.placeItem(plot, "crate", 2, 1) :: number
-	local stoveId = Plot.placeItem(plot, "stove", 3, 1) :: number
+	local ovenId = Plot.placeObject(plot, "oven", 1, 1) :: number
+	local crateId = Plot.placeObject(plot, "crate", 2, 1) :: number
+	local stoveId = Plot.placeObject(plot, "stove", 3, 1) :: number
 	local world = World.new(plot, at(0, 0, 0), 0)
 	local station = world.stations[ovenId]
 	check(station ~= nil, "new: an oven already on the plot is a station")
@@ -180,23 +180,23 @@ do -- a station gets its record when the world is made or when it is placed
 		"new: with no fire and no work done"
 	)
 	check(world.stations[crateId] == nil, "new: a crate is not a station, though it has an inventory")
-	check(world.stations[stoveId] == nil, "new: nor is a placed item that holds nothing")
+	check(world.stations[stoveId] == nil, "new: nor is a placed object that holds nothing")
 
-	local placedOven = Plot.placeItem(world.plot, "oven", 4, 4)
+	local placedOven = Plot.placeObject(world.plot, "oven", 4, 4)
 	check(
 		placedOven ~= nil and world.stations[placedOven] ~= nil,
-		"Plot.placeItem on the world's plot: a placed oven is a station at once"
+		"Plot.placeObject on the world's plot: a placed oven is a station at once"
 	)
 	check(
 		placedOven ~= nil
 			and world.stations[placedOven].inventory == insideOf(world, placedOven)
 			and not Station.isBurning(world.stations[placedOven]),
-		"Plot.placeItem on the world's plot: over its own inventory, with no fire"
+		"Plot.placeObject on the world's plot: over its own inventory, with no fire"
 	)
-	local placedCrate = Plot.placeItem(world.plot, "crate", 4, 3)
+	local placedCrate = Plot.placeObject(world.plot, "crate", 4, 3)
 	check(
 		placedCrate ~= nil and world.stations[placedCrate] == nil,
-		"Plot.placeItem on the world's plot: a placed crate is not a station"
+		"Plot.placeObject on the world's plot: a placed crate is not a station"
 	)
 end
 
@@ -206,7 +206,7 @@ do -- players come and go
 	check(world.players[7] == state, "addPlayer: returns the player now in the world")
 	check(Inventory.isEmpty(state.pack), "addPlayer: with no pack given, the pack holds nothing")
 	check(state.pack.slotCount == PlayerState.PACK_SLOT_COUNT, "addPlayer: and has the slots of any pack")
-	check(state.screen == nil and state.openedPlacedItemId == nil, "addPlayer: a new player has no screen open")
+	check(state.screen == nil and state.openedPlacedObjectId == nil, "addPlayer: a new player has no screen open")
 	check(state.character == nil, "addPlayer: and has no character yet")
 	local second = World.addPlayer(world, -3)
 	check(
@@ -275,11 +275,11 @@ do -- a player's character
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
-	World.openPlacedItemScreen(full, fullState, fullIds.crate)
+	World.openPlacedObjectScreen(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
 	World.removeCharacter(full, 1)
 	check(
-		fullState.screen == nil and fullState.openedPlacedItemId == nil and fullState.character == nil,
+		fullState.screen == nil and fullState.openedPlacedObjectId == nil and fullState.character == nil,
 		"removeCharacter: a player who loses their character has their screen closed"
 	)
 	local fish = groundStacks(full, "fish")
@@ -465,14 +465,14 @@ do -- closing a player's screen
 	World.closeScreen(world, state)
 	check(state.screen == nil, "closeScreen: the screen is gone")
 
-	World.openPlacedItemScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	check(
 		is((state.screen :: any).carriedStack, "fish", 5) and Inventory.countItems(state.pack, "fish") == 0,
 		"closeScreen: (set up) the player carries the fish out of the crate"
 	)
 	World.closeScreen(world, state)
-	check(state.screen == nil and state.openedPlacedItemId == nil, "closeScreen: nothing is open afterwards")
+	check(state.screen == nil and state.openedPlacedObjectId == nil, "closeScreen: nothing is open afterwards")
 	check(Inventory.countItems(state.pack, "fish") == 5, "closeScreen: what was carried goes back into the pack")
 	check(Inventory.isEmpty(insideOf(world, ids.crate)), "closeScreen: and not into the crate")
 	check(
@@ -485,7 +485,7 @@ do -- closing a player's screen
 		Inventory.setStack(state.pack, slot, ItemStack.new("stove", 1))
 	end
 	Inventory.setStack(insideOf(world, ids.crate), 1, ItemStack.new("fish", 5))
-	World.openPlacedItemScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	World.closeScreen(world, state)
 	local fish = groundStacks(world, "fish")
@@ -505,7 +505,7 @@ do -- closing a player's screen
 		Inventory.setStack(state2.pack, slot, ItemStack.new("fish", 8))
 	end
 	Inventory.setStack(state2.pack, 10, ItemStack.new("fish", 6))
-	World.openPlacedItemScreen(world2, state2, ids2.crate)
+	World.openPlacedObjectScreen(world2, state2, ids2.crate)
 	InventoryScreen.pickUpFromSlot(state2.screen :: any, "other", 1)
 	World.closeScreen(world2, state2)
 	check(
@@ -523,105 +523,105 @@ do -- closing a player's screen
 	)
 end
 
-do -- opening a placed item
+do -- opening a placed object
 	local world, state, ids = newWorld()
 	check(
-		World.canOpenPlacedItemScreen(world, state, ids.crate),
-		"canOpenPlacedItemScreen: true for a crate on the plot and a player with a character"
+		World.canOpenPlacedObjectScreen(world, state, ids.crate),
+		"canOpenPlacedObjectScreen: true for a crate on the plot and a player with a character"
 	)
-	World.openPlacedItemScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
 	local screen = state.screen
-	check(screen ~= nil and screen.pack == state.pack, "openPlacedItemScreen: the screen shows the player's pack")
+	check(screen ~= nil and screen.pack == state.pack, "openPlacedObjectScreen: the screen shows the player's pack")
 	check(
 		screen ~= nil and screen.otherInventory == insideOf(world, ids.crate),
-		"openPlacedItemScreen: and the crate's own inventory beside it"
+		"openPlacedObjectScreen: and the crate's own inventory beside it"
 	)
-	check(state.openedPlacedItemId == ids.crate, "openPlacedItemScreen: and the player has that placed item open")
-	check(screen ~= nil and screen.otherSlotAcceptsItem == nil, "openPlacedItemScreen: a crate's slots take anything")
+	check(state.openedPlacedObjectId == ids.crate, "openPlacedObjectScreen: and the player has that placed object open")
+	check(screen ~= nil and screen.otherSlotAcceptsItem == nil, "openPlacedObjectScreen: a crate's slots take anything")
 
 	local first = state.screen
 	check(
-		World.canOpenPlacedItemScreen(world, state, ids.crate),
-		"canOpenPlacedItemScreen: true for a player who has a screen open already"
+		World.canOpenPlacedObjectScreen(world, state, ids.crate),
+		"canOpenPlacedObjectScreen: true for a player who has a screen open already"
 	)
-	World.openPlacedItemScreen(world, state, ids.crate)
-	check(state.screen ~= first and state.screen ~= nil, "openPlacedItemScreen: opening it again opens it afresh")
+	World.openPlacedObjectScreen(world, state, ids.crate)
+	check(state.screen ~= first and state.screen ~= nil, "openPlacedObjectScreen: opening it again opens it afresh")
 
 	-- Another screen is closed first, as closeScreen does.
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
-	World.openPlacedItemScreen(world, state, ids.oven)
-	check(state.openedPlacedItemId == ids.oven, "openPlacedItemScreen: an oven opens")
+	World.openPlacedObjectScreen(world, state, ids.oven)
+	check(state.openedPlacedObjectId == ids.oven, "openPlacedObjectScreen: an oven opens")
 	check(
 		Inventory.countItems(state.pack, "fish") == 5 and onGround(world, "fish") == 0,
-		"openPlacedItemScreen: what was carried on the screen it replaces is back in the pack"
+		"openPlacedObjectScreen: what was carried on the screen it replaces is back in the pack"
 	)
-	check(state.openedPlacedItemId == ids.oven, "openPlacedItemScreen: and the oven is what the player has open")
+	check(state.openedPlacedObjectId == ids.oven, "openPlacedObjectScreen: and the oven is what the player has open")
 	local ovenScreen = state.screen :: InventoryScreen.InventoryScreen
 	check(
 		ovenScreen.otherInventory == insideOf(world, ids.oven),
-		"openPlacedItemScreen: beside the oven's own inventory"
+		"openPlacedObjectScreen: beside the oven's own inventory"
 	)
-	check(ovenScreen.otherSlotAcceptsItem ~= nil, "openPlacedItemScreen: a station's slots have rules")
+	check(ovenScreen.otherSlotAcceptsItem ~= nil, "openPlacedObjectScreen: a station's slots have rules")
 	check(
 		InventoryScreen.slotAcceptsItem(ovenScreen, "other", Station.INPUT_SLOT, "fish"),
-		"openPlacedItemScreen: the input slot takes what the oven works on"
+		"openPlacedObjectScreen: the input slot takes what the oven works on"
 	)
 	check(
 		not InventoryScreen.slotAcceptsItem(ovenScreen, "other", Station.INPUT_SLOT, "log"),
-		"openPlacedItemScreen: but not what it has no recipe for"
+		"openPlacedObjectScreen: but not what it has no recipe for"
 	)
 	check(
 		InventoryScreen.slotAcceptsItem(ovenScreen, "other", Station.FUEL_SLOT, "log"),
-		"openPlacedItemScreen: the fuel slot takes fuel"
+		"openPlacedObjectScreen: the fuel slot takes fuel"
 	)
 	check(
 		not InventoryScreen.slotAcceptsItem(ovenScreen, "other", Station.FUEL_SLOT, "fish"),
-		"openPlacedItemScreen: but not what does not burn"
+		"openPlacedObjectScreen: but not what does not burn"
 	)
 	check(
 		not InventoryScreen.slotAcceptsItem(ovenScreen, "other", Station.OUTPUT_SLOT, "cooked_fish"),
-		"openPlacedItemScreen: and nothing is put in the output slot"
+		"openPlacedObjectScreen: and nothing is put in the output slot"
 	)
 	check(
 		InventoryScreen.slotAcceptsItem(ovenScreen, "pack", 1, "fish"),
-		"openPlacedItemScreen: while the pack takes anything"
+		"openPlacedObjectScreen: while the pack takes anything"
 	)
 
 	-- Nothing to open: the screen stays as it was.
 	local before = state.screen
 	check(
-		not World.canOpenPlacedItemScreen(world, state, ids.stove),
-		"canOpenPlacedItemScreen: false for a placed item that holds nothing"
+		not World.canOpenPlacedObjectScreen(world, state, ids.stove),
+		"canOpenPlacedObjectScreen: false for a placed object that holds nothing"
 	)
 	check(
-		not World.canOpenPlacedItemScreen(world, state, 999),
-		"canOpenPlacedItemScreen: false for an id that no placed item has"
+		not World.canOpenPlacedObjectScreen(world, state, 999),
+		"canOpenPlacedObjectScreen: false for an id that no placed object has"
 	)
 	local failed = Check.errorFrom(function()
-		World.openPlacedItemScreen(world, state, ids.stove)
+		World.openPlacedObjectScreen(world, state, ids.stove)
 	end)
 	check(
-		failed ~= nil and string.find(failed, "this placed item's screen cannot be opened", 1, true) ~= nil,
-		"openPlacedItemScreen: fails for a placed item whose screen cannot be opened"
+		failed ~= nil and string.find(failed, "this placed object's screen cannot be opened", 1, true) ~= nil,
+		"openPlacedObjectScreen: fails for a placed object whose screen cannot be opened"
 	)
 	check(
-		state.screen == before and state.openedPlacedItemId == ids.oven,
-		"openPlacedItemScreen: and changes nothing then, the screen that was open stays open"
+		state.screen == before and state.openedPlacedObjectId == ids.oven,
+		"openPlacedObjectScreen: and changes nothing then, the screen that was open stays open"
 	)
 	local other = World.addPlayer(world, 2)
 	check(
-		not World.canOpenPlacedItemScreen(world, other, ids.oven),
-		"canOpenPlacedItemScreen: false for a player with no character"
+		not World.canOpenPlacedObjectScreen(world, other, ids.oven),
+		"canOpenPlacedObjectScreen: false for a player with no character"
 	)
 	World.setCharacterPosition(world, 2, at(14, 0, 6))
-	World.openPlacedItemScreen(world, other, ids.oven)
+	World.openPlacedObjectScreen(world, other, ids.oven)
 	check(
-		other.openedPlacedItemId == ids.oven and state.openedPlacedItemId == ids.oven,
-		"openPlacedItemScreen: two players may have the same oven open"
+		other.openedPlacedObjectId == ids.oven and state.openedPlacedObjectId == ids.oven,
+		"openPlacedObjectScreen: two players may have the same oven open"
 	)
 	check(
 		other.screen ~= nil and (other.screen :: any).otherInventory == (state.screen :: any).otherInventory,
-		"openPlacedItemScreen: looking into the same inventory"
+		"openPlacedObjectScreen: looking into the same inventory"
 	)
 end
 
@@ -671,58 +671,58 @@ end
 
 do -- placing an item
 	local world = newWorld()
-	local placedItemId = Plot.placeItem(world.plot, "crate", 1, 1)
+	local placedObjectId = Plot.placeObject(world.plot, "crate", 1, 1)
 	check(
-		placedItemId ~= nil and world.plot.placedItemsById[placedItemId].itemId == "crate",
-		"Plot.placeItem on the world's plot: returns the id of the placed item"
+		placedObjectId ~= nil and world.plot.placedObjectsById[placedObjectId].itemId == "crate",
+		"Plot.placeObject on the world's plot: returns the id of the placed object"
 	)
 	check(
-		placedItemId ~= nil
-			and world.plot.placedItemsById[placedItemId].x == 1
-			and world.plot.placedItemsById[placedItemId].z == 1,
-		"Plot.placeItem on the world's plot: on the tile it was asked for"
+		placedObjectId ~= nil
+			and world.plot.placedObjectsById[placedObjectId].x == 1
+			and world.plot.placedObjectsById[placedObjectId].z == 1,
+		"Plot.placeObject on the world's plot: on the tile it was asked for"
 	)
 	check(
-		placedItemId ~= nil and insideOf(world, placedItemId).slotCount == 27,
-		"Plot.placeItem on the world's plot: with an inventory of its own"
+		placedObjectId ~= nil and insideOf(world, placedObjectId).slotCount == 27,
+		"Plot.placeObject on the world's plot: with an inventory of its own"
 	)
 	check(
-		World.canPlaceItem(world, "crate", 1, 2) and not World.canPlaceItem(world, "crate", 1, 1),
-		"canPlaceItem: true for a tile that holds nothing, and false for a tile something stands on"
+		World.canPlaceObject(world, "crate", 1, 2) and not World.canPlaceObject(world, "crate", 1, 1),
+		"canPlaceObject: true for a tile that holds nothing, and false for a tile something stands on"
 	)
-	check(not World.canPlaceItem(world, "log", 3, 1), "canPlaceItem: false for an item that cannot be placed")
-	check(not World.canPlaceItem(world, "crate", 7, 1), "canPlaceItem: false for a tile the plot does not have")
+	check(not World.canPlaceObject(world, "log", 3, 1), "canPlaceObject: false for an item that cannot be placed")
+	check(not World.canPlaceObject(world, "crate", 7, 1), "canPlaceObject: false for a tile the plot does not have")
 	check(Check.errorFrom(function()
-		Plot.placeItem(world.plot, "crate", 1, 1)
-	end) ~= nil, "Plot.placeItem on the world's plot: fails where the plot cannot take the item")
+		Plot.placeObject(world.plot, "crate", 1, 1)
+	end) ~= nil, "Plot.placeObject on the world's plot: fails where the plot cannot take the item")
 	check(
-		world.plot.nextId == (placedItemId :: number) + 1,
-		"Plot.placeItem on the world's plot: and places nothing then"
+		world.plot.nextId == (placedObjectId :: number) + 1,
+		"Plot.placeObject on the world's plot: and places nothing then"
 	)
 
 	-- Tile 3, 3 has its middle at 10, 10. Player 1 stands 3 studs from it.
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
-	check(not World.canPlaceItem(world, "stove", 3, 3), "canPlaceItem: false for a tile a player stands on")
+	check(not World.canPlaceObject(world, "stove", 3, 3), "canPlaceObject: false for a tile a player stands on")
 	World.setCharacterPosition(world, 1, at(13.01, 0, 10))
-	check(World.canPlaceItem(world, "stove", 3, 3), "canPlaceItem: true once the player has stepped off")
+	check(World.canPlaceObject(world, "stove", 3, 3), "canPlaceObject: true once the player has stepped off")
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
-	local forced = Plot.placeItem(world.plot, "stove", 3, 3)
+	local forced = Plot.placeObject(world.plot, "stove", 3, 3)
 	check(
-		world.plot.placedItemsById[forced].itemId == "stove",
-		"Plot.placeItem on the world's plot: it does not ask whether a player stands on the tile"
+		world.plot.placedObjectsById[forced].itemId == "stove",
+		"Plot.placeObject on the world's plot: it does not ask whether a player stands on the tile"
 	)
 
 	-- A world needs no player to place in it.
 	local empty = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	check(
-		World.canPlaceItem(empty, "post", 2, 2) and Plot.placeItem(empty.plot, "post", 2, 2) == 1,
-		"canPlaceItem, Plot.placeItem: work with no player in the world"
+		World.canPlaceObject(empty, "post", 2, 2) and Plot.placeObject(empty.plot, "post", 2, 2) == 1,
+		"canPlaceObject, Plot.placeObject: work with no player in the world"
 	)
 	local nowhere = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	local lost = World.addPlayer(nowhere, 1)
 	check(
-		lost.character == nil and Plot.placeItem(nowhere.plot, "post", 1, 1) == 1,
-		"Plot.placeItem on the world's plot: a player with no character stands on nothing"
+		lost.character == nil and Plot.placeObject(nowhere.plot, "post", 1, 1) == 1,
+		"Plot.placeObject on the world's plot: a player with no character stands on nothing"
 	)
 end
 
@@ -733,102 +733,102 @@ do -- placing an item where ground items lie
 	local inside = GroundItems.spawnStack(world.groundItems, ItemStack.new("apple", 1), at(9, 0, 10.5), STILL, 0)
 	World.advanceTo(world, 140)
 	check(
-		Plot.placeItem(world.plot, "crate", 3, 3) ~= nil,
-		"Plot.placeItem on the world's plot: (set up) a crate is placed where an apple lies"
+		Plot.placeObject(world.plot, "crate", 3, 3) ~= nil,
+		"Plot.placeObject on the world's plot: (set up) a crate is placed where an apple lies"
 	)
 	local apples = groundStacks(world, "apple")
 	check(
 		world.groundItems.itemsById[inside] == nil and #apples == 1 and is(apples[1].stack, "apple", 1),
-		"Plot.placeItem on the world's plot: a ground item that lay in the tile is pushed out of it, whole"
+		"Plot.placeObject on the world's plot: a ground item that lay in the tile is pushed out of it, whole"
 	)
 	check(
 		isAt(apples[1], 10 - touching, 0, 10.5) and apples[1].spawnTime == 140,
-		"Plot.placeItem on the world's plot: to just outside the tile, spawned again at the world's time"
+		"Plot.placeObject on the world's plot: to just outside the tile, spawned again at the world's time"
 	)
 
 	local refused = newWorld()
 	local stays = GroundItems.spawnStack(refused.groundItems, ItemStack.new("apple", 1), at(6, 0, 6.5), STILL, 0)
 	check(
 		Check.errorFrom(function()
-				Plot.placeItem(refused.plot, "post", 2, 2)
+				Plot.placeObject(refused.plot, "post", 2, 2)
 			end) ~= nil and refused.groundItems.itemsById[stays] ~= nil,
-		"Plot.placeItem on the world's plot: a placing that fails pushes nothing"
+		"Plot.placeObject on the world's plot: a placing that fails pushes nothing"
 	)
 end
 
-do -- taking a placed item off
+do -- taking a placed object off
 	local world, state, ids = newWorld()
 	local other = World.addPlayer(world, 2)
 	World.setCharacterPosition(world, 2, at(10, 0, 10))
-	World.openPlacedItemScreen(world, state, ids.crate)
-	World.openPlacedItemScreen(world, other, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, other, ids.crate)
 	InventoryScreen.pickUpFromSlot(other.screen :: any, "other", 1, 3)
 	knockOff(world, ids.crate)
 	check(
-		world.plot.placedItemsById[ids.crate] == nil,
-		"Plot.removePlacedItem on the world's plot: the placed item is off the plot"
+		world.plot.placedObjectsById[ids.crate] == nil,
+		"Plot.removePlacedObject on the world's plot: the placed object is off the plot"
 	)
 	check(
 		state.screen == nil
-			and state.openedPlacedItemId == nil
+			and state.openedPlacedObjectId == nil
 			and other.screen == nil
-			and other.openedPlacedItemId == nil,
-		"Plot.removePlacedItem on the world's plot: every screen open on it is closed"
+			and other.openedPlacedObjectId == nil,
+		"Plot.removePlacedObject on the world's plot: every screen open on it is closed"
 	)
 	check(
 		Inventory.countItems(other.pack, "fish") == 3,
-		"Plot.removePlacedItem on the world's plot: what a player carried is back in their pack"
+		"Plot.removePlacedObject on the world's plot: what a player carried is back in their pack"
 	)
 	local crates = groundStacks(world, "crate")
 	check(
 		#crates == 1 and is(crates[1].stack, "crate", 1),
-		"throwPlacedItemAndContents: the item is loose in the world, one of it"
+		"throwPlacedObjectAndContents: the item is loose in the world, one of it"
 	)
 	local middleHeight = (Plot.TILE_SIZE - GroundItems.ITEM_WIDTH) / 2
 	check(
 		isAt(crates[1], 6, middleHeight, 6) and crates[1].spawnTime == 100,
-		"throwPlacedItemAndContents: it leaves from the middle of where it stood, dropped at the world's time"
+		"throwPlacedObjectAndContents: it leaves from the middle of where it stood, dropped at the world's time"
 	)
 	local fish = groundStacks(world, "fish")
 	check(
 		#fish == 1 and is(fish[1].stack, "fish", 2),
-		"throwPlacedItemAndContents: what was left in it is loose in the world"
+		"throwPlacedObjectAndContents: what was left in it is loose in the world"
 	)
-	check(isAt(fish[1], 6, middleHeight, 6), "throwPlacedItemAndContents: and leaves from the same place")
+	check(isAt(fish[1], 6, middleHeight, 6), "throwPlacedObjectAndContents: and leaves from the same place")
 	check(
-		crates[1].spawnVelocity.y == World.PLACED_ITEM_THROW_UPWARD_SPEED
-			and fish[1].spawnVelocity.y == World.PLACED_ITEM_THROW_UPWARD_SPEED,
-		"throwPlacedItemAndContents: the item and what was in it are thrown upwards"
+		crates[1].spawnVelocity.y == World.PLACED_OBJECT_THROW_UPWARD_SPEED
+			and fish[1].spawnVelocity.y == World.PLACED_OBJECT_THROW_UPWARD_SPEED,
+		"throwPlacedObjectAndContents: the item and what was in it are thrown upwards"
 	)
 	local function outwardSpeed(groundItem: GroundItems.GroundItem): number
 		return math.sqrt(groundItem.spawnVelocity.x ^ 2 + groundItem.spawnVelocity.z ^ 2)
 	end
 	check(
-		math.abs(outwardSpeed(crates[1]) - World.PLACED_ITEM_THROW_OUTWARD_SPEED) < 1e-9
-			and math.abs(outwardSpeed(fish[1]) - World.PLACED_ITEM_THROW_OUTWARD_SPEED) < 1e-9,
-		"throwPlacedItemAndContents: and outwards along the ground"
+		math.abs(outwardSpeed(crates[1]) - World.PLACED_OBJECT_THROW_OUTWARD_SPEED) < 1e-9
+			and math.abs(outwardSpeed(fish[1]) - World.PLACED_OBJECT_THROW_OUTWARD_SPEED) < 1e-9,
+		"throwPlacedObjectAndContents: and outwards along the ground"
 	)
 	check(
 		math.abs(crates[1].spawnVelocity.x - fish[1].spawnVelocity.x) > 1,
-		"throwPlacedItemAndContents: each a different way"
+		"throwPlacedObjectAndContents: each a different way"
 	)
 	check(
-		World.PLACED_ITEM_THROW_UPWARD_SPEED == 20 and World.PLACED_ITEM_THROW_OUTWARD_SPEED == 6,
-		"a placed item and what was in it are thrown at 20 studs a second upwards and 6 outwards"
+		World.PLACED_OBJECT_THROW_UPWARD_SPEED == 20 and World.PLACED_OBJECT_THROW_OUTWARD_SPEED == 6,
+		"a placed object and what was in it are thrown at 20 studs a second upwards and 6 outwards"
 	)
 	check(
 		inWorld(world, "fish") == 5 and inWorld(world, "crate") == 1,
-		"throwPlacedItemAndContents: nothing was made or lost"
+		"throwPlacedObjectAndContents: nothing was made or lost"
 	)
 	check(
-		Plot.canPlaceItem(world.plot, "stove", 2, 2) and Plot.placeItem(world.plot, "stove", 2, 2) ~= nil,
-		"Plot.removePlacedItem on the world's plot: the tile holds nothing, so another item can be placed there"
+		Plot.canPlaceObject(world.plot, "stove", 2, 2) and Plot.placeObject(world.plot, "stove", 2, 2) ~= nil,
+		"Plot.removePlacedObject on the world's plot: the tile holds nothing, so another item can be placed there"
 	)
 
 	-- Each stack from inside is thrown a way of its own.
 	local ring = Plot.new(3, 3)
-	local ringCrate = Plot.placeItem(ring, "crate", 2, 2) :: number
-	local inRing = ring.placedItemsById[ringCrate].inventory :: Inventory.Inventory
+	local ringCrate = Plot.placeObject(ring, "crate", 2, 2) :: number
+	local inRing = ring.placedObjectsById[ringCrate].inventory :: Inventory.Inventory
 	Inventory.setStack(inRing, 2, ItemStack.new("fish", 2))
 	Inventory.setStack(inRing, 9, ItemStack.new("apple", 3))
 	Inventory.setStack(inRing, 20, ItemStack.new("log", 4))
@@ -845,11 +845,11 @@ do -- taking a placed item off
 	end
 	check(
 		wayCount == 4,
-		"throwPlacedItemAndContents: the item and each of the three stacks that were in it are thrown a way of their own"
+		"throwPlacedObjectAndContents: the item and each of the three stacks that were in it are thrown a way of their own"
 	)
 	check(
 		onGround(ringWorld, "fish") == 2 and onGround(ringWorld, "apple") == 3 and onGround(ringWorld, "log") == 4,
-		"throwPlacedItemAndContents: and each is whole"
+		"throwPlacedObjectAndContents: and each is whole"
 	)
 	local function idOf(itemId: string): number
 		for id, groundItem in ringWorld.groundItems.itemsById do
@@ -861,13 +861,13 @@ do -- taking a placed item off
 	end
 	check(
 		idOf("crate") == 1 and idOf("fish") == 2 and idOf("apple") == 3 and idOf("log") == 4,
-		"throwPlacedItemAndContents: the item is spawned first, then each stack from the lowest slot up"
+		"throwPlacedObjectAndContents: the item is spawned first, then each stack from the lowest slot up"
 	)
 
 	-- Two part stacks of one kind that were inside come out as one.
 	local parts = Plot.new(3, 3)
-	local partsCrate = Plot.placeItem(parts, "crate", 2, 2) :: number
-	local inParts = parts.placedItemsById[partsCrate].inventory :: Inventory.Inventory
+	local partsCrate = Plot.placeObject(parts, "crate", 2, 2) :: number
+	local inParts = parts.placedObjectsById[partsCrate].inventory :: Inventory.Inventory
 	Inventory.setStack(inParts, 3, ItemStack.new("fish", 2))
 	Inventory.setStack(inParts, 8, ItemStack.new("fish", 5))
 	Inventory.setStack(inParts, 9, ItemStack.new("fish", 8))
@@ -875,7 +875,7 @@ do -- taking a placed item off
 	knockOff(partsWorld, partsCrate)
 	check(
 		#groundStacks(partsWorld, "fish") == 3,
-		"throwPlacedItemAndContents: each stack that was inside is a ground item of its own"
+		"throwPlacedObjectAndContents: each stack that was inside is a ground item of its own"
 	)
 	World.advanceTo(partsWorld, 0.1)
 	local spilled = groundStacks(partsWorld, "fish")
@@ -884,57 +884,57 @@ do -- taking a placed item off
 		"advanceTo: two part stacks of one kind thrown from one place merge, and a full stack stays apart"
 	)
 
-	-- A placed item with nothing in it, and one with nothing to hold.
+	-- A placed object with nothing in it, and one with nothing to hold.
 	knockOff(world, ids.stove)
 	check(
-		world.plot.placedItemsById[ids.stove] == nil and #groundStacks(world, "stove") == 1,
-		"throwPlacedItemAndContents: a placed item that holds nothing just becomes a ground item"
+		world.plot.placedObjectsById[ids.stove] == nil and #groundStacks(world, "stove") == 1,
+		"throwPlacedObjectAndContents: a placed object that holds nothing just becomes a ground item"
 	)
 	local groundBefore = groundItemCount(world)
 	knockOff(world, 999)
 	knockOff(world, ids.stove)
 	check(
 		groundItemCount(world) == groundBefore,
-		"Plot.removePlacedItem on the world's plot: changes nothing for an id that no placed item has"
+		"Plot.removePlacedObject on the world's plot: changes nothing for an id that no placed object has"
 	)
 	check(
-		world.plot.placedItemsById[ids.oven] ~= nil,
-		"Plot.removePlacedItem on the world's plot: and takes nothing else off the plot"
+		world.plot.placedObjectsById[ids.oven] ~= nil,
+		"Plot.removePlacedObject on the world's plot: and takes nothing else off the plot"
 	)
 
 	-- A player's screen open on something else is left alone.
 	local keep, keepState, keepIds = newWorld()
-	World.openPlacedItemScreen(keep, keepState, keepIds.crate)
+	World.openPlacedObjectScreen(keep, keepState, keepIds.crate)
 	knockOff(keep, keepIds.oven)
 	check(
-		keepState.screen ~= nil and keepState.openedPlacedItemId == keepIds.crate,
-		"Plot.removePlacedItem on the world's plot: a screen open on another placed item stays open"
+		keepState.screen ~= nil and keepState.openedPlacedObjectId == keepIds.crate,
+		"Plot.removePlacedObject on the world's plot: a screen open on another placed object stays open"
 	)
 end
 
-do -- taking a placed item off the plot, and throwing one, each by itself
+do -- taking a placed object off the plot, and throwing one, each by itself
 	local world, _, ids = newWorld()
-	local taken = Plot.removePlacedItem(world.plot, ids.crate)
+	local taken = Plot.removePlacedObject(world.plot, ids.crate)
 	check(
 		taken ~= nil and taken.itemId == "crate" and taken.x == 2 and taken.z == 2,
-		"Plot.removePlacedItem on the world's plot: returns the placed item"
+		"Plot.removePlacedObject on the world's plot: returns the placed object"
 	)
 	local inside = if taken then taken.inventory else nil
 	check(
 		inside ~= nil and Inventory.countItems(inside, "fish") == 5,
-		"Plot.removePlacedItem on the world's plot: with what was inside it still inside it"
+		"Plot.removePlacedObject on the world's plot: with what was inside it still inside it"
 	)
-	check(groundItemCount(world) == 0, "Plot.removePlacedItem on the world's plot: nothing is thrown into the world")
+	check(groundItemCount(world) == 0, "Plot.removePlacedObject on the world's plot: nothing is thrown into the world")
 	check(
-		Plot.removePlacedItem(world.plot, ids.crate) == nil and Plot.removePlacedItem(world.plot, 999) == nil,
-		"Plot.removePlacedItem on the world's plot: returns nil for an id that no placed item has"
+		Plot.removePlacedObject(world.plot, ids.crate) == nil and Plot.removePlacedObject(world.plot, 999) == nil,
+		"Plot.removePlacedObject on the world's plot: returns nil for an id that no placed object has"
 	)
 
-	local standing = world.plot.placedItemsById[ids.stove]
-	World.throwPlacedItemAndContents(world, standing)
+	local standing = world.plot.placedObjectsById[ids.stove]
+	World.throwPlacedObjectAndContents(world, standing)
 	check(
-		#groundStacks(world, "stove") == 1 and world.plot.placedItemsById[ids.stove] == standing,
-		"throwPlacedItemAndContents: does not take the placed item off the plot, so one that still stands there exists twice"
+		#groundStacks(world, "stove") == 1 and world.plot.placedObjectsById[ids.stove] == standing,
+		"throwPlacedObjectAndContents: does not take the placed object off the plot, so one that still stands there exists twice"
 	)
 end
 
@@ -947,25 +947,25 @@ do -- an oven taken off the plot
 	World.advanceTo(world, 104)
 	check(
 		world.stations[ids.oven] ~= nil,
-		"Plot.removePlacedItem on the world's plot: (set up) the oven is a station with a fire lit"
+		"Plot.removePlacedObject on the world's plot: (set up) the oven is a station with a fire lit"
 	)
 	check(
 		Station.isBurning(world.stations[ids.oven]),
-		"Plot.removePlacedItem on the world's plot: (set up) and burning"
+		"Plot.removePlacedObject on the world's plot: (set up) and burning"
 	)
 	knockOff(world, ids.oven)
 	check(
 		world.stations[ids.oven] == nil,
-		"Plot.removePlacedItem on the world's plot: its station goes with it, and its fire is out"
+		"Plot.removePlacedObject on the world's plot: its station goes with it, and its fire is out"
 	)
 	check(
 		#groundStacks(world, "oven") == 1 and onGround(world, "fish") == 3 and onGround(world, "log") == 3,
-		"throwPlacedItemAndContents: what was in it lies on the ground, and the log that was burning is gone"
+		"throwPlacedObjectAndContents: what was in it lies on the ground, and the log that was burning is gone"
 	)
 	World.advanceTo(world, 200)
 	check(
 		onGround(world, "cooked_fish") == 0,
-		"Plot.removePlacedItem on the world's plot: nothing more is cooked once it is off the plot"
+		"Plot.removePlacedObject on the world's plot: nothing more is cooked once it is off the plot"
 	)
 end
 
@@ -1024,35 +1024,38 @@ end
 
 do -- time passing: screens close
 	local world, state, ids = newWorld()
-	World.openPlacedItemScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
 	World.setCharacterPosition(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND))
 	World.advanceTo(world, 101)
 	check(state.screen ~= nil, "advanceTo: a screen stays open at exactly the distance it closes beyond")
 	World.setCharacterPosition(world, 1, at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND))
 	World.advanceTo(world, 102)
-	check(state.screen == nil and state.openedPlacedItemId == nil, "advanceTo: and closes once the player is beyond it")
+	check(
+		state.screen == nil and state.openedPlacedObjectId == nil,
+		"advanceTo: and closes once the player is beyond it"
+	)
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
-	World.openPlacedItemScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	World.removeCharacter(world, 1)
 	check(
 		state.screen == nil,
-		"removeCharacter: a screen on a placed item closes when the player loses their character"
+		"removeCharacter: a screen on a placed object closes when the player loses their character"
 	)
 	World.advanceTo(world, 103)
 	check(Inventory.countItems(state.pack, "fish") == 5, "advanceTo: and what they carried is in their pack")
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
-	World.openPlacedItemScreen(world, state, ids.crate)
-	Plot.removePlacedItem(world.plot, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
+	Plot.removePlacedObject(world.plot, ids.crate)
 	check(
-		state.screen == nil and state.openedPlacedItemId == nil,
-		"Plot.removePlacedItem on the world's plot: a screen open on the placed item closes at once"
+		state.screen == nil and state.openedPlacedObjectId == nil,
+		"Plot.removePlacedObject on the world's plot: a screen open on the placed object closes at once"
 	)
 	World.advanceTo(world, 104)
 
-	World.openPlacedItemScreen(world, state, ids.oven)
+	World.openPlacedObjectScreen(world, state, ids.oven)
 	World.setCharacterPosition(world, 1, at(6, 0, 6))
 	World.advanceTo(world, 105)
 	check(state.screen ~= nil, "advanceTo: a screen stays open for a player who stays near")
@@ -1067,7 +1070,7 @@ do -- time passing: screens close
 
 	-- The pack is full, so what is carried is dropped at the player's character.
 	local full, fullState, fullIds = newWorld()
-	World.openPlacedItemScreen(full, fullState, fullIds.crate)
+	World.openPlacedObjectScreen(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
@@ -1116,8 +1119,8 @@ do -- time passing: stations
 
 	-- Work goes on whether or not a player is near, or there is one at all.
 	local idle = Plot.new(3, 3)
-	local idleOven = Plot.placeItem(idle, "oven", 1, 1) :: number
-	local idleInside = idle.placedItemsById[idleOven].inventory :: Inventory.Inventory
+	local idleOven = Plot.placeObject(idle, "oven", 1, 1) :: number
+	local idleInside = idle.placedObjectsById[idleOven].inventory :: Inventory.Inventory
 	Inventory.setStack(idleInside, Station.INPUT_SLOT, ItemStack.new("fish", 2))
 	Inventory.setStack(idleInside, Station.FUEL_SLOT, ItemStack.new("log", 1))
 	local idleWorld = World.new(idle, at(0, 0, 0), 0)
@@ -1130,10 +1133,10 @@ do -- time passing: stations
 
 	-- Every station works, each on its own.
 	local two = Plot.new(3, 3)
-	local first = Plot.placeItem(two, "oven", 1, 1) :: number
-	local second = Plot.placeItem(two, "oven", 2, 1) :: number
+	local first = Plot.placeObject(two, "oven", 1, 1) :: number
+	local second = Plot.placeObject(two, "oven", 2, 1) :: number
 	for _, id in { first, second } do
-		local oven = two.placedItemsById[id].inventory :: Inventory.Inventory
+		local oven = two.placedObjectsById[id].inventory :: Inventory.Inventory
 		Inventory.setStack(oven, Station.INPUT_SLOT, ItemStack.new("fish", 1))
 		Inventory.setStack(oven, Station.FUEL_SLOT, ItemStack.new("log", 1))
 	end
@@ -1147,7 +1150,7 @@ do -- time passing: stations
 
 	-- A placed oven starts working at the next step, from the time then.
 	local fresh = newWorld()
-	local newOven = Plot.placeItem(fresh.plot, "oven", 6, 6) :: number
+	local newOven = Plot.placeObject(fresh.plot, "oven", 6, 6) :: number
 	Inventory.setStack(insideOf(fresh, newOven), Station.INPUT_SLOT, ItemStack.new("fish", 1))
 	Inventory.setStack(insideOf(fresh, newOven), Station.FUEL_SLOT, ItemStack.new("log", 1))
 	World.advanceTo(fresh, 108)
@@ -1159,7 +1162,7 @@ end
 
 do -- a player leaves
 	local world, state, ids = newWorld()
-	World.openPlacedItemScreen(world, state, ids.crate)
+	World.openPlacedObjectScreen(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
 	local removed = World.removePlayer(world, 1)
 	check(removed == state and world.players[1] == nil, "removePlayer: the player is out of the world")
@@ -1173,7 +1176,7 @@ do -- a player leaves
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
-	World.openPlacedItemScreen(full, fullState, fullIds.crate)
+	World.openPlacedObjectScreen(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
 	World.removePlayer(full, 1)
 	local fish = groundStacks(full, "fish")
@@ -1293,8 +1296,8 @@ do -- several players, several things at once, and no item is made or lost
 						local taken = Inventory.takeFromSlot(state.pack, slot, 1)
 						if taken ~= nil then
 							local x, z = random(6), random(6)
-							if World.canPlaceItem(world, taken.itemId, x, z) then
-								Plot.placeItem(world.plot, taken.itemId, x, z)
+							if World.canPlaceObject(world, taken.itemId, x, z) then
+								Plot.placeObject(world.plot, taken.itemId, x, z)
 							else
 								local leftover = Inventory.addStack(state.pack, taken)
 								expect(leftover == nil, "an item taken from a slot goes back into the pack")
@@ -1312,14 +1315,14 @@ do -- several players, several things at once, and no item is made or lost
 					local ids = placedIds(world)
 					run(function()
 						local id = if #ids > 0 and random(5) > 1 then ids[random(#ids)] else random(40)
-						local openedBefore = state.openedPlacedItemId
-						local canOpen = World.canOpenPlacedItemScreen(world, state, id)
+						local openedBefore = state.openedPlacedObjectId
+						local canOpen = World.canOpenPlacedObjectScreen(world, state, id)
 						if canOpen then
-							World.openPlacedItemScreen(world, state, id)
+							World.openPlacedObjectScreen(world, state, id)
 						end
 						expect(
-							state.openedPlacedItemId == (if canOpen then id else openedBefore),
-							"openPlacedItemScreen opens the placed item that canOpenPlacedItemScreen allowed"
+							state.openedPlacedObjectId == (if canOpen then id else openedBefore),
+							"openPlacedObjectScreen opens the placed object that canOpenPlacedObjectScreen allowed"
 						)
 					end)
 				end
@@ -1328,7 +1331,7 @@ do -- several players, several things at once, and no item is made or lost
 					run(function()
 						World.closeScreen(world, state)
 						expect(
-							state.screen == nil and state.openedPlacedItemId == nil,
+							state.screen == nil and state.openedPlacedObjectId == nil,
 							"closeScreen leaves nothing open"
 						)
 					end)
@@ -1406,15 +1409,16 @@ do -- several players, several things at once, and no item is made or lost
 			end
 
 			for _, other in world.players do
-				local placedItemId = other.openedPlacedItemId
+				local placedObjectId = other.openedPlacedObjectId
 				expect(
-					placedItemId == nil or (other.screen ~= nil and world.plot.placedItemsById[placedItemId] ~= nil),
-					"a player has a placed item open only if they have a screen and it is on the plot"
+					placedObjectId == nil
+						or (other.screen ~= nil and world.plot.placedObjectsById[placedObjectId] ~= nil),
+					"a player has a placed object open only if they have a screen and it is on the plot"
 				)
 				expect(other.screen == nil or other.character ~= nil, "a player with a screen open has a character")
 			end
 			for id in world.stations do
-				tidy = tidy and world.plot.placedItemsById[id] ~= nil
+				tidy = tidy and world.plot.placedObjectsById[id] ~= nil
 			end
 		end
 	end
@@ -1423,7 +1427,7 @@ do -- several players, several things at once, and no item is made or lost
 	check(constantBetweenSteps, "12,000 random moves: no item is lost except when time passes")
 	check(exactWhenYoung, "12,000 random moves: and none is lost then either, until it has lain on the ground too long")
 	check(problems == 0, "12,000 random moves: every call does what it says (first: " .. firstProblem .. ")")
-	check(tidy, "12,000 random moves: a station is kept only while its placed item stands on the plot")
+	check(tidy, "12,000 random moves: a station is kept only while its placed object stands on the plot")
 end
 
 Check.finish("World")

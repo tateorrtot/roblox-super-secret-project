@@ -3,7 +3,7 @@
 --- nothing stands on.
 ---
 --- `getTargetAt` looks through the camera at a point and reads what it hits. A block with the
---- attribute `placedItemId` is a placed item. The top of a slab tagged `Plot`, which has the
+--- attribute `placedObjectId` is a placed object. The top of a slab tagged `Plot`, which has the
 --- attributes `cornerX`, `cornerY`, `cornerZ`, `width` and `depth`, is a grid of tiles.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -16,9 +16,9 @@ local Plot = require(Shared.plots.Plot)
 local PlotPointer = {}
 
 --- What a point on the screen is over. `center` is the middle of the bare tile, or the middle of
---- the placed item's block.
+--- the placed object's block.
 export type Target =
-	{ kind: "placedItem", placedItemId: number, part: BasePart, center: Vector3 }
+	{ kind: "placedObject", placedObjectId: number, part: BasePart, center: Vector3 }
 	| { kind: "tile", x: number, z: number, center: Vector3 }
 
 --- How far from the camera a thing may be and still be a target, in studs.
@@ -53,7 +53,7 @@ local function tileTarget(hit: RaycastResult): Target?
 	return { kind = "tile", x = x, z = z, center = Vector3.new(center.x, center.y, center.z) }
 end
 
---- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed item nor
+--- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed object nor
 --- a bare tile of a plot. The player's own character is looked through. Anything else in the way
 --- hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides.
 ---
@@ -69,9 +69,9 @@ function PlotPointer.getTargetAt(viewportPoint: Vector2): Target?
 		return nil
 	end
 	local part = hit.Instance
-	local placedItemId = part:GetAttribute("placedItemId")
-	if type(placedItemId) == "number" then
-		return { kind = "placedItem", placedItemId = placedItemId, part = part, center = part.Position }
+	local placedObjectId = part:GetAttribute("placedObjectId")
+	if type(placedObjectId) == "number" then
+		return { kind = "placedObject", placedObjectId = placedObjectId, part = part, center = part.Position }
 	end
 	if hit.Normal.Y > FLAT and CollectionService:HasTag(part, "Plot") then
 		return tileTarget(hit)
