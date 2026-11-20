@@ -18,7 +18,7 @@ ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount
 ItemRegistry.register({ id = "post", stackSize = 8, placeable = true })
 
 do -- the rules as numbers
-	check(RecipeRegistry.STATION_SLOTS == 3, "a station has three slots")
+	check(RecipeRegistry.STATION_SLOT_COUNT == 3, "a station has three slots")
 end
 
 do -- an empty registry

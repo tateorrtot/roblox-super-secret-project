@@ -69,7 +69,7 @@ do -- a new station
 		"new: is of the kind it was given, over the inventory it was given"
 	)
 	check(station.burnSecondsLeft == 0 and station.burnSecondsTotal == 0, "new: no fire has been lit")
-	check(station.workedSeconds == 0 and station.workingOn == nil, "new: nothing is being worked on")
+	check(station.workedSeconds == 0 and station.workingOnItemId == nil, "new: nothing is being worked on")
 	check(not Station.isBurning(station), "isBurning: false for a new station")
 end
 
@@ -114,7 +114,7 @@ do -- cooking one fish
 		"advance: the fire burns for as long as that item burns"
 	)
 	check(
-		station.workedSeconds == 0.5 and station.workingOn == "fish",
+		station.workedSeconds == 0.5 and station.workingOnItemId == "fish",
 		"advance: the fish has been worked on for the time that passed"
 	)
 	Station.advance(station, 7.5)
@@ -134,7 +134,7 @@ do -- cooking one fish
 	Station.advance(station, 100)
 	check(not Station.isBurning(station) and station.burnSecondsLeft == 0, "advance: and goes out")
 	check(contents(station) == "-, log 3, cooked_fish 1", "advance: no fuel is used when there is nothing to work on")
-	check(station.workingOn == nil, "advance: and nothing is being worked on")
+	check(station.workingOnItemId == nil, "advance: and nothing is being worked on")
 end
 
 do -- a fire is never lit for nothing
@@ -233,7 +233,7 @@ do -- the fire going out, and coming back
 	check(not Station.isBurning(station), "advance: and then the fire is out")
 	Station.advance(station, 1)
 	check(
-		station.workedSeconds == 0 and station.workingOn == nil,
+		station.workedSeconds == 0 and station.workingOnItemId == nil,
 		"advance: with no fuel to light it again, the work done is lost"
 	)
 	check(contents(station) == "fish 1, -, -", "advance: but the fish is still there")
@@ -255,7 +255,7 @@ do -- changing what is in the input slot
 	Inventory.setStack(station.inventory, INPUT, ItemStack.new("apple", 1))
 	Station.advance(station, 1)
 	check(
-		station.workingOn == "apple" and near(station.workedSeconds, 1),
+		station.workingOnItemId == "apple" and near(station.workedSeconds, 1),
 		"advance: a different item in the input slot starts from nothing"
 	)
 	Station.advance(station, 4.9)
@@ -268,7 +268,7 @@ do -- changing what is in the input slot
 	Inventory.setStack(taken.inventory, INPUT, nil)
 	Station.advance(taken, 1)
 	check(
-		taken.workedSeconds == 0 and taken.workingOn == nil,
+		taken.workedSeconds == 0 and taken.workingOnItemId == nil,
 		"advance: taking the item away loses the work done on it"
 	)
 	Inventory.setStack(taken.inventory, INPUT, ItemStack.new("fish", 1))

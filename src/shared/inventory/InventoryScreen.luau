@@ -24,11 +24,11 @@ export type InventoryScreen = {
 	--- The player's own inventory.
 	read pack: Inventory,
 	--- The other inventory that is open, such as a crate's. `nil` when the pack is open alone.
-	read other: Inventory?,
+	read otherInventory: Inventory?,
 	--- The stack being carried between slots. `nil` when nothing is carried.
 	carriedStack: ItemStack?,
-	--- Says whether a slot of `other` accepts an item, given the slot's number and the item's id.
-	--- `nil` when every slot of `other` accepts every item.
+	--- Says whether a slot of `otherInventory` accepts an item, given the slot's number and the item's id.
+	--- `nil` when every slot of `otherInventory` accepts every item.
 	read otherSlotAcceptsItem: ((slot: number, itemId: string) -> boolean)?,
 }
 
@@ -44,25 +44,25 @@ local function slotsOf(side: Side, inventory: Inventory?): { ScreenSlot }
 	return slots
 end
 
---- Returns a screen that shows `pack`, and `other` beside it if one is given, with nothing
---- carried. `otherSlotAcceptsItem` says which items each slot of `other` accepts.
+--- Returns a screen that shows `pack`, and `otherInventory` beside it if one is given, with nothing
+--- carried. `otherSlotAcceptsItem` says which items each slot of `otherInventory` accepts.
 function InventoryScreen.new(
 	pack: Inventory,
-	other: Inventory?,
+	otherInventory: Inventory?,
 	otherSlotAcceptsItem: ((slot: number, itemId: string) -> boolean)?
 ): InventoryScreen
-	return { pack = pack, other = other, otherSlotAcceptsItem = otherSlotAcceptsItem }
+	return { pack = pack, otherInventory = otherInventory, otherSlotAcceptsItem = otherSlotAcceptsItem }
 end
 
 --- Returns the inventory on a side. Fails if `side` is `"other"` and no other inventory is open.
 function InventoryScreen.getInventoryOnSide(screen: InventoryScreen, side: Side): Inventory
-	return assert(if side == "pack" then screen.pack else screen.other, "no other inventory is open")
+	return assert(if side == "pack" then screen.pack else screen.otherInventory, "no other inventory is open")
 end
 
 --- Returns `true` if `side` and `slot` name one of the screen's slots. Both may be any value at
 --- all, so this is the check for a slot named from outside the game.
 function InventoryScreen.hasSlot(screen: InventoryScreen, side: unknown, slot: unknown): boolean
-	local inventory = if side == "pack" then screen.pack elseif side == "other" then screen.other else nil
+	local inventory = if side == "pack" then screen.pack elseif side == "other" then screen.otherInventory else nil
 	return inventory ~= nil and Inventory.hasSlot(inventory, slot)
 end
 
@@ -227,7 +227,7 @@ end
 
 local function slotsWithFullStacksLast(screen: InventoryScreen): { ScreenSlot }
 	local slots, full = {}, {}
-	for _, screenSlot in slotsOf("other", screen.other) do
+	for _, screenSlot in slotsOf("other", screen.otherInventory) do
 		table.insert(if holdsFullStack(screen, screenSlot) then full else slots, screenSlot)
 	end
 	for _, screenSlot in slotsOf("pack", screen.pack) do

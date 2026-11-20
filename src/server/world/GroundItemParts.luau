@@ -86,7 +86,7 @@ end
 --- A bigger stack makes a bigger block, resting on the ground where the stack lies.
 function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: GroundItems.GroundItems)
 	local partsById = groundItemParts.partsById
-	for id, groundItem in groundItems.byId do
+	for id, groundItem in groundItems.itemsById do
 		local part = partsById[id]
 		if part == nil then
 			part = makePart(groundItem.stack.itemId)
@@ -98,7 +98,7 @@ function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: G
 		end
 	end
 	for id, part in partsById do
-		if groundItems.byId[id] == nil then
+		if groundItems.itemsById[id] == nil then
 			part:Destroy()
 			partsById[id] = nil
 		end

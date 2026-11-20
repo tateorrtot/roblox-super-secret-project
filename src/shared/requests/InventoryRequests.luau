@@ -147,7 +147,7 @@ function InventoryRequests.spreadCarriedStackOverSlots(
 		return
 	end
 	local list = slots :: { InventoryScreen.ScreenSlot }
-	local other = screen.other
+	local other = screen.otherInventory
 	if #list <= screen.pack.slotCount + (if other then other.slotCount else 0) then
 		InventoryScreen.spreadCarriedStackOverSlots(screen, list, countEach :: any)
 	end

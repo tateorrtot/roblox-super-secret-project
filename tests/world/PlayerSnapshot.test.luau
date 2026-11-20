@@ -100,7 +100,10 @@ do -- no screen open
 
 	local view = PlayerSnapshot.decode(encoded)
 	check(view.screen == nil, "decode: a view with no screen has no screen")
-	check(view.otherItemId == nil and view.stationProgress == nil, "decode: and no placed item and no progress")
+	check(
+		view.otherInventoryItemId == nil and view.stationProgress == nil,
+		"decode: and no placed item and no progress"
+	)
 	check(sameInventory(view.pack, world.players[1].pack), "decode: the pack is what the player holds")
 	check(view.pack ~= world.players[1].pack, "decode: but is a copy of it")
 
@@ -118,8 +121,8 @@ do -- the pack open alone
 	local screen = encoded.screen
 	check(
 		screen ~= nil
-			and screen.other == nil
-			and screen.otherItemId == nil
+			and screen.otherInventory == nil
+			and screen.otherInventoryItemId == nil
 			and screen.carriedStack == nil
 			and screen.stationProgress == nil,
 		"encode: with nothing beside the pack, nothing carried and no progress"
@@ -130,10 +133,13 @@ do -- the pack open alone
 	check(view.screen ~= nil, "decode: the screen is open")
 	check(view.screen ~= nil and view.screen.pack == view.pack, "decode: and shows the pack of the view")
 	check(
-		view.screen ~= nil and view.screen.other == nil and view.screen.carriedStack == nil,
+		view.screen ~= nil and view.screen.otherInventory == nil and view.screen.carriedStack == nil,
 		"decode: with nothing beside it and nothing carried"
 	)
-	check(view.otherItemId == nil and view.stationProgress == nil, "decode: and no placed item and no progress")
+	check(
+		view.otherInventoryItemId == nil and view.stationProgress == nil,
+		"decode: and no placed item and no progress"
+	)
 	check(sameInventory(view.pack, state.pack), "decode: the pack is what the player holds")
 end
 
@@ -167,9 +173,12 @@ do -- a crate open
 	World.openPlacedItem(world, state, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.otherItemId == "crate", "encode: says what kind of placed item is open")
+	check(screen ~= nil and screen.otherInventoryItemId == "crate", "encode: says what kind of placed item is open")
 	check(
-		screen ~= nil and screen.other ~= nil and screen.other.slotCount == 27 and #screen.other.stacks == 1,
+		screen ~= nil
+			and screen.otherInventory ~= nil
+			and screen.otherInventory.slotCount == 27
+			and #screen.otherInventory.stacks == 1,
 		"encode: and what is in it"
 	)
 	check(
@@ -180,21 +189,22 @@ do -- a crate open
 
 	local view = PlayerSnapshot.decode(encoded)
 	check(
-		view.otherItemId == "crate" and view.stationProgress == nil,
+		view.otherInventoryItemId == "crate" and view.stationProgress == nil,
 		"decode: knows it is a crate, and has no progress"
 	)
 	check(
 		view.screen ~= nil
-			and view.screen.other ~= nil
+			and view.screen.otherInventory ~= nil
 			and sameInventory(
-				view.screen.other,
-				(state.screen :: InventoryScreen.InventoryScreen).other :: Inventory.Inventory
+				view.screen.otherInventory,
+				(state.screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
 			),
 		"decode: the screen shows what is in the crate"
 	)
 	check(view.screen ~= nil and view.screen.pack == view.pack, "decode: beside the pack of the view")
 	check(
-		view.screen ~= nil and view.screen.other ~= (state.screen :: InventoryScreen.InventoryScreen).other,
+		view.screen ~= nil
+			and view.screen.otherInventory ~= (state.screen :: InventoryScreen.InventoryScreen).otherInventory,
 		"decode: as a copy, not the crate itself"
 	)
 
@@ -210,11 +220,11 @@ do -- a crate open
 	check(
 		carryingView.screen ~= nil
 			and is(carryingView.screen.carriedStack, "fish", 4)
-			and carryingView.screen.other ~= nil
-			and is(Inventory.getStack(carryingView.screen.other, 1), "fish", 1),
+			and carryingView.screen.otherInventory ~= nil
+			and is(Inventory.getStack(carryingView.screen.otherInventory, 1), "fish", 1),
 		"decode: gives back the stack carried and what was left in the crate"
 	)
-	check(carryingView.otherItemId == "crate", "decode: and the kind of placed item")
+	check(carryingView.otherInventoryItemId == "crate", "decode: and the kind of placed item")
 end
 
 do -- an oven open
@@ -237,7 +247,7 @@ do -- an oven open
 	World.advanceTo(world, 4)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.otherItemId == "oven", "encode: says an oven is open")
+	check(screen ~= nil and screen.otherInventoryItemId == "oven", "encode: says an oven is open")
 	check(
 		screen ~= nil
 			and screen.stationProgress ~= nil
@@ -246,13 +256,13 @@ do -- an oven open
 		"encode: with how far the fire and the work have got"
 	)
 	check(
-		screen ~= nil and screen.other ~= nil and #screen.other.stacks == 2,
+		screen ~= nil and screen.otherInventory ~= nil and #screen.otherInventory.stacks == 2,
 		"encode: and what is in the oven, a log having been burnt"
 	)
 	check(isPlain(encoded), "encode: all of it is plain data")
 
 	local view = PlayerSnapshot.decode(encoded)
-	check(view.otherItemId == "oven", "decode: knows it is an oven")
+	check(view.otherInventoryItemId == "oven", "decode: knows it is an oven")
 	check(
 		view.stationProgress ~= nil
 			and math.abs(view.stationProgress.fuelLeftRatio - 0.75) < 1e-6
@@ -260,7 +270,7 @@ do -- an oven open
 		"decode: gives back the progress"
 	)
 	check(
-		view.screen ~= nil and view.screen.other ~= nil and sameInventory(view.screen.other, inside),
+		view.screen ~= nil and view.screen.otherInventory ~= nil and sameInventory(view.screen.otherInventory, inside),
 		"decode: and what is in the oven"
 	)
 
@@ -271,7 +281,7 @@ do -- an oven open
 		both.screen ~= nil
 			and is(both.screen.carriedStack, "apple", 4)
 			and both.stationProgress ~= nil
-			and both.otherItemId == "oven",
+			and both.otherInventoryItemId == "oven",
 		"decode: an oven open and a stack carried come back together"
 	)
 end
@@ -282,11 +292,11 @@ do -- the placed item is not on the plot any more
 	Plot.removePlacedItem(world.plot, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(
-		encoded.screen ~= nil and encoded.screen.otherItemId == nil,
+		encoded.screen ~= nil and encoded.screen.otherInventoryItemId == nil,
 		"encode: no kind of placed item for one that is off the plot"
 	)
 	check(
-		encoded.screen ~= nil and encoded.screen.other ~= nil and encoded.screen.other.slotCount == 27,
+		encoded.screen ~= nil and encoded.screen.otherInventory ~= nil and encoded.screen.otherInventory.slotCount == 27,
 		"encode: but the inventory that was open is still shown"
 	)
 end
@@ -309,7 +319,7 @@ do -- a player that is not in the world, and data that cannot be read
 	local badOther = Check.errorFrom(function()
 		PlayerSnapshot.decode({
 			pack = good.pack,
-			screen = { other = { slotCount = 3, stacks = { { slot = 9, itemId = "log", count = 1 } } } },
+			screen = { otherInventory = { slotCount = 3, stacks = { { slot = 9, itemId = "log", count = 1 } } } },
 		})
 	end)
 	check(badOther ~= nil, "decode: fails if the other inventory cannot be read")
@@ -360,8 +370,12 @@ do -- whatever the world holds, a view decodes to the same
 			local carried, viewCarried = screen.carriedStack, view.screen.carriedStack
 			same = (carried == nil) == (viewCarried == nil)
 				and (carried == nil or viewCarried == nil or carried.itemId == viewCarried.itemId and carried.count == viewCarried.count)
-				and (screen.other == nil) == (view.screen.other == nil)
-				and (screen.other == nil or view.screen.other == nil or sameInventory(screen.other, view.screen.other))
+				and (screen.otherInventory == nil) == (view.screen.otherInventory == nil)
+				and (
+					screen.otherInventory == nil
+					or view.screen.otherInventory == nil
+					or sameInventory(screen.otherInventory, view.screen.otherInventory)
+				)
 		end
 		if not same then
 			differences += 1

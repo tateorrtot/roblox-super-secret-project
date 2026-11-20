@@ -49,7 +49,7 @@ end
 
 -- Describes the other inventory of a screen.
 local function otherContents(screen: InventoryScreen.InventoryScreen): string
-	return contents(screen.other :: Inventory.Inventory)
+	return contents(screen.otherInventory :: Inventory.Inventory)
 end
 
 -- Returns a screen over a pack holding `inPack`, already carrying `carried`.
@@ -82,11 +82,11 @@ end
 do -- new
 	local pack, crate = Inventory.new(2), Inventory.new(3)
 	local alone = InventoryScreen.new(pack)
-	check(alone.pack == pack and alone.other == nil, "new: with the pack alone there is no other inventory")
+	check(alone.pack == pack and alone.otherInventory == nil, "new: with the pack alone there is no other inventory")
 	check(alone.carriedStack == nil, "new: nothing is carried")
 	check(alone.otherSlotAcceptsItem == nil, "new: with no rule given there is none")
 	local both = InventoryScreen.new(pack, crate, stoveAccepts)
-	check(both.pack == pack and both.other == crate, "new: holds the inventories it was given, not copies")
+	check(both.pack == pack and both.otherInventory == crate, "new: holds the inventories it was given, not copies")
 	check(both.otherSlotAcceptsItem == stoveAccepts, "new: keeps the rule it was given")
 	check(both.carriedStack == nil, "new: nothing is carried when another inventory is open")
 end
@@ -724,7 +724,7 @@ end
 do -- fillCarriedStackFromAllSlots
 	local screen =
 		InventoryScreen.new(inventoryOf("log 16, log 3, stone 5, log 2"), inventoryOf("log 4, log 16, stone 1"))
-	local other = screen.other :: Inventory.Inventory
+	local other = screen.otherInventory :: Inventory.Inventory
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(screen) == 0,
 		"fillCarriedStackFromAllSlots: 0 when nothing is carried"

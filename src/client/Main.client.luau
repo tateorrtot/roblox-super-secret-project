@@ -37,7 +37,7 @@ local remotes = Remotes.waitForAll()
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 --- What the server last said the player holds.
-local snapshot: PlayerSnapshot.PlayerSnapshot = { pack = Inventory.new(PlayerState.PACK_SLOTS) }
+local snapshot: PlayerSnapshot.PlayerSnapshot = { pack = Inventory.new(PlayerState.PACK_SLOT_COUNT) }
 --- The hotbar slot in the player's hand.
 local selectedSlot = 1
 local gestures = SlotGestures.new()
@@ -85,11 +85,11 @@ local function isShiftHeld(): boolean
 end
 
 local function controlsScreen(screen: InventoryScreen.InventoryScreen): InventoryControls.Screen
-	local other = screen.other
+	local other = screen.otherInventory
 	return {
-		packSlots = screen.pack.slotCount,
-		hotbarSlots = PlayerState.HOTBAR_SLOTS,
-		otherSlots = if other then other.slotCount else nil,
+		packSlotCount = screen.pack.slotCount,
+		hotbarSlotCount = PlayerState.HOTBAR_SLOT_COUNT,
+		otherSlotCount = if other then other.slotCount else nil,
 		carriedStack = screen.carriedStack,
 		getStack = function(slot)
 			return Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, slot.side :: any), slot.slot)
@@ -102,12 +102,12 @@ local function placeableInHand(): string?
 	return if held ~= nil and ItemRegistry.get(held.itemId).placeable then held.itemId else nil
 end
 
-hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
+hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOT_COUNT, {
 	onSlotChosen = selectSlot,
 	onPackClicked = toggleScreen,
 })
 
-inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
+inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOT_COUNT, {
 	onSlotPressed = function(side, slot, button)
 		SlotGestures.beginGesture(gestures, button, { side = side, slot = slot })
 	end,
@@ -143,12 +143,12 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 		onScreenOpenedOrClosed(screen ~= nil)
 	end
 	if screen ~= nil then
-		local otherLook = if snapshot.otherItemId then ItemLooks[snapshot.otherItemId] else nil
+		local otherLook = if snapshot.otherInventoryItemId then ItemLooks[snapshot.otherInventoryItemId] else nil
 		local otherName = if otherLook then otherLook.name else ""
 		InventoryGui.show(
 			inventoryGui,
 			snapshot.pack,
-			screen.other,
+			screen.otherInventory,
 			otherName,
 			screen.carriedStack,
 			snapshot.stationProgress
@@ -177,7 +177,7 @@ UseAndHit.startListening({
 })
 
 local function onDropKey()
-	local over = inventoryGui.hovered
+	local over = inventoryGui.hoveredSlot
 	local wholeStack = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
 	if snapshot.screen == nil then
 		remotes.dropFromSelectedSlot:FireServer(if wholeStack then nil else 1)
@@ -187,7 +187,7 @@ local function onDropKey()
 end
 
 local function onDigitKey(digit: number)
-	local over = inventoryGui.hovered
+	local over = inventoryGui.hoveredSlot
 	if snapshot.screen == nil then
 		selectSlot(digit)
 	elseif over ~= nil then
@@ -203,7 +203,7 @@ UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewher
 		toggleScreen()
 	elseif input.KeyCode == Enum.KeyCode.Q then
 		onDropKey()
-	elseif digit ~= nil and digit <= PlayerState.HOTBAR_SLOTS then
+	elseif digit ~= nil and digit <= PlayerState.HOTBAR_SLOT_COUNT then
 		onDigitKey(digit)
 	end
 end)
@@ -214,7 +214,7 @@ UserInputService.InputEnded:Connect(function(input: InputObject)
 	if button == nil or screen == nil then
 		return
 	end
-	local gesture = SlotGestures.endGesture(gestures, button, inventoryGui.hovered, isShiftHeld(), os.clock())
+	local gesture = SlotGestures.endGesture(gestures, button, inventoryGui.hoveredSlot, isShiftHeld(), os.clock())
 	InventoryGui.setHighlightedSlots(inventoryGui, {})
 	if gesture ~= nil then
 		send(InventoryControls.getRequestForGesture(controlsScreen(screen), gesture))

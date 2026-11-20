@@ -23,11 +23,11 @@ export type Request = {
 --- What the controls need to know of the open screen.
 export type Screen = {
 	--- How many slots the pack has.
-	read packSlots: number,
+	read packSlotCount: number,
 	--- How many of the pack's first slots are the hotbar.
-	read hotbarSlots: number,
+	read hotbarSlotCount: number,
 	--- How many slots the other inventory has. `nil` when the pack is open alone.
-	read otherSlots: number?,
+	read otherSlotCount: number?,
 	--- The stack being carried. `nil` when nothing is carried.
 	read carriedStack: Stack?,
 	--- Returns the stack in a slot, or `nil` if it holds nothing.
@@ -39,17 +39,24 @@ local function request(name: string, ...: any): Request
 end
 
 local function forShiftClick(screen: Screen, slot: Slot): Request?
-	local otherSlots = screen.otherSlots
-	if otherSlots ~= nil and slot.side == "pack" then
-		return request("moveFromSlotToInventory", "pack", slot.slot, "other", 1, otherSlots)
-	elseif otherSlots ~= nil then
-		return request("moveFromSlotToInventory", "other", slot.slot, "pack", 1, screen.packSlots)
-	elseif screen.hotbarSlots >= screen.packSlots then
+	local otherSlotCount = screen.otherSlotCount
+	if otherSlotCount ~= nil and slot.side == "pack" then
+		return request("moveFromSlotToInventory", "pack", slot.slot, "other", 1, otherSlotCount)
+	elseif otherSlotCount ~= nil then
+		return request("moveFromSlotToInventory", "other", slot.slot, "pack", 1, screen.packSlotCount)
+	elseif screen.hotbarSlotCount >= screen.packSlotCount then
 		return nil
-	elseif slot.slot <= screen.hotbarSlots then
-		return request("moveFromSlotToInventory", "pack", slot.slot, "pack", screen.hotbarSlots + 1, screen.packSlots)
+	elseif slot.slot <= screen.hotbarSlotCount then
+		return request(
+			"moveFromSlotToInventory",
+			"pack",
+			slot.slot,
+			"pack",
+			screen.hotbarSlotCount + 1,
+			screen.packSlotCount
+		)
 	end
-	return request("moveFromSlotToInventory", "pack", slot.slot, "pack", 1, screen.hotbarSlots)
+	return request("moveFromSlotToInventory", "pack", slot.slot, "pack", 1, screen.hotbarSlotCount)
 end
 
 local function forClick(screen: Screen, slot: Slot, button: SlotGestures.Button): Request?

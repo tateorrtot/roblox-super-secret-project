@@ -76,7 +76,7 @@ end
 -- How many of one item lie on the ground, in all.
 local function onGround(world: World.World, itemId: string): number
 	local count = 0
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		if groundItem.stack.itemId == itemId then
 			count += groundItem.stack.count
 		end
@@ -111,14 +111,17 @@ do -- openPack
 	send("openPack", world, state)
 	local screen = screenOf(state)
 	check(screen.pack == state.pack, "openPack: opens a screen on the player's pack")
-	check(screen.other == nil and screen.carriedStack == nil, "openPack: with no other inventory and nothing carried")
+	check(
+		screen.otherInventory == nil and screen.carriedStack == nil,
+		"openPack: with no other inventory and nothing carried"
+	)
 	send("openPack", world, state)
 	check(state.screen == screen, "openPack: does nothing when a screen is already open")
 
 	local crateWorld, crateState = newWorld()
 	local crate = openPlaced(crateWorld, crateState, "crate")
 	send("openPack", crateWorld, crateState)
-	check(screenOf(crateState).other == crate, "openPack: leaves a crate that is open beside the pack")
+	check(screenOf(crateState).otherInventory == crate, "openPack: leaves a crate that is open beside the pack")
 end
 
 do -- closeScreen
@@ -142,7 +145,7 @@ do -- closeScreen
 	local fullWorld, full = newWorld()
 	send("openPack", fullWorld, full)
 	send("pickUpFromSlot", fullWorld, full, "pack", 1)
-	for slot = 1, PlayerState.PACK_SLOTS do
+	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(full.pack, slot, ItemStack.new("stove", 1))
 	end
 	send("closeScreen", fullWorld, full)
@@ -150,7 +153,7 @@ do -- closeScreen
 		full.screen == nil and onGround(fullWorld, "log") == 12,
 		"closeScreen: what does not fit in the pack lands on the ground"
 	)
-	for _, groundItem in fullWorld.groundItems.byId do
+	for _, groundItem in fullWorld.groundItems.itemsById do
 		check(
 			groundItem.position.x == 12 and groundItem.position.z == 0 and groundItem.droppedAt == 100,
 			"closeScreen: it lands at the player's drop position, at the world's time"
@@ -705,7 +708,7 @@ do -- spreadCarriedStackOverSlots
 	)
 
 	local tooMany = {}
-	for _ = 1, PlayerState.PACK_SLOTS + 1 do
+	for _ = 1, PlayerState.PACK_SLOT_COUNT + 1 do
 		table.insert(tooMany, at2("pack", 8))
 	end
 	send("spreadCarriedStackOverSlots", badWorld, bad, tooMany, nil)
@@ -721,7 +724,7 @@ do -- spreadCarriedStackOverSlots
 	local crate = openPlaced(crateWorld, withCrate, "crate")
 	send("pickUpFromSlot", crateWorld, withCrate, "pack", 2)
 	local long = {}
-	for _ = 1, PlayerState.PACK_SLOTS + crate.slotCount + 1 do
+	for _ = 1, PlayerState.PACK_SLOT_COUNT + crate.slotCount + 1 do
 		table.insert(long, at2("other", 2))
 	end
 	send("spreadCarriedStackOverSlots", crateWorld, withCrate, long, nil)
@@ -763,8 +766,8 @@ do -- dropCarriedStack
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
 		"dropCarriedStack: puts that many of the carried items on the ground"
 	)
-	local landed = next(world.groundItems.byId)
-	local groundItem = world.groundItems.byId[landed :: number]
+	local landed = next(world.groundItems.itemsById)
+	local groundItem = world.groundItems.itemsById[landed :: number]
 	check(
 		groundItem.position.x == 12 and groundItem.position.y == 0 and groundItem.position.z == 0,
 		"dropCarriedStack: where the player's drops land"
@@ -801,7 +804,7 @@ do -- dropCarriedStack
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
 	send("dropCarriedStack", movedWorld, moved, nil)
-	local movedItem = movedWorld.groundItems.byId[next(movedWorld.groundItems.byId) :: number]
+	local movedItem = movedWorld.groundItems.itemsById[next(movedWorld.groundItems.itemsById) :: number]
 	check(
 		movedItem.position.x == 3 and movedItem.position.z == 4,
 		"dropCarriedStack: drops at the player's drop position as it is now"
@@ -829,7 +832,7 @@ do -- dropFromSlot
 		onGround(world, "log") == 1 and is(inSlot(state, 1), "log", 11),
 		"dropFromSlot: puts that many items out of the slot on the ground"
 	)
-	local landed = world.groundItems.byId[next(world.groundItems.byId) :: number]
+	local landed = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
 		landed.position.x == 12 and landed.position.z == 0 and landed.droppedAt == 100,
 		"dropFromSlot: at the player's drop position, at the world's time"
@@ -904,7 +907,7 @@ do -- dropFromSelectedSlot
 		is(inSlot(state, 1), "log", 11) and onGround(world, "log") == 1,
 		"dropFromSelectedSlot: puts that many of what is in hand on the ground"
 	)
-	local landed = world.groundItems.byId[next(world.groundItems.byId) :: number]
+	local landed = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
 		landed.position.x == 12 and landed.position.z == 0 and landed.droppedAt == 100,
 		"dropFromSelectedSlot: at the player's drop position, at the world's time"

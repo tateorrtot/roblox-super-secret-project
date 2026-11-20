@@ -15,8 +15,8 @@ ItemRegistry.register({ id = "log", stackSize = 16 })
 local dropAt = Position.new(1, 2, 3)
 
 do -- the rules as numbers
-	check(PlayerState.PACK_SLOTS == 36, "a pack has 36 slots")
-	check(PlayerState.HOTBAR_SLOTS == 9, "the hotbar is 9 of them")
+	check(PlayerState.PACK_SLOT_COUNT == 36, "a pack has 36 slots")
+	check(PlayerState.HOTBAR_SLOT_COUNT == 9, "the hotbar is 9 of them")
 end
 
 do -- a new player
@@ -39,7 +39,7 @@ do -- a new player
 end
 
 do -- a pack that is given
-	local given = Inventory.new(PlayerState.PACK_SLOTS)
+	local given = Inventory.new(PlayerState.PACK_SLOT_COUNT)
 	Inventory.setStack(given, 4, ItemStack.new("log", 9))
 	local state = PlayerState.new(dropAt, given)
 	check(state.pack == given, "new: the player carries the pack given")

@@ -25,7 +25,7 @@ end
 -- How many ground items there are.
 local function groundItemCount(ground: GroundItems.GroundItems): number
 	local count = 0
-	for _ in ground.byId :: any do
+	for _ in ground.itemsById :: any do
 		count += 1
 	end
 	return count
@@ -34,7 +34,7 @@ end
 -- How many of one item lie on the ground, over every ground item.
 local function itemsOnGround(ground: GroundItems.GroundItems, itemId: string): number
 	local count = 0
-	for _, groundItem: GroundItems.GroundItem in ground.byId :: any do
+	for _, groundItem: GroundItems.GroundItem in ground.itemsById :: any do
 		if groundItem.stack.itemId == itemId then
 			count += groundItem.stack.count
 		end
@@ -44,7 +44,7 @@ end
 
 -- True if the ground item `id` is `count` of the item `itemId`.
 local function holds(ground: GroundItems.GroundItems, id: number, itemId: string, count: number): boolean
-	local groundItem = ground.byId[id]
+	local groundItem = ground.itemsById[id]
 	return groundItem ~= nil and groundItem.stack.itemId == itemId and groundItem.stack.count == count
 end
 
@@ -79,7 +79,7 @@ do -- dropping
 	local id = GroundItems.dropStackAt(ground, logs, where, 12)
 	check(id == 1, "dropStackAt: the first ground item is number 1")
 	check(ground.nextId == 2, "dropStackAt: the next one will be number 2")
-	local groundItem = ground.byId[1]
+	local groundItem = ground.itemsById[1]
 	check(
 		groundItem ~= nil and groundItem.stack.itemId == "log" and groundItem.stack.count == 5,
 		"dropStackAt: the ground item holds the stack"
@@ -91,7 +91,7 @@ do -- dropping
 	check(groundItem.droppedAt == 12, "dropStackAt: it remembers when it was dropped")
 	where.x = 99
 	check(
-		ground.byId[1].position.x == 10,
+		ground.itemsById[1].position.x == 10,
 		"dropStackAt: changing the caller's position table afterwards does not move it"
 	)
 	check(
@@ -114,9 +114,9 @@ do -- a stack dropped beside its own kind joins it
 		"dropStackAt: the ground item holds both stacks"
 	)
 	check(ground.nextId == 2, "dropStackAt: joining uses no new id")
-	check(ground.byId[first].position.x == 10, "dropStackAt: the ground item stays where it lay")
-	check(ground.byId[first].droppedAt == 130, "dropStackAt: and counts as dropped when the second stack was")
-	check(table.isfrozen(ground.byId[first]), "dropStackAt: the joined ground item is a frozen value")
+	check(ground.itemsById[first].position.x == 10, "dropStackAt: the ground item stays where it lay")
+	check(ground.itemsById[first].droppedAt == 130, "dropStackAt: and counts as dropped when the second stack was")
+	check(table.isfrozen(ground.itemsById[first]), "dropStackAt: the joined ground item is a frozen value")
 
 	local beyond = GroundItems.dropStackAt(ground, ItemStack.new("log", 1), at(10 + MERGE + 0.01, 0, 0), 130)
 	check(
@@ -272,7 +272,7 @@ do -- equally near ground items are picked up in the order they were dropped, wh
 	for expected = 101, 140 do
 		GroundItems.moveNearbyStacksToInventory(ground, at(1, 0, 0), pack, LIFETIME + 10)
 		pack = Inventory.new(1)
-		if ground.byId[expected] ~= nil or groundItemCount(ground) ~= 140 - expected then
+		if ground.itemsById[expected] ~= nil or groundItemCount(ground) ~= 140 - expected then
 			inOrder = false
 		end
 	end
@@ -316,7 +316,7 @@ do -- an inventory with too little room
 	)
 	check(Inventory.countItems(pack, "log") == 16, "moveNearbyStacksToInventory: the inventory is full")
 	check(holds(ground, 1, "log", 10), "moveNearbyStacksToInventory: the rest stays on the ground under the same id")
-	local rest = ground.byId[1]
+	local rest = ground.itemsById[1]
 	check(
 		rest.position.x == 2 and rest.droppedAt == 5,
 		"moveNearbyStacksToInventory: the rest lies where it was and is no younger"
@@ -347,7 +347,7 @@ do -- the nearest first
 	)
 	check(Inventory.countItems(pack, "fish") == 8, "moveNearbyStacksToInventory: the nearest is picked up first")
 	check(
-		ground.byId[near] == nil and holds(ground, far, "log", 16),
+		ground.itemsById[near] == nil and holds(ground, far, "log", 16),
 		"moveNearbyStacksToInventory: the farther one stays"
 	)
 
@@ -357,7 +357,7 @@ do -- the nearest first
 	local second = GroundItems.dropStackAt(tied, ItemStack.new("fish", 8), at(-2, 0, 0), 0)
 	GroundItems.moveNearbyStacksToInventory(tied, at(0, 0, 0), onePack, 10)
 	check(
-		tied.byId[first] == nil and holds(tied, second, "fish", 8),
+		tied.itemsById[first] == nil and holds(tied, second, "fish", 8),
 		"moveNearbyStacksToInventory: of two equally near, the one dropped first is picked up first"
 	)
 
@@ -371,7 +371,7 @@ do -- the nearest first
 		"moveNearbyStacksToInventory: stacks top each other up"
 	)
 	check(
-		filling.byId[1] == nil and filling.byId[2] == nil and holds(filling, 3, "log", 4),
+		filling.itemsById[1] == nil and filling.itemsById[2] == nil and holds(filling, 3, "log", 4),
 		"moveNearbyStacksToInventory: the farthest is the one left short"
 	)
 end
@@ -383,7 +383,7 @@ do -- lying too long
 	GroundItems.removeExpiredStacks(ground, 100 + LIFETIME - 0.01)
 	check(groundItemCount(ground) == 2, "removeExpiredStacks: nothing goes before its time")
 	GroundItems.removeExpiredStacks(ground, 100 + LIFETIME)
-	check(ground.byId[1] == nil, "removeExpiredStacks: a ground item is gone once it has lain for the lifetime")
+	check(ground.itemsById[1] == nil, "removeExpiredStacks: a ground item is gone once it has lain for the lifetime")
 	check(holds(ground, 2, "fish", 2), "removeExpiredStacks: a younger one stays")
 	check(ground.nextId == 3, "removeExpiredStacks: ids are not used again")
 	GroundItems.removeExpiredStacks(ground, 100000)
@@ -448,7 +448,7 @@ do -- many random drops, pickups and expiries: no item is made, and none is lost
 					expired[itemId] += before[itemId] - itemsOnGround(ground, itemId)
 				end
 			end
-			for id, groundItem: GroundItems.GroundItem in ground.byId :: any do
+			for id, groundItem: GroundItems.GroundItem in ground.itemsById :: any do
 				if ItemStack.validate(groundItem.stack) ~= nil or id >= ground.nextId then
 					allValid = false
 				end

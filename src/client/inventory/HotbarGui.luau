@@ -28,7 +28,7 @@ export type HotbarGui = {
 	--- The slots, in order: `slots[3]` draws hotbar slot 3.
 	read slots: { SlotGui.SlotGui },
 	--- The name of what is in hand, above the slots. It is empty while the hand is empty.
-	read heldLabel: TextLabel,
+	read selectedItemLabel: TextLabel,
 }
 
 --- The space between two slots, in pixels before the screen is scaled.
@@ -84,14 +84,14 @@ local function makePackButton(row: Frame, slotCount: number, onPackClicked: () -
 	return packButton
 end
 
-local function makeHeldLabel(row: Frame, slotCount: number): TextLabel
-	local heldLabel = makeLabel("Held", 15, Enum.Font.GothamBold)
-	heldLabel.AnchorPoint = Vector2.new(0.5, 1)
-	heldLabel.Position = UDim2.fromOffset(slotCount * (SlotGui.SIZE + GAP) / 2, -6)
-	heldLabel.Size = UDim2.fromOffset(300, 18)
-	heldLabel.Text = ""
-	heldLabel.Parent = row
-	return heldLabel
+local function makeSelectedItemLabel(row: Frame, slotCount: number): TextLabel
+	local selectedItemLabel = makeLabel("Held", 15, Enum.Font.GothamBold)
+	selectedItemLabel.AnchorPoint = Vector2.new(0.5, 1)
+	selectedItemLabel.Position = UDim2.fromOffset(slotCount * (SlotGui.SIZE + GAP) / 2, -6)
+	selectedItemLabel.Size = UDim2.fromOffset(300, 18)
+	selectedItemLabel.Text = ""
+	selectedItemLabel.Parent = row
+	return selectedItemLabel
 end
 
 --- Returns a new hotbar of `slotCount` slots, drawn in a `ScreenGui` inside `parent`, showing
@@ -116,10 +116,10 @@ function HotbarGui.new(parent: Instance, slotCount: number, callbacks: Callbacks
 		slots[slot] = makeSlot(row, slot, callbacks.onSlotChosen)
 	end
 	makePackButton(row, slotCount, callbacks.onPackClicked)
-	local heldLabel = makeHeldLabel(row, slotCount)
+	local selectedItemLabel = makeSelectedItemLabel(row, slotCount)
 
 	screenGui.Parent = parent
-	return { screenGui = screenGui, slots = slots, heldLabel = heldLabel }
+	return { screenGui = screenGui, slots = slots, selectedItemLabel = selectedItemLabel }
 end
 
 --- Draws the first slots of `pack`, with a bright edge on slot `selectedSlot` and the name of the
@@ -130,7 +130,7 @@ function HotbarGui.update(hotbarGui: HotbarGui, pack: Inventory.Inventory, selec
 		SlotGui.setSelected(slotGui, slot == selectedSlot)
 	end
 	local held = Inventory.getStack(pack, selectedSlot)
-	hotbarGui.heldLabel.Text = if held ~= nil then ItemLooks[held.itemId].name else ""
+	hotbarGui.selectedItemLabel.Text = if held ~= nil then ItemLooks[held.itemId].name else ""
 end
 
 --- Shows the hotbar if `visible` is `true`, and hides it if not.

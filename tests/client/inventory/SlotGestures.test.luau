@@ -53,7 +53,7 @@ end
 
 do -- new
 	local gestures = SlotGestures.new()
-	check(gestures.inProgress == nil, "new: no gesture is in progress")
+	check(gestures.gestureInProgress == nil, "new: no gesture is in progress")
 	check(gestures.lastLeftClick == nil, "new: no click is remembered")
 	check(#SlotGestures.getDraggedSlots(gestures) == 0, "new: no slots are dragged")
 end
@@ -72,7 +72,7 @@ do -- a click
 			"endGesture: the click says where the button came up"
 		)
 	end
-	check(gestures.inProgress == nil, "endGesture: the gesture is over")
+	check(gestures.gestureInProgress == nil, "endGesture: the gesture is over")
 	check(
 		release(gestures, "left", at("pack", 3), false, 10.1) == nil,
 		"endGesture: a second release with no press gives nothing"
@@ -101,7 +101,7 @@ do -- the button that comes up is not the one that went down
 		release(gestures, "right", at("pack", 3), false, 10) == nil,
 		"endGesture: the other button coming up gives nothing"
 	)
-	check(gestures.inProgress ~= nil, "endGesture: and the gesture goes on")
+	check(gestures.gestureInProgress ~= nil, "endGesture: and the gesture goes on")
 	check(
 		kindOf(release(gestures, "left", at("pack", 3), false, 10.1)) == "click",
 		"endGesture: until its own button comes up"
@@ -122,7 +122,7 @@ do -- a button that comes up away from the slot it went down on
 		release(gestures, "left", at("pack", 4), false, 10) == nil,
 		"endGesture: coming up on another slot, with none crossed, gives nothing"
 	)
-	check(gestures.inProgress == nil, "endGesture: and the gesture is over")
+	check(gestures.gestureInProgress == nil, "endGesture: and the gesture is over")
 
 	press(gestures, "left", at("pack", 3))
 	check(
@@ -132,7 +132,7 @@ do -- a button that comes up away from the slot it went down on
 
 	press(gestures, "left", at("pack", 3))
 	check(release(gestures, "left", nil, false, 10) == nil, "endGesture: coming up over no slot gives nothing")
-	check(gestures.inProgress == nil, "endGesture: and the gesture is over again")
+	check(gestures.gestureInProgress == nil, "endGesture: and the gesture is over again")
 end
 
 do -- double clicks
@@ -316,7 +316,7 @@ do -- a drag across slots
 		)
 	end
 	check(
-		gestures.inProgress == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
+		gestures.gestureInProgress == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
 		"endGesture: and the drag is over"
 	)
 	check(release(gestures, "left", at("other", 3), false, 10.1) == nil, "endGesture: a second release ends nothing")
@@ -366,7 +366,7 @@ do -- dragOverSlot and presses that are not alone
 	enter(unpressed, at("pack", 3))
 	enter(unpressed, at("pack", 4))
 	check(
-		unpressed.inProgress == nil and #SlotGestures.getDraggedSlots(unpressed) == 0,
+		unpressed.gestureInProgress == nil and #SlotGestures.getDraggedSlots(unpressed) == 0,
 		"dragOverSlot: does nothing when no button went down on a slot"
 	)
 	check(release(unpressed, "left", at("pack", 4), false, 10) == nil, "endGesture: so nothing comes of it")
@@ -418,7 +418,7 @@ do -- reset
 	enter(gestures, at("pack", 4))
 	SlotGestures.reset(gestures)
 	check(
-		gestures.inProgress == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
+		gestures.gestureInProgress == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
 		"reset: a press in progress is forgotten"
 	)
 	check(release(gestures, "left", at("pack", 4), false, 10.2) == nil, "reset: so its button coming up gives nothing")

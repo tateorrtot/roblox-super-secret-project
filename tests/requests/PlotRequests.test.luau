@@ -45,7 +45,7 @@ end
 -- How many of one item lie on the ground, in all.
 local function onGround(world: World.World, itemId: string): number
 	local count = 0
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		if groundItem.stack.itemId == itemId then
 			count += groundItem.stack.count
 		end
@@ -203,7 +203,9 @@ do -- usePlacedItem
 	send("usePlacedItem", world, state, crateId)
 	local screen = state.screen
 	check(
-		screen ~= nil and screen.other == world.plot.placedItemsById[crateId].inventory and screen.pack == state.pack,
+		screen ~= nil
+			and screen.otherInventory == world.plot.placedItemsById[crateId].inventory
+			and screen.pack == state.pack,
 		"usePlacedItem: opens the crate's inventory on the player's screen, beside their pack"
 	)
 	check(state.openedPlacedItemId == crateId, "usePlacedItem: and the player has that crate open")
@@ -224,7 +226,8 @@ do -- usePlacedItem
 	World.setPlayerPosition(world, 1, at(18, 0, 10), at(24, 0, 10))
 	send("usePlacedItem", world, state, postId)
 	check(
-		(state.screen :: InventoryScreen.InventoryScreen).other == world.plot.placedItemsById[crateId].inventory
+		(state.screen :: InventoryScreen.InventoryScreen).otherInventory
+				== world.plot.placedItemsById[crateId].inventory
 			and state.openedPlacedItemId == crateId,
 		"usePlacedItem: ignored for a placed item that holds nothing, even in reach, and what was open stays open"
 	)
@@ -252,7 +255,7 @@ do -- usePlacedItem
 	send("usePlacedItem", ovenWorld, withOven, ovenId)
 	local ovenScreen = withOven.screen
 	check(
-		ovenScreen ~= nil and ovenScreen.other == ovenWorld.plot.placedItemsById[ovenId].inventory,
+		ovenScreen ~= nil and ovenScreen.otherInventory == ovenWorld.plot.placedItemsById[ovenId].inventory,
 		"usePlacedItem: opens an oven's slots beside the pack"
 	)
 	check(
@@ -267,8 +270,8 @@ do -- usePlacedItem
 	local secondCall = requests.usePlacedItem :: (...any) -> ()
 	secondCall(twoWorld, second, twoCrate)
 	check(
-		(first.screen :: InventoryScreen.InventoryScreen).other
-			== (second.screen :: InventoryScreen.InventoryScreen).other,
+		(first.screen :: InventoryScreen.InventoryScreen).otherInventory
+			== (second.screen :: InventoryScreen.InventoryScreen).otherInventory,
 		"usePlacedItem: two players may have the same crate open"
 	)
 end
@@ -312,7 +315,7 @@ do -- hitPlacedItem
 	check(onGround(world, "fish") == 2, "hitPlacedItem: what was left in it is spilled on the ground")
 	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 2, "hitPlacedItem: nothing was made or lost")
 	local allNear = true
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		if Position.getGroundDistance(groundItem.position, at(6, 0, 6)) > 2 or groundItem.droppedAt ~= 100 then
 			allNear = false
 		end
@@ -350,7 +353,7 @@ do -- hitPlacedItem
 	send("hitPlacedItem", ringWorld, ringState, ringCrate)
 	local spots: { [string]: boolean } = {}
 	local spotCount, onRing = 0, true
-	for _, groundItem in ringWorld.groundItems.byId do
+	for _, groundItem in ringWorld.groundItems.itemsById do
 		local key = string.format("%.3f %.3f", groundItem.position.x, groundItem.position.z)
 		if not spots[key] then
 			spots[key] = true

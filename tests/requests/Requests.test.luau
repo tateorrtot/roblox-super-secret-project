@@ -45,7 +45,7 @@ end
 -- stands on the plot, and on the ground.
 local function inWorld(world: World.World, itemId: string): number
 	local count = 0
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		if groundItem.stack.itemId == itemId then
 			count += groundItem.stack.count
 		end

@@ -25,19 +25,19 @@ export type PlayerState = {
 }
 
 --- How many slots a new player's pack has.
-PlayerState.PACK_SLOTS = 36
+PlayerState.PACK_SLOT_COUNT = 36
 
 --- How many of the pack's slots, counting from slot 1, are the hotbar.
-PlayerState.HOTBAR_SLOTS = 9
+PlayerState.HOTBAR_SLOT_COUNT = 9
 
 --- Returns a new player with hotbar slot 1 selected, no screen open and no character. A stack
 --- they drop lands at `dropPosition`. They carry `pack`, or a pack that holds nothing if none is
 --- given.
 function PlayerState.new(dropPosition: Position.Position, pack: Inventory.Inventory?): PlayerState
-	local playerPack = pack or Inventory.new(PlayerState.PACK_SLOTS)
+	local playerPack = pack or Inventory.new(PlayerState.PACK_SLOT_COUNT)
 	return {
 		pack = playerPack,
-		hotbar = Hotbar.new(playerPack, PlayerState.HOTBAR_SLOTS),
+		hotbar = Hotbar.new(playerPack, PlayerState.HOTBAR_SLOT_COUNT),
 		dropPosition = dropPosition,
 	}
 end

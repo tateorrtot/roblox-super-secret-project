@@ -24,11 +24,11 @@ export type EncodedSnapshot = {
 	--- The open inventory screen. `nil` when none is open.
 	screen: {
 		--- The other inventory that is open. `nil` when the pack is open alone.
-		other: Inventory.EncodedInventory?,
-		--- The id of the item that the placed item whose inventory `other` is, is: `"crate"`.
-		otherItemId: string?,
+		otherInventory: Inventory.EncodedInventory?,
+		--- The id of the item that the placed item whose inventory `otherInventory` is, is: `"crate"`.
+		otherInventoryItemId: string?,
 		carriedStack: { itemId: string, count: number }?,
-		--- How far the fire and the work have got. `nil` unless `other` is a station's inventory.
+		--- How far the fire and the work have got. `nil` unless `otherInventory` is a station's inventory.
 		stationProgress: StationProgress?,
 	}?,
 }
@@ -38,7 +38,7 @@ export type PlayerSnapshot = {
 	--- The open inventory screen, over `pack`. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
 	--- The id of the item that the placed item shown beside the pack is, such as `"crate"`.
-	otherItemId: string?,
+	otherInventoryItemId: string?,
 	--- How far the fire and the work have got. `nil` unless that placed item is a station.
 	stationProgress: StationProgress?,
 }
@@ -65,8 +65,8 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 	return {
 		pack = Inventory.encode(player.pack),
 		screen = {
-			other = if screen.other then Inventory.encode(screen.other) else nil,
-			otherItemId = if placedItem then placedItem.itemId else nil,
+			otherInventory = if screen.otherInventory then Inventory.encode(screen.otherInventory) else nil,
+			otherInventoryItemId = if placedItem then placedItem.itemId else nil,
 			carriedStack = if carried then { itemId = carried.itemId, count = carried.count } else nil,
 			stationProgress = if station then stationProgressOf(station) else nil,
 		},
@@ -82,13 +82,15 @@ function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 		return { pack = pack }
 	end
 	local carried = encodedScreen.carriedStack
-	local screen =
-		InventoryScreen.new(pack, if encodedScreen.other then assert(Inventory.decode(encodedScreen.other)) else nil)
+	local screen = InventoryScreen.new(
+		pack,
+		if encodedScreen.otherInventory then assert(Inventory.decode(encodedScreen.otherInventory)) else nil
+	)
 	screen.carriedStack = if carried then ItemStack.new(carried.itemId, carried.count) else nil
 	return {
 		pack = pack,
 		screen = screen,
-		otherItemId = encodedScreen.otherItemId,
+		otherInventoryItemId = encodedScreen.otherInventoryItemId,
 		stationProgress = encodedScreen.stationProgress,
 	}
 end

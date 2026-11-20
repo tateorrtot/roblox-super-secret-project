@@ -37,7 +37,7 @@ end
 -- The ground items that hold one item, as a list sorted by count.
 local function groundStacks(world: World.World, itemId: string): { GroundItems.GroundItem }
 	local found: { GroundItems.GroundItem } = {}
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		if groundItem.stack.itemId == itemId then
 			table.insert(found, groundItem)
 		end
@@ -127,7 +127,7 @@ do -- a new world
 	check(world.plotCorner == corner, "new: knows where the plot's corner is")
 	check(world.now == 50, "new: starts at the time it was given")
 	check(next(world.players) == nil, "new: has no players")
-	check(next(world.groundItems.byId) == nil, "new: has nothing on the ground")
+	check(next(world.groundItems.itemsById) == nil, "new: has nothing on the ground")
 	check(next(world.stations) == nil, "new: a plot with nothing on it has no stations")
 end
 
@@ -167,7 +167,7 @@ do -- players come and go
 	local state = World.addPlayer(world, 7, at(1, 0, 2))
 	check(world.players[7] == state, "addPlayer: returns the player now in the world")
 	check(Inventory.isEmpty(state.pack), "addPlayer: with no pack given, the pack holds nothing")
-	check(state.pack.slotCount == PlayerState.PACK_SLOTS, "addPlayer: and has the slots of any pack")
+	check(state.pack.slotCount == PlayerState.PACK_SLOT_COUNT, "addPlayer: and has the slots of any pack")
 	check(state.screen == nil and state.openedPlacedItemId == nil, "addPlayer: a new player has no screen open")
 	check(state.position == nil, "addPlayer: and stands nowhere yet")
 	check(
@@ -180,7 +180,7 @@ do -- players come and go
 		"addPlayer: a second player is another state, and an id may be negative"
 	)
 
-	local pack = Inventory.new(PlayerState.PACK_SLOTS)
+	local pack = Inventory.new(PlayerState.PACK_SLOT_COUNT)
 	Inventory.setStack(pack, 4, ItemStack.new("apple", 6))
 	local carrying = World.addPlayer(world, 8, at(0, 0, 0), pack)
 	check(carrying.pack == pack, "addPlayer: a player given a pack carries that pack")
@@ -253,7 +253,10 @@ end
 do -- closing a player's screen
 	local world, state, ids = newWorld()
 	World.closeScreen(world, state)
-	check(state.screen == nil and next(world.groundItems.byId) == nil, "closeScreen: does nothing if no screen is open")
+	check(
+		state.screen == nil and next(world.groundItems.itemsById) == nil,
+		"closeScreen: does nothing if no screen is open"
+	)
 
 	state.screen = InventoryScreen.new(state.pack)
 	World.closeScreen(world, state)
@@ -269,10 +272,13 @@ do -- closing a player's screen
 	check(state.screen == nil and state.openedPlacedItemId == nil, "closeScreen: nothing is open afterwards")
 	check(Inventory.countItems(state.pack, "fish") == 5, "closeScreen: what was carried goes back into the pack")
 	check(Inventory.isEmpty(insideOf(world, ids.crate)), "closeScreen: and not into the crate")
-	check(next(world.groundItems.byId) == nil, "closeScreen: and nothing lands on the ground when the pack has room")
+	check(
+		next(world.groundItems.itemsById) == nil,
+		"closeScreen: and nothing lands on the ground when the pack has room"
+	)
 
 	-- A pack with no room for the carried stack: it lands at the player's drop position.
-	for slot = 1, PlayerState.PACK_SLOTS do
+	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(state.pack, slot, ItemStack.new("stove", 1))
 	end
 	Inventory.setStack(insideOf(world, ids.crate), 1, ItemStack.new("fish", 5))
@@ -286,7 +292,7 @@ do -- closing a player's screen
 
 	-- A part fits and the rest is left over.
 	local world2, state2, ids2 = newWorld()
-	for slot = 1, PlayerState.PACK_SLOTS do
+	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(state2.pack, slot, ItemStack.new("fish", 8))
 	end
 	Inventory.setStack(state2.pack, 10, ItemStack.new("fish", 6))
@@ -303,7 +309,7 @@ do -- closing a player's screen
 	state3.screen = InventoryScreen.new(state3.pack)
 	World.closeScreen(world3, state3)
 	check(
-		Inventory.countItems(state3.pack, "log") == 12 and next(world3.groundItems.byId) == nil,
+		Inventory.countItems(state3.pack, "log") == 12 and next(world3.groundItems.itemsById) == nil,
 		"closeScreen: a screen with nothing carried changes nothing else"
 	)
 end
@@ -314,7 +320,7 @@ do -- opening a placed item
 	local screen = state.screen
 	check(screen ~= nil and screen.pack == state.pack, "openPlacedItem: the screen shows the player's pack")
 	check(
-		screen ~= nil and screen.other == insideOf(world, ids.crate),
+		screen ~= nil and screen.otherInventory == insideOf(world, ids.crate),
 		"openPlacedItem: and the crate's own inventory beside it"
 	)
 	check(state.openedPlacedItemId == ids.crate, "openPlacedItem: and the player has that placed item open")
@@ -333,7 +339,7 @@ do -- opening a placed item
 	)
 	check(state.openedPlacedItemId == ids.oven, "openPlacedItem: and the oven is what the player has open")
 	local ovenScreen = state.screen :: InventoryScreen.InventoryScreen
-	check(ovenScreen.other == insideOf(world, ids.oven), "openPlacedItem: beside the oven's own inventory")
+	check(ovenScreen.otherInventory == insideOf(world, ids.oven), "openPlacedItem: beside the oven's own inventory")
 	check(ovenScreen.otherSlotAcceptsItem ~= nil, "openPlacedItem: a station's slots have rules")
 	check(
 		InventoryScreen.slotAcceptsItem(ovenScreen, "other", Station.INPUT_SLOT, "fish"),
@@ -378,7 +384,7 @@ do -- opening a placed item
 	)
 	check(World.openPlacedItem(world, other, ids.oven), "openPlacedItem: two players may have the same oven open")
 	check(
-		other.screen ~= nil and (other.screen :: any).other == (state.screen :: any).other,
+		other.screen ~= nil and (other.screen :: any).otherInventory == (state.screen :: any).otherInventory,
 		"openPlacedItem: looking into the same inventory"
 	)
 end
@@ -519,7 +525,7 @@ do -- taking a placed item off
 	World.removePlacedItem(ringWorld, ringCrate)
 	local spots: { [string]: boolean } = {}
 	local spotCount = 0
-	for _, groundItem in ringWorld.groundItems.byId do
+	for _, groundItem in ringWorld.groundItems.itemsById do
 		local key = string.format("%.3f %.3f", groundItem.position.x, groundItem.position.z)
 		if not spots[key] then
 			spots[key] = true
@@ -542,13 +548,13 @@ do -- taking a placed item off
 		"removePlacedItem: a placed item that holds nothing just becomes an item on the ground"
 	)
 	local groundBefore = 0
-	for _ in world.groundItems.byId do
+	for _ in world.groundItems.itemsById do
 		groundBefore += 1
 	end
 	World.removePlacedItem(world, 999)
 	World.removePlacedItem(world, ids.stove)
 	local groundAfter = 0
-	for _ in world.groundItems.byId do
+	for _ in world.groundItems.itemsById do
 		groundAfter += 1
 	end
 	check(groundAfter == groundBefore, "removePlacedItem: does nothing for an id that no placed item has")
@@ -678,7 +684,7 @@ do -- time passing: screens close
 	local full, fullState, fullIds = newWorld()
 	World.openPlacedItem(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
-	for slot = 1, PlayerState.PACK_SLOTS do
+	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
 	World.setPlayerPosition(full, 1, at(6, 0, 200), at(7, 0, 200))
@@ -776,7 +782,7 @@ do -- a player leaves
 	check(Inventory.isEmpty(insideOf(world, ids.crate)), "removePlayer: and not in the crate")
 
 	local full, fullState, fullIds = newWorld()
-	for slot = 1, PlayerState.PACK_SLOTS do
+	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
 	World.openPlacedItem(full, fullState, fullIds.crate)
@@ -797,7 +803,7 @@ do -- several players, several things at once, and no item is made or lost
 		return math.floor(seed / 65536) % limit + 1
 	end
 	local function randomPack(): Inventory.Inventory
-		local pack = Inventory.new(PlayerState.PACK_SLOTS)
+		local pack = Inventory.new(PlayerState.PACK_SLOT_COUNT)
 		for _ = 1, 6 do
 			local itemId = itemIds[random(#itemIds)]
 			Inventory.addItems(pack, itemId, random(ItemRegistry.get(itemId).stackSize))
@@ -892,7 +898,7 @@ do -- several players, several things at once, and no item is made or lost
 				-- Place one item taken from a slot of the pack, or put it back if it cannot be placed.
 				if state ~= nil then
 					run(function()
-						local slot = random(PlayerState.PACK_SLOTS)
+						local slot = random(PlayerState.PACK_SLOT_COUNT)
 						local taken = Inventory.takeFromSlot(state.pack, slot, 1)
 						if taken ~= nil then
 							if World.placeItem(world, taken.itemId, random(6), random(6)) == nil then
@@ -939,7 +945,7 @@ do -- several players, several things at once, and no item is made or lost
 				local screen = if state ~= nil then state.screen else nil
 				if screen ~= nil then
 					run(function()
-						local side: InventoryScreen.Side = if screen.other ~= nil and random(2) == 1
+						local side: InventoryScreen.Side = if screen.otherInventory ~= nil and random(2) == 1
 							then "other"
 							else "pack"
 						local inventory = InventoryScreen.getInventoryOnSide(screen, side)
@@ -961,7 +967,7 @@ do -- several players, several things at once, and no item is made or lost
 								screen,
 								side,
 								slot,
-								if side == "pack" and screen.other ~= nil then "other" else "pack"
+								if side == "pack" and screen.otherInventory ~= nil then "other" else "pack"
 							)
 						else
 							local taken = InventoryScreen.takeCarriedStack(screen, random(4))
@@ -975,7 +981,7 @@ do -- several players, several things at once, and no item is made or lost
 				-- Drop part of a slot of the pack onto the ground.
 				if state ~= nil then
 					run(function()
-						local taken = Inventory.takeFromSlot(state.pack, random(PlayerState.PACK_SLOTS), random(4))
+						local taken = Inventory.takeFromSlot(state.pack, random(PlayerState.PACK_SLOT_COUNT), random(4))
 						if taken ~= nil then
 							World.dropStackAt(world, taken, state.dropPosition)
 						end

@@ -35,8 +35,8 @@ export type GroundItems = {
 	nextId: number,
 	--- Every ground item, by id. An id with no entry is not on the ground.
 	--- Note: ids are not consecutive, because a ground item that is picked up or expires leaves
-	--- its id unused. `#byId` is not the number of ground items.
-	byId: { [number]: GroundItem },
+	--- its id unused. `#itemsById` is not the number of ground items.
+	itemsById: { [number]: GroundItem },
 }
 
 --- How long a ground item lies before `removeExpiredStacks` removes it, in seconds.
@@ -54,7 +54,7 @@ GroundItems.MERGE_RADIUS = 1.5
 local function idsNearestFirst(groundItems: GroundItems, position: Position, radius: number): { number }
 	local distances: { [number]: number } = {}
 	local ids: { number } = {}
-	for id, groundItem in groundItems.byId do
+	for id, groundItem in groundItems.itemsById do
 		local distance = Position.getDistance(position, groundItem.position)
 		if distance <= radius then
 			distances[id] = distance
@@ -69,7 +69,7 @@ end
 
 --- Returns a new set of ground items with nothing on the ground.
 function GroundItems.new(): GroundItems
-	return { nextId = 1, byId = {} }
+	return { nextId = 1, itemsById = {} }
 end
 
 --- Puts `stack` on the ground at `position`, dropped at the time `now`, and returns the id of the
@@ -82,9 +82,9 @@ end
 --- from exists twice.
 function GroundItems.dropStackAt(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
 	for _, id in idsNearestFirst(groundItems, position, GroundItems.MERGE_RADIUS) do
-		local joined = groundItems.byId[id]
+		local joined = groundItems.itemsById[id]
 		if ItemStack.isSameItem(joined.stack, stack) and ItemStack.getSpaceLeft(joined.stack) >= stack.count then
-			groundItems.byId[id] = table.freeze({
+			groundItems.itemsById[id] = table.freeze({
 				stack = (ItemStack.merge(joined.stack, stack)),
 				position = joined.position,
 				droppedAt = now,
@@ -94,7 +94,7 @@ function GroundItems.dropStackAt(groundItems: GroundItems, stack: ItemStack, pos
 	end
 
 	local id = groundItems.nextId
-	groundItems.byId[id] = table.freeze({
+	groundItems.itemsById[id] = table.freeze({
 		stack = stack,
 		position = table.freeze({ x = position.x, y = position.y, z = position.z }),
 		droppedAt = now,
@@ -104,13 +104,13 @@ function GroundItems.dropStackAt(groundItems: GroundItems, stack: ItemStack, pos
 end
 
 local function moveIntoInventory(groundItems: GroundItems, id: number, inventory: Inventory): number
-	local groundItem = groundItems.byId[id]
+	local groundItem = groundItems.itemsById[id]
 	local stack = groundItem.stack
 	local added = Inventory.addItems(inventory, stack.itemId, stack.count)
 	if added == stack.count then
-		groundItems.byId[id] = nil
+		groundItems.itemsById[id] = nil
 	elseif added > 0 then
-		groundItems.byId[id] = table.freeze({
+		groundItems.itemsById[id] = table.freeze({
 			stack = ItemStack.new(stack.itemId, stack.count - added),
 			position = groundItem.position,
 			droppedAt = groundItem.droppedAt,
@@ -133,7 +133,7 @@ function GroundItems.moveNearbyStacksToInventory(
 ): number
 	local moved = 0
 	for _, id in idsNearestFirst(groundItems, position, GroundItems.PICKUP_RADIUS) do
-		if now - groundItems.byId[id].droppedAt >= GroundItems.PICKUP_DELAY_SECONDS then
+		if now - groundItems.itemsById[id].droppedAt >= GroundItems.PICKUP_DELAY_SECONDS then
 			moved += moveIntoInventory(groundItems, id, inventory)
 		end
 	end
@@ -143,9 +143,9 @@ end
 --- Removes every ground item that was dropped `LIFETIME_SECONDS` or more before `now`. Their items
 --- are gone.
 function GroundItems.removeExpiredStacks(groundItems: GroundItems, now: number)
-	for id, groundItem in groundItems.byId do
+	for id, groundItem in groundItems.itemsById do
 		if now - groundItem.droppedAt >= GroundItems.LIFETIME_SECONDS then
-			groundItems.byId[id] = nil
+			groundItems.itemsById[id] = nil
 		end
 	end
 end

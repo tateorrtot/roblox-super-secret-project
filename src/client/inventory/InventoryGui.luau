@@ -60,9 +60,9 @@ export type InventoryGui = {
 	--- The frame that moves the carried stack's picture with the pointer.
 	read carriedFrame: Frame,
 	--- The connection that moves `carriedFrame` each frame, or `nil` while the screen is closed.
-	following: RBXScriptConnection?,
+	pointerConnection: RBXScriptConnection?,
 	--- The slot the pointer is over, or `nil` when it is over none.
-	hovered: { side: Side, slot: number }?,
+	hoveredSlot: { side: Side, slot: number }?,
 	--- Whether the other inventory is drawn as a station's.
 	showsStation: boolean,
 	--- The parts that are only there for a station: the fill of its fire gauge, the fill of its work
@@ -92,7 +92,7 @@ local function makeSlot(inventoryGui: InventoryGui, side: Side, slot: number): S
 	local slotGui = SlotGui.new(inventoryGui.panel)
 	slotGui.button.Name = (if side == "pack" then "PackSlot" else "OtherSlot") .. slot
 	local function press(button: Button)
-		inventoryGui.hovered = { side = side, slot = slot }
+		inventoryGui.hoveredSlot = { side = side, slot = slot }
 		inventoryGui.callbacks.onSlotPressed(side, slot, button)
 	end
 	slotGui.button.MouseButton1Down:Connect(function()
@@ -102,15 +102,15 @@ local function makeSlot(inventoryGui: InventoryGui, side: Side, slot: number): S
 		press("right")
 	end)
 	slotGui.button.MouseEnter:Connect(function()
-		inventoryGui.hovered = { side = side, slot = slot }
+		inventoryGui.hoveredSlot = { side = side, slot = slot }
 		if isMouseButtonDown() then
 			inventoryGui.callbacks.onSlotEntered(side, slot)
 		end
 	end)
 	slotGui.button.MouseLeave:Connect(function()
-		local hovered = inventoryGui.hovered
+		local hovered = inventoryGui.hoveredSlot
 		if hovered ~= nil and hovered.side == side and hovered.slot == slot then
-			inventoryGui.hovered = nil
+			inventoryGui.hoveredSlot = nil
 		end
 	end)
 	return slotGui
@@ -195,7 +195,7 @@ local function layOut(inventoryGui: InventoryGui)
 end
 
 local function followPointer(inventoryGui: InventoryGui)
-	if inventoryGui.following ~= nil then
+	if inventoryGui.pointerConnection ~= nil then
 		return
 	end
 	local carriedFrame = inventoryGui.carriedFrame
@@ -204,7 +204,7 @@ local function followPointer(inventoryGui: InventoryGui)
 		carriedFrame.Position = UDim2.fromOffset(pointer.X, pointer.Y)
 	end
 	moveToPointer()
-	inventoryGui.following = RunService.RenderStepped:Connect(moveToPointer)
+	inventoryGui.pointerConnection = RunService.RenderStepped:Connect(moveToPointer)
 end
 
 local function makeScreenGui(): ScreenGui
@@ -420,20 +420,20 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 end
 
 --- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
---- there is one, and the `other` inventory above the pack if there is one. `otherName` is written
---- over the other inventory and is not used when there is none. If `gauges` is given and `other` has
+--- there is one, and the `otherInventory` inventory above the pack if there is one. `otherInventoryName` is written
+--- over the other inventory and is not used when there is none. If `gauges` is given and `otherInventory` has
 --- three slots, they are drawn as a station's input, fuel and output, and the gauges are filled as far
 --- as `gauges` says.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
-	other: Inventory.Inventory?,
-	otherName: string,
+	otherInventory: Inventory.Inventory?,
+	otherInventoryName: string,
 	carriedStack: ItemStack.ItemStack?,
 	gauges: StationGauges?
 )
-	inventoryGui.title.Text = if other ~= nil then otherName else PACK_NAME
-	local otherSlotCount = if other ~= nil then other.slotCount else 0
+	inventoryGui.title.Text = if otherInventory ~= nil then otherInventoryName else PACK_NAME
+	local otherSlotCount = if otherInventory ~= nil then otherInventory.slotCount else 0
 	local showsStation = gauges ~= nil and otherSlotCount == 3
 	if gauges ~= nil and showsStation then
 		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(gauges.fuelLeftRatio, 0, 1))
@@ -452,9 +452,9 @@ function InventoryGui.show(
 	for slot, slotGui in inventoryGui.packSlots do
 		SlotGui.setStack(slotGui, Inventory.getStack(pack, slot))
 	end
-	if other ~= nil then
+	if otherInventory ~= nil then
 		for slot, slotGui in inventoryGui.otherSlots do
-			SlotGui.setStack(slotGui, Inventory.getStack(other, slot))
+			SlotGui.setStack(slotGui, Inventory.getStack(otherInventory, slot))
 		end
 	end
 	StackIcon.setStack(inventoryGui.carriedIcon, carriedStack)
@@ -488,11 +488,11 @@ end
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
 	InventoryGui.setHighlightedSlots(inventoryGui, {})
-	inventoryGui.hovered = nil
-	local following = inventoryGui.following
+	inventoryGui.hoveredSlot = nil
+	local following = inventoryGui.pointerConnection
 	if following ~= nil then
 		following:Disconnect()
-		inventoryGui.following = nil
+		inventoryGui.pointerConnection = nil
 	end
 end
 

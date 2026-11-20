@@ -27,7 +27,7 @@ export type Gesture = {
 export type SlotGestures = {
 	--- The gesture in progress: the button that is down, and the slots crossed so far. `nil` when
 	--- no button is down.
-	inProgress: { button: Button, slots: { Slot } }?,
+	gestureInProgress: { button: Button, slots: { Slot } }?,
 	--- The last left click that could be the first half of a double click.
 	lastLeftClick: { slot: Slot, at: number }?,
 }
@@ -46,13 +46,13 @@ end
 
 --- Begins a gesture: a mouse button went down on a slot. A gesture already in progress is forgotten.
 function SlotGestures.beginGesture(gestures: SlotGestures, button: Button, slot: Slot)
-	gestures.inProgress = { button = button, slots = { slot } }
+	gestures.gestureInProgress = { button = button, slots = { slot } }
 end
 
 --- Adds a slot to the gesture in progress: the pointer came onto it while the button is held.
 --- Does nothing if no gesture is in progress, or if the pointer has crossed that slot already.
 function SlotGestures.dragOverSlot(gestures: SlotGestures, slot: Slot)
-	local inProgress = gestures.inProgress
+	local inProgress = gestures.gestureInProgress
 	if inProgress == nil then
 		return
 	end
@@ -67,7 +67,7 @@ end
 --- Returns the slots crossed by the gesture in progress, in order, if it has crossed two or more.
 --- Returns an empty list otherwise.
 function SlotGestures.getDraggedSlots(gestures: SlotGestures): { Slot }
-	local inProgress = gestures.inProgress
+	local inProgress = gestures.gestureInProgress
 	if inProgress == nil or #inProgress.slots < 2 then
 		return {}
 	end
@@ -85,11 +85,11 @@ function SlotGestures.endGesture(
 	shiftHeld: boolean,
 	now: number
 ): Gesture?
-	local inProgress = gestures.inProgress
+	local inProgress = gestures.gestureInProgress
 	if inProgress == nil or inProgress.button ~= button then
 		return nil
 	end
-	gestures.inProgress = nil
+	gestures.gestureInProgress = nil
 	local last = gestures.lastLeftClick
 	gestures.lastLeftClick = nil
 	if #inProgress.slots >= 2 then
@@ -110,7 +110,7 @@ end
 
 --- Forgets the gesture in progress and the last click.
 function SlotGestures.reset(gestures: SlotGestures)
-	gestures.inProgress = nil
+	gestures.gestureInProgress = nil
 	gestures.lastLeftClick = nil
 end
 

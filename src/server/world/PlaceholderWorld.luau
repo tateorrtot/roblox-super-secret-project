@@ -27,7 +27,7 @@ export type PlaceholderWorld = {
 }
 
 --- How many tiles the square plot has along each side.
-PlaceholderWorld.PLOT_TILES = 18
+PlaceholderWorld.PLOT_SIZE_IN_TILES = 18
 
 local SLAB_HEIGHT = 0.4
 local PLOT_FROM_SPAWN = 12
@@ -96,7 +96,7 @@ local function makePosts(folder: Folder, center: Vector3, side: number)
 end
 
 local function makeStockedPlot(): Plot.Plot
-	local plot = Plot.new(PlaceholderWorld.PLOT_TILES, PlaceholderWorld.PLOT_TILES)
+	local plot = Plot.new(PlaceholderWorld.PLOT_SIZE_IN_TILES, PlaceholderWorld.PLOT_SIZE_IN_TILES)
 	local crateId = Plot.placeItem(plot, "crate", 13, 7) :: number
 	local inCrate = plot.placedItemsById[crateId].inventory :: Inventory.Inventory
 	Inventory.addItems(inCrate, "cheese", 8)
@@ -117,7 +117,7 @@ function PlaceholderWorld.build(): PlaceholderWorld
 	addGroundIfMissing(folder)
 	local spawnPoint = findOrMakeSpawnPoint(folder)
 
-	local side = PlaceholderWorld.PLOT_TILES * Plot.TILE_SIZE
+	local side = PlaceholderWorld.PLOT_SIZE_IN_TILES * Plot.TILE_SIZE
 	local center = Vector3.new(spawnPoint.X + side / 2 + PLOT_FROM_SPAWN, 0, spawnPoint.Z)
 	local slab = makeSlab(folder, center, side)
 	makePosts(folder, center, side)
@@ -148,7 +148,7 @@ function PlaceholderWorld.restockGroundItems(
 		return
 	end
 	local lying = 0
-	for _ in groundItems.byId do
+	for _ in groundItems.itemsById do
 		lying += 1
 	end
 	if lying >= GROUND_ITEMS_KEPT then

@@ -60,7 +60,7 @@ do -- the rules as numbers
 end
 
 do -- an empty pack
-	local saved = SaveData.encode(Inventory.new(PlayerState.PACK_SLOTS))
+	local saved = SaveData.encode(Inventory.new(PlayerState.PACK_SLOT_COUNT))
 	check(saved.version == 1, "encode: carries the current version")
 	check(saved.pack.slotCount == 36 and #saved.pack.stacks == 0, "encode: an empty pack is 36 slots and no stacks")
 	check(isPlain(saved), "encode: the data is plain")
@@ -70,7 +70,7 @@ do -- an empty pack
 end
 
 do -- a pack with things
-	local pack = Inventory.new(PlayerState.PACK_SLOTS)
+	local pack = Inventory.new(PlayerState.PACK_SLOT_COUNT)
 	Inventory.setStack(pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(pack, 9, ItemStack.new("stove", 1))
 	Inventory.setStack(pack, 36, ItemStack.new("fish", 8))
@@ -170,7 +170,7 @@ do -- many random packs: what is saved is what comes back
 	local stackSizes: { [string]: number } = { log = 16, fish = 8, stove = 1 }
 	local allSame, allPlain = true, true
 	for _ = 1, 60 do
-		local pack = Inventory.new(PlayerState.PACK_SLOTS)
+		local pack = Inventory.new(PlayerState.PACK_SLOT_COUNT)
 		for _ = 1, random(40) do
 			local itemId = itemIds[random(3)]
 			Inventory.setStack(pack, random(36), ItemStack.new(itemId, random(stackSizes[itemId])))

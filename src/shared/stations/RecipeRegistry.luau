@@ -20,13 +20,13 @@ export type Recipe = {
 }
 
 --- How many slots a station's item has: one for what goes in, one for fuel and one for what comes out.
-RecipeRegistry.STATION_SLOTS = 3
+RecipeRegistry.STATION_SLOT_COUNT = 3
 
 local recipesByStationThenInput: { [string]: { [string]: Recipe } } = {}
 
 --- Adds a copy of `recipe` to the registry, so that changing `recipe` afterwards changes nothing.
 --- Only the four fields of `Recipe` are copied. Fails if `recipe.station` is not a registered item
---- that is placeable and has `STATION_SLOTS` slots, if `recipe.input` or `recipe.output` is not a
+--- that is placeable and has `STATION_SLOT_COUNT` slots, if `recipe.input` or `recipe.output` is not a
 --- registered item, if `recipe.seconds` is not a finite number above 0, or if the station already
 --- has a recipe for the input.
 function RecipeRegistry.register(recipe: Recipe)
@@ -35,9 +35,9 @@ function RecipeRegistry.register(recipe: Recipe)
 		error(`station "{station}" with input "{input}": no item has the id "{station}"`, 2)
 	end
 	local stationItem = ItemRegistry.get(station)
-	if stationItem.placeable ~= true or stationItem.slotCount ~= RecipeRegistry.STATION_SLOTS then
+	if stationItem.placeable ~= true or stationItem.slotCount ~= RecipeRegistry.STATION_SLOT_COUNT then
 		error(
-			`station "{station}" with input "{input}": must be placeable with {RecipeRegistry.STATION_SLOTS} slots`,
+			`station "{station}" with input "{input}": must be placeable with {RecipeRegistry.STATION_SLOT_COUNT} slots`,
 			2
 		)
 	end

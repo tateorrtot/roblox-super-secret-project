@@ -25,7 +25,7 @@ export type Station = {
 	--- How many seconds the item in the input slot has been worked on. 0 when nothing is being worked on.
 	workedSeconds: number,
 	--- The id of the item that work is being done on. `nil` when nothing is being worked on.
-	workingOn: string?,
+	workingOnItemId: string?,
 }
 
 --- The slot that holds what is to be worked on.
@@ -74,8 +74,8 @@ function Station.getWorkableRecipe(station: Station): RecipeRegistry.Recipe?
 end
 
 local function setWorkingOn(station: Station, itemId: string?)
-	if itemId ~= station.workingOn then
-		station.workingOn = itemId
+	if itemId ~= station.workingOnItemId then
+		station.workingOnItemId = itemId
 		station.workedSeconds = 0
 	end
 end
@@ -145,7 +145,7 @@ end
 --- not begun, up to 1, when it is done. Returns 0 while `getWorkableRecipe` returns `nil`.
 function Station.getWorkDoneRatio(station: Station): number
 	local recipe = Station.getWorkableRecipe(station)
-	if recipe == nil or recipe.input ~= station.workingOn then
+	if recipe == nil or recipe.input ~= station.workingOnItemId then
 		return 0
 	end
 	return station.workedSeconds / recipe.seconds

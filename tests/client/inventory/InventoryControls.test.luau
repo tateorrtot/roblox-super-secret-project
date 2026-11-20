@@ -59,9 +59,9 @@ end
 local function screenOf(
 	held: { [string]: string },
 	carried: string?,
-	otherSlots: number?,
-	packSlots: number?,
-	hotbarSlots: number?
+	otherSlotCount: number?,
+	packSlotCount: number?,
+	hotbarSlotCount: number?
 ): Screen
 	local function stackOf(text: string?): InventoryControls.Stack?
 		if text == nil then
@@ -72,9 +72,9 @@ local function screenOf(
 		return { itemId = itemId, count = tonumber(count) :: number }
 	end
 	return {
-		packSlots = packSlots or 36,
-		hotbarSlots = hotbarSlots or 9,
-		otherSlots = otherSlots,
+		packSlotCount = packSlotCount or 36,
+		hotbarSlotCount = hotbarSlotCount or 9,
+		otherSlotCount = otherSlotCount,
 		carriedStack = stackOf(carried),
 		getStack = function(slot: Slot): InventoryControls.Stack?
 			return stackOf(held[slot.side .. " " .. slot.slot])
@@ -396,12 +396,12 @@ end
 
 local DROP_AT = Position.new(0, 0, 0)
 
--- Returns a new world with one player, id 1, who has an open screen. If `otherSlots` is given the
+-- Returns a new world with one player, id 1, who has an open screen. If `otherSlotCount` is given the
 -- screen has another inventory of that size beside the pack.
-local function openedWorld(otherSlots: number?): (World.World, PlayerState.PlayerState)
+local function openedWorld(otherSlotCount: number?): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(3, 3), DROP_AT, 0)
 	local state = World.addPlayer(world, 1, DROP_AT)
-	state.screen = InventoryScreen.new(state.pack, if otherSlots then Inventory.new(otherSlots) else nil)
+	state.screen = InventoryScreen.new(state.pack, if otherSlotCount then Inventory.new(otherSlotCount) else nil)
 	return world, state
 end
 
@@ -433,7 +433,7 @@ end
 -- Describes what lies on the ground, such as "log 3" or "-". Items of one kind are added together.
 local function onGround(world: World.World): string
 	local totals: { [string]: number } = {}
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		totals[groundItem.stack.itemId] = (totals[groundItem.stack.itemId] or 0) + groundItem.stack.count
 	end
 	local parts = {}
@@ -448,9 +448,9 @@ end
 local function screenOfPlayer(state: PlayerState.PlayerState): Screen
 	local screen = state.screen :: InventoryScreen.InventoryScreen
 	return {
-		packSlots = screen.pack.slotCount,
-		hotbarSlots = PlayerState.HOTBAR_SLOTS,
-		otherSlots = if screen.other then screen.other.slotCount else nil,
+		packSlotCount = screen.pack.slotCount,
+		hotbarSlotCount = PlayerState.HOTBAR_SLOT_COUNT,
+		otherSlotCount = if screen.otherInventory then screen.otherInventory.slotCount else nil,
 		carriedStack = screen.carriedStack,
 		getStack = function(slot: Slot): InventoryControls.Stack?
 			return Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, slot.side :: any), slot.slot)
@@ -805,13 +805,13 @@ local function everything(world: World.World, state: PlayerState.PlayerState): s
 			totals[stack.itemId] = (totals[stack.itemId] or 0) + stack.count
 		end
 	end
-	for _, inventory in { screen.pack, screen.other } do
+	for _, inventory in { screen.pack, screen.otherInventory } do
 		for slot = 1, inventory.slotCount do
 			add(Inventory.getStack(inventory, slot))
 		end
 	end
 	add(screen.carriedStack)
-	for _, groundItem in world.groundItems.byId do
+	for _, groundItem in world.groundItems.itemsById do
 		add(groundItem.stack)
 	end
 	local parts = {}
