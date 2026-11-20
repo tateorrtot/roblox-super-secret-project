@@ -73,10 +73,10 @@ function Throw.newFromCharacter(position: Position, facing: Direction): Throw
 	})
 end
 
---- Returns the throw of a stack that spills out of something at `from`: upwards at `SPILL_UPWARD_SPEED`,
---- and along the ground at `SPILL_OUTWARD_SPEED`. `index` says which of the stacks spilled together it
---- is, counting from 1. Each goes `SPILL_TURN_RADIANS` further round than the one before, so
---- that they set off in different directions.
+--- Returns the throw of a stack that spills out of something at `from`: upwards at
+--- `SPILL_UPWARD_SPEED`, and along the ground at `SPILL_OUTWARD_SPEED`. `index` says which of the
+--- stacks spilled together it is, counting from 1. Each goes `SPILL_TURN_RADIANS` further round
+--- than the one before, so that they set off in different directions.
 function Throw.newSpill(from: Position, index: number): Throw
 	local angle = index * Throw.SPILL_TURN_RADIANS
 	return Throw.new(from, {
