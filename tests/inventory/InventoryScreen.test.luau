@@ -323,43 +323,46 @@ end
 
 do -- swap
 	local screen = InventoryScreen.new(inventoryOf("log 12, stone 5, -"))
-	check(InventoryScreen.swap(screen, "pack", 1), "swap: true when it picked the slot's stack up")
+	check(InventoryScreen.swapCarried(screen, "pack", 1), "swap: true when it picked the slot's stack up")
 	check(
 		describe(screen.carried) == "log 12" and contents(screen.pack) == "-, stone 5, -",
 		"swap: carrying nothing, it carries the slot's whole stack"
 	)
-	check(InventoryScreen.swap(screen, "pack", 2), "swap: true when it exchanged the stacks")
+	check(InventoryScreen.swapCarried(screen, "pack", 2), "swap: true when it exchanged the stacks")
 	check(
 		describe(screen.carried) == "stone 5" and contents(screen.pack) == "-, log 12, -",
 		"swap: exchanges the carried stack with the slot's"
 	)
-	check(InventoryScreen.swap(screen, "pack", 3), "swap: true when it put the carried stack down")
+	check(InventoryScreen.swapCarried(screen, "pack", 3), "swap: true when it put the carried stack down")
 	check(
 		screen.carried == nil and contents(screen.pack) == "-, log 12, stone 5",
 		"swap: into a slot that holds nothing, it puts the carried stack down"
 	)
-	check(not InventoryScreen.swap(screen, "pack", 1), "swap: false with nothing carried and nothing in the slot")
+	check(
+		not InventoryScreen.swapCarried(screen, "pack", 1),
+		"swap: false with nothing carried and nothing in the slot"
+	)
 	check(
 		screen.carried == nil and contents(screen.pack) == "-, log 12, stone 5",
 		"swap: nothing with nothing changes nothing"
 	)
 
 	local same = carrying("log 10", "log 16")
-	check(InventoryScreen.swap(same, "pack", 1), "swap: true even when both are the same item")
+	check(InventoryScreen.swapCarried(same, "pack", 1), "swap: true even when both are the same item")
 	check(
 		describe(same.carried) == "log 16" and contents(same.pack) == "log 10",
 		"swap: the same item is exchanged whole, not merged"
 	)
 
 	local different = carrying("log 10", "stone 4")
-	InventoryScreen.swap(different, "pack", 1)
+	InventoryScreen.swapCarried(different, "pack", 1)
 	check(
 		describe(different.carried) == "stone 4" and contents(different.pack) == "log 10",
 		"swap: a different item is exchanged"
 	)
 
 	local crate = InventoryScreen.new(inventoryOf("log 4"), inventoryOf("stone 2"))
-	InventoryScreen.swap(crate, "other", 1)
+	InventoryScreen.swapCarried(crate, "other", 1)
 	check(
 		describe(crate.carried) == "stone 2" and otherContents(crate) == "-",
 		"swap: picks up from the other inventory"
@@ -368,17 +371,25 @@ do -- swap
 	-- Slots that accept only some items.
 	local stove = stoveScreen("stove 1, log 12, -, -", "-, log 12, -")
 	InventoryScreen.pickUp(stove, "pack", 1)
-	check(not InventoryScreen.swap(stove, "other", 2), "swap: false when the slot does not accept what is carried")
+	check(
+		not InventoryScreen.swapCarried(stove, "other", 2),
+		"swap: false when the slot does not accept what is carried"
+	)
 	check(describe(stove.carried) == "stove 1" and otherContents(stove) == "-, log 12, -", "swap: and nothing changes")
 	check(
-		not InventoryScreen.swap(stove, "other", 1),
+		not InventoryScreen.swapCarried(stove, "other", 1),
 		"swap: false when the slot is empty and does not accept what is carried"
 	)
-	check(InventoryScreen.swap(stove, "pack", 3), "swap: true when it put the carried stack down in the pack")
-	check(InventoryScreen.swap(stove, "other", 2), "swap: with nothing carried, takes the stack out whatever the rule")
+	check(InventoryScreen.swapCarried(stove, "pack", 3), "swap: true when it put the carried stack down in the pack")
+	check(
+		InventoryScreen.swapCarried(stove, "other", 2),
+		"swap: with nothing carried, takes the stack out whatever the rule"
+	)
 	check(describe(stove.carried) == "log 12" and otherContents(stove) == "-, -, -", "swap: so the logs are carried")
 	check(
-		InventoryScreen.swap(stove, "other", 2) and stove.carried == nil and otherContents(stove) == "-, log 12, -",
+		InventoryScreen.swapCarried(stove, "other", 2)
+			and stove.carried == nil
+			and otherContents(stove) == "-, log 12, -",
 		"swap: and put into the slot that accepts them"
 	)
 end
@@ -985,7 +996,7 @@ do -- no action ever makes or loses an item
 		elseif action == 2 then
 			InventoryScreen.putDown(screen, side, slot, if random(2) == 1 then nil else random(21) - 1)
 		elseif action == 3 then
-			InventoryScreen.swap(screen, side, slot)
+			InventoryScreen.swapCarried(screen, side, slot)
 		elseif action == 4 then
 			InventoryScreen.swapSlots(screen, side, slot, sides[random(2)], random(4))
 		elseif action == 5 then

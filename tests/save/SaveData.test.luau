@@ -113,10 +113,10 @@ do -- data that cannot be read
 			"decode: says what is wrong with " .. what .. " (got: " .. tostring(problem) .. ")"
 		)
 	end
-	refuses("nothing", "saved data is a table, not a nil", nil)
-	refuses("a string", "saved data is a table, not a string", "pack")
-	refuses("a number", "saved data is a table, not a number", 1)
-	refuses("a boolean", "saved data is a table, not a boolean", true)
+	refuses("nothing", "saved data must be a table; got a nil", nil)
+	refuses("a string", "saved data must be a table; got a string", "pack")
+	refuses("a number", "saved data must be a table; got a number", 1)
+	refuses("a boolean", "saved data must be a table; got a boolean", true)
 
 	for _, bad in { 0, -1, 1.5, 0 / 0, math.huge, "1" } :: { any } do
 		local saved = goodSave()
@@ -137,7 +137,7 @@ do -- data that cannot be read
 
 	local extra = goodSave()
 	extra.coins = 5
-	refuses("a field that does not belong", "saved data has no field called coins", extra)
+	refuses("a field that does not belong", "saved data has a field it should not have: coins", extra)
 
 	local noPack = goodSave()
 	noPack.pack = nil

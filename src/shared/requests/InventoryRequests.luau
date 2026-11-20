@@ -1,5 +1,6 @@
 --!strict
---- What a player's machine may ask for about the player's own inventories.
+--- What a player's machine may ask for about the inventories on the player's screen, and their
+--- hotbar.
 ---
 --- Each function is one request. `world` is the world and `state` is the player who asks. Every
 --- argument after them is what the player's machine sent, and may be any value at all. A request
@@ -17,7 +18,7 @@ type World = World.World
 type PlayerState = PlayerState.PlayerState
 type InventoryScreen = InventoryScreen.InventoryScreen
 
-local function isCount(value: unknown): boolean
+local function isCountOrNil(value: unknown): boolean
 	return value == nil or (type(value) == "number" and value % 1 == 0 and value >= 0)
 end
 
@@ -49,7 +50,7 @@ end
 --- as the carried stack has room for if `count` is `nil`.
 function InventoryRequests.pickUp(_world: World, state: PlayerState, side: unknown, slot: unknown, count: unknown)
 	local screen = screenWithSlot(state, side, slot)
-	if screen ~= nil and isCount(count) then
+	if screen ~= nil and isCountOrNil(count) then
 		InventoryScreen.pickUp(screen, side :: any, slot :: any, count :: any)
 	end
 end
@@ -58,7 +59,7 @@ end
 --- as the slot has room for if `count` is `nil`.
 function InventoryRequests.putDown(_world: World, state: PlayerState, side: unknown, slot: unknown, count: unknown)
 	local screen = screenWithSlot(state, side, slot)
-	if screen ~= nil and isCount(count) then
+	if screen ~= nil and isCountOrNil(count) then
 		InventoryScreen.putDown(screen, side :: any, slot :: any, count :: any)
 	end
 end
@@ -67,7 +68,7 @@ end
 function InventoryRequests.swapCarried(_world: World, state: PlayerState, side: unknown, slot: unknown)
 	local screen = screenWithSlot(state, side, slot)
 	if screen ~= nil then
-		InventoryScreen.swap(screen, side :: any, slot :: any)
+		InventoryScreen.swapCarried(screen, side :: any, slot :: any)
 	end
 end
 
@@ -125,7 +126,7 @@ end
 --- more slots than the screen has.
 function InventoryRequests.spreadCarried(_world: World, state: PlayerState, slots: unknown, countEach: unknown)
 	local screen = state.screen
-	if screen == nil or not InventoryScreen.hasSlots(screen, slots) or not isCount(countEach) then
+	if screen == nil or not InventoryScreen.hasSlots(screen, slots) or not isCountOrNil(countEach) then
 		return
 	end
 	local list = slots :: { InventoryScreen.ScreenSlot }
@@ -139,7 +140,7 @@ end
 --- or all of it if `count` is `nil`.
 function InventoryRequests.dropCarried(world: World, state: PlayerState, count: unknown)
 	local screen = state.screen
-	if screen ~= nil and isCount(count) then
+	if screen ~= nil and isCountOrNil(count) then
 		dropAtPlayer(world, state, InventoryScreen.takeCarried(screen, count :: any))
 	end
 end
@@ -148,7 +149,7 @@ end
 --- `dropPosition`, or everything in the slot if `count` is `nil`.
 function InventoryRequests.dropFromSlot(world: World, state: PlayerState, side: unknown, slot: unknown, count: unknown)
 	local screen = screenWithSlot(state, side, slot)
-	if screen ~= nil and isCount(count) then
+	if screen ~= nil and isCountOrNil(count) then
 		local inventory = InventoryScreen.getInventory(screen, side :: any)
 		dropAtPlayer(world, state, Inventory.takeFromSlot(inventory, slot :: any, count :: any))
 	end
@@ -164,7 +165,7 @@ end
 --- Drops up to `count` items out of the selected hotbar slot on the ground at the player's
 --- `dropPosition`, or everything in the slot if `count` is `nil`.
 function InventoryRequests.dropSelected(world: World, state: PlayerState, count: unknown)
-	if isCount(count) then
+	if isCountOrNil(count) then
 		dropAtPlayer(world, state, Hotbar.takeSelected(state.hotbar, count :: any))
 	end
 end

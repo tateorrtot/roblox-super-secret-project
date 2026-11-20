@@ -1,11 +1,12 @@
 --!strict
---- The two actions a player takes on the world with the mouse or a finger: Use and Hit.
+--- The two actions a player takes on the world: Use and Hit.
 ---
---- Use is a left click or a tap. Hit is a short right click: holding the right button turns the
---- camera, so only a quick press that did not turn it is a Hit. Both act on what the pointer is
---- over, if the player's character stands within `Plot.REACH` of it. While the mouse is over such
---- a thing it is marked: a placed item gets a white outline, and a bare tile gets a faint block if
---- the item in hand can be placed.
+--- Use is a left click, or a tap on a touch screen. Hit is a short right click: holding the right
+--- button turns the camera, so only a quick press that did not turn it is a Hit. Hit has no touch
+--- control yet. Both act on the placed item or the bare tile under the pointer, if the player's
+--- character stands within `World.REACH` of it. With a mouse, the thing under the pointer is
+--- marked while it is in reach: a placed item gets a white outline, and a bare tile gets a faint
+--- block if the item in hand can be placed.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +14,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Plot = require(ReplicatedStorage:WaitForChild("Shared").plots.Plot)
+local World = require(ReplicatedStorage:WaitForChild("Shared").world.World)
 local PlacementGhost = require(script.Parent.PlacementGhost)
 local PlotPointer = require(script.Parent.PlotPointer)
 
@@ -35,7 +36,8 @@ export type Callbacks = {
 --- A right click is a Hit only if the button comes up within this many seconds.
 local HIT_WITHIN_SECONDS = 0.35
 
---- The camera has turned during a right click if its two directions agree less than this.
+--- The camera has turned during a right click if the dot product of the directions it faced
+--- when the button went down and when it came up is below this.
 local SAME_DIRECTION = 0.9995
 
 local function pointedInReach(viewportPoint: Vector2): PlotPointer.Pointed?
@@ -46,7 +48,7 @@ local function pointedInReach(viewportPoint: Vector2): PlotPointer.Pointed?
 		return nil
 	end
 	local away = pointed.center - root.Position
-	return if Vector3.new(away.X, 0, away.Z).Magnitude <= Plot.REACH then pointed else nil
+	return if Vector3.new(away.X, 0, away.Z).Magnitude <= World.REACH then pointed else nil
 end
 
 local function makeOutline(): SelectionBox

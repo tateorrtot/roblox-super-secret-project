@@ -3,7 +3,9 @@
 ---
 --- A player moves items by carrying them. `pickUp` moves items from a slot onto the carried stack
 --- and `putDown` moves them from the carried stack into a slot. The carried stack belongs to the
---- screen, not to either inventory. No function here makes or loses an item.
+--- screen, not to either inventory, and the inventories live on after the screen is gone.
+--- Note: a screen that is thrown away while a stack is carried loses that stack. Take it out with
+--- `takeCarried` first.
 local Inventory = require("./Inventory")
 local ItemStack = require("../items/ItemStack")
 
@@ -25,11 +27,12 @@ export type InventoryScreen = {
 	read other: Inventory?,
 	--- The stack being carried between slots. `nil` when nothing is carried.
 	carried: ItemStack?,
-	--- Returns `true` if a slot of `other` accepts an item. `nil` when every slot accepts everything.
+	--- Says whether a slot of `other` accepts an item, given the slot's number and the item's id.
+	--- `nil` when every slot of `other` accepts every item.
 	read otherAccepts: ((slot: number, itemId: string) -> boolean)?,
 }
 
-local function slotName(side: Side, slot: number): string
+local function slotKey(side: Side, slot: number): string
 	return side .. slot
 end
 
@@ -63,8 +66,8 @@ function InventoryScreen.hasSlot(screen: InventoryScreen, side: unknown, slot: u
 	return inventory ~= nil and Inventory.hasSlot(inventory, slot)
 end
 
---- Returns `true` if `slots` is a list of the screen's slots, each a table with a `side` and a
---- `slot`. `slots` may be any value at all.
+--- Returns `true` if `slots` is a list, numbered from 1 with no gaps, of the screen's slots: each
+--- entry a table whose `side` and `slot` pass `hasSlot`. `slots` may be any value at all.
 function InventoryScreen.hasSlots(screen: InventoryScreen, slots: unknown): boolean
 	if type(slots) ~= "table" then
 		return false
@@ -79,16 +82,17 @@ function InventoryScreen.hasSlots(screen: InventoryScreen, slots: unknown): bool
 	return entries == #(slots :: { unknown })
 end
 
---- Returns `true` if a slot accepts an item, whether or not it has room. Every slot of the pack
---- accepts every item.
+--- Returns `true` if a slot accepts an item, whatever the slot holds now and whether or not it
+--- has room. Every slot of the pack accepts every item.
 function InventoryScreen.accepts(screen: InventoryScreen, side: Side, slot: number, itemId: string): boolean
 	local otherAccepts = screen.otherAccepts
 	return side == "pack" or otherAccepts == nil or otherAccepts(slot, itemId)
 end
 
---- Moves up to `count` items from a slot onto the carried stack, and returns how many moved.
---- Moves as many as the carried stack has room for if `count` is left out. Moves nothing if the
---- slot holds nothing or a different item is carried.
+--- Moves items from a slot onto the carried stack, and returns how many moved. It moves `count`
+--- items, or all the slot holds if `count` is left out, but never more than the slot holds or the
+--- carried stack has room for. Moves nothing if the slot holds nothing, or if a different item is
+--- carried.
 function InventoryScreen.pickUp(screen: InventoryScreen, side: Side, slot: number, count: number?): number
 	local inventory = InventoryScreen.getInventory(screen, side)
 	local there = Inventory.getStack(inventory, slot)
@@ -101,13 +105,15 @@ function InventoryScreen.pickUp(screen: InventoryScreen, side: Side, slot: numbe
 	if taken == nil then
 		return 0
 	end
-	screen.carried = if carried then (ItemStack.merge(carried, taken)) else taken
+	local nowCarried = if carried then ItemStack.merge(carried, taken) else taken
+	screen.carried = nowCarried
 	return taken.count
 end
 
---- Moves up to `count` items from the carried stack into a slot, and returns how many moved.
---- Moves as many as the slot has room for if `count` is left out. Moves nothing if nothing is
---- carried, if the slot holds a different item, or if the slot does not accept the carried item.
+--- Moves items from the carried stack into a slot, and returns how many moved. It moves `count`
+--- items, or all that is carried if `count` is left out, but never more than is carried or the
+--- slot has room for. Moves nothing if nothing is carried, if the slot holds a different item, or
+--- if the slot does not accept the carried item.
 function InventoryScreen.putDown(screen: InventoryScreen, side: Side, slot: number, count: number?): number
 	local inventory = InventoryScreen.getInventory(screen, side)
 	local there = Inventory.getStack(inventory, slot)
@@ -129,11 +135,12 @@ function InventoryScreen.putDown(screen: InventoryScreen, side: Side, slot: numb
 	return moved
 end
 
---- Exchanges the carried stack with the stack in a slot. Either may be nothing: with nothing
---- carried the slot's whole stack becomes the carried stack, and a slot that holds nothing takes
---- the carried stack. Returns `false`, changing nothing, if the slot does not accept the carried
---- item or if there is nothing on either side.
-function InventoryScreen.swap(screen: InventoryScreen, side: Side, slot: number): boolean
+--- Exchanges the carried stack with the stack in a slot, even when both are of the same item.
+--- Either may be nothing: with nothing carried the slot's stack becomes the carried stack, and a
+--- slot that holds nothing takes the carried stack. Returns `true` if anything changed. Returns
+--- `false`, changing nothing, if the slot does not accept the carried item, or if nothing is
+--- carried and the slot holds nothing.
+function InventoryScreen.swapCarried(screen: InventoryScreen, side: Side, slot: number): boolean
 	local inventory = InventoryScreen.getInventory(screen, side)
 	local there = Inventory.getStack(inventory, slot)
 	local carried = screen.carried
@@ -145,8 +152,9 @@ function InventoryScreen.swap(screen: InventoryScreen, side: Side, slot: number)
 	return there ~= nil or carried ~= nil
 end
 
---- Exchanges the stacks in two slots. Either slot may hold nothing. Returns `false`, changing
---- nothing, if either slot does not accept the stack from the other.
+--- Exchanges the stacks in two slots. Either slot may hold nothing. Returns `true` if the stacks
+--- were exchanged, and `false`, changing nothing, if either slot does not accept the stack from
+--- the other.
 function InventoryScreen.swapSlots(
 	screen: InventoryScreen,
 	side: Side,
@@ -169,10 +177,27 @@ function InventoryScreen.swapSlots(
 	return true
 end
 
+local function slotsAccepting(
+	screen: InventoryScreen,
+	side: Side,
+	slots: { number },
+	itemId: string,
+	except: number?
+): { number }
+	local accepting = {}
+	for _, slot in slots do
+		if slot ~= except and InventoryScreen.accepts(screen, side, slot, itemId) then
+			table.insert(accepting, slot)
+		end
+	end
+	return accepting
+end
+
 --- Moves the stack in a slot into the inventory on `toSide`, and returns how many items moved.
---- Stacks of the same item are topped up first, and then slots that hold nothing are filled. Only
---- the slots listed in `toSlots` are used, or every slot if it is left out, and never one that
---- does not accept the item. What does not fit stays in its slot.
+--- Stacks of the same item there are topped up first, and then slots that hold nothing are
+--- filled. Only the slots listed in `toSlots` are used, or every slot if it is left out, and never
+--- a slot that does not accept the item or the slot the stack came from. What does not fit stays
+--- in its slot. Moves nothing if the slot holds nothing.
 function InventoryScreen.moveStack(
 	screen: InventoryScreen,
 	side: Side,
@@ -186,13 +211,8 @@ function InventoryScreen.moveStack(
 	if stack == nil then
 		return 0
 	end
-	local accepting = {}
-	for _, toSlot in toSlots or Inventory.getSlots(to) do
-		local isItself = from == to and toSlot == slot
-		if not isItself and InventoryScreen.accepts(screen, toSide, toSlot, stack.itemId) then
-			table.insert(accepting, toSlot)
-		end
-	end
+	local itself = if from == to then slot else nil
+	local accepting = slotsAccepting(screen, toSide, toSlots or Inventory.getSlots(to), stack.itemId, itself)
 	local leftover = Inventory.addStack(to, stack, accepting)
 	if leftover ~= nil then
 		Inventory.putInSlot(from, slot, leftover)
@@ -220,8 +240,9 @@ local function slotsWithFullStacksLast(screen: InventoryScreen): { ScreenSlot }
 end
 
 --- Fills the carried stack with items of its kind taken from the screen's slots, and returns how
---- many were taken. Slots that hold less than a full stack are taken from first, then full ones;
---- within each, the other inventory's slots come before the pack's, lowest first. Takes nothing if
+--- many were taken. It stops when the carried stack is full. Slots that hold less than a full
+--- stack are taken from first, then full ones; within each, the other inventory's slots come
+--- before the pack's, lowest first. Slots holding other items are left alone. Takes nothing if
 --- nothing is carried.
 function InventoryScreen.gather(screen: InventoryScreen): number
 	if screen.carried == nil then
@@ -234,38 +255,37 @@ function InventoryScreen.gather(screen: InventoryScreen): number
 	return gathered
 end
 
-local function slotsTakingPart(screen: InventoryScreen, carried: ItemStack, slots: { ScreenSlot }): { ScreenSlot }
-	local takingPart: { ScreenSlot } = {}
-	local isTakingPart: { [string]: boolean } = {}
+local function canSpreadInto(screen: InventoryScreen, carried: ItemStack, screenSlot: ScreenSlot): boolean
+	local there = Inventory.getStack(InventoryScreen.getInventory(screen, screenSlot.side), screenSlot.slot)
+	return (there == nil or ItemStack.isSameItem(there, carried))
+		and InventoryScreen.accepts(screen, screenSlot.side, screenSlot.slot, carried.itemId)
+end
+
+local function slotsToSpreadOver(screen: InventoryScreen, carried: ItemStack, slots: { ScreenSlot }): { ScreenSlot }
+	local chosen: { ScreenSlot } = {}
+	local isChosen: { [string]: boolean } = {}
 	for _, screenSlot in slots do
-		local side, slot = screenSlot.side, screenSlot.slot
-		local there = Inventory.getStack(InventoryScreen.getInventory(screen, side), slot)
-		if
-			#takingPart < carried.count
-			and not isTakingPart[slotName(side, slot)]
-			and (there == nil or ItemStack.isSameItem(there, carried))
-			and InventoryScreen.accepts(screen, side, slot, carried.itemId)
-		then
-			isTakingPart[slotName(side, slot)] = true
-			table.insert(takingPart, screenSlot)
+		local key = slotKey(screenSlot.side, screenSlot.slot)
+		if #chosen < carried.count and not isChosen[key] and canSpreadInto(screen, carried, screenSlot) then
+			isChosen[key] = true
+			table.insert(chosen, screenSlot)
 		end
 	end
-	return takingPart
+	return chosen
 end
 
 --- Puts the carried stack down across several slots, and returns how many items were put down.
---- Each slot gets `countEach` items, or an equal share of the carried stack, rounded down, if
---- `countEach` is left out. A slot takes part only if it holds nothing or the carried item, and
---- accepts it. A slot listed twice counts once, and no more slots take part than there are items
---- carried. What is not put down stays carried.
---- Note: a slot holding a full stack of the carried item takes part and gets nothing, which makes
---- the other shares smaller.
+--- A slot takes part only if it holds nothing or the carried item, and accepts it. A slot holding
+--- a full stack of the carried item also takes part, although it can take nothing. A slot listed
+--- twice counts once, and no more slots take part than there are items carried. Each slot taking
+--- part gets `countEach` items, or, if `countEach` is left out, the carried count divided by the
+--- number of slots taking part, rounded down. What is not put down stays carried.
 function InventoryScreen.spread(screen: InventoryScreen, slots: { ScreenSlot }, countEach: number?): number
 	local carried = screen.carried
 	if carried == nil then
 		return 0
 	end
-	local takingPart = slotsTakingPart(screen, carried, slots)
+	local takingPart = slotsToSpreadOver(screen, carried, slots)
 	if #takingPart == 0 then
 		return 0
 	end

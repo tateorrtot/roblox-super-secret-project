@@ -9,15 +9,15 @@ local ItemStack = require("../items/ItemStack")
 local Station = require("../stations/Station")
 local World = require("./World")
 
-local PlayerView = {}
+local PlayerSnapshot = {}
 
-export type EncodedView = {
+export type EncodedSnapshot = {
 	pack: Inventory.EncodedInventory,
 	--- The open inventory screen. `nil` when none is open.
 	screen: {
 		--- The other inventory that is open. `nil` when the pack is open alone.
 		other: Inventory.EncodedInventory?,
-		--- The id of the placed item whose inventory `other` is, such as `"crate"`.
+		--- The id of the item that the placed item whose inventory `other` is, is: `"crate"`.
 		otherItemId: string?,
 		carried: { itemId: string, count: number }?,
 		--- How far the fire and the work have got, if `other` is a station's inventory.
@@ -25,11 +25,11 @@ export type EncodedView = {
 	}?,
 }
 
-export type PlayerView = {
+export type PlayerSnapshot = {
 	pack: Inventory.Inventory,
 	--- The open inventory screen, over `pack`. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
-	--- The id of the placed item whose inventory the screen shows beside the pack.
+	--- The id of the item that the placed item shown beside the pack is, such as `"crate"`.
 	otherItemId: string?,
 	--- How far the fire and the work have got, if that placed item is a station.
 	progress: Station.Progress?,
@@ -37,7 +37,7 @@ export type PlayerView = {
 
 --- Returns what to tell the machine of the player with the id `playerId`, as plain data. Fails if
 --- no player has that id.
-function PlayerView.encode(world: World.World, playerId: number): EncodedView
+function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSnapshot
 	local state = assert(world.players[playerId], `no player has the id {playerId}`)
 	local screen = state.screen
 	if screen == nil then
@@ -60,7 +60,7 @@ end
 
 --- Returns the view read from data that `encode` made. Fails if the data holds an inventory or a
 --- stack that cannot be read.
-function PlayerView.decode(encoded: EncodedView): PlayerView
+function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 	local pack = assert(Inventory.decode(encoded.pack))
 	local encodedScreen = encoded.screen
 	if encodedScreen == nil then
@@ -78,4 +78,4 @@ function PlayerView.decode(encoded: EncodedView): PlayerView
 	}
 end
 
-return PlayerView
+return PlayerSnapshot

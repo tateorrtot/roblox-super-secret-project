@@ -14,6 +14,7 @@ type Request = (world: World.World, state: PlayerState.PlayerState, ...any) -> (
 
 local requests = table.clone(InventoryRequests :: { [string]: Request })
 for name, request in PlotRequests :: { [string]: Request } do
+	assert(requests[name] == nil, `two requests are called "{name}"`)
 	requests[name] = request
 end
 

@@ -24,7 +24,7 @@ export type PlayerState = {
 	dropPosition: Position.Position,
 }
 
---- How many slots a player's pack has.
+--- How many slots a new player's pack has.
 PlayerState.PACK_SLOTS = 36
 
 --- How many of the pack's slots, counting from slot 1, are the hotbar.
@@ -34,8 +34,12 @@ PlayerState.HOTBAR_SLOTS = 9
 --- they drop lands at `dropPosition`. They carry `pack`, or a pack that holds nothing if none is
 --- given.
 function PlayerState.new(dropPosition: Position.Position, pack: Inventory.Inventory?): PlayerState
-	local carried = pack or Inventory.new(PlayerState.PACK_SLOTS)
-	return { pack = carried, hotbar = Hotbar.new(carried, PlayerState.HOTBAR_SLOTS), dropPosition = dropPosition }
+	local playerPack = pack or Inventory.new(PlayerState.PACK_SLOTS)
+	return {
+		pack = playerPack,
+		hotbar = Hotbar.new(playerPack, PlayerState.HOTBAR_SLOTS),
+		dropPosition = dropPosition,
+	}
 end
 
 return PlayerState

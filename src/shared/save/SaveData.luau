@@ -32,7 +32,7 @@ end
 --- The data may be anything at all.
 function SaveData.decode(saved: unknown): (Inventory.Inventory?, string?)
 	if type(saved) ~= "table" then
-		return nil, "saved data is a table, not a " .. type(saved)
+		return nil, "saved data must be a table; got a " .. type(saved)
 	end
 	local fields = saved :: { [unknown]: unknown }
 	local version = fields.version
@@ -45,7 +45,7 @@ function SaveData.decode(saved: unknown): (Inventory.Inventory?, string?)
 	end
 	for field in fields do
 		if field ~= "version" and field ~= "pack" then
-			return nil, `saved data has no field called {field}`
+			return nil, `saved data has a field it should not have: {field}`
 		end
 	end
 	local pack, problem = Inventory.decode(fields.pack)

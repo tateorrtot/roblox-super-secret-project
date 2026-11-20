@@ -3,8 +3,9 @@
 ---
 --- An inventory has a fixed number of slots, numbered from 1. Each slot holds one ItemStack or
 --- nothing. `getStack`, `setStack`, `takeFromSlot` and `putInSlot` work on one slot. `addItems` and
---- `addStack` put items wherever they fit. Only `setStack` can make or lose an item; the others move
---- items between the inventory and the caller.
+--- `addStack` put items wherever they fit. `addItems` makes the items it adds, and `setStack`
+--- discards what the slot held. The other functions move stacks between the inventory and the
+--- caller, so no item is made or lost.
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemStack = require("../items/ItemStack")
 
@@ -106,7 +107,7 @@ function Inventory.putInSlot(inventory: Inventory, slot: number, stack: ItemStac
 	return leftover
 end
 
-local function putItems(inventory: Inventory, slot: number, itemId: string, count: number): number
+local function addToSlot(inventory: Inventory, slot: number, itemId: string, count: number): number
 	local offered = math.min(count, ItemRegistry.get(itemId).stackSize)
 	local leftover = Inventory.putInSlot(inventory, slot, ItemStack.new(itemId, offered))
 	return offered - (if leftover then leftover.count else 0)
@@ -128,12 +129,12 @@ function Inventory.addItems(inventory: Inventory, itemId: string, count: number,
 	local left = count
 	for _, slot in slots do
 		if left > 0 and inventory.slots[slot] ~= nil then
-			left -= putItems(inventory, slot, itemId, left)
+			left -= addToSlot(inventory, slot, itemId, left)
 		end
 	end
 	for _, slot in slots do
 		if left > 0 and inventory.slots[slot] == nil then
-			left -= putItems(inventory, slot, itemId, left)
+			left -= addToSlot(inventory, slot, itemId, left)
 		end
 	end
 	return count - left
@@ -181,14 +182,14 @@ local function unknownField(fields: { [unknown]: unknown }, known: { string }): 
 	return nil
 end
 
-local function decodeEntry(inventory: Inventory, index: number, entry: unknown): string?
+local function addDecodedEntry(inventory: Inventory, index: number, entry: unknown): string?
 	if type(entry) ~= "table" then
 		return `stacks must be a list with no gaps; entry {index} is a {type(entry)}`
 	end
 	local fields = entry :: { [unknown]: unknown }
 	local extra = unknownField(fields, { "slot", "itemId", "count" })
 	if extra ~= nil then
-		return `stacks[{index}] has no field called {extra}`
+		return `stacks[{index}] has a field it should not have: {extra}`
 	end
 	local slot = fields.slot
 	if not Inventory.hasSlot(inventory, slot) then
@@ -210,19 +211,19 @@ end
 --- may be anything at all, so this is the check for an inventory that arrives from outside.
 function Inventory.decode(encoded: unknown): (Inventory?, string?)
 	if type(encoded) ~= "table" then
-		return nil, "an encoded inventory is a table, not a " .. type(encoded)
+		return nil, "an encoded inventory must be a table; got a " .. type(encoded)
 	end
 	local fields = encoded :: { [unknown]: unknown }
 	local extra = unknownField(fields, { "slotCount", "stacks" })
 	if extra ~= nil then
-		return nil, `an encoded inventory has no field called {extra}`
+		return nil, `an encoded inventory has a field it should not have: {extra}`
 	end
 	local slotCount, stacks = fields.slotCount, fields.stacks
 	if type(slotCount) ~= "number" or slotCount % 1 ~= 0 or slotCount < 1 then
 		return nil, `slotCount must be a whole number, 1 or more; got {slotCount}`
 	end
 	if type(stacks) ~= "table" then
-		return nil, "stacks must be a list, not a " .. type(stacks)
+		return nil, "stacks must be a list; got a " .. type(stacks)
 	end
 	local inventory = Inventory.new(slotCount)
 	local entryCount = 0
@@ -230,7 +231,7 @@ function Inventory.decode(encoded: unknown): (Inventory?, string?)
 		entryCount += 1
 	end
 	for index = 1, entryCount do
-		local problem = decodeEntry(inventory, index, (stacks :: { unknown })[index])
+		local problem = addDecodedEntry(inventory, index, (stacks :: { unknown })[index])
 		if problem ~= nil then
 			return nil, problem
 		end

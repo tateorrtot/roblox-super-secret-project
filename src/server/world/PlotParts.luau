@@ -165,18 +165,18 @@ local function showFireIfChanged(part: Part, station: Station.Station?)
 	end
 end
 
-local function removeStalePartsAndShowFires(
-	plotParts: PlotParts,
-	plot: Plot.Plot,
-	stations: { [number]: Station.Station }
-)
+local function removeStaleParts(plotParts: PlotParts, plot: Plot.Plot)
 	for id, part in plotParts.partsById do
 		if plot.placedById[id] == nil then
 			part:Destroy()
 			plotParts.partsById[id] = nil
-		else
-			showFireIfChanged(part, stations[id])
 		end
+	end
+end
+
+local function showFires(plotParts: PlotParts, stations: { [number]: Station.Station })
+	for id, part in plotParts.partsById do
+		showFireIfChanged(part, stations[id])
 	end
 end
 
@@ -185,7 +185,8 @@ end
 --- burning. `stations` holds the station of each placed item that has one, by placed item id.
 function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, stations: { [number]: Station.Station })
 	addMissingParts(plotParts, plot)
-	removeStalePartsAndShowFires(plotParts, plot, stations)
+	removeStaleParts(plotParts, plot)
+	showFires(plotParts, stations)
 end
 
 return PlotParts

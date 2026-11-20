@@ -5,9 +5,9 @@
 --- and the mouse into requests to the server. The only thing it decides by itself is which hotbar
 --- slot is selected, and it tells the server that too.
 ---
---- Keys: E opens and closes the pack, 1 to 9 select a hotbar slot, and Q drops one of what is in
---- hand. With the inventory screen open, 1 to 9 and Q act on the slot under the pointer instead,
---- and Ctrl with Q drops the whole stack.
+--- Keys: E opens the pack or closes the inventory screen, 1 to 9 select a hotbar slot, and Q drops
+--- one of what is in hand, or all of it with the left Ctrl key held. With the inventory screen
+--- open, 1 to 9 and Q act on the slot under the pointer instead.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
@@ -20,7 +20,7 @@ local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemLooks = require(Shared.items.ItemLooks)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local PlayerState = require(Shared.players.PlayerState)
-local PlayerView = require(Shared.world.PlayerView)
+local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
 
 local HotbarGui = require(script.Parent.inventory.HotbarGui)
 local InventoryControls = require(script.Parent.inventory.InventoryControls)
@@ -37,7 +37,7 @@ local remotes = Remotes.find()
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 --- What the server last said the player holds.
-local view: PlayerView.PlayerView = { pack = Inventory.new(PlayerState.PACK_SLOTS) }
+local snapshot: PlayerSnapshot.PlayerSnapshot = { pack = Inventory.new(PlayerState.PACK_SLOTS) }
 --- The hotbar slot in the player's hand.
 local selectedSlot = 1
 local gestures = SlotGestures.new()
@@ -72,11 +72,11 @@ end
 local function selectSlot(slot: number)
 	selectedSlot = slot
 	remotes.selectHotbarSlot:FireServer(slot)
-	HotbarGui.show(hotbarGui, view.pack, selectedSlot)
+	HotbarGui.show(hotbarGui, snapshot.pack, selectedSlot)
 end
 
-local function togglePack()
-	local name = if view.screen then "closeScreen" else "openPack"
+local function toggleScreen()
+	local name = if snapshot.screen then "closeScreen" else "openPack"
 	remotes[name]:FireServer()
 end
 
@@ -98,13 +98,13 @@ local function controlsScreen(screen: InventoryScreen.InventoryScreen): Inventor
 end
 
 local function placeableInHand(): string?
-	local held = Inventory.getStack(view.pack, selectedSlot)
+	local held = Inventory.getStack(snapshot.pack, selectedSlot)
 	return if held ~= nil and ItemRegistry.get(held.itemId).placeable then held.itemId else nil
 end
 
 hotbarGui = HotbarGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 	onSlotChosen = selectSlot,
-	onPackClicked = togglePack,
+	onPackClicked = toggleScreen,
 })
 
 inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
@@ -116,14 +116,14 @@ inventoryGui = InventoryGui.new(playerGui, PlayerState.HOTBAR_SLOTS, {
 		InventoryGui.markSlots(inventoryGui, SlotGestures.getDraggedSlots(gestures))
 	end,
 	onOutsideClicked = function(button)
-		send(InventoryControls.forOutsideClick(button))
+		send(InventoryControls.requestForOutsideClick(button))
 	end,
 	onCloseClicked = function()
 		remotes.closeScreen:FireServer()
 	end,
 })
 
-local function showScreen(open: boolean)
+local function onScreenOpenedOrClosed(open: boolean)
 	HotbarGui.setVisible(hotbarGui, not open)
 	-- Note: Roblox's chat window lies over the top left of the screen and takes the clicks there
 	-- even when it has faded from sight, so it is put away while the inventory screen is open.
@@ -134,28 +134,28 @@ local function showScreen(open: boolean)
 	end
 end
 
-remotes.viewChanged.OnClientEvent:Connect(function(encoded: PlayerView.EncodedView)
-	local wasOpen = view.screen ~= nil
-	view = PlayerView.decode(encoded)
-	local screen = view.screen
-	HotbarGui.show(hotbarGui, view.pack, selectedSlot)
+remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.EncodedSnapshot)
+	local wasOpen = snapshot.screen ~= nil
+	snapshot = PlayerSnapshot.decode(encoded)
+	local screen = snapshot.screen
+	HotbarGui.show(hotbarGui, snapshot.pack, selectedSlot)
 	if (screen ~= nil) ~= wasOpen then
-		showScreen(screen ~= nil)
+		onScreenOpenedOrClosed(screen ~= nil)
 	end
 	if screen ~= nil then
-		local otherLook = if view.otherItemId then ItemLooks[view.otherItemId] else nil
+		local otherLook = if snapshot.otherItemId then ItemLooks[snapshot.otherItemId] else nil
 		local otherName = if otherLook then otherLook.name else ""
-		InventoryGui.show(inventoryGui, view.pack, screen.other, otherName, screen.carried, view.progress)
+		InventoryGui.show(inventoryGui, snapshot.pack, screen.other, otherName, screen.carried, snapshot.progress)
 	end
 end)
-remotes.askForView:FireServer()
+remotes.askForSnapshot:FireServer()
 
 -- Roblox's own backpack bar would sit on top of ours, and its tools are not our items.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
 UseAndHit.start({
 	isBlocked = function()
-		return view.screen ~= nil
+		return snapshot.screen ~= nil
 	end,
 	getPlaceableInHand = placeableInHand,
 	onPlacedUsed = function(placedId)
@@ -172,19 +172,19 @@ UseAndHit.start({
 local function onDropKey()
 	local over = inventoryGui.hovered
 	local wholeStack = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-	if view.screen == nil then
+	if snapshot.screen == nil then
 		remotes.dropSelected:FireServer(if wholeStack then nil else 1)
 	elseif over ~= nil then
-		send(InventoryControls.forDropKey(over, wholeStack))
+		send(InventoryControls.requestForDropKey(over, wholeStack))
 	end
 end
 
 local function onDigitKey(digit: number)
 	local over = inventoryGui.hovered
-	if view.screen == nil then
+	if snapshot.screen == nil then
 		selectSlot(digit)
 	elseif over ~= nil then
-		send(InventoryControls.forDigitKey(over, digit))
+		send(InventoryControls.requestForDigitKey(over, digit))
 	end
 end
 
@@ -193,7 +193,7 @@ UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewher
 	if handledElsewhere then
 		return
 	elseif input.KeyCode == Enum.KeyCode.E then
-		togglePack()
+		toggleScreen()
 	elseif input.KeyCode == Enum.KeyCode.Q then
 		onDropKey()
 	elseif digit ~= nil and digit <= PlayerState.HOTBAR_SLOTS then
@@ -203,13 +203,13 @@ end)
 
 UserInputService.InputEnded:Connect(function(input: InputObject)
 	local button = mouseButtons[input.UserInputType]
-	local screen = view.screen
+	local screen = snapshot.screen
 	if button == nil or screen == nil then
 		return
 	end
 	local gesture = SlotGestures.release(gestures, button, inventoryGui.hovered, isShiftHeld(), os.clock())
 	InventoryGui.markSlots(inventoryGui, {})
 	if gesture ~= nil then
-		send(InventoryControls.forGesture(controlsScreen(screen), gesture))
+		send(InventoryControls.requestForGesture(controlsScreen(screen), gesture))
 	end
 end)

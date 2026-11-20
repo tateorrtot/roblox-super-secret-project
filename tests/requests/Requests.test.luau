@@ -120,7 +120,7 @@ do -- the names of the requests
 		check((InventoryRequests :: any)[name] == nil, '"' .. name .. '" is not a request of InventoryRequests too')
 	end
 	check(
-		not listed.askForView and not listed.NAMES and not listed.carryOut,
+		not listed.askForSnapshot and not listed.NAMES and not listed.carryOut,
 		"NAMES: lists nothing that is not a request"
 	)
 end
@@ -140,18 +140,18 @@ do -- Messages
 			'"' .. name .. "\" is a message a player's machine sends, listed in Messages.toServer"
 		)
 	end
-	check(sent.askForView == true, "Messages.toServer: lists askForView")
+	check(sent.askForSnapshot == true, "Messages.toServer: lists askForSnapshot")
 	check(
 		#Messages.toServer == #Requests.NAMES + 1,
-		"Messages.toServer: lists the requests and askForView, and nothing else"
+		"Messages.toServer: lists the requests and askForSnapshot, and nothing else"
 	)
 	check(
-		not table.find(Requests.NAMES, "askForView"),
-		"Messages: askForView is not a request, so Requests.NAMES lacks it"
+		not table.find(Requests.NAMES, "askForSnapshot"),
+		"Messages: askForSnapshot is not a request, so Requests.NAMES lacks it"
 	)
 	check(
-		#Messages.toClient == 1 and Messages.toClient[1] == "viewChanged",
-		"Messages.toClient: lists viewChanged only"
+		#Messages.toClient == 1 and Messages.toClient[1] == "snapshotChanged",
+		"Messages.toClient: lists snapshotChanged only"
 	)
 
 	local seen: { [string]: boolean } = {}
@@ -207,7 +207,7 @@ do -- carryOut
 	end
 	for _, name in
 		{
-			"askForView",
+			"askForSnapshot",
 			"askForInventory",
 			"nonsense",
 			"",
@@ -296,7 +296,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		return junk[random(#junk)]
 	end
 	local names: { any } = table.clone(Requests.NAMES)
-	for _, extra in { "askForView", "nonsense", 12, false, "NAMES" } :: { any } do
+	for _, extra in { "askForSnapshot", "nonsense", 12, false, "NAMES" } :: { any } do
 		table.insert(names, extra)
 	end
 

@@ -112,7 +112,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, { crate: numbe
 end
 
 do -- the numbers the world goes by
-	check(World.CLOSES_BEYOND == Plot.REACH + 4, "CLOSES_BEYOND: a screen closes 4 studs beyond reach")
+	check(World.SCREEN_CLOSES_BEYOND == World.REACH + 4, "CLOSES_BEYOND: a screen closes 4 studs beyond reach")
 	check(
 		World.STANDS_ON_WITHIN == Plot.TILE_SIZE * 0.75,
 		"STANDS_ON_WITHIN: a player stands on a tile within three quarters of its width of its middle"
@@ -144,7 +144,7 @@ do -- a station gets its record when the world is made or when it is placed
 		"new: and it works over the oven's own inventory"
 	)
 	check(
-		station ~= nil and not Station.isBurning(station) and station.worked == 0,
+		station ~= nil and not Station.isBurning(station) and station.workedSeconds == 0,
 		"new: with no fire and no work done"
 	)
 	check(world.stations[crateId] == nil, "new: a crate is not a station, though it has an inventory")
@@ -382,22 +382,22 @@ end
 
 do -- reaching a tile
 	local world, state = newWorld()
-	check(World.canReach(world, state, 2, 2), "canReach: a tile near the player is in reach")
+	check(World.canReachTile(world, state, 2, 2), "canReach: a tile near the player is in reach")
 	-- Tile 6, 1 has its middle at 22, 2. From 6, 2 it is exactly 16 studs away.
 	World.setPlayerPosition(world, 1, at(6, 5, 2))
 	check(
-		World.canReach(world, state, 6, 1),
-		"canReach: a tile exactly Plot.REACH away is in reach, whatever the height"
+		World.canReachTile(world, state, 6, 1),
+		"canReach: a tile exactly World.REACH away is in reach, whatever the height"
 	)
 	World.setPlayerPosition(world, 1, at(5.99, 0, 2))
-	check(not World.canReach(world, state, 6, 1), "canReach: a tile a little further is not")
+	check(not World.canReachTile(world, state, 6, 1), "canReach: a tile a little further is not")
 	World.setPlayerPosition(world, 1, nil)
-	check(not World.canReach(world, state, 2, 2), "canReach: a player with no character reaches nothing")
+	check(not World.canReachTile(world, state, 2, 2), "canReach: a player with no character reaches nothing")
 	local corner = World.new(Plot.new(3, 3), at(100, 0, 100), 0)
 	local cornerState = World.addPlayer(corner, 1, at(0, 0, 0))
 	World.setPlayerPosition(corner, 1, at(102, 0, 102))
-	check(World.canReach(corner, cornerState, 1, 1), "canReach: measured from the plot's own corner")
-	check(not World.canReach(corner, cornerState, 100, 100), "canReach: a tile far off the plot is not in reach")
+	check(World.canReachTile(corner, cornerState, 1, 1), "canReach: measured from the plot's own corner")
+	check(not World.canReachTile(corner, cornerState, 100, 100), "canReach: a tile far off the plot is not in reach")
 end
 
 do -- standing on a tile
@@ -617,10 +617,10 @@ end
 do -- time passing: screens close
 	local world, state, ids = newWorld()
 	World.openPlaced(world, state, ids.crate)
-	World.setPlayerPosition(world, 1, at(6, 0, 6 + World.CLOSES_BEYOND))
+	World.setPlayerPosition(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND))
 	World.step(world, 101)
 	check(state.screen ~= nil, "step: a screen stays open at exactly the distance it closes beyond")
-	World.setPlayerPosition(world, 1, at(6, 0, 6.01 + World.CLOSES_BEYOND))
+	World.setPlayerPosition(world, 1, at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND))
 	World.step(world, 102)
 	check(state.screen == nil and state.openedPlacedId == nil, "step: and closes once the player is beyond it")
 
@@ -687,15 +687,15 @@ do -- time passing: stations
 		"step: and in time turns a fish into a cooked fish"
 	)
 	World.step(world, 110)
-	check(world.stations[ids.oven].worked > 0, "step: (set up) the second fish is being worked on")
-	local worked = world.stations[ids.oven].worked
+	check(world.stations[ids.oven].workedSeconds > 0, "step: (set up) the second fish is being worked on")
+	local worked = world.stations[ids.oven].workedSeconds
 	World.step(world, 108)
 	check(
-		world.stations[ids.oven].worked == worked,
+		world.stations[ids.oven].workedSeconds == worked,
 		"step: no time passes for a station when the time given is earlier"
 	)
 	World.step(world, 108)
-	check(world.stations[ids.oven].worked == worked, "step: nor when it is the same as the time before")
+	check(world.stations[ids.oven].workedSeconds == worked, "step: nor when it is the same as the time before")
 
 	-- Work goes on whether or not a player is near, or there is one at all.
 	local idle = Plot.new(3, 3)
@@ -924,7 +924,7 @@ do -- several players, several things at once, and no item is made or lost
 						elseif kind == 2 then
 							InventoryScreen.putDown(screen, side, slot, if random(2) == 1 then nil else random(8))
 						elseif kind == 3 then
-							InventoryScreen.swap(screen, side, slot)
+							InventoryScreen.swapCarried(screen, side, slot)
 						elseif kind == 4 then
 							InventoryScreen.moveStack(
 								screen,

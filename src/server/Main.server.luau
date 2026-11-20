@@ -14,7 +14,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
-local PlayerView = require(Shared.world.PlayerView)
+local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
 local Position = require(Shared.Position)
 local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
 local RecipeRegistry = require(Shared.stations.RecipeRegistry)
@@ -81,13 +81,13 @@ local function livingRoot(player: Player): BasePart?
 	return if isAlive and root ~= nil and root:IsA("BasePart") then root else nil
 end
 
-local function isRealPlace(point: Vector3): boolean
+local function isFinitePoint(point: Vector3): boolean
 	return point == point and point.Magnitude < math.huge
 end
 
 local function tellPosition(player: Player)
 	local root = livingRoot(player)
-	if root == nil or not isRealPlace(root.Position) then
+	if root == nil or not isFinitePoint(root.Position) then
 		World.setPlayerPosition(world, player.UserId, nil)
 		return
 	end
@@ -104,27 +104,27 @@ local function try(doing: string, callback: (...any) -> ...any, ...: any)
 	end
 end
 
-local function sendView(player: Player)
-	local view = PlayerView.encode(world, player.UserId)
-	local asText = HttpService:JSONEncode(view)
+local function sendSnapshotIfChanged(player: Player)
+	local snapshot = PlayerSnapshot.encode(world, player.UserId)
+	local asText = HttpService:JSONEncode(snapshot)
 	if asText ~= lastSent[player] then
 		lastSent[player] = asText
-		remotes.viewChanged:FireClient(player, view)
+		remotes.snapshotChanged:FireClient(player, snapshot)
 	end
 end
 
-local function show()
+local function showWorldToPlayers()
 	needsShow = false
 	GroundItemParts.update(groundItemParts, world.groundItems)
 	PlotParts.update(plotParts, world.plot, world.stations)
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
-			try("telling a player what they hold", sendView, player)
+			try("telling a player what they hold", sendSnapshotIfChanged, player)
 		end
 	end
 end
 
-local function mayAsk(player: Player): boolean
+local function countRequest(player: Player): boolean
 	if world.players[player.UserId] == nil then
 		return false
 	end
@@ -135,7 +135,7 @@ end
 
 for _, name in Requests.NAMES do
 	remotes[name].OnServerEvent:Connect(function(player: Player, ...: any)
-		if mayAsk(player) then
+		if countRequest(player) then
 			tellPosition(player)
 			Requests.carryOut(world, player.UserId, name, ...)
 			needsShow = true
@@ -143,8 +143,8 @@ for _, name in Requests.NAMES do
 	end)
 end
 
-remotes.askForView.OnServerEvent:Connect(function(player: Player)
-	if mayAsk(player) then
+remotes.askForSnapshot.OnServerEvent:Connect(function(player: Player)
+	if countRequest(player) then
 		lastSent[player] = nil
 		needsShow = true
 	end
@@ -177,7 +177,7 @@ local function step()
 	end
 	try("stepping the World", World.step, world, os.clock())
 	try("restocking the plot", PlaceholderWorld.restock, placeholder, world.groundItems, world.now)
-	show()
+	showWorldToPlayers()
 end
 
 local sinceStep = 0
@@ -193,6 +193,6 @@ RunService.Heartbeat:Connect(function(deltaTime: number)
 		sinceStep = 0
 		step()
 	elseif needsShow then
-		show()
+		showWorldToPlayers()
 	end
 end)

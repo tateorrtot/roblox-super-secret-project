@@ -30,7 +30,7 @@ end
 --- anything at all, so this is the check for data that arrives from outside the game.
 function ItemStack.validate(value: unknown): string?
 	if type(value) ~= "table" then
-		return "a stack is a table, not a " .. type(value)
+		return "a stack must be a table; got a " .. type(value)
 	end
 	local itemId, count = (value :: any).itemId, (value :: any).count
 	if type(itemId) ~= "string" or not ItemRegistry.has(itemId) then

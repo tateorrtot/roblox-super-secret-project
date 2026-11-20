@@ -97,9 +97,9 @@ do -- validate
 	)
 	check(ItemStack.validate({ itemId = 7, count = 1 }) == 'no item has the id "7"', "validate: an id is a string")
 	check(ItemStack.validate({ count = 1 }) == 'no item has the id "nil"', "validate: says when there is no item id")
-	check(ItemStack.validate(nil) == "a stack is a table, not a nil", "validate: nothing is not a stack")
-	check(ItemStack.validate("log") == "a stack is a table, not a string", "validate: a string is not a stack")
-	check(ItemStack.validate(12) == "a stack is a table, not a number", "validate: a number is not a stack")
+	check(ItemStack.validate(nil) == "a stack must be a table; got a nil", "validate: nothing is not a stack")
+	check(ItemStack.validate("log") == "a stack must be a table; got a string", "validate: a string is not a stack")
+	check(ItemStack.validate(12) == "a stack must be a table; got a number", "validate: a number is not a stack")
 end
 
 do -- isSameItem

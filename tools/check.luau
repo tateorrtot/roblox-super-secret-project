@@ -17,9 +17,13 @@
 	4. Requires: `tools/requires` finds that what requires what in `src` runs
 	   one way only. The rules require nothing from the server or the client,
 	   and no folder or module requires itself through others.
-	5. Tests: every file in `tests` whose name ends in `.test.luau` runs and
+	5. Members: `tools/members.py` finds that every function, constant, type
+	   and message that `src` uses from its own modules exists. The server's
+	   and the client's scripts are not type-checked, so this is what catches
+	   a misspelt or renamed member there.
+	6. Tests: every file in `tests` whose name ends in `.test.luau` runs and
 	   exits without an error.
-	6. Demos: every file in `demos` runs and exits without an error.
+	7. Demos: every file in `demos` runs and exits without an error.
 
 	The process exits with code 1 if any check failed.
 
@@ -90,6 +94,7 @@ else
 end
 
 run("requires", "lune", { "run", "tools/requires" })
+run("members", "python", { "tools/members.py" })
 
 local tests = findFiles("tests", ".test.luau")
 for _, test in tests do

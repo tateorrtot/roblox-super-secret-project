@@ -14,36 +14,40 @@ local PlotRequests = {}
 type World = World.World
 type PlayerState = PlayerState.PlayerState
 
---- Places one of the item in the player's hand on the tile `x`, `z`, and takes it out of their
---- hand. Does nothing if they have a screen open, if the plot has no such tile, if they stand
---- more than `Plot.REACH` from it, or if the item cannot be placed there (see `World.placeItem`).
+local function isPlacedInReach(world: World, state: PlayerState, id: unknown): boolean
+	local placedItem = world.plot.placedById[id :: number]
+	return placedItem ~= nil and World.canReachTile(world, state, placedItem.x, placedItem.z)
+end
+
+--- Places one of the item in the player's hand on the tile `x`, `z` of the plot, and takes it
+--- out of their hand. Does nothing if their hand is empty, if they have a screen open, if the plot
+--- has no such tile, if they stand more than `World.REACH` from it, if a player stands on it, if
+--- something already stands on it, or if the item is not one that can be placed.
 function PlotRequests.placeSelected(world: World, state: PlayerState, x: unknown, z: unknown)
 	local inHand = Hotbar.getSelectedStack(state.hotbar)
 	if inHand == nil or state.screen ~= nil or not Plot.hasTile(world.plot, x, z) then
 		return
 	end
 	local tileX, tileZ = x :: number, z :: number
-	if World.canReach(world, state, tileX, tileZ) and World.placeItem(world, inHand.itemId, tileX, tileZ) then
+	if World.canReachTile(world, state, tileX, tileZ) and World.placeItem(world, inHand.itemId, tileX, tileZ) then
 		Hotbar.takeSelected(state.hotbar, 1)
 	end
 end
 
---- Opens the inventory of the placed item with the id `id` on the player's screen, beside their
---- pack. Does nothing if no placed item has that id, if it has no inventory, or if the player
---- stands more than `Plot.REACH` from it.
+--- The player uses the placed item with the id `id`: its inventory opens on their screen, beside
+--- their pack, in place of any screen they had open. Does nothing if no placed item has that id,
+--- if it has no inventory, or if the player stands more than `World.REACH` from it.
 function PlotRequests.usePlaced(world: World, state: PlayerState, id: unknown)
-	local placedItem = world.plot.placedById[id :: number]
-	if placedItem ~= nil and World.canReach(world, state, placedItem.x, placedItem.z) then
+	if isPlacedInReach(world, state, id) then
 		World.openPlaced(world, state, id :: number)
 	end
 end
 
---- Takes the placed item with the id `id` off the plot, to lie on the ground as an item with
---- what was inside it around it. Does nothing if no placed item has that id, or if the player
---- stands more than `Plot.REACH` from it.
+--- The player hits the placed item with the id `id`, which knocks it off the plot: it lies on
+--- the ground as an item, and what was inside it lies around it. Does nothing if no placed item
+--- has that id, or if the player stands more than `World.REACH` from it.
 function PlotRequests.hitPlaced(world: World, state: PlayerState, id: unknown)
-	local placedItem = world.plot.placedById[id :: number]
-	if placedItem ~= nil and World.canReach(world, state, placedItem.x, placedItem.z) then
+	if isPlacedInReach(world, state, id) then
 		World.removePlaced(world, id :: number)
 	end
 end

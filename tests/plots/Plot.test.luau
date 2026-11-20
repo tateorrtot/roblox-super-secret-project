@@ -24,7 +24,6 @@ end
 
 do -- the rules as numbers
 	check(Plot.TILE_SIZE == 4, "a tile is 4 studs on a side")
-	check(Plot.REACH == 16, "a player reaches a tile from 16 studs, which is four tiles")
 end
 
 do -- a new plot
@@ -147,11 +146,13 @@ do -- a tile the plot does not have
 	local plot = Plot.new(3, 2)
 	local offPlot = { { 0, 1 }, { 4, 1 }, { 1, 3 }, { 1, 0 }, { 1.5, 1 }, { 1, "2" } } :: { { any } }
 	for _, tile in offPlot do
-		check(Check.errorFrom(function()
-			return Plot.place(plot, "stove", tile[1], tile[2])
-		end) ~= nil, `place: fails for tile x {tile[1]}, z {tile[2]}`)
+		check(
+			not Plot.canPlace(plot, "stove", tile[1], tile[2]),
+			`canPlace: false for tile x {tile[1]}, z {tile[2]}, which the plot does not have`
+		)
+		check(Plot.place(plot, "stove", tile[1], tile[2]) == nil, `place: nil for tile x {tile[1]}, z {tile[2]}`)
 	end
-	check(placedCount(plot) == 0 and plot.nextId == 1, "place: a failed call changes nothing")
+	check(placedCount(plot) == 0 and plot.nextId == 1, "place: a tile the plot does not have changes nothing")
 end
 
 Check.finish("Plot")

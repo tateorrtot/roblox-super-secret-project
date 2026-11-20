@@ -341,14 +341,14 @@ do -- decode refuses anything encode would not have written, and says what was w
 		return { slotCount = 3, stacks = { { slot = slot, itemId = itemId, count = count } } }
 	end
 	local log = { slot = 1, itemId = "log", count = 3 }
-	refuses("nothing at all", "is a table, not a nil", nil)
-	refuses("a string", "is a table, not a string", "inventory")
+	refuses("nothing at all", "must be a table; got a nil", nil)
+	refuses("a string", "must be a table; got a string", "inventory")
 	refuses("no slotCount", "slotCount must be a whole number, 1 or more; got nil", { stacks = {} })
 	refuses("a slotCount of 0", "slotCount must be a whole number", { slotCount = 0, stacks = {} })
 	refuses("a slotCount that is not whole", "slotCount must be a whole number", { slotCount = 2.5, stacks = {} })
 	refuses("a slotCount that is not a number", "slotCount must be a whole number", { slotCount = "3", stacks = {} })
-	refuses("no stacks", "stacks must be a list, not a nil", { slotCount = 3 })
-	refuses("a field it does not have", "no field called size", { slotCount = 3, stacks = {}, size = 3 })
+	refuses("no stacks", "stacks must be a list; got a nil", { slotCount = 3 })
+	refuses("a field it does not have", "a field it should not have: size", { slotCount = 3, stacks = {}, size = 3 })
 	refuses("a list of stacks with a gap", "no gaps", { slotCount = 3, stacks = { [1] = log, [3] = log } })
 	refuses("stacks keyed by name", "no gaps", { slotCount = 3, stacks = { first = log } })
 	refuses("an entry that is not a table", "entry 1 is a number", { slotCount = 3, stacks = { 5 } })
@@ -366,7 +366,7 @@ do -- decode refuses anything encode would not have written, and says what was w
 	refuses("a count above the stack size", "holds 1 to 16, not 17", one(1, "log", 17))
 	refuses("a count that is not whole", "holds 1 to 16, not 2.5", one(1, "log", 2.5))
 	refuses("a count that is not a number", "stacks[1]: a stack of", one(1, "log", 0 / 0))
-	refuses("an entry with a field it does not have", "stacks[1] has no field called wear", {
+	refuses("an entry with a field it does not have", "stacks[1] has a field it should not have: wear", {
 		slotCount = 3,
 		stacks = { { slot = 1, itemId = "log", count = 3, wear = 2 } },
 	})

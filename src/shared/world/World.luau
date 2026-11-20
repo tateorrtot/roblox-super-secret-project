@@ -25,21 +25,27 @@ type Position = Position.Position
 export type World = {
 	--- The one plot there is for now, shared by every player.
 	read plot: Plot.Plot,
-	--- Where the plot's corner is in the world.
+	--- The point in the world at the outer corner of the plot's tile x 1, z 1.
 	read plotCorner: Position,
 	--- The stacks lying on the ground.
 	read groundItems: GroundItems.GroundItems,
 	--- Every player in the world, by id. On Roblox the id is the UserId.
 	read players: { [number]: PlayerState },
-	--- The station that each placed stove is, by the placed item's id.
+	--- The station that each placed item which is one works as, by the placed item's id. A
+	--- placed item that is not a station has no entry.
 	read stations: { [number]: Station.Station },
 	--- The time `step` was last given, in seconds.
 	now: number,
 }
 
---- How far a player may walk from a placed item they have open before its screen closes, in
+--- How far a player's character may stand from the middle of a tile and still reach it, in
 --- studs along the ground.
-World.CLOSES_BEYOND = Plot.REACH + 4
+World.REACH = 16
+
+--- How far a player may walk from a placed item they have open before its screen closes, in
+--- studs along the ground. It is a little more than `REACH`, so that a screen opened from the
+--- edge of reach does not close at the first step back.
+World.SCREEN_CLOSES_BEYOND = World.REACH + 4
 
 --- A player standing this near the middle of a tile, in studs along the ground, stands on it.
 World.STANDS_ON_WITHIN = Plot.TILE_SIZE * 0.75
@@ -60,15 +66,15 @@ local function sortedPlayerIds(world: World): { number }
 	return ids
 end
 
-local function addStation(world: World, placedId: number, placedItem: Plot.PlacedItem)
+local function newStationFor(placedItem: Plot.PlacedItem): Station.Station?
 	local inventory = placedItem.inventory
-	if inventory ~= nil and RecipeRegistry.isStation(placedItem.itemId) then
-		world.stations[placedId] = Station.new(placedItem.itemId, inventory)
-	end
+	local isStation = RecipeRegistry.isStation(placedItem.itemId)
+	return if inventory ~= nil and isStation then Station.new(placedItem.itemId, inventory) else nil
 end
 
 --- Returns a new world with no players and nothing on the ground, at the time `now`. `plot` is
---- the plot, with whatever already stands on it, and `plotCorner` is where its corner is.
+--- the plot, with whatever already stands on it, and `plotCorner` is the outer corner of its tile
+--- x 1, z 1. Each item on the plot that is a station starts as a station with no fire.
 function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	local world: World = {
 		plot = plot,
@@ -79,7 +85,7 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 		now = now,
 	}
 	for placedId, placedItem in plot.placedById do
-		addStation(world, placedId, placedItem)
+		world.stations[placedId] = newStationFor(placedItem)
 	end
 	return world
 end
@@ -147,10 +153,10 @@ function World.removePlayer(world: World, playerId: number): PlayerState?
 	return state
 end
 
---- Says where a player's character stands, and where a stack they drop lands. `position` is the
---- point on the ground under the character, or `nil` if they have no living character, in which
---- case their `dropPosition` stays as it was. Their drops land at `dropPosition`, or at `position`
---- if it is left out. Fails if no player has that id.
+--- Sets where a player's character stands to `position`, a point on the ground, or to `nil` if
+--- they have no living character. With a `position`, it also sets where a stack they drop lands:
+--- at `dropPosition`, or at `position` if `dropPosition` is left out. With no `position`, where
+--- their drops land stays as it was. Fails if no player has that id.
 function World.setPlayerPosition(world: World, playerId: number, position: Position?, dropPosition: Position?)
 	local state = assert(world.players[playerId], `no player has the id {playerId}`)
 	state.position = position
@@ -159,11 +165,11 @@ function World.setPlayerPosition(world: World, playerId: number, position: Posit
 	end
 end
 
---- Returns `true` if a player's character stands within `Plot.REACH` of the middle of a tile,
+--- Returns `true` if a player's character stands within `World.REACH` of the middle of a tile,
 --- in studs along the ground. A player with no character reaches nothing.
-function World.canReach(world: World, state: PlayerState, x: number, z: number): boolean
+function World.canReachTile(world: World, state: PlayerState, x: number, z: number): boolean
 	local position = state.position
-	return position ~= nil and Position.groundDistance(position, tileCenter(world, x, z)) <= Plot.REACH
+	return position ~= nil and Position.groundDistance(position, tileCenter(world, x, z)) <= World.REACH
 end
 
 --- Returns `true` if any player's character stands on a tile: within `STANDS_ON_WITHIN` of its
@@ -180,15 +186,16 @@ function World.isStoodOn(world: World, x: number, z: number): boolean
 end
 
 --- Places one of an item on a tile and returns the placed item's id. Returns `nil`, placing
---- nothing, if a player stands on the tile, if something already stands on it, or if the item
---- cannot be placed. A placed stove starts as a station with no fire.
+--- nothing, if the plot has no such tile, if a player stands on the tile, if something already
+--- stands on it, or if the item is not one that can be placed. The item is not taken from
+--- anywhere. An item that is a station starts as a station with no fire.
 function World.placeItem(world: World, itemId: string, x: number, z: number): number?
 	if World.isStoodOn(world, x, z) then
 		return nil
 	end
 	local placedId = Plot.place(world.plot, itemId, x, z)
 	if placedId ~= nil then
-		addStation(world, placedId, world.plot.placedById[placedId])
+		world.stations[placedId] = newStationFor(world.plot.placedById[placedId])
 	end
 	return placedId
 end
@@ -251,7 +258,8 @@ local function closeIfOutOfReach(world: World, state: PlayerState)
 	local position = state.position
 	local isInReach = placedItem ~= nil
 		and position ~= nil
-		and Position.groundDistance(position, tileCenter(world, placedItem.x, placedItem.z)) <= World.CLOSES_BEYOND
+		and Position.groundDistance(position, tileCenter(world, placedItem.x, placedItem.z))
+			<= World.SCREEN_CLOSES_BEYOND
 	if not isInReach then
 		World.closeScreen(world, state)
 	end
@@ -261,7 +269,9 @@ end
 --- near them, the player with the lowest id first. A player whose screen is open on a placed item
 --- has it closed, as `closeScreen` does, if they stand more than `CLOSES_BEYOND` from it, if they
 --- have no character, or if it is no longer on the plot. Every station burns and works for the
---- time that has passed. Ground items that have lain too long are removed.
+--- time that has passed. Ground items that have lain too long are removed. If `now` is earlier
+--- than the time `step` was last given, no time passes for the stations. If `now` is earlier
+--- than the time `step` was last given, no time passes for the stations.
 function World.step(world: World, now: number)
 	local elapsed = math.max(now - world.now, 0)
 	world.now = now

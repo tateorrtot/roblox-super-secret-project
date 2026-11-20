@@ -47,10 +47,6 @@ export type Plot = {
 --- The length of a tile's side, in studs.
 Plot.TILE_SIZE = 4
 
---- How far from the middle of a tile the tile is in reach, in studs along the ground. Nothing
---- in Plot checks it.
-Plot.REACH = 16
-
 local function isWholeNumber(value: unknown): boolean
 	return type(value) == "number" and value == math.floor(value) and value ~= math.huge and value ~= -math.huge
 end
@@ -81,21 +77,19 @@ function Plot.hasTile(plot: Plot, x: unknown, z: unknown): boolean
 		and (z :: number) <= plot.depth
 end
 
---- Returns `true` if the item `itemId` could be placed on the tile `x`, `z`: the item's definition
---- says it is `placeable`, and the tile holds nothing. Fails if no item has that id.
---- Note: this does not check that the plot has the tile. See `hasTile`.
+--- Returns `true` if the item `itemId` could be placed on the tile `x`, `z`: the plot has that
+--- tile, the item's definition says it is `placeable`, and the tile holds nothing. Fails if no
+--- item has that id.
 function Plot.canPlace(plot: Plot, itemId: string, x: number, z: number): boolean
-	return ItemRegistry.get(itemId).placeable == true and not isTileTaken(plot, x, z)
+	local isPlaceable = ItemRegistry.get(itemId).placeable == true
+	return isPlaceable and Plot.hasTile(plot, x, z) and not isTileTaken(plot, x, z)
 end
 
 --- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed item. If
 --- the item's definition has a `slotCount`, the placed item gets a new inventory of that many
---- slots, holding nothing. Returns `nil`, and changes nothing, if the item is not `placeable` or
---- the tile already holds something. Fails if the plot has no such tile, or if no item has that id.
+--- slots, holding nothing. Returns `nil`, and changes nothing, if `canPlace` would return
+--- `false`. Fails if no item has that id.
 function Plot.place(plot: Plot, itemId: string, x: number, z: number): number?
-	if not Plot.hasTile(plot, x, z) then
-		error(`the plot has no tile x {x}, z {z}`, 2)
-	end
 	if not Plot.canPlace(plot, itemId, x, z) then
 		return nil
 	end

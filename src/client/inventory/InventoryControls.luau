@@ -76,7 +76,7 @@ end
 --- - A drag with a stack carried puts it down across the slots it crossed: in equal shares with
 ---   the left button, and one item in each with the right. With nothing carried, a drag that ends
 ---   on the slot it began on is a click, and any other drag asks for nothing.
-function InventoryControls.forGesture(screen: Screen, gesture: SlotGestures.Gesture): Request?
+function InventoryControls.requestForGesture(screen: Screen, gesture: SlotGestures.Gesture): Request?
 	local first, releasedOn = gesture.slots[1], gesture.releasedOn
 	if gesture.kind == "drag" and screen.carried ~= nil then
 		return request("spreadCarried", gesture.slots, if gesture.button == "left" then nil else 1)
@@ -94,19 +94,19 @@ end
 
 --- Returns the request that a number key asks for while the pointer is over a slot: the slot's
 --- stack and the stack in the hotbar slot of that number change places.
-function InventoryControls.forDigitKey(over: Slot, digit: number): Request
+function InventoryControls.requestForDigitKey(over: Slot, digit: number): Request
 	return request("swapSlots", over.side, over.slot, "pack", digit)
 end
 
 --- Returns the request that the drop key asks for while the pointer is over a slot: one item is
 --- dropped from the slot, or the whole stack if `wholeStack` is `true`.
-function InventoryControls.forDropKey(over: Slot, wholeStack: boolean): Request
+function InventoryControls.requestForDropKey(over: Slot, wholeStack: boolean): Request
 	return request("dropFromSlot", over.side, over.slot, if wholeStack then nil else 1)
 end
 
 --- Returns the request that a click outside the screen asks for: the carried stack is dropped
 --- with the left button, and one item of it with the right.
-function InventoryControls.forOutsideClick(button: SlotGestures.Button): Request
+function InventoryControls.requestForOutsideClick(button: SlotGestures.Button): Request
 	return request("dropCarried", if button == "left" then nil else 1)
 end
 

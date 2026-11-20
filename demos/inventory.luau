@@ -62,7 +62,7 @@ InventoryScreen.putDown(screen, "other", 2, 1)
 say("Put one down in the crate's second slot, twice:", "carrying " .. describe(screen.carried))
 say("", "crate  " .. contents(crate))
 
-InventoryScreen.swap(screen, "pack", 4)
+InventoryScreen.swapCarried(screen, "pack", 4)
 say("Swap with the stove in the pack:", "carrying " .. describe(screen.carried))
 say("", "pack   " .. contents(pack))
 
