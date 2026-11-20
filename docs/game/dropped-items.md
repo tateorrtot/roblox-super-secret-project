@@ -56,6 +56,6 @@ None is needed now. Each was Claude's idea, set aside when the user asked it to 
 - **Keeping an item's age when it is pushed out of a block.** A pushed item is taken up and thrown again, so its five minutes and its pickup delay start over.
 
 ## The user's to judge by playing
-How far a throw goes, how a knocked-off crate scatters, how near two stacks must lie to merge, and whether items should fall more lightly. The numbers are the constants at the top of `src/shared/world/World.luau` and `src/shared/world/GroundItems.luau`. Those for throwing and picking up are Claude's first guesses. Those for merging are Minecraft's, with a tile counted as a block.
+How far a throw goes, how a knocked-off crate scatters, how near two stacks must lie to merge, and whether items should fall more lightly. The numbers are the constants at the top of `src/shared/world/World.luau` and `src/shared/groundItems/GroundItems.luau`. Those for throwing and picking up are Claude's first guesses. Those for merging are Minecraft's, with a tile counted as a block.
 
 One thing they may meet: a thrown block that clips the edge of a step as it falls can tumble about 20 studs, where on flat ground it stops after 7.6. Roblox's physics does that with a cube, and nothing of ours is involved (`docs/code/checks.md`).

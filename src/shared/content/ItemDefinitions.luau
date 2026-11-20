@@ -3,7 +3,7 @@
 ---
 --- A row is an `ItemRegistry.ItemDefinition`: its id and its stack size. These rows are
 --- placeholders.
-local ItemRegistry = require("./ItemRegistry")
+local ItemRegistry = require("../items/ItemRegistry")
 
 local definitions: { ItemRegistry.ItemDefinition } = {
 	{ id = "log", stackSize = 16 },

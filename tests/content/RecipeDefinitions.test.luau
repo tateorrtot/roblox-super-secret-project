@@ -1,12 +1,12 @@
 --!strict
--- Tests for the written rows of recipes. Run from the repository root: lune run tests/stations/RecipeDefinitions.test.luau
+-- Tests for the written rows of recipes. Run from the repository root: lune run tests/content/RecipeDefinitions.test.luau
 
 local Check = require("../Check")
-local FuelDefinitions = require("../../src/shared/stations/FuelDefinitions")
+local FuelDefinitions = require("../../src/shared/content/FuelDefinitions")
 local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
-local ItemDefinitions = require("../../src/shared/items/ItemDefinitions")
+local ItemDefinitions = require("../../src/shared/content/ItemDefinitions")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
-local RecipeDefinitions = require("../../src/shared/stations/RecipeDefinitions")
+local RecipeDefinitions = require("../../src/shared/content/RecipeDefinitions")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Station = require("../../src/shared/stations/Station")
 

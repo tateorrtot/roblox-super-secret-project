@@ -3,7 +3,7 @@
 
 local Check = require("../Check")
 local Crate = require("../../src/shared/content/Crate")
-local GroundItems = require("../../src/shared/world/GroundItems")
+local GroundItems = require("../../src/shared/groundItems/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")

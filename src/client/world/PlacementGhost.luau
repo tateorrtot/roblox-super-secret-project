@@ -1,14 +1,12 @@
 --!strict
 --- A see-through block that shows where an object would stand on a tile.
 ---
---- `show` puts the block on a tile in the colour of a kind of placed object, and `hide` takes it
---- away. It is only a picture on this player's machine: showing it places nothing.
+--- `show` puts the block on a tile in a colour, and `hide` takes it away. It is only a picture on
+--- this player's machine: showing it places nothing.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Shared = ReplicatedStorage:WaitForChild("Shared")
-local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
-local Plot = require(Shared.plots.Plot)
+local Plot = require(ReplicatedStorage:WaitForChild("Shared").plots.Plot)
 
 local PlacementGhost = {}
 
@@ -44,12 +42,10 @@ function PlacementGhost.new(): PlacementGhost
 	return { part = part }
 end
 
---- Shows the ghost as a placed object of the kind `kindId`, standing on the tile whose middle is
---- at `tileCenter`.
-function PlacementGhost.show(ghost: PlacementGhost, kindId: string, tileCenter: Vector3)
-	local color = PlacedObjectLooks[kindId].color
+--- Shows the ghost in the colour `color`, standing on the tile whose middle is at `tileCenter`.
+function PlacementGhost.show(ghost: PlacementGhost, color: Color3, tileCenter: Vector3)
 	local part = ghost.part
-	part.Color = Color3.fromRGB(color[1], color[2], color[3])
+	part.Color = color
 	part.Position = tileCenter + Vector3.new(0, part.Size.Y / 2, 0)
 	part.Parent = Workspace
 end

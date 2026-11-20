@@ -6,20 +6,24 @@
 --- `StoveItem.interactWithTile` to say, on the server.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LocalCharacter = require(script.Parent.Parent.world.LocalCharacter)
+local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local PlacementGhost = require(script.Parent.Parent.world.PlacementGhost)
 local PlotPointer = require(script.Parent.Parent.world.PlotPointer)
-local Stove = require(ReplicatedStorage:WaitForChild("Shared").content.Stove)
+local Stove = require(Shared.content.Stove)
 
 local StoveItemGhost = {}
 
+local look = PlacedObjectLooks[Stove.PLACED_OBJECT_KIND_ID]
+local COLOR = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
 local ghost = PlacementGhost.new()
 
 --- Shows the ghost as a stove on the tile that `pointerTarget` is, if it is a tile that the
 --- player's character reaches. Hides the ghost if it is anything else, or `nil`.
 function StoveItemGhost.update(pointerTarget: PlotPointer.Target?)
 	if pointerTarget ~= nil and pointerTarget.kind == "tile" and LocalCharacter.canReachPoint(pointerTarget.center) then
-		PlacementGhost.show(ghost, Stove.PLACED_OBJECT_KIND_ID, pointerTarget.center)
+		PlacementGhost.show(ghost, COLOR, pointerTarget.center)
 	else
 		PlacementGhost.hide(ghost)
 	end

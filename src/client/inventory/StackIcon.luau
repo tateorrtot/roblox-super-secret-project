@@ -7,7 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local ItemLooks = require(Shared.items.ItemLooks)
+local ItemLooks = require(Shared.content.ItemLooks)
 local ItemStack = require(Shared.items.ItemStack)
 
 local StackIcon = {}

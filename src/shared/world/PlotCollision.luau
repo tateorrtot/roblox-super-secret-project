@@ -4,7 +4,7 @@
 --- A placed object fills its tile as a cube `Plot.TILE_SIZE` on each side, standing on the tile,
 --- and no ground item lies inside one. `pushGroundItemsOutOfTile` moves the ground items out of a
 --- tile that has just had an object placed on it.
-local GroundItems = require("./GroundItems")
+local GroundItems = require("../groundItems/GroundItems")
 local ItemStack = require("../items/ItemStack")
 local Plot = require("../plots/Plot")
 local Position = require("../Position")

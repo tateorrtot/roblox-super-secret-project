@@ -2,7 +2,7 @@
 -- Tests for PlotCollision. Run from the repository root: lune run tests/world/PlotCollision.test.luau
 
 local Check = require("../Check")
-local GroundItems = require("../../src/shared/world/GroundItems")
+local GroundItems = require("../../src/shared/groundItems/GroundItems")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local Plot = require("../../src/shared/plots/Plot")

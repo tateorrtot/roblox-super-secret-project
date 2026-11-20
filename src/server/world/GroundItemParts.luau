@@ -14,8 +14,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local GroundItems = require(Shared.world.GroundItems)
-local ItemLooks = require(Shared.items.ItemLooks)
+local GroundItems = require(Shared.groundItems.GroundItems)
+local ItemLooks = require(Shared.content.ItemLooks)
 
 local CollisionGroups = require(script.Parent.CollisionGroups)
 

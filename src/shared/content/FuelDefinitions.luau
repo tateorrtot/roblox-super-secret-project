@@ -3,7 +3,7 @@
 ---
 --- Each row names an item and the seconds that one of it burns in a station's fire. These rows
 --- are placeholders.
-local FuelRegistry = require("./FuelRegistry")
+local FuelRegistry = require("../stations/FuelRegistry")
 
 local fuels: { FuelRegistry.Fuel } = {
 	{ item = "log", seconds = 16 },

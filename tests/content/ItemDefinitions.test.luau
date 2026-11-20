@@ -1,10 +1,10 @@
 --!strict
 -- Tests for the written rows: ItemDefinitions and ItemLooks.
--- Run from the repository root: lune run tests/items/ItemDefinitions.test.luau
+-- Run from the repository root: lune run tests/content/ItemDefinitions.test.luau
 
 local Check = require("../Check")
-local ItemDefinitions = require("../../src/shared/items/ItemDefinitions")
-local ItemLooks = require("../../src/shared/items/ItemLooks")
+local ItemDefinitions = require("../../src/shared/content/ItemDefinitions")
+local ItemLooks = require("../../src/shared/content/ItemLooks")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 
 local check = Check.that

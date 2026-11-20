@@ -1,8 +1,8 @@
 --!strict
--- Tests for GroundItems. Run from the repository root: lune run tests/world/GroundItems.test.luau
+-- Tests for GroundItems. Run from the repository root: lune run tests/groundItems/GroundItems.test.luau
 
 local Check = require("../Check")
-local GroundItems = require("../../src/shared/world/GroundItems")
+local GroundItems = require("../../src/shared/groundItems/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")

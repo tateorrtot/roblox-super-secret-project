@@ -15,7 +15,7 @@
 --- station. When a placed object is taken off, the world closes every screen open on it, and the
 --- inventory and the station it was given go with it.
 local Direction = require("../Direction")
-local GroundItems = require("./GroundItems")
+local GroundItems = require("../groundItems/GroundItems")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
 local ItemStack = require("../items/ItemStack")
