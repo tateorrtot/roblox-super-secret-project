@@ -87,13 +87,13 @@ end
 local function tellCharacter(player: Player)
 	local root, humanoid = getLivingCharacter(player)
 	if root == nil or humanoid == nil or not isFinitePoint(root.Position) then
-		World.setCharacter(world, player.UserId, nil)
+		World.removeCharacter(world, player.UserId)
 		return
 	end
 	local look = root.CFrame.LookVector
 	local facing = Direction.new(look.X, look.Z)
 	if facing ~= nil then
-		World.setCharacter(world, player.UserId, { position = toPosition(getFeet(root, humanoid)), facing = facing })
+		World.setCharacterPositionAndFacing(world, player.UserId, toPosition(getFeet(root, humanoid)), facing)
 	end
 end
 

@@ -19,7 +19,7 @@ local here: PlayerState.Character = { position = Position.new(1, 2, 3), facing =
 -- A player with a character, as most of what a player does needs one.
 local function newPlayerWithCharacter(): PlayerState.PlayerState
 	local player = PlayerState.new()
-	PlayerState.setCharacter(player, here)
+	PlayerState.setCharacterPositionAndFacing(player, here.position, here.facing)
 	return player
 end
 
@@ -66,30 +66,45 @@ end
 
 do -- the character
 	local player = PlayerState.new()
-	PlayerState.setCharacter(player, here)
-	check(player.character == here, "setCharacter: the player has the character given")
+	PlayerState.setCharacterPositionAndFacing(player, here.position, here.facing)
+	local character = player.character
+	check(
+		character ~= nil and character.position == here.position and character.facing == here.facing,
+		"setCharacterPositionAndFacing: the player has a character, at the position and facing the way given"
+	)
 	local there: PlayerState.Character = { position = Position.new(9, 0, 9), facing = { x = 0, z = -1 } }
-	PlayerState.setCharacter(player, there)
-	check(player.character == there, "setCharacter: a later character takes its place")
-	PlayerState.setCharacter(player, nil)
-	check(player.character == nil, "setCharacter: nil means the player has no character")
-	PlayerState.setCharacter(player, nil)
-	check(player.character == nil, "setCharacter: nil again changes nothing")
+	PlayerState.setCharacterPositionAndFacing(player, there.position, there.facing)
+	local moved = player.character
+	check(
+		moved ~= nil and moved.position == there.position and moved.facing == there.facing,
+		"setCharacterPositionAndFacing: a later position and facing take their place"
+	)
+	PlayerState.removeCharacter(player)
+	check(player.character == nil, "removeCharacter: the player has no character")
+	PlayerState.removeCharacter(player)
+	check(player.character == nil, "removeCharacter: does nothing for a player with no character")
+	PlayerState.setCharacterPositionAndFacing(player, here.position, here.facing)
+	check(player.character ~= nil, "setCharacterPositionAndFacing: a player who had no character has one from now on")
 
 	local withScreen = newPlayerWithCharacter()
 	PlayerState.openPackScreen(withScreen)
 	check(
 		Check.raises("a player with a screen open must keep their character", function()
-			PlayerState.setCharacter(withScreen, nil)
+			PlayerState.removeCharacter(withScreen)
 		end),
-		"setCharacter: fails if the character is taken away while a screen is open"
+		"removeCharacter: fails while a screen is open"
 	)
+	local kept = withScreen.character
 	check(
-		withScreen.character == here and withScreen.screen ~= nil,
-		"setCharacter: and then the character and the screen are as they were"
+		kept ~= nil and kept.position == here.position and withScreen.screen ~= nil,
+		"removeCharacter: and then the character and the screen are as they were"
 	)
-	PlayerState.setCharacter(withScreen, there)
-	check(withScreen.character == there, "setCharacter: a character can move while a screen is open")
+	PlayerState.setCharacterPositionAndFacing(withScreen, there.position, there.facing)
+	local movedWithScreen = withScreen.character
+	check(
+		movedWithScreen ~= nil and movedWithScreen.position == there.position,
+		"setCharacterPositionAndFacing: a character can move while a screen is open"
+	)
 end
 
 do -- opening the pack

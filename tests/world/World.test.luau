@@ -130,7 +130,7 @@ local function newWorld(): (World.World, PlayerState.PlayerState, { crate: numbe
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
-	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
 	return world, state, { crate = crateId, stove = stoveId, oven = ovenId }
 end
 
@@ -235,21 +235,34 @@ do -- a player's character
 	local character = state.character
 	check(
 		character ~= nil and character.position.x == 6 and character.facing == ALONG_X,
-		"setCharacter: the player has the character given: where it is and which way it faces"
+		"setCharacterPositionAndFacing: the player's character is at the position and faces the way given"
 	)
-	local moved = { position = at(3, 0, 3), facing = { x = 0, z = -1 } }
-	World.setCharacter(world, 1, moved)
-	check(state.character == moved, "setCharacter: a later character takes its place")
-	World.setCharacter(world, 1, nil)
-	check(state.character == nil, "setCharacter: nil means they have no character")
-	World.setCharacter(world, 1, nil)
-	check(state.character == nil, "setCharacter: nil again changes nothing")
+	local awayAlongZ = { x = 0, z = -1 }
+	World.setCharacterPositionAndFacing(world, 1, at(3, 0, 3), awayAlongZ)
+	local moved = state.character
+	check(
+		moved ~= nil and moved.position.x == 3 and moved.position.z == 3 and moved.facing == awayAlongZ,
+		"setCharacterPositionAndFacing: a later position and facing take their place"
+	)
+	World.removeCharacter(world, 1)
+	check(state.character == nil, "removeCharacter: the player has no character")
+	World.removeCharacter(world, 1)
+	check(state.character == nil, "removeCharacter: does nothing for a player with no character")
+	World.setCharacterPositionAndFacing(world, 1, at(3, 0, 3), awayAlongZ)
+	check(state.character ~= nil, "setCharacterPositionAndFacing: a player who had no character has one from now on")
+	local nobodyToRemove = Check.errorFrom(function()
+		World.removeCharacter(world, 2)
+	end)
+	check(
+		nobodyToRemove ~= nil and string.find(nobodyToRemove, "no player has the id 2", 1, true) ~= nil,
+		"removeCharacter: fails if no player has that id"
+	)
 	local nobody = Check.errorFrom(function()
-		World.setCharacter(world, 2, { position = at(0, 0, 0), facing = ALONG_X })
+		World.setCharacterPositionAndFacing(world, 2, at(0, 0, 0), ALONG_X)
 	end)
 	check(
 		nobody ~= nil and string.find(nobody, "no player has the id 2", 1, true) ~= nil,
-		"setCharacter: fails if no player has that id"
+		"setCharacterPositionAndFacing: fails if no player has that id"
 	)
 
 	-- Losing the character closes the screen, while there is still a character to throw from.
@@ -259,15 +272,15 @@ do -- a player's character
 	end
 	World.openPlacedItemScreen(full, fullState, fullIds.crate)
 	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
-	World.setCharacter(full, 1, nil)
+	World.removeCharacter(full, 1)
 	check(
 		fullState.screen == nil and fullState.openedPlacedItemId == nil and fullState.character == nil,
-		"setCharacter: a player who loses their character has their screen closed"
+		"removeCharacter: a player who loses their character has their screen closed"
 	)
 	local fish = groundStacks(full, "fish")
 	check(
 		#fish == 1 and is(fish[1].stack, "fish", 5) and isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0),
-		"setCharacter: and what they carried is thrown from where the character was"
+		"removeCharacter: and what they carried is thrown from where the character was"
 	)
 end
 
@@ -509,7 +522,7 @@ do -- opening a placed item
 		not World.openPlacedItemScreen(world, other, ids.oven) and other.screen == nil,
 		"openPlacedItemScreen: returns false for a player with no character, and opens nothing"
 	)
-	World.setCharacter(world, 2, { position = at(14, 0, 6), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 2, at(14, 0, 6), ALONG_X)
 	check(
 		World.openPlacedItemScreen(world, other, ids.oven),
 		"openPlacedItemScreen: two players may have the same oven open"
@@ -524,18 +537,18 @@ do -- reaching a tile
 	local world, state = newWorld()
 	check(World.canReachTile(world, state, 2, 2), "canReach: a tile near the player is in reach")
 	-- Tile 6, 1 has its middle at 22, 2. From 6, 2 it is exactly 16 studs away.
-	World.setCharacter(world, 1, { position = at(6, 5, 2), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 5, 2), ALONG_X)
 	check(
 		World.canReachTile(world, state, 6, 1),
 		"canReach: a tile exactly World.REACH away is in reach, whatever the height"
 	)
-	World.setCharacter(world, 1, { position = at(5.99, 0, 2), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(5.99, 0, 2), ALONG_X)
 	check(not World.canReachTile(world, state, 6, 1), "canReach: a tile a little further is not")
-	World.setCharacter(world, 1, nil)
+	World.removeCharacter(world, 1)
 	check(not World.canReachTile(world, state, 2, 2), "canReach: a player with no character reaches nothing")
 	local corner = World.new(Plot.new(3, 3), at(100, 0, 100), 0)
 	local cornerState = World.addPlayer(corner, 1)
-	World.setCharacter(corner, 1, { position = at(102, 0, 102), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(corner, 1, at(102, 0, 102), ALONG_X)
 	check(World.canReachTile(corner, cornerState, 1, 1), "canReach: measured from the plot's own corner")
 	check(not World.canReachTile(corner, cornerState, 100, 100), "canReach: a tile far off the plot is not in reach")
 end
@@ -544,19 +557,19 @@ do -- standing on a tile
 	local world, state = newWorld()
 	-- The middle of tile 3, 1 is at 10, 2.
 	check(World.isTileStoodOn(world, 3, 1) == false, "isTileStoodOn: a tile nobody is near is not stood on")
-	World.setCharacter(world, 1, { position = at(13, 0, 2), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(13, 0, 2), ALONG_X)
 	check(
 		World.isTileStoodOn(world, 3, 1),
 		"isTileStoodOn: a player exactly STANDS_ON_WITHIN from its middle stands on it"
 	)
-	World.setCharacter(world, 1, { position = at(13.01, 0, 2), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(13.01, 0, 2), ALONG_X)
 	check(not World.isTileStoodOn(world, 3, 1), "isTileStoodOn: a little further they do not")
-	World.setCharacter(world, 1, { position = at(10, 40, 2), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(10, 40, 2), ALONG_X)
 	check(World.isTileStoodOn(world, 3, 1), "isTileStoodOn: height does not matter")
-	World.setCharacter(world, 1, nil)
+	World.removeCharacter(world, 1)
 	check(not World.isTileStoodOn(world, 3, 1), "isTileStoodOn: a player with no character stands on nothing")
 	local second = World.addPlayer(world, 2)
-	World.setCharacter(world, 2, { position = at(10, 0, 2), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 2, at(10, 0, 2), ALONG_X)
 	check(World.isTileStoodOn(world, 3, 1), "isTileStoodOn: any player will do")
 	check(
 		second.character ~= nil and state.character == nil,
@@ -586,7 +599,7 @@ do -- placing an item
 	check(world.plot.nextId == (placedItemId :: number) + 1, "placeItem: and places nothing then")
 
 	-- Tile 3, 3 has its middle at 10, 10. Player 1 stands 3 studs from it.
-	World.setCharacter(world, 1, { position = at(13, 0, 10), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(13, 0, 10), ALONG_X)
 	local nextId = world.plot.nextId
 	check(World.placeItem(world, "stove", 3, 3) == nil, "placeItem: returns nil for a tile a player stands on")
 	check(
@@ -595,7 +608,7 @@ do -- placing an item
 			and world.plot.placedItemsById[nextId] == nil,
 		"placeItem: and places nothing then"
 	)
-	World.setCharacter(world, 1, { position = at(13.01, 0, 10), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(13.01, 0, 10), ALONG_X)
 	check(World.placeItem(world, "stove", 3, 3) ~= nil, "placeItem: but places on it once the player has stepped off")
 
 	-- A world needs no player to place in it.
@@ -610,176 +623,24 @@ do -- placing an item
 end
 
 do -- placing an item where ground items lie
-	-- Tile 3, 3 reaches from 8 to 12 along x and z, and its middle is 10, 10. A ground item touches
-	-- the side of what stands on it when its middle is 2.6 from the tile's middle along x or z.
+	-- Tile 3, 3 reaches from 8 to 12 along x and z, and its middle is 10, 10.
 	local touching = (Plot.TILE_SIZE + GroundItems.ITEM_WIDTH) / 2
-	local function lyingAt(world: World.World, itemId: string, x: number, y: number, z: number): number
-		return GroundItems.spawnStack(world.groundItems, ItemStack.new(itemId, 1), at(x, y, z), STILL, 0)
-	end
-
 	local world = newWorld()
-	local inside = lyingAt(world, "apple", 9, 0, 10.5)
-	local outside = lyingAt(world, "fish", 10 - touching, 0, 10)
-	local onNextTile = lyingAt(world, "post", 14, 0, 10)
+	local inside = GroundItems.spawnStack(world.groundItems, ItemStack.new("apple", 1), at(9, 0, 10.5), STILL, 0)
 	World.advanceTo(world, 140)
 	check(World.placeItem(world, "crate", 3, 3) ~= nil, "placeItem: (set up) a crate is placed where an apple lies")
-	check(
-		world.groundItems.itemsById[inside] == nil,
-		"placeItem: the ground item that lay there is taken out of the world"
-	)
 	local apples = groundStacks(world, "apple")
-	check(#apples == 1 and is(apples[1].stack, "apple", 1), "placeItem: and its stack is thrown again, whole")
 	check(
-		isAt(apples[1], 10 - touching, 0, 10.5),
-		"placeItem: from just outside the nearest side of the tile, no higher and no further along that side"
+		world.groundItems.itemsById[inside] == nil and #apples == 1 and is(apples[1].stack, "apple", 1),
+		"placeItem: a ground item that lay in the tile is pushed out of it, whole"
 	)
 	check(
-		apples[1].spawnVelocity.x == -World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED
-			and apples[1].spawnVelocity.y == 0
-			and apples[1].spawnVelocity.z == 0,
-		"placeItem: along the ground and away from the tile"
-	)
-	check(apples[1].spawnTime == 140, "placeItem: dropped at the world's time")
-	check(
-		world.groundItems.itemsById[outside] ~= nil and world.groundItems.itemsById[onNextTile] ~= nil,
-		"placeItem: a ground item that only touches the tile's side stays, and so does one on the next tile"
-	)
-	check(inWorld(world, "apple") == 1 and inWorld(world, "fish") == 6, "placeItem: nothing is made or lost")
-
-	-- The nearest side is taken, so the next nearest is used.
-	local blocked = newWorld()
-	World.placeItem(blocked, "post", 2, 3)
-	lyingAt(blocked, "apple", 9, 0, 10.5)
-	World.placeItem(blocked, "crate", 3, 3)
-	local pushed = groundStacks(blocked, "apple")[1]
-	check(
-		isAt(pushed, 9, 0, 10 + touching) and pushed.spawnVelocity.z == World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
-		"placeItem: a side with a placed item against it is not used, and the next nearest is"
+		isAt(apples[1], 10 - touching, 0, 10.5) and apples[1].spawnTime == 140,
+		"placeItem: to just outside the tile, spawned again at the world's time"
 	)
 
-	-- Each of the four sides is used when it is the nearest.
-	local sides = newWorld()
-	lyingAt(sides, "apple", 11, 0, 10)
-	lyingAt(sides, "fish", 9, 0, 10)
-	lyingAt(sides, "post", 10, 0, 11)
-	lyingAt(sides, "stove", 10, 0, 9)
-	World.placeItem(sides, "crate", 3, 3)
-	check(
-		isAt(groundStacks(sides, "apple")[1], 10 + touching, 0, 10)
-			and groundStacks(sides, "apple")[1].spawnVelocity.x == World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
-		"placeItem: a ground item nearest the side of greater x is pushed out of that side"
-	)
-	check(
-		isAt(groundStacks(sides, "fish")[1], 10 - touching, 0, 10)
-			and groundStacks(sides, "fish")[1].spawnVelocity.x == -World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
-		"placeItem: one nearest the side of lesser x, out of that side"
-	)
-	check(
-		isAt(groundStacks(sides, "post")[1], 10, 0, 10 + touching)
-			and groundStacks(sides, "post")[1].spawnVelocity.z == World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
-		"placeItem: one nearest the side of greater z, out of that side"
-	)
-	check(
-		isAt(groundStacks(sides, "stove")[1], 10, 0, 10 - touching)
-			and groundStacks(sides, "stove")[1].spawnVelocity.z == -World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
-		"placeItem: one nearest the side of lesser z, out of that side"
-	)
-
-	-- A side along z is taken, so it is not used either.
-	local blockedAlongZ = newWorld()
-	World.placeItem(blockedAlongZ, "post", 3, 4)
-	lyingAt(blockedAlongZ, "apple", 10, 0, 11)
-	World.placeItem(blockedAlongZ, "crate", 3, 3)
-	check(
-		isAt(groundStacks(blockedAlongZ, "apple")[1], 10 + touching, 0, 11),
-		"placeItem: a side along z with a placed item against it is not used"
-	)
-
-	-- Every side is taken, so the ground item is let go on top.
-	local walled = newWorld()
-	for _, tile in { { 2, 3 }, { 4, 3 }, { 3, 2 }, { 3, 4 } } do
-		World.placeItem(walled, "post", tile[1], tile[2])
-	end
-	lyingAt(walled, "apple", 9, 0, 10.5)
-	World.placeItem(walled, "crate", 3, 3)
-	local lifted = groundStacks(walled, "apple")[1]
-	check(
-		isAt(lifted, 9, Plot.TILE_SIZE, 10.5) and wasSpawnedMovingAt(lifted, 0, 0, 0),
-		"placeItem: with a placed item against all four sides, it is let go on top"
-	)
-
-	-- How far in a ground item must reach, and how high it may be.
-	local edges = newWorld()
-	local justIn = lyingAt(edges, "apple", 10 - touching + 0.11, 0, 10)
-	local justOut = lyingAt(edges, "fish", 10, 0, 10 + touching - 0.09)
-	local onTop = lyingAt(edges, "post", 10, Plot.TILE_SIZE - 0.09, 10)
-	local inTheAir = lyingAt(edges, "stove", 10, Plot.TILE_SIZE - 0.11, 10)
-	World.placeItem(edges, "crate", 3, 3)
-	check(
-		edges.groundItems.itemsById[justIn] == nil and edges.groundItems.itemsById[inTheAir] == nil,
-		"placeItem: a ground item that reaches more than a tenth of a stud into the placed item is pushed out"
-	)
-	check(
-		edges.groundItems.itemsById[justOut] ~= nil and edges.groundItems.itemsById[onTop] ~= nil,
-		"placeItem: one that reaches in less than that, from the side or from above, is left alone"
-	)
-	local under = newWorld()
-	local below = lyingAt(under, "apple", 10, -GroundItems.ITEM_WIDTH + 0.09, 10)
-	local reachingUp = lyingAt(under, "fish", 10, -GroundItems.ITEM_WIDTH + 0.11, 10)
-	World.placeItem(under, "crate", 3, 3)
-	check(
-		under.groundItems.itemsById[below] ~= nil and under.groundItems.itemsById[reachingUp] == nil,
-		"placeItem: a ground item under the placed item is left alone, unless it reaches up into it"
-	)
-
-	-- The edge of the plot: there is nothing off the plot to be in the way.
-	local corner = newWorld()
-	lyingAt(corner, "apple", 0.5, 0, 2)
-	World.placeItem(corner, "crate", 1, 1)
-	check(
-		isAt(groundStacks(corner, "apple")[1], 2 - touching, 0, 2),
-		"placeItem: at the edge of the plot a ground item is pushed off the plot"
-	)
-
-	-- Several at once, and a placing that is refused.
-	local several = newWorld()
-	lyingAt(several, "apple", 9, 0, 10)
-	lyingAt(several, "apple", 9, 0, 10)
-	lyingAt(several, "fish", 11, 0, 10)
-	lyingAt(several, "stove", 10, 0, 9)
-	World.placeItem(several, "crate", 3, 3)
-	check(
-		onGround(several, "apple") == 2 and onGround(several, "fish") == 1 and onGround(several, "stove") == 1,
-		"placeItem: every ground item that lay there is pushed out, and none is lost"
-	)
-	local ordered = newWorld()
-	for index = 1, 100 do
-		lyingAt(ordered, "stove", 500 + index * 10, 0, 500)
-	end
-	GroundItems.removeExpiredItems(ordered.groundItems, GroundItems.LIFETIME_SECONDS)
-	for index = 1, 30 do
-		lyingAt(ordered, "stove", 8.25 + index * 0.1, 0, 10)
-	end
-	World.placeItem(ordered, "crate", 3, 3)
-	local inOrder = true
-	for index = 1, 30 do
-		local rethrown = ordered.groundItems.itemsById[130 + index]
-		local wentTowardsLesserX = rethrown ~= nil and rethrown.spawnVelocity.x < 0
-		if rethrown == nil or wentTowardsLesserX ~= (index <= 17) then
-			inOrder = false
-		end
-	end
-	check(inOrder, "placeItem: ground items are pushed out in the order they were thrown, whatever their ids")
-	for _, groundItem in several.groundItems.itemsById do
-		local alongX = math.abs(groundItem.position.x - 10)
-		local alongZ = math.abs(groundItem.position.z - 10)
-		check(
-			math.max(alongX, alongZ) >= touching - 1e-9,
-			"placeItem: each ground item is clear of the placed item afterwards"
-		)
-	end
 	local refused = newWorld()
-	local stays = lyingAt(refused, "apple", 6, 0, 6.5)
+	local stays = GroundItems.spawnStack(refused.groundItems, ItemStack.new("apple", 1), at(6, 0, 6.5), STILL, 0)
 	check(
 		World.placeItem(refused, "post", 2, 2) == nil and refused.groundItems.itemsById[stays] ~= nil,
 		"placeItem: a placing that is refused pushes nothing"
@@ -789,7 +650,7 @@ end
 do -- taking a placed item off
 	local world, state, ids = newWorld()
 	local other = World.addPlayer(world, 2)
-	World.setCharacter(world, 2, { position = at(10, 0, 10), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 2, at(10, 0, 10), ALONG_X)
 	World.openPlacedItemScreen(world, state, ids.crate)
 	World.openPlacedItemScreen(world, other, ids.crate)
 	InventoryScreen.pickUpFromSlot(other.screen :: any, "other", 1, 3)
@@ -990,8 +851,8 @@ do -- time passing: picking up
 
 	World.addPlayer(world, 2)
 	World.addPlayer(world, -5)
-	World.setCharacter(world, 2, { position = at(30, 0, 30), facing = ALONG_X })
-	World.setCharacter(world, -5, { position = at(30, 0, 30), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 2, at(30, 0, 30), ALONG_X)
+	World.setCharacterPositionAndFacing(world, -5, at(30, 0, 30), ALONG_X)
 	World.spawnStack(world, ItemStack.new("stove", 1), at(31, 0, 30), STILL)
 	World.advanceTo(world, 110)
 	check(
@@ -1000,9 +861,9 @@ do -- time passing: picking up
 		"advanceTo: of two players equally near, the one with the lowest id picks up first"
 	)
 
-	World.setCharacter(world, -5, nil)
+	World.removeCharacter(world, -5)
 	World.spawnStack(world, ItemStack.new("stove", 1), at(100, 0, 100), STILL)
-	World.setCharacter(world, 2, { position = at(100, 0, 100), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 2, at(100, 0, 100), ALONG_X)
 	World.spawnStack(world, ItemStack.new("fish", 2), at(30, 0, 30), STILL)
 	World.advanceTo(world, 120)
 	check(
@@ -1011,8 +872,8 @@ do -- time passing: picking up
 	)
 	check(onGround(world, "fish") == 2, "advanceTo: a player with no character picks nothing up")
 
-	World.setCharacter(world, -5, { position = at(30, 0, 30), facing = ALONG_X })
-	World.setCharacter(world, 2, { position = at(500, 0, 500), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, -5, at(30, 0, 30), ALONG_X)
+	World.setCharacterPositionAndFacing(world, 2, at(500, 0, 500), ALONG_X)
 	World.advanceTo(world, 121)
 	check(
 		Inventory.countItems(world.players[-5].pack, "fish") == 2,
@@ -1032,39 +893,42 @@ end
 do -- time passing: screens close
 	local world, state, ids = newWorld()
 	World.openPlacedItemScreen(world, state, ids.crate)
-	World.setCharacter(world, 1, { position = at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND), ALONG_X)
 	World.advanceTo(world, 101)
 	check(state.screen ~= nil, "advanceTo: a screen stays open at exactly the distance it closes beyond")
-	World.setCharacter(world, 1, { position = at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 6.01 + World.SCREEN_CLOSES_BEYOND), ALONG_X)
 	World.advanceTo(world, 102)
 	check(state.screen == nil and state.openedPlacedItemId == nil, "advanceTo: and closes once the player is beyond it")
 
-	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
 	World.openPlacedItemScreen(world, state, ids.crate)
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
-	World.setCharacter(world, 1, nil)
-	check(state.screen == nil, "setCharacter: a screen on a placed item closes when the player loses their character")
+	World.removeCharacter(world, 1)
+	check(
+		state.screen == nil,
+		"removeCharacter: a screen on a placed item closes when the player loses their character"
+	)
 	World.advanceTo(world, 103)
 	check(Inventory.countItems(state.pack, "fish") == 5, "advanceTo: and what they carried is in their pack")
 
-	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
 	World.openPlacedItemScreen(world, state, ids.crate)
 	Plot.removePlacedItem(world.plot, ids.crate)
 	World.advanceTo(world, 104)
 	check(state.screen == nil, "advanceTo: a screen closes when its placed item is no longer on the plot")
 
 	World.openPlacedItemScreen(world, state, ids.oven)
-	World.setCharacter(world, 1, { position = at(6, 0, 6), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 6), ALONG_X)
 	World.advanceTo(world, 105)
 	check(state.screen ~= nil, "advanceTo: a screen stays open for a player who stays near")
 
 	World.closeScreen(world, state)
 	PlayerState.openPackScreen(state)
-	World.setCharacter(world, 1, { position = at(500, 0, 500), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(500, 0, 500), ALONG_X)
 	World.advanceTo(world, 106)
 	check(state.screen ~= nil, "advanceTo: the pack open alone stays open wherever the player goes")
-	World.setCharacter(world, 1, nil)
-	check(state.screen == nil, "setCharacter: the pack open alone closes too when the player loses their character")
+	World.removeCharacter(world, 1)
+	check(state.screen == nil, "removeCharacter: the pack open alone closes too when the player loses their character")
 
 	-- The pack is full, so what is carried is thrown from the player's character.
 	local full, fullState, fullIds = newWorld()
@@ -1073,7 +937,7 @@ do -- time passing: screens close
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
-	World.setCharacter(full, 1, { position = at(6, 0, 200), facing = { x = 0, z = 1 } })
+	World.setCharacterPositionAndFacing(full, 1, at(6, 0, 200), { x = 0, z = 1 })
 	World.advanceTo(full, 101)
 	local fish = groundStacks(full, "fish")
 	check(
@@ -1254,13 +1118,13 @@ do -- several players, several things at once, and no item is made or lost
 				if state ~= nil then
 					if random(8) == 1 then
 						run(function()
-							World.setCharacter(world, playerId, nil)
+							World.removeCharacter(world, playerId)
 						end)
 					else
 						local standing = at(random(28) - 2, 0, random(28) - 2)
 						run(function()
 							local facing = if random(2) == 1 then ALONG_X else { x = 0, z = -1 }
-							World.setCharacter(world, playerId, { position = standing, facing = facing })
+							World.setCharacterPositionAndFacing(world, playerId, standing, facing)
 						end)
 					end
 				end

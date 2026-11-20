@@ -51,13 +51,24 @@ function PlayerState.new(pack: Inventory.Inventory?): PlayerState
 	}
 end
 
---- Sets the player's character to `character`, or to `nil` if they have no living character.
---- Fails if `character` is `nil` while the player has a screen open: close it first.
-function PlayerState.setCharacter(player: PlayerState, character: Character?)
-	if character == nil and player.screen ~= nil then
+--- Sets where the player's character is, at its feet, and which way it faces along the ground. A
+--- player who had no character has one from now on.
+function PlayerState.setCharacterPositionAndFacing(
+	player: PlayerState,
+	position: Position.Position,
+	facing: Direction.Direction
+)
+	player.character = table.freeze({ position = position, facing = facing })
+end
+
+--- Removes the player's character: they have none until `setCharacterPositionAndFacing` is next
+--- called. Does nothing if they have no character. Fails if the player has a screen open: close it
+--- first.
+function PlayerState.removeCharacter(player: PlayerState)
+	if player.screen ~= nil then
 		error("a player with a screen open must keep their character", 2)
 	end
-	player.character = character
+	player.character = nil
 end
 
 --- Opens the player's inventory screen on their pack alone, and returns `true`. Returns `false`,

@@ -48,7 +48,7 @@ end
 local function newWorld(): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
 	local state = World.addPlayer(world, 1)
-	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 2, ItemStack.new("fish", 5))
 	Inventory.setStack(state.pack, 10, ItemStack.new("log", 4))
@@ -807,7 +807,7 @@ do -- dropCarriedStack
 	check(onGround(allWorld, "log") == 12, "dropCarriedStack: and again drops nothing")
 
 	local movedWorld, moved = newWorld()
-	World.setCharacter(movedWorld, 1, { position = at(1, 0, 1), facing = { x = 0, z = 1 } })
+	World.setCharacterPositionAndFacing(movedWorld, 1, at(1, 0, 1), { x = 0, z = 1 })
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
 	send("dropCarriedStack", movedWorld, moved, nil)
@@ -820,7 +820,7 @@ do -- dropCarriedStack
 	)
 	send("openPack", movedWorld, moved)
 	send("pickUpFromSlot", movedWorld, moved, "pack", 10)
-	World.setCharacter(movedWorld, 1, nil)
+	World.removeCharacter(movedWorld, 1)
 	check(
 		moved.screen == nil and Inventory.countItems(moved.pack, "log") == 4,
 		"dropCarriedStack: (set up) a player who loses their character has their screen closed, the carried stack back in the pack"
@@ -1025,7 +1025,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	local allConserved, allValid = true, true
 	for _ = 1, 40 do
 		local world, state = newWorld()
-		World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
+		World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
 		local crateId = World.placeItem(world, "crate", 6, 6) :: number
 		local ovenId = World.placeItem(world, "oven", 6, 5) :: number
 		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory

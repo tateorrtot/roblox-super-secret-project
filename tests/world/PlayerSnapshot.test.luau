@@ -80,7 +80,7 @@ local function newWorld(): (World.World, number, number)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 7, ItemStack.new("apple", 4))
-	World.setCharacter(world, 1, { position = at(6, 0, 0), facing = ALONG_X })
+	World.setCharacterPositionAndFacing(world, 1, at(6, 0, 0), ALONG_X)
 	return world, crateId, ovenId
 end
 
