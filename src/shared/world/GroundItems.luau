@@ -32,7 +32,8 @@ export type GroundItem = {
 	read throw: Throw,
 	--- Where it is now: the middle of its underside. It starts at `throw.from`.
 	read position: Position,
-	--- The time it was dropped, in seconds.
+	--- The time it was dropped, in seconds. When another stack joins it, this becomes the later
+	--- of the two stacks' times.
 	read droppedAt: number,
 }
 

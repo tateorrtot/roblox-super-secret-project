@@ -12,8 +12,11 @@ The game
     Inventory         slots that hold stacks                           built
     InventoryScreen   what a player has open, and the carried stack    built
     Hotbar            the first slots, and the selected one            built
+  Where and which way
+    Position, Direction   a point in the world; a way along the ground      built
+    Throw             how a stack sets off: where from, how fast           built
   Players
-    PlayerState       one player: pack, hotbar, screen, where they stand   built
+    PlayerState       one player: pack, hotbar, screen, where their character is, how their drops set off   built
   Plots and building
     Plot              a grid of tiles and the items placed on it       built: one shared plot, one item to a tile
     Footprint, a plot of one's own, walls, floors and ceilings         not started
@@ -21,7 +24,7 @@ The game
     RecipeRegistry, RecipeDefinitions, Station                         built: the stove
     StationProgress   a station's fire and work, as times                built
   The world
-    GroundItems       stacks lying on the ground                       built
+    GroundItems       stacks loose in the world: thrown, moved, merged, picked up   built
     World             the game's state and what can be done in it      built
     PlayerSnapshot    what a player's machine is told                  built
   Requests: what a player's machine may ask for
@@ -32,14 +35,16 @@ The game
     UseAndHit         the two actions on the world                     built, PC only; no Hit by touch
     InventoryGui, HotbarGui, SlotGui, StackIcon, PlotPointer, PlacementGhost   built, placeholder look
   On the server
-    GroundItemParts, PlotParts, PlaceholderWorld                       built, placeholder blocks
+    GroundItemParts   each ground item as a part Roblox's physics moves   built, placeholder blocks
+    CollisionGroups   ground items pass through each other and characters   built
+    PlotParts, PlaceholderWorld                                        built, placeholder blocks
   Later: conditions, creatures, people, carriers, places, bodies and needs
 ```
 
 ## Where it lives
 - **The rules** are in `src/shared`: plain Luau with no Roblox calls, each piece tested in `tests/`. Its folders require one way only: `items`, then `inventory`, then `players`, `stations` and `plots`, then `save` and `world`, with `requests` on top. `lune run tools/requires` checks that.
 - **The player's machine** is `src/client`. `Main.client.luau` is the only LocalScript, and holds the wiring and the keys. `SlotGestures` and `InventoryControls` are plain Luau, tested in `tests/client`. The rest draws, or works out what the pointer is over.
-- **The server** is `src/server`. `Main.server.luau` is the only Script. It tells the `World` what happens, draws it, and sends each player their snapshot. It also limits each machine to 60 requests a second, and decides where a dropped stack lands.
+- **The server** is `src/server`. `Main.server.luau` is the only Script. It tells the `World` what happens, draws it, and sends each player their snapshot. It also limits each machine to 60 requests a second.
 
 ## How a click becomes a change
 On the player's machine:
@@ -53,5 +58,14 @@ On the server:
 6. `InventoryRequests` checks what the machine sent, and calls the operation.
 7. `InventoryScreen` moves the items, through `Inventory`.
 8. `PlayerSnapshot.encode` makes what the player's machine is told, and the screen redraws from it.
+
+## How a dropped stack moves
+1. A request such as `dropFromSelectedSlot` takes the stack out of the pack and calls `World.throwStack` with the player's `throw`.
+2. `GroundItems.throwStack` makes a ground item that remembers the throw.
+3. `GroundItemParts.update` makes a part for it, where the throw leaves from and moving as fast.
+4. Roblox's physics moves the part, and shows that to every player. We wrote no physics.
+5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.moveGroundItemTo`. A ground item that comes to lie by its own kind joins it there.
+
+`World.placeItem` is the one rule about motion that is ours: it takes each ground item lying where the placed item now stands and throws it again from just outside the nearest free side.
 
 Nothing on the server knows that a mouse exists. Nothing is applied on the player's machine before the server answers (`docs/status/next.md`).

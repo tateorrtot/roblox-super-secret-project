@@ -24,7 +24,8 @@ One block is one metre, and there are 20 ticks to a second.
 
 Sources: `minecraft.wiki/w/Item_(entity)` and `minecraft.wiki/w/Entity`; decompiled `EntityItem`, `EntityPlayer`, `Entity`, `Block`, `InventoryHelper`, `BehaviorDefaultDispenseItem` and `World` from a public 1.12 tree; Paper's patch of the current `ItemEntity`.
 
-## How ours behaves today
+## How ours behaved before 2026-11-20
+This is what the user saw. It was replaced the same day (`docs/game/dropped-items.md`).
 - A dropped stack does not move. The server works out one spot, the ground under a point 6 studs in front of the player, and the stack appears there, at rest (`DROP_DISTANCE` in `Main.server.luau`).
 - That spot is found by looking straight down from above, so if a block stands there the spot is the top of the block.
 - A player picks up what lies within 4 studs of the ground under their feet, measured in a straight line. The top of a 4-stud block beside them is farther than that. That is the bug the user saw.
@@ -39,6 +40,20 @@ Three experiments in a play test, with parts one stud across, owned by the serve
 | **An item tossed at a 4-stud block 6 studs ahead**, from chest height | 20 of 20 hit its side and came to rest at its foot. None landed on top |
 | **A block placed where a resting item lies** | **Roblox does not push the item out.** Left alone, it stays inside the block, 8 of 8. Woken by any means, it is squeezed half a stud into the floor under the block and stays there, 32 of 32 |
 | **The same, with Minecraft's rule written by hand**: move the item out through the nearest side and let it drop | 40 of 40 ended outside, at rest, within 3 studs |
+
+A fourth experiment, the same day, with cubes 1.2 studs across thrown at 24 studs a second forwards and 8 upwards from 3 studs up (`build/drop_experiment4.luau`):
+
+| Asked | Found |
+|---|---|
+| **How far does a plain part go**, on Roblox's own gravity with nothing changed? | 6.7 studs, at rest after 0.7 seconds. All 20 landed in the same place |
+| **A lighter fall**: an upward `VectorForce` on each part that leaves a gravity of 64 studs a second, each second | It works. With friction left alone the part slides to 18.9 studs. With friction 2 it stops dead where it lands, at 10.7 studs, after 0.5 seconds |
+| **Does a part with that force still go to sleep?** | Yes. The count of moving parts was back to where it started three seconds after they came to rest, for every kind of body tried |
+| **An `AlignOrientation` to stop the cube tumbling** | Works, and the part still sleeps. It lands in the same place |
+| **A block destroyed under a resting item** | The item falls to the ground, 10 of 10. Roblox wakes it by itself |
+| **An item thrown through a character**, in a collision group that does not collide with the characters' | 10 of 10 passed through, and the character did not move |
+| **Thrown at a block 6 studs ahead** | 10 of 10 ended at its foot, touching its side |
+
+Only the first row is used. The game throws plain parts on Roblox's own gravity, because the user asked on 2026-11-20 for nothing to be tuned before there is a game to play. The lighter fall is here for when they want to compare.
 
 ## What Roblox's documentation and developers say
 - **Collision groups** make "collides with the world, not with other items or with characters". At most 32 groups. Characters must be put in a group of their own, each time one spawns.

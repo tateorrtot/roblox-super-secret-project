@@ -1,7 +1,9 @@
 # Asked of the user, not yet answered
 
 - To play the build and say what feels wrong.
-- Whether to build a throwaway demo of thrown items for them to try in Studio, so that they can judge how an item should fall (asked 2026-11-20).
+- To play with dropped items and say how they feel: how far a throw goes, how a broken crate spills, whether items should fall more lightly (built 2026-11-20, on the branch `dropped-items`).
+- Which, if any, of the ideas Claude set aside they want. The list is at the end of `docs/game/dropped-items.md`.
+- Whether they want an audit of the rule files: merging duplicates and deleting what a later rule replaced, with the diff shown first.
 - Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.
 - Their read of the rewritten code, and their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - Whether they would rather read the code in the method form (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).

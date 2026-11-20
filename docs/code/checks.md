@@ -34,10 +34,11 @@ Use it when the user asks which scripts and directories are coupled to which, an
 ## The play test
 `python tools/playtest.py` copies `src/` into Studio, starts a play test, and drives the test character with keys, clicks and walking through the whole loop: the pack, dropping, picking up, the crate, placing, using and hitting, dragging a stack across slots, reach, and baking an apple in the stove. After each step it checks what the screen shows and what is in the world. Then it stops the play test.
 
-- 63 checks, in about a minute and a half.
+- 71 checks, in about two minutes.
 - One step sends every request with nonsense, as a tampered machine might, and checks that nothing breaks.
 - Another asks the server outright to use and to hit a crate from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
 - A third counts how many times a player watching a lit stove is told what they hold, in three seconds. It was 27 before `StationProgress`, and must be 3 or fewer.
+- It waits for thrown stacks to come to rest before it looks at them, checks that a throw goes the way the character faces, and places a crate on a log to see the log pushed out.
 - It is PC only.
 - **Run it after any change to `src/server` or `src/client`.**
 
@@ -49,6 +50,6 @@ Use it when the user asks which scripts and directories are coupled to which, an
 - Python 3 is needed for the tools written in Python.
 
 ## Git
-- Branch `first-pieces`. `main` has no commits.
+- Branch `first-pieces`, and `dropped-items` cut from it on 2026-11-20 and not merged. `main` has no commits.
 - Work is committed as it is done. The user, 2026-11-19: "Yes, commit as you go".
 - Nothing is pushed anywhere. Push only when the user asks.

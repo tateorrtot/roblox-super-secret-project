@@ -11,7 +11,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 - A noun in a name is a part of the thing, or something the caller passes or gets back. A name with `Stack` in it takes or returns a stack. One with `Slot` takes a slot.
 - Arguments come in the order the name gives them: the thing first, then where, then how much.
 - No name stops at an adjective. `placedItem`, not `placed`. `carriedStack`, not `carried`.
-- The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `swap`, `use` and `hit` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `swapSlots`, `usePlacedItem`. No verb is excused for being familiar.
+- The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `swap`, `use` and `hit` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStack`, `swapSlots`, `usePlacedItem`. No verb is excused for being familiar.
 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
@@ -26,7 +26,10 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `carriedStack` | The stack a player is moving between slots |
 | `player` | A `PlayerState`, in the rules |
 | `placedItem`, `placedItemId` | A thing standing on a plot, and its id |
-| `position` | A point in the world, `{ x, y, z }` in studs |
+| `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
+| `facing`, `direction` | A way along the ground, `{ x, z }` with a length of 1 |
+| `throw` | How a stack sets off into the world: where from, and how fast. A player drops; what happens to the stack is a throw |
+| `velocity` | How fast along each axis, `{ x, y, z }` in studs a second |
 | `now` | The present time, in seconds |
 | `selected` | The hotbar's selected slot. A comment may say that what it holds is in the player's hand. No function is named for a hand |
 | `...Seconds`, `..._SECONDS` | A length of time: `burnSecondsLeft`, `LIFETIME_SECONDS` |
@@ -43,6 +46,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `put` | Puts into a named place | The stack that did not fit |
 | `take` | Takes out of a named place for the caller | The stack taken |
 | `remove` | Takes out wherever it is | How many were removed |
+| `move` | Takes a thing from where it is to somewhere else: stacks into an inventory, a ground item to a position | How many items moved, when it moves items |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing | `true` or `false` |
 | `find` | Looks for one that may not be there | It, or `nil` |

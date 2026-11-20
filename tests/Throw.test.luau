@@ -7,8 +7,8 @@ local Throw = require("../src/shared/Throw")
 local check = Check.that
 
 local HEIGHT = Throw.CHARACTER_THROW_HEIGHT
-local SPEED = Throw.CHARACTER_THROW_SPEED
-local LIFT = Throw.CHARACTER_THROW_LIFT
+local SPEED = Throw.CHARACTER_THROW_FORWARD_SPEED
+local LIFT = Throw.CHARACTER_THROW_UPWARD_SPEED
 
 local function isNear(a: number, b: number): boolean
 	return math.abs(a - b) < 1e-9
@@ -28,10 +28,10 @@ do -- the throws as numbers
 	check(HEIGHT == 3, "a character throws from 3 studs above its feet")
 	check(SPEED == 24 and LIFT == 8, "a character throws at 24 studs a second forwards and 8 upwards")
 	check(
-		Throw.SPILL_SPEED == 6 and Throw.SPILL_LIFT == 20,
+		Throw.SPILL_OUTWARD_SPEED == 6 and Throw.SPILL_UPWARD_SPEED == 20,
 		"a spilled stack leaves at 6 studs a second outwards and 20 upwards"
 	)
-	check(Throw.SPILL_TURN == 2.4, "each spilled stack goes 2.4 radians further round than the last")
+	check(Throw.SPILL_TURN_RADIANS == 2.4, "each spilled stack goes 2.4 radians further round than the last")
 	check(Throw.PUSH_SPEED == 6, "a pushed stack leaves at 6 studs a second")
 end
 
@@ -93,11 +93,11 @@ do -- spilled out of something
 	local from = { x = 10, y = 2, z = -3 }
 	local first = Throw.newSpill(from, 1)
 	check(leavesFrom(first, 10, 2, -3), "newSpill: leaves from the point given")
-	check(first.velocity.y == Throw.SPILL_LIFT, "newSpill: moves upwards")
-	check(isNear(groundSpeed(first), Throw.SPILL_SPEED), "newSpill: and outwards along the ground")
+	check(first.velocity.y == Throw.SPILL_UPWARD_SPEED, "newSpill: moves upwards")
+	check(isNear(groundSpeed(first), Throw.SPILL_OUTWARD_SPEED), "newSpill: and outwards along the ground")
 	check(
-		isNear(first.velocity.x, math.cos(Throw.SPILL_TURN) * Throw.SPILL_SPEED)
-			and isNear(first.velocity.z, math.sin(Throw.SPILL_TURN) * Throw.SPILL_SPEED),
+		isNear(first.velocity.x, math.cos(Throw.SPILL_TURN_RADIANS) * Throw.SPILL_OUTWARD_SPEED)
+			and isNear(first.velocity.z, math.sin(Throw.SPILL_TURN_RADIANS) * Throw.SPILL_OUTWARD_SPEED),
 		"newSpill: the first goes one turn round from x"
 	)
 	check(table.isfrozen(first), "newSpill: is a frozen value")
@@ -106,8 +106,12 @@ do -- spilled out of something
 	for index = 1, 30 do
 		local one = Throw.newSpill(from, index)
 		local next = Throw.newSpill(from, index + 1)
-		local cosine = (one.velocity.x * next.velocity.x + one.velocity.z * next.velocity.z) / Throw.SPILL_SPEED ^ 2
-		if not isNear(cosine, math.cos(Throw.SPILL_TURN)) or not isNear(groundSpeed(one), Throw.SPILL_SPEED) then
+		local cosine = (one.velocity.x * next.velocity.x + one.velocity.z * next.velocity.z)
+			/ Throw.SPILL_OUTWARD_SPEED ^ 2
+		if
+			not isNear(cosine, math.cos(Throw.SPILL_TURN_RADIANS))
+			or not isNear(groundSpeed(one), Throw.SPILL_OUTWARD_SPEED)
+		then
 			allSpread = false
 		end
 	end

@@ -62,8 +62,8 @@ local SIDES: { Direction } = {
 	{ x = 0, z = 1 },
 	{ x = 0, z = -1 },
 }
-local TILE_TO_TOUCHING_GROUND_ITEM = (Plot.TILE_SIZE + GroundItems.ITEM_SIZE) / 2
-local OVERLAP_LEFT_ALONE = 0.1
+local CENTER_DISTANCE_WHEN_TOUCHING = (Plot.TILE_SIZE + GroundItems.ITEM_SIZE) / 2
+local OVERLAP_TOLERANCE = 0.1
 
 local function tileCenter(world: World, x: number, z: number): Position
 	return Plot.getTileCenter(world.plotCorner, x, z)
@@ -210,11 +210,11 @@ end
 
 local function isLyingInTile(world: World, position: Position, x: number, z: number): boolean
 	local center = tileCenter(world, x, z)
-	local reach = TILE_TO_TOUCHING_GROUND_ITEM - OVERLAP_LEFT_ALONE
+	local reach = CENTER_DISTANCE_WHEN_TOUCHING - OVERLAP_TOLERANCE
 	return math.abs(position.x - center.x) < reach
 		and math.abs(position.z - center.z) < reach
-		and position.y < center.y + Plot.TILE_SIZE - OVERLAP_LEFT_ALONE
-		and position.y + GroundItems.ITEM_SIZE > center.y + OVERLAP_LEFT_ALONE
+		and position.y < center.y + Plot.TILE_SIZE - OVERLAP_TOLERANCE
+		and position.y + GroundItems.ITEM_SIZE > center.y + OVERLAP_TOLERANCE
 end
 
 local function getThrowOutOfTile(world: World, position: Position, x: number, z: number): Throw
@@ -223,7 +223,7 @@ local function getThrowOutOfTile(world: World, position: Position, x: number, z:
 	local nearestDistance = math.huge
 	for _, side in SIDES do
 		local toSide = (position.x - center.x) * side.x + (position.z - center.z) * side.z
-		local distance = TILE_TO_TOUCHING_GROUND_ITEM - toSide
+		local distance = CENTER_DISTANCE_WHEN_TOUCHING - toSide
 		if distance < nearestDistance and not Plot.isTileTaken(world.plot, x + side.x, z + side.z) then
 			nearestSide, nearestDistance = side, distance
 		end
@@ -259,10 +259,11 @@ end
 --- stands on it, or if the item is not one that can be placed. The item is not taken from
 --- anywhere. An item that is a station starts as a station with no fire.
 ---
---- A placed item fills its tile as a cube `Plot.TILE_SIZE` on each side. Every ground item lying
---- where that cube now is gets pushed out of it: it is thrown again from just outside the nearest
---- side of the tile that has no placed item against it, along the ground and away from the tile.
---- If all four sides have a placed item against them, it is let go on top of the cube instead.
+--- A placed item fills its tile as a cube `Plot.TILE_SIZE` on each side. Every ground item that
+--- reaches more than a tenth of a stud into that cube is pushed out of it: it is thrown again from
+--- just outside the nearest side of the tile that has no placed item against it, along the ground
+--- and away from the tile. A side at the edge of the plot has nothing against it. If all four
+--- sides have a placed item against them, it is let go on top of the cube instead.
 function World.placeItem(world: World, itemId: string, x: number, z: number): number?
 	if World.isTileStoodOn(world, x, z) then
 		return nil

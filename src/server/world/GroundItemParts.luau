@@ -8,8 +8,8 @@
 --- that it is an ordinary unanchored part: Roblox's physics makes it fall, land and come to rest,
 --- and shows its motion to every player. Only the server moves it, never a player's machine. A
 --- block passes through the other blocks and through characters, and collides with everything
---- else. `getMovedPositions` says where the blocks have got to. The blocks are placeholders until
---- items have models.
+--- else. A pointer passes through it too, to whatever is behind. `getMovedPositions` says where
+--- the blocks have got to. The blocks are placeholders until items have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -27,9 +27,7 @@ export type GroundItemParts = {
 	read partsById: { [number]: Part },
 }
 
---- How far a block must be from where its ground item is said to be, along any axis, for
---- `getMovedPositions` to count it as moved, in studs.
-GroundItemParts.MOVE_NOTICED = 0.01
+local MOVE_TOLERANCE = 0.01
 
 local function makeLabel(part: Part)
 	local billboard = Instance.new("BillboardGui")
@@ -84,16 +82,16 @@ local function throwPart(part: Part, folder: Folder, velocity: { read x: number,
 end
 
 local function hasMoved(from: GroundItems.Position, to: Vector3): boolean
-	local noticed = GroundItemParts.MOVE_NOTICED
 	local isFinite = to == to and to.Magnitude < math.huge
-	local isElsewhere = math.abs(to.X - from.x) > noticed
-		or math.abs(to.Y - from.y) > noticed
-		or math.abs(to.Z - from.z) > noticed
+	local isElsewhere = math.abs(to.X - from.x) > MOVE_TOLERANCE
+		or math.abs(to.Y - from.y) > MOVE_TOLERANCE
+		or math.abs(to.Z - from.z) > MOVE_TOLERANCE
 	return isFinite and isElsewhere
 end
 
 --- Returns a new set of blocks, with none made yet, that will be kept in a folder called
---- `GroundItems` inside `parent`.
+--- `GroundItems` inside `parent`. `parent` must be in the Workspace, because only there does
+--- Roblox's physics move a part.
 function GroundItemParts.new(parent: Instance): GroundItemParts
 	local folder = Instance.new("Folder")
 	folder.Name = "GroundItems"
@@ -125,9 +123,11 @@ function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: G
 end
 
 --- Returns where each block now is, by the id of its ground item, for every block that is more
---- than `MOVE_NOTICED` from where `groundItems` says its ground item is. A position returned is
---- the middle of the block's underside, as a ground item's position is. A block at rest is where
---- its ground item is said to be, so it is left out.
+--- than a hundredth of a stud, along any axis, from where `groundItems` says its ground item is.
+--- A position returned is the point half a block below the block's middle: the middle of its
+--- underside once it lies flat, as a ground item's position is. A block is returned on every call
+--- until its ground item is moved to the position returned for it, so a block at rest is returned
+--- once.
 function GroundItemParts.getMovedPositions(
 	groundItemParts: GroundItemParts,
 	groundItems: GroundItems.GroundItems

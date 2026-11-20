@@ -22,10 +22,10 @@ The user is here to help with whatever Claude can't do.
 - **Helper agents run on Sonnet, a few at a time.** One overnight run used the account's whole weekly allowance. Design work stays in the main session.
 
 ## Where things stand (2026-11-20)
-- **Playable:** a first loop on grey boxes, for PC. A pack and hotbar, stacks on the ground, one shared plot of tiles, a crate, and a stove that cooks.
-- **The code** was broken up, rewritten and renamed on 2026-11-20 after three reviews by the user. Branch `first-pieces`. Nothing is pushed.
-- **Checked:** `lune run tools/check` passes, and the play test passes 63 of 63 in Studio.
-- **Waiting on the user:** their read of the rewritten code, and then their feedback on the game, which they are holding until the code is checked.
+- **Playable:** a first loop on grey boxes, for PC. A pack and hotbar, stacks that are thrown and land, one shared plot of tiles, a crate, and a stove that cooks.
+- **The code** was broken up, rewritten and renamed on 2026-11-20 after three reviews by the user. Branch `first-pieces`. Dropped items were rebuilt on the branch `dropped-items`, which is not merged. Nothing is pushed.
+- **Checked:** on `dropped-items`, `lune run tools/check` passes, and the play test passes 71 of 71 in Studio.
+- **Waiting on the user:** to play with dropped items and read their code; their read of the rewritten code; then their feedback on the game, which they are holding until the code is checked.
 
 More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
 

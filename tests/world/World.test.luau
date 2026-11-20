@@ -232,8 +232,8 @@ do -- where a player's character is
 		"setPlayerPosition: a stack they drop leaves from above their character's feet"
 	)
 	check(
-		state.throw.velocity.x == Throw.CHARACTER_THROW_SPEED
-			and state.throw.velocity.y == Throw.CHARACTER_THROW_LIFT
+		state.throw.velocity.x == Throw.CHARACTER_THROW_FORWARD_SPEED
+			and state.throw.velocity.y == Throw.CHARACTER_THROW_UPWARD_SPEED
 			and state.throw.velocity.z == 0,
 		"setPlayerPosition: thrown the way their character faces"
 	)
@@ -257,7 +257,7 @@ do -- where a player's character is
 		state.position ~= nil
 			and state.position.x == 1
 			and leavesFrom(state.throw, 1, Throw.CHARACTER_THROW_HEIGHT, 1)
-			and state.throw.velocity.z == -Throw.CHARACTER_THROW_SPEED,
+			and state.throw.velocity.z == -Throw.CHARACTER_THROW_FORWARD_SPEED,
 		"setPlayerPosition: a character that is back is placed again, and throws the way it now faces"
 	)
 	local nobody = Check.errorFrom(function()
@@ -597,6 +597,44 @@ do -- placing an item where ground items lie
 		"placeItem: a side with a placed item against it is not used, and the next nearest is"
 	)
 
+	-- Each of the four sides is used when it is the nearest.
+	local sides = newWorld()
+	lyingAt(sides, "apple", 11, 0, 10)
+	lyingAt(sides, "fish", 9, 0, 10)
+	lyingAt(sides, "post", 10, 0, 11)
+	lyingAt(sides, "stove", 10, 0, 9)
+	World.placeItem(sides, "crate", 3, 3)
+	check(
+		leavesFrom(groundStacks(sides, "apple")[1].throw, 10 + touching, 0, 10)
+			and groundStacks(sides, "apple")[1].throw.velocity.x == Throw.PUSH_SPEED,
+		"placeItem: a ground item nearest the side of greater x is pushed out of that side"
+	)
+	check(
+		leavesFrom(groundStacks(sides, "fish")[1].throw, 10 - touching, 0, 10)
+			and groundStacks(sides, "fish")[1].throw.velocity.x == -Throw.PUSH_SPEED,
+		"placeItem: one nearest the side of lesser x, out of that side"
+	)
+	check(
+		leavesFrom(groundStacks(sides, "post")[1].throw, 10, 0, 10 + touching)
+			and groundStacks(sides, "post")[1].throw.velocity.z == Throw.PUSH_SPEED,
+		"placeItem: one nearest the side of greater z, out of that side"
+	)
+	check(
+		leavesFrom(groundStacks(sides, "stove")[1].throw, 10, 0, 10 - touching)
+			and groundStacks(sides, "stove")[1].throw.velocity.z == -Throw.PUSH_SPEED,
+		"placeItem: one nearest the side of lesser z, out of that side"
+	)
+
+	-- A side along z is taken, so it is not used either.
+	local blockedAlongZ = newWorld()
+	World.placeItem(blockedAlongZ, "post", 3, 4)
+	lyingAt(blockedAlongZ, "apple", 10, 0, 11)
+	World.placeItem(blockedAlongZ, "crate", 3, 3)
+	check(
+		leavesFrom(groundStacks(blockedAlongZ, "apple")[1].throw, 10 + touching, 0, 11),
+		"placeItem: a side along z with a placed item against it is not used"
+	)
+
 	-- Every side is taken, so the ground item is let go on top.
 	local walled = newWorld()
 	for _, tile in { { 2, 3 }, { 4, 3 }, { 3, 2 }, { 3, 4 } } do
@@ -625,6 +663,14 @@ do -- placing an item where ground items lie
 		edges.groundItems.itemsById[justOut] ~= nil and edges.groundItems.itemsById[onTop] ~= nil,
 		"placeItem: one that reaches in less than that, from the side or from above, is left alone"
 	)
+	local under = newWorld()
+	local below = lyingAt(under, "apple", 10, -GroundItems.ITEM_SIZE + 0.09, 10)
+	local reachingUp = lyingAt(under, "fish", 10, -GroundItems.ITEM_SIZE + 0.11, 10)
+	World.placeItem(under, "crate", 3, 3)
+	check(
+		under.groundItems.itemsById[below] ~= nil and under.groundItems.itemsById[reachingUp] == nil,
+		"placeItem: a ground item under the placed item is left alone, unless it reaches up into it"
+	)
 
 	-- The edge of the plot: there is nothing off the plot to be in the way.
 	local corner = newWorld()
@@ -646,6 +692,24 @@ do -- placing an item where ground items lie
 		onGround(several, "apple") == 2 and onGround(several, "fish") == 1 and onGround(several, "stove") == 1,
 		"placeItem: every ground item that lay there is pushed out, and none is lost"
 	)
+	local ordered = newWorld()
+	for index = 1, 100 do
+		lyingAt(ordered, "stove", 500 + index * 10, 0, 500)
+	end
+	GroundItems.removeExpiredStacks(ordered.groundItems, GroundItems.LIFETIME_SECONDS)
+	for index = 1, 30 do
+		lyingAt(ordered, "stove", 8.25 + index * 0.1, 0, 10)
+	end
+	World.placeItem(ordered, "crate", 3, 3)
+	local inOrder = true
+	for index = 1, 30 do
+		local rethrown = ordered.groundItems.itemsById[130 + index]
+		local wentTowardsLesserX = rethrown ~= nil and rethrown.throw.velocity.x < 0
+		if rethrown == nil or wentTowardsLesserX ~= (index <= 17) then
+			inOrder = false
+		end
+	end
+	check(inOrder, "placeItem: ground items are pushed out in the order they were thrown, whatever their ids")
 	for _, groundItem in several.groundItems.itemsById do
 		local alongX = math.abs(groundItem.position.x - 10)
 		local alongZ = math.abs(groundItem.position.z - 10)
@@ -696,7 +760,7 @@ do -- taking a placed item off
 	check(#fish == 1 and is(fish[1].stack, "fish", 2), "removePlacedItem: what was left in it is loose in the world")
 	check(leavesFrom(fish[1].throw, 6, middleHeight, 6), "removePlacedItem: and leaves from the same place")
 	check(
-		crates[1].throw.velocity.y == Throw.SPILL_LIFT and fish[1].throw.velocity.y == Throw.SPILL_LIFT,
+		crates[1].throw.velocity.y == Throw.SPILL_UPWARD_SPEED and fish[1].throw.velocity.y == Throw.SPILL_UPWARD_SPEED,
 		"removePlacedItem: the item and what was in it are thrown upwards"
 	)
 	check(

@@ -27,23 +27,24 @@ export type Throw = {
 --- How far above a character's feet a stack that the character throws leaves from, in studs.
 Throw.CHARACTER_THROW_HEIGHT = 3
 
---- How fast a stack that a character throws moves along the ground, the way the character faces.
-Throw.CHARACTER_THROW_SPEED = 24
+--- How fast a stack that a character throws moves along the ground as it leaves, the way the
+--- character faces.
+Throw.CHARACTER_THROW_FORWARD_SPEED = 24
 
 --- How fast a stack that a character throws moves upwards as it leaves.
-Throw.CHARACTER_THROW_LIFT = 8
+Throw.CHARACTER_THROW_UPWARD_SPEED = 8
 
---- How fast a spilled stack moves along the ground.
-Throw.SPILL_SPEED = 6
+--- How fast a spilled stack moves along the ground as it leaves.
+Throw.SPILL_OUTWARD_SPEED = 6
 
 --- How fast a spilled stack moves upwards as it leaves.
-Throw.SPILL_LIFT = 20
+Throw.SPILL_UPWARD_SPEED = 20
 
 --- The angle between the way one spilled stack goes and the way the next goes, in radians. It is
---- the angle that never brings a stack round to a direction already taken.
-Throw.SPILL_TURN = 2.4
+--- close to the golden angle, which keeps the ways well apart however many stacks spill.
+Throw.SPILL_TURN_RADIANS = 2.4
 
---- How fast a pushed stack moves along the ground.
+--- How fast a pushed stack moves along the ground as it leaves.
 Throw.PUSH_SPEED = 6
 
 --- Returns a throw that leaves from `from`, moving at `velocity`. It cannot be changed, and it
@@ -62,26 +63,26 @@ end
 
 --- Returns the throw of a character whose feet are at `position` and who faces `facing`. The stack
 --- leaves from `CHARACTER_THROW_HEIGHT` above `position`, moving the way the character faces at
---- `CHARACTER_THROW_SPEED` and upwards at `CHARACTER_THROW_LIFT`.
+--- `CHARACTER_THROW_FORWARD_SPEED` and upwards at `CHARACTER_THROW_UPWARD_SPEED`.
 function Throw.newFromCharacter(position: Position, facing: Direction): Throw
 	local from = { x = position.x, y = position.y + Throw.CHARACTER_THROW_HEIGHT, z = position.z }
 	return Throw.new(from, {
-		x = facing.x * Throw.CHARACTER_THROW_SPEED,
-		y = Throw.CHARACTER_THROW_LIFT,
-		z = facing.z * Throw.CHARACTER_THROW_SPEED,
+		x = facing.x * Throw.CHARACTER_THROW_FORWARD_SPEED,
+		y = Throw.CHARACTER_THROW_UPWARD_SPEED,
+		z = facing.z * Throw.CHARACTER_THROW_FORWARD_SPEED,
 	})
 end
 
---- Returns the throw of a stack that spills out of something at `from`: upwards at `SPILL_LIFT`,
---- and along the ground at `SPILL_SPEED`. `index` says which of the stacks spilled together it
---- is, counting from 1. Each goes `SPILL_TURN` further round than the one before, so that they
---- land spread out around `from`.
+--- Returns the throw of a stack that spills out of something at `from`: upwards at `SPILL_UPWARD_SPEED`,
+--- and along the ground at `SPILL_OUTWARD_SPEED`. `index` says which of the stacks spilled together it
+--- is, counting from 1. Each goes `SPILL_TURN_RADIANS` further round than the one before, so
+--- that they set off in different directions.
 function Throw.newSpill(from: Position, index: number): Throw
-	local angle = index * Throw.SPILL_TURN
+	local angle = index * Throw.SPILL_TURN_RADIANS
 	return Throw.new(from, {
-		x = math.cos(angle) * Throw.SPILL_SPEED,
-		y = Throw.SPILL_LIFT,
-		z = math.sin(angle) * Throw.SPILL_SPEED,
+		x = math.cos(angle) * Throw.SPILL_OUTWARD_SPEED,
+		y = Throw.SPILL_UPWARD_SPEED,
+		z = math.sin(angle) * Throw.SPILL_OUTWARD_SPEED,
 	})
 end
 
