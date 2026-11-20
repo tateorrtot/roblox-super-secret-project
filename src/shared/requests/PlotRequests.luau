@@ -33,7 +33,7 @@ function PlotRequests.placeSelectedItem(world: World, player: PlayerState, x: un
 	local canPlace = World.canReachTile(world, player, tileX, tileZ)
 		and World.canPlaceItem(world, selected.itemId, tileX, tileZ)
 	if canPlace then
-		World.placeItem(world, selected.itemId, tileX, tileZ)
+		Plot.placeItem(world.plot, selected.itemId, tileX, tileZ)
 		Hotbar.takeFromSelectedSlot(player.hotbar, 1)
 	end
 end
@@ -57,7 +57,7 @@ function PlotRequests.hitPlacedItem(world: World, player: PlayerState, placedIte
 	if not isPlacedItemInReach(world, player, placedItemId) then
 		return
 	end
-	local placedItem = World.takePlacedItemOffPlot(world, placedItemId :: number)
+	local placedItem = Plot.removePlacedItem(world.plot, placedItemId :: number)
 	if placedItem ~= nil then
 		World.throwPlacedItemAndContents(world, placedItem)
 	end

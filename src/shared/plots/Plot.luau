@@ -3,13 +3,15 @@
 ---
 --- A plot is `width` tiles along x and `depth` tiles along z. A tile is named by two whole numbers
 --- counted from 1, so the corner tile is x 1, z 1. Each tile holds one placed item or nothing.
---- `placeItem` stands an item on a tile and `removePlacedItem` takes it off. A placed item whose
---- definition has a `slotCount` has an inventory inside it. Placed items are numbered from 1 in the
+--- `placeItem` stands an item on a tile and `removePlacedItem` takes it off, and the plot fires a
+--- signal for each: `placedItemAdded` and `placedItemRemoved`. A placed item whose definition has a
+--- `slotCount` has an inventory inside it. Placed items are numbered from 1 in the
 --- order they were placed, and a number is never used twice. `getTileAt` and `getTileCenter` turn a
 --- position in the world into a tile and back.
 local Inventory = require("../inventory/Inventory")
 local ItemRegistry = require("../items/ItemRegistry")
 local Position = require("../Position")
+local Signal = require("../Signal")
 
 local Plot = {}
 
@@ -36,6 +38,11 @@ export type Plot = {
 	read width: number,
 	--- How many tiles it has along z.
 	read depth: number,
+	--- Fired when an item has been placed, with the placed item's id and the placed item.
+	read placedItemAdded: Signal.Signal<number, PlacedItem>,
+	--- Fired when a placed item has been taken off the plot, with the id it had and the placed
+	--- item, whose inventory is still inside it.
+	read placedItemRemoved: Signal.Signal<number, PlacedItem>,
 	--- The id the next placed item will get.
 	nextId: number,
 	--- Every placed item, by id. An id with no entry is not on the plot.
@@ -54,7 +61,14 @@ end
 --- Returns a new plot of `width` by `depth` tiles with nothing placed on it.
 --- Note: `width` and `depth` must be whole numbers of 1 or more. They are not checked.
 function Plot.new(width: number, depth: number): Plot
-	return { width = width, depth = depth, nextId = 1, placedItemsById = {} }
+	return {
+		width = width,
+		depth = depth,
+		placedItemAdded = Signal.new(),
+		placedItemRemoved = Signal.new(),
+		nextId = 1,
+		placedItemsById = {},
+	}
 end
 
 --- Returns `true` if `x` and `z` name a tile of this plot: whole numbers, with `x` from 1 to
@@ -89,8 +103,9 @@ end
 
 --- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed item. If
 --- the item's definition has a `slotCount`, the placed item gets a new inventory of that many
---- slots, holding nothing. Fails if `canPlaceItem` would return `false`: a tile holds one item,
---- and only an item that can be placed stands on the plot. Fails if no item has that id.
+--- slots, holding nothing. Fires `placedItemAdded` once the item stands there. Fails if
+--- `canPlaceItem` would return `false`: a tile holds one item, and only an item that can be placed
+--- stands on the plot. Fails if no item has that id.
 function Plot.placeItem(plot: Plot, itemId: string, x: number, z: number): number
 	if not Plot.canPlaceItem(plot, itemId, x, z) then
 		error(`the item "{itemId}" cannot be placed on the tile {x}, {z}`, 2)
@@ -104,15 +119,20 @@ function Plot.placeItem(plot: Plot, itemId: string, x: number, z: number): numbe
 		inventory = if definition.slotCount ~= nil then Inventory.new(definition.slotCount) else nil,
 	})
 	plot.nextId = id + 1
+	Signal.fire(plot.placedItemAdded, id, plot.placedItemsById[id])
 	return id
 end
 
 --- Takes the placed item with the id `id` off the plot and returns it, with its inventory still
---- inside it. Its tile then holds nothing, and its id is never given out again. Returns `nil`,
---- changing nothing, if no placed item has that id.
+--- inside it. Its tile then holds nothing, and its id is never given out again. Fires
+--- `placedItemRemoved` once it is off. Returns `nil`, changing nothing and firing nothing, if no
+--- placed item has that id.
 function Plot.removePlacedItem(plot: Plot, id: number): PlacedItem?
 	local placedItem = plot.placedItemsById[id]
 	plot.placedItemsById[id] = nil
+	if placedItem ~= nil then
+		Signal.fire(plot.placedItemRemoved, id, placedItem)
+	end
 	return placedItem
 end
 

@@ -4,9 +4,14 @@
 ---
 --- The server keeps one world. It adds and removes players, says where each player's character is
 --- with `setCharacterPosition` and where each ground item has got to with
---- `setGroundItemPosition`, and moves time on with `advanceTo`. The other functions are what can be done in the world: spawning
---- a stack, throwing one from a character, opening and closing a player's screen, placing an item
---- on the plot and taking it off again.
+--- `setGroundItemPosition`, and moves time on with `advanceTo`. The other functions are what can
+--- be done in the world: spawning a stack, throwing one from a character, and opening and closing
+--- a player's screen.
+---
+--- A world listens to its plot, and items are placed and removed with the plot's own
+--- `Plot.placeItem` and `Plot.removePlacedItem`. When an item is placed, the world makes it a
+--- station if it is one, and pushes the ground items out of its tile. When a placed item is taken
+--- off, the world closes every screen open on it, and ends its station.
 local Direction = require("../Direction")
 local GroundItems = require("./GroundItems")
 local Inventory = require("../inventory/Inventory")
@@ -16,6 +21,7 @@ local Plot = require("../plots/Plot")
 local PlotCollision = require("./PlotCollision")
 local Position = require("../Position")
 local RecipeRegistry = require("../stations/RecipeRegistry")
+local Signal = require("../Signal")
 local Station = require("../stations/Station")
 
 local World = {}
@@ -94,9 +100,45 @@ local function newStationFor(placedItem: Plot.PlacedItem): Station.Station?
 	return if inventory ~= nil and isStation then Station.new(placedItem.itemId, inventory) else nil
 end
 
+local function closeScreensOn(world: World, placedItemId: number)
+	for _, playerId in sortedPlayerIds(world) do
+		local player = world.players[playerId]
+		if player.openedPlacedItemId == placedItemId then
+			World.closeScreen(world, player)
+		end
+	end
+end
+
+local function onPlacedItemAdded(world: World, placedItemId: number, placedItem: Plot.PlacedItem)
+	world.stations[placedItemId] = newStationFor(placedItem)
+	PlotCollision.pushGroundItemsOutOfTile(
+		world.groundItems,
+		world.plot,
+		world.plotCorner,
+		placedItem.x,
+		placedItem.z,
+		world.now
+	)
+end
+
+local function onPlacedItemRemoved(world: World, placedItemId: number)
+	closeScreensOn(world, placedItemId)
+	world.stations[placedItemId] = nil
+end
+
 --- Returns a new world with no players and nothing on the ground, at the time `now`. `plot` is
 --- the plot, with whatever already stands on it, and `plotCorner` is the outer corner of its tile
 --- x 1, z 1. Each item on the plot that is a station starts as a station with no fire.
+---
+--- The world connects to the plot's two signals, and from then on:
+--- - An item placed on the plot is a station with no fire if it is one. The ground items that lie
+---   where it now stands are pushed out of its tile: each is taken out of the world and its stack
+---   is spawned again, as a new ground item with a new id, just outside the tile and moving away
+---   from it along the ground, or on top of the placed item, not moving, if it is closed in on
+---   all four sides.
+--- - A placed item taken off the plot has every screen open on it closed, as `closeScreen` does.
+---   If it was a station it is one no longer: its fire is out, and the fuel that was burning is
+---   lost.
 function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	local world: World = {
 		plot = plot,
@@ -109,6 +151,12 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	for placedItemId, placedItem in plot.placedItemsById do
 		world.stations[placedItemId] = newStationFor(placedItem)
 	end
+	Signal.connect(plot.placedItemAdded, function(placedItemId: number, placedItem: Plot.PlacedItem)
+		onPlacedItemAdded(world, placedItemId, placedItem)
+	end)
+	Signal.connect(plot.placedItemRemoved, function(placedItemId: number)
+		onPlacedItemRemoved(world, placedItemId)
+	end)
 	return world
 end
 
@@ -246,50 +294,12 @@ function World.isTileStoodOn(world: World, x: number, z: number): boolean
 	return false
 end
 
---- Returns `true` if an item can be placed on a tile: the plot has that tile, nothing stands on
---- it, the item is one that can be placed, and no player's character stands on it. Fails if no
---- item has that id.
+--- Returns `true` if an item can be placed on a tile of the plot: `Plot.canPlaceItem` says the
+--- plot can take it there, and no player's character stands on the tile. Fails if no item has
+--- that id.
+--- Note: `Plot.placeItem` does not ask this. A request from a player's machine does.
 function World.canPlaceItem(world: World, itemId: string, x: number, z: number): boolean
 	return Plot.canPlaceItem(world.plot, itemId, x, z) and not World.isTileStoodOn(world, x, z)
-end
-
---- Places one of an item on a tile and returns the placed item's id. The item is not taken from
---- anywhere. An item that is a station starts as a station with no fire.
----
---- The ground items that lie where the placed item now stands are pushed out of its tile. Each is
---- taken out of the world and its stack is spawned again, as a new ground item with a new id:
---- just outside the tile and moving away from it along the ground, or on top of the placed item,
---- not moving, if it is closed in on all four sides.
----
---- Fails if the plot cannot take the item there, as `Plot.canPlaceItem` says.
---- Note: it does not ask whether a player stands on the tile. `canPlaceItem` says.
-function World.placeItem(world: World, itemId: string, x: number, z: number): number
-	local placedItemId = Plot.placeItem(world.plot, itemId, x, z)
-	world.stations[placedItemId] = newStationFor(world.plot.placedItemsById[placedItemId])
-	PlotCollision.pushGroundItemsOutOfTile(world.groundItems, world.plot, world.plotCorner, x, z, world.now)
-	return placedItemId
-end
-
-local function closeScreensOn(world: World, placedItemId: number)
-	for _, playerId in sortedPlayerIds(world) do
-		local player = world.players[playerId]
-		if player.openedPlacedItemId == placedItemId then
-			World.closeScreen(world, player)
-		end
-	end
-end
-
---- Takes a placed item off the plot and returns it, with whatever is inside it still inside it.
---- Every screen open on it is closed first, as `closeScreen` does. If it was a station it is one
---- no longer: its fire is out, and the fuel that was burning is lost. Returns `nil`, changing
---- nothing, if no placed item has that id.
-function World.takePlacedItemOffPlot(world: World, placedItemId: number): Plot.PlacedItem?
-	if world.plot.placedItemsById[placedItemId] == nil then
-		return nil
-	end
-	closeScreensOn(world, placedItemId)
-	world.stations[placedItemId] = nil
-	return Plot.removePlacedItem(world.plot, placedItemId)
 end
 
 local function takeEveryStack(inventory: Inventory): { ItemStack }
@@ -339,10 +349,8 @@ local function closeScreenIfOutOfReach(world: World, player: PlayerState)
 		return
 	end
 	local placedItem = world.plot.placedItemsById[placedItemId]
-	local isInReach = placedItem ~= nil
-		and Position.getGroundDistance(character.position, tileCenter(world, placedItem.x, placedItem.z))
-			<= World.SCREEN_CLOSES_BEYOND
-	if not isInReach then
+	local center = tileCenter(world, placedItem.x, placedItem.z)
+	if Position.getGroundDistance(character.position, center) > World.SCREEN_CLOSES_BEYOND then
 		World.closeScreen(world, player)
 	end
 end
@@ -350,9 +358,9 @@ end
 --- Moves the world on to the time `now`. Each ground item that was spawned, or given a new
 --- position, since the world was last moved on merges into a ground item of the same item beside
 --- it that has room for all of its stack. Each player with a character then picks up the ground
---- items near them, the player with the lowest id first. A player whose screen is open on a placed item
---- has it closed, as `closeScreen` does, if they stand more than `SCREEN_CLOSES_BEYOND` from it or
---- if it is no longer on the plot. Every station burns and works for the time that has passed.
+--- items near them, the player with the lowest id first. A player whose screen is open on a
+--- placed item has it closed, as `closeScreen` does, if they stand more than
+--- `SCREEN_CLOSES_BEYOND` from it. Every station burns and works for the time that has passed.
 --- Ground items that have been in the world too long are removed. If `now` is earlier than the
 --- time `advanceTo` was last given, no time passes for the stations.
 function World.advanceTo(world: World, now: number)

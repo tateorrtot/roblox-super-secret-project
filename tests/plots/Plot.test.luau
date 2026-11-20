@@ -5,6 +5,7 @@ local Check = require("../Check")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local Plot = require("../../src/shared/plots/Plot")
+local Signal = require("../../src/shared/Signal")
 
 local check = Check.that
 
@@ -179,6 +180,44 @@ do -- a tile the plot does not have
 		end) ~= nil, `placeItem: fails for tile x {tile[1]}, z {tile[2]}, which the plot does not have`)
 	end
 	check(placedCount(plot) == 0 and plot.nextId == 1, "placeItem: a placing that fails changes nothing")
+end
+
+do -- the two signals
+	local plot = Plot.new(4, 4)
+	local heard: { string } = {}
+	Signal.connect(plot.placedItemAdded, function(id: number, placedItem: Plot.PlacedItem)
+		local stands = plot.placedItemsById[id] == placedItem
+		table.insert(heard, `added {id} {placedItem.itemId} {placedItem.x} {placedItem.z} {stands}`)
+	end)
+	Signal.connect(plot.placedItemRemoved, function(id: number, placedItem: Plot.PlacedItem)
+		local gone = plot.placedItemsById[id] == nil
+		table.insert(heard, `removed {id} {placedItem.itemId} {gone}`)
+	end)
+	local crate = Plot.placeItem(plot, "crate", 2, 3)
+	check(
+		#heard == 1 and heard[1] == `added {crate} crate 2 3 true`,
+		"placeItem: fires placedItemAdded with the id and the placed item, once the item stands on the plot"
+	)
+	Check.errorFrom(function()
+		Plot.placeItem(plot, "stove", 2, 3)
+	end)
+	check(#heard == 1, "placeItem: a placing that fails fires nothing")
+	local removed = Plot.removePlacedItem(plot, crate)
+	check(
+		#heard == 2 and heard[2] == `removed {crate} crate true`,
+		"removePlacedItem: fires placedItemRemoved with the id and the placed item, once it is off the plot"
+	)
+	check(
+		removed ~= nil and removed.inventory ~= nil,
+		"removePlacedItem: the placed item still has its inventory inside it"
+	)
+	Plot.removePlacedItem(plot, crate)
+	Plot.removePlacedItem(plot, 99)
+	check(#heard == 2, "removePlacedItem: fires nothing for an id that no placed item has")
+
+	local quiet = Plot.new(2, 2)
+	Plot.placeItem(quiet, "stove", 1, 1)
+	check(#heard == 2, "placeItem: one plot's signals are not fired by another plot")
 end
 
 Check.finish("Plot")

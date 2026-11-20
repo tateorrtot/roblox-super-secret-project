@@ -371,12 +371,8 @@ do -- the placed item is not on the plot any more
 	Plot.removePlacedItem(world.plot, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(
-		encoded.screen ~= nil and encoded.screen.otherInventoryItemId == nil,
-		"encode: no kind of placed item for one that is off the plot"
-	)
-	check(
-		encoded.screen ~= nil and encoded.screen.otherInventory ~= nil and encoded.screen.otherInventory.slotCount == 27,
-		"encode: but the inventory that was open is still shown"
+		encoded.screen == nil,
+		"encode: a player whose placed item was taken off the plot has no screen, since the world closed it"
 	)
 end
 

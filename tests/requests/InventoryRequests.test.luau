@@ -70,7 +70,7 @@ end
 -- Places the item `itemId` on tile 6, 6, opens it on the player's screen beside their pack, and
 -- returns what is inside it.
 local function openPlaced(world: World.World, state: PlayerState.PlayerState, itemId: string): Inventory.Inventory
-	local placedItemId = World.placeItem(world, itemId, 6, 6) :: number
+	local placedItemId = Plot.placeItem(world.plot, itemId, 6, 6) :: number
 	World.openPlacedItemScreen(world, state, placedItemId)
 	return world.plot.placedItemsById[placedItemId].inventory :: Inventory.Inventory
 end
@@ -1083,8 +1083,8 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	for _ = 1, 40 do
 		local world, state = newWorld()
 		World.setCharacterPosition(world, 1, at(6, 0, 0))
-		local crateId = World.placeItem(world, "crate", 6, 6) :: number
-		local ovenId = World.placeItem(world, "oven", 6, 5) :: number
+		local crateId = Plot.placeItem(world.plot, "crate", 6, 6) :: number
+		local ovenId = Plot.placeItem(world.plot, "oven", 6, 5) :: number
 		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory
 		for _ = 1, 10 do
 			local itemId = itemIds[random(#itemIds)]

@@ -252,7 +252,7 @@ do -- usePlacedItem
 	check(state.screen == nil, "usePlacedItem: not by a player with no character")
 
 	local ovenWorld, withOven = newWorld()
-	local ovenId = World.placeItem(ovenWorld, "oven", 3, 1) :: number
+	local ovenId = Plot.placeItem(ovenWorld.plot, "oven", 3, 1) :: number
 	send("usePlacedItem", ovenWorld, withOven, ovenId)
 	local ovenScreen = withOven.screen
 	check(
@@ -333,7 +333,7 @@ do -- hitPlacedItem
 	check(state.screen == nil, "hitPlacedItem: the player who hit it has no screen open")
 
 	local ovenWorld, withOven = newWorld()
-	local ovenId = World.placeItem(ovenWorld, "oven", 3, 1) :: number
+	local ovenId = Plot.placeItem(ovenWorld.plot, "oven", 3, 1) :: number
 	send("hitPlacedItem", ovenWorld, withOven, ovenId)
 	check(
 		ovenWorld.plot.placedItemsById[ovenId] == nil

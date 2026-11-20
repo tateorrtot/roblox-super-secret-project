@@ -137,7 +137,7 @@ end
 -- Takes a placed item off the plot and throws it into the world with what is inside it, as a hit
 -- does.
 local function knockOff(world: World.World, placedItemId: number)
-	local placedItem = World.takePlacedItemOffPlot(world, placedItemId)
+	local placedItem = Plot.removePlacedItem(world.plot, placedItemId)
 	if placedItem ~= nil then
 		World.throwPlacedItemAndContents(world, placedItem)
 	end
@@ -182,16 +182,22 @@ do -- a station gets its record when the world is made or when it is placed
 	check(world.stations[crateId] == nil, "new: a crate is not a station, though it has an inventory")
 	check(world.stations[stoveId] == nil, "new: nor is a placed item that holds nothing")
 
-	local placedOven = World.placeItem(world, "oven", 4, 4)
-	check(placedOven ~= nil and world.stations[placedOven] ~= nil, "placeItem: a placed oven is a station at once")
+	local placedOven = Plot.placeItem(world.plot, "oven", 4, 4)
+	check(
+		placedOven ~= nil and world.stations[placedOven] ~= nil,
+		"Plot.placeItem on the world's plot: a placed oven is a station at once"
+	)
 	check(
 		placedOven ~= nil
 			and world.stations[placedOven].inventory == insideOf(world, placedOven)
 			and not Station.isBurning(world.stations[placedOven]),
-		"placeItem: over its own inventory, with no fire"
+		"Plot.placeItem on the world's plot: over its own inventory, with no fire"
 	)
-	local placedCrate = World.placeItem(world, "crate", 4, 3)
-	check(placedCrate ~= nil and world.stations[placedCrate] == nil, "placeItem: a placed crate is not a station")
+	local placedCrate = Plot.placeItem(world.plot, "crate", 4, 3)
+	check(
+		placedCrate ~= nil and world.stations[placedCrate] == nil,
+		"Plot.placeItem on the world's plot: a placed crate is not a station"
+	)
 end
 
 do -- players come and go
@@ -612,20 +618,20 @@ end
 
 do -- placing an item
 	local world = newWorld()
-	local placedItemId = World.placeItem(world, "crate", 1, 1)
+	local placedItemId = Plot.placeItem(world.plot, "crate", 1, 1)
 	check(
 		placedItemId ~= nil and world.plot.placedItemsById[placedItemId].itemId == "crate",
-		"placeItem: returns the id of the placed item"
+		"Plot.placeItem on the world's plot: returns the id of the placed item"
 	)
 	check(
 		placedItemId ~= nil
 			and world.plot.placedItemsById[placedItemId].x == 1
 			and world.plot.placedItemsById[placedItemId].z == 1,
-		"placeItem: on the tile it was asked for"
+		"Plot.placeItem on the world's plot: on the tile it was asked for"
 	)
 	check(
 		placedItemId ~= nil and insideOf(world, placedItemId).slotCount == 27,
-		"placeItem: with an inventory of its own"
+		"Plot.placeItem on the world's plot: with an inventory of its own"
 	)
 	check(
 		World.canPlaceItem(world, "crate", 1, 2) and not World.canPlaceItem(world, "crate", 1, 1),
@@ -634,9 +640,12 @@ do -- placing an item
 	check(not World.canPlaceItem(world, "log", 3, 1), "canPlaceItem: false for an item that cannot be placed")
 	check(not World.canPlaceItem(world, "crate", 7, 1), "canPlaceItem: false for a tile the plot does not have")
 	check(Check.errorFrom(function()
-		World.placeItem(world, "crate", 1, 1)
-	end) ~= nil, "placeItem: fails where the plot cannot take the item")
-	check(world.plot.nextId == (placedItemId :: number) + 1, "placeItem: and places nothing then")
+		Plot.placeItem(world.plot, "crate", 1, 1)
+	end) ~= nil, "Plot.placeItem on the world's plot: fails where the plot cannot take the item")
+	check(
+		world.plot.nextId == (placedItemId :: number) + 1,
+		"Plot.placeItem on the world's plot: and places nothing then"
+	)
 
 	-- Tile 3, 3 has its middle at 10, 10. Player 1 stands 3 studs from it.
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
@@ -644,23 +653,23 @@ do -- placing an item
 	World.setCharacterPosition(world, 1, at(13.01, 0, 10))
 	check(World.canPlaceItem(world, "stove", 3, 3), "canPlaceItem: true once the player has stepped off")
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
-	local forced = World.placeItem(world, "stove", 3, 3)
+	local forced = Plot.placeItem(world.plot, "stove", 3, 3)
 	check(
 		world.plot.placedItemsById[forced].itemId == "stove",
-		"placeItem: it does not ask whether a player stands on the tile"
+		"Plot.placeItem on the world's plot: it does not ask whether a player stands on the tile"
 	)
 
 	-- A world needs no player to place in it.
 	local empty = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	check(
-		World.canPlaceItem(empty, "post", 2, 2) and World.placeItem(empty, "post", 2, 2) == 1,
-		"canPlaceItem, placeItem: work with no player in the world"
+		World.canPlaceItem(empty, "post", 2, 2) and Plot.placeItem(empty.plot, "post", 2, 2) == 1,
+		"canPlaceItem, Plot.placeItem: work with no player in the world"
 	)
 	local nowhere = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	local lost = World.addPlayer(nowhere, 1)
 	check(
-		lost.character == nil and World.placeItem(nowhere, "post", 1, 1) == 1,
-		"placeItem: a player with no character stands on nothing"
+		lost.character == nil and Plot.placeItem(nowhere.plot, "post", 1, 1) == 1,
+		"Plot.placeItem on the world's plot: a player with no character stands on nothing"
 	)
 end
 
@@ -670,22 +679,28 @@ do -- placing an item where ground items lie
 	local world = newWorld()
 	local inside = GroundItems.spawnStack(world.groundItems, ItemStack.new("apple", 1), at(9, 0, 10.5), STILL, 0)
 	World.advanceTo(world, 140)
-	check(World.placeItem(world, "crate", 3, 3) ~= nil, "placeItem: (set up) a crate is placed where an apple lies")
+	check(
+		Plot.placeItem(world.plot, "crate", 3, 3) ~= nil,
+		"Plot.placeItem on the world's plot: (set up) a crate is placed where an apple lies"
+	)
 	local apples = groundStacks(world, "apple")
 	check(
 		world.groundItems.itemsById[inside] == nil and #apples == 1 and is(apples[1].stack, "apple", 1),
-		"placeItem: a ground item that lay in the tile is pushed out of it, whole"
+		"Plot.placeItem on the world's plot: a ground item that lay in the tile is pushed out of it, whole"
 	)
 	check(
 		isAt(apples[1], 10 - touching, 0, 10.5) and apples[1].spawnTime == 140,
-		"placeItem: to just outside the tile, spawned again at the world's time"
+		"Plot.placeItem on the world's plot: to just outside the tile, spawned again at the world's time"
 	)
 
 	local refused = newWorld()
 	local stays = GroundItems.spawnStack(refused.groundItems, ItemStack.new("apple", 1), at(6, 0, 6.5), STILL, 0)
-	check(Check.errorFrom(function()
-		World.placeItem(refused, "post", 2, 2)
-	end) ~= nil and refused.groundItems.itemsById[stays] ~= nil, "placeItem: a placing that fails pushes nothing")
+	check(
+		Check.errorFrom(function()
+				Plot.placeItem(refused.plot, "post", 2, 2)
+			end) ~= nil and refused.groundItems.itemsById[stays] ~= nil,
+		"Plot.placeItem on the world's plot: a placing that fails pushes nothing"
+	)
 end
 
 do -- taking a placed item off
@@ -696,17 +711,20 @@ do -- taking a placed item off
 	World.openPlacedItemScreen(world, other, ids.crate)
 	InventoryScreen.pickUpFromSlot(other.screen :: any, "other", 1, 3)
 	knockOff(world, ids.crate)
-	check(world.plot.placedItemsById[ids.crate] == nil, "takePlacedItemOffPlot: the placed item is off the plot")
+	check(
+		world.plot.placedItemsById[ids.crate] == nil,
+		"Plot.removePlacedItem on the world's plot: the placed item is off the plot"
+	)
 	check(
 		state.screen == nil
 			and state.openedPlacedItemId == nil
 			and other.screen == nil
 			and other.openedPlacedItemId == nil,
-		"takePlacedItemOffPlot: every screen open on it is closed"
+		"Plot.removePlacedItem on the world's plot: every screen open on it is closed"
 	)
 	check(
 		Inventory.countItems(other.pack, "fish") == 3,
-		"takePlacedItemOffPlot: what a player carried is back in their pack"
+		"Plot.removePlacedItem on the world's plot: what a player carried is back in their pack"
 	)
 	local crates = groundStacks(world, "crate")
 	check(
@@ -750,8 +768,8 @@ do -- taking a placed item off
 		"throwPlacedItemAndContents: nothing was made or lost"
 	)
 	check(
-		Plot.canPlaceItem(world.plot, "stove", 2, 2) and World.placeItem(world, "stove", 2, 2) ~= nil,
-		"takePlacedItemOffPlot: the tile holds nothing, so another item can be placed there"
+		Plot.canPlaceItem(world.plot, "stove", 2, 2) and Plot.placeItem(world.plot, "stove", 2, 2) ~= nil,
+		"Plot.removePlacedItem on the world's plot: the tile holds nothing, so another item can be placed there"
 	)
 
 	-- Each stack from inside is thrown a way of its own.
@@ -824,9 +842,12 @@ do -- taking a placed item off
 	knockOff(world, ids.stove)
 	check(
 		groundItemCount(world) == groundBefore,
-		"takePlacedItemOffPlot: changes nothing for an id that no placed item has"
+		"Plot.removePlacedItem on the world's plot: changes nothing for an id that no placed item has"
 	)
-	check(world.plot.placedItemsById[ids.oven] ~= nil, "takePlacedItemOffPlot: and takes nothing else off the plot")
+	check(
+		world.plot.placedItemsById[ids.oven] ~= nil,
+		"Plot.removePlacedItem on the world's plot: and takes nothing else off the plot"
+	)
 
 	-- A player's screen open on something else is left alone.
 	local keep, keepState, keepIds = newWorld()
@@ -834,26 +855,26 @@ do -- taking a placed item off
 	knockOff(keep, keepIds.oven)
 	check(
 		keepState.screen ~= nil and keepState.openedPlacedItemId == keepIds.crate,
-		"takePlacedItemOffPlot: a screen open on another placed item stays open"
+		"Plot.removePlacedItem on the world's plot: a screen open on another placed item stays open"
 	)
 end
 
 do -- taking a placed item off the plot, and throwing one, each by itself
 	local world, _, ids = newWorld()
-	local taken = World.takePlacedItemOffPlot(world, ids.crate)
+	local taken = Plot.removePlacedItem(world.plot, ids.crate)
 	check(
 		taken ~= nil and taken.itemId == "crate" and taken.x == 2 and taken.z == 2,
-		"takePlacedItemOffPlot: returns the placed item"
+		"Plot.removePlacedItem on the world's plot: returns the placed item"
 	)
 	local inside = if taken then taken.inventory else nil
 	check(
 		inside ~= nil and Inventory.countItems(inside, "fish") == 5,
-		"takePlacedItemOffPlot: with what was inside it still inside it"
+		"Plot.removePlacedItem on the world's plot: with what was inside it still inside it"
 	)
-	check(groundItemCount(world) == 0, "takePlacedItemOffPlot: nothing is thrown into the world")
+	check(groundItemCount(world) == 0, "Plot.removePlacedItem on the world's plot: nothing is thrown into the world")
 	check(
-		World.takePlacedItemOffPlot(world, ids.crate) == nil and World.takePlacedItemOffPlot(world, 999) == nil,
-		"takePlacedItemOffPlot: returns nil for an id that no placed item has"
+		Plot.removePlacedItem(world.plot, ids.crate) == nil and Plot.removePlacedItem(world.plot, 999) == nil,
+		"Plot.removePlacedItem on the world's plot: returns nil for an id that no placed item has"
 	)
 
 	local standing = world.plot.placedItemsById[ids.stove]
@@ -871,16 +892,28 @@ do -- an oven taken off the plot
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
 	Inventory.setStack(state.pack, 1, nil)
 	World.advanceTo(world, 104)
-	check(world.stations[ids.oven] ~= nil, "takePlacedItemOffPlot: (set up) the oven is a station with a fire lit")
-	check(Station.isBurning(world.stations[ids.oven]), "takePlacedItemOffPlot: (set up) and burning")
+	check(
+		world.stations[ids.oven] ~= nil,
+		"Plot.removePlacedItem on the world's plot: (set up) the oven is a station with a fire lit"
+	)
+	check(
+		Station.isBurning(world.stations[ids.oven]),
+		"Plot.removePlacedItem on the world's plot: (set up) and burning"
+	)
 	knockOff(world, ids.oven)
-	check(world.stations[ids.oven] == nil, "takePlacedItemOffPlot: its station goes with it, and its fire is out")
+	check(
+		world.stations[ids.oven] == nil,
+		"Plot.removePlacedItem on the world's plot: its station goes with it, and its fire is out"
+	)
 	check(
 		#groundStacks(world, "oven") == 1 and onGround(world, "fish") == 3 and onGround(world, "log") == 3,
 		"throwPlacedItemAndContents: what was in it lies on the ground, and the log that was burning is gone"
 	)
 	World.advanceTo(world, 200)
-	check(onGround(world, "cooked_fish") == 0, "takePlacedItemOffPlot: nothing more is cooked once it is off the plot")
+	check(
+		onGround(world, "cooked_fish") == 0,
+		"Plot.removePlacedItem on the world's plot: nothing more is cooked once it is off the plot"
+	)
 end
 
 do -- time passing: picking up
@@ -960,8 +993,11 @@ do -- time passing: screens close
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	World.openPlacedItemScreen(world, state, ids.crate)
 	Plot.removePlacedItem(world.plot, ids.crate)
+	check(
+		state.screen == nil and state.openedPlacedItemId == nil,
+		"Plot.removePlacedItem on the world's plot: a screen open on the placed item closes at once"
+	)
 	World.advanceTo(world, 104)
-	check(state.screen == nil, "advanceTo: a screen closes when its placed item is no longer on the plot")
 
 	World.openPlacedItemScreen(world, state, ids.oven)
 	World.setCharacterPosition(world, 1, at(6, 0, 6))
@@ -1058,7 +1094,7 @@ do -- time passing: stations
 
 	-- A placed oven starts working at the next step, from the time then.
 	local fresh = newWorld()
-	local newOven = World.placeItem(fresh, "oven", 6, 6) :: number
+	local newOven = Plot.placeItem(fresh.plot, "oven", 6, 6) :: number
 	Inventory.setStack(insideOf(fresh, newOven), Station.INPUT_SLOT, ItemStack.new("fish", 1))
 	Inventory.setStack(insideOf(fresh, newOven), Station.FUEL_SLOT, ItemStack.new("log", 1))
 	World.advanceTo(fresh, 108)
@@ -1205,7 +1241,7 @@ do -- several players, several things at once, and no item is made or lost
 						if taken ~= nil then
 							local x, z = random(6), random(6)
 							if World.canPlaceItem(world, taken.itemId, x, z) then
-								World.placeItem(world, taken.itemId, x, z)
+								Plot.placeItem(world.plot, taken.itemId, x, z)
 							else
 								local leftover = Inventory.addStack(state.pack, taken)
 								expect(leftover == nil, "an item taken from a slot goes back into the pack")

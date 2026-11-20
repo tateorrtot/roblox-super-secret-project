@@ -52,10 +52,11 @@
 <text x="376" y="532" font-size="12" fill="#5f5e5a">GroundItemParts</text>
 <text x="376" y="548" font-size="12" fill="#5f5e5a">PlaceholderWorld</text>
 <text x="376" y="564" font-size="12" fill="#5f5e5a">PlotParts</text>
-<rect x="141" y="1128" width="91" height="72" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<rect x="141" y="1128" width="91" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
 <text x="155" y="1148" font-size="14" font-weight="600" fill="#2c2c2a">shared</text>
 <text x="155" y="1172" font-size="12" fill="#5f5e5a">Direction</text>
 <text x="155" y="1188" font-size="12" fill="#5f5e5a">Position</text>
+<text x="155" y="1204" font-size="12" fill="#5f5e5a">Signal</text>
 <rect x="189" y="976" width="156" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
 <text x="203" y="996" font-size="14" font-weight="600" fill="#2c2c2a">shared/inventory</text>
 <text x="203" y="1020" font-size="12" fill="#5f5e5a">Hotbar</text>
