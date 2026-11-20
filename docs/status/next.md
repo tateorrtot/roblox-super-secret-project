@@ -25,7 +25,7 @@ Each starts with one precise question to them, and is built as small pieces. The
 
 ## 4. Small things owed to the rules
 - `StationProgress` should check the fire before it says a station is working. A few lines, with the next change to stations.
-- The names added on 2026-11-20 are owed a names test on a fresh reader: `Signal`, `GroundItems.mergeItems`, and the `can...` functions.
+- A mutation run over every piece at once stalls on `Station`: some of the bugs it plants make a loop run until the tool's 60-second limit, one after another. Each piece changed on 2026-11-20 was run by itself. `tools/mutate.py` wants a shorter limit, or a way to give one.
 - What the audits left is listed in `now.md`. None of it is urgent. The screen's drawing code is best left until the user decides whether screens are made in Studio.
 
 ## 5. Later
