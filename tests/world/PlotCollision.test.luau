@@ -277,10 +277,9 @@ do -- several at once
 			and onGround(groundItems, "stove") == 1,
 		"pushGroundItemsOutOfTile: every ground item that lay there is pushed out, and none is lost"
 	)
-	local apples = groundStacks(groundItems, "apple")
 	check(
-		#apples == 1 and apples[1].stack.count == 2,
-		"pushGroundItemsOutOfTile: two of one item pushed out to the same place merge into one ground item"
+		#groundStacks(groundItems, "apple") == 2,
+		"pushGroundItemsOutOfTile: two of one item pushed out to the same place are still two ground items"
 	)
 	for _, groundItem in groundItems.itemsById do
 		local alongX = math.abs(groundItem.position.x - 10)
@@ -290,16 +289,6 @@ do -- several at once
 			"pushGroundItemsOutOfTile: each ground item is clear of the tile afterwards"
 		)
 	end
-
-	-- A full stack beside where a ground item comes out has no room, so they stay two.
-	local fullPlot, full = newPlot()
-	GroundItems.spawnStack(full, ItemStack.new("apple", 16), at(10 - TOUCHING, 0, 10), STILL, 0)
-	lyingAt(full, "apple", 9, 0, 10)
-	placeCrateAndPush(fullPlot, full, 0)
-	check(
-		#groundStacks(full, "apple") == 2 and onGround(full, "apple") == 17,
-		"pushGroundItemsOutOfTile: a pushed stack does not merge into a ground item with no room for it"
-	)
 
 	-- Ground items are pushed in the order of their ids, whatever order the table gives them in.
 	local orderedPlot, ordered = newPlot()

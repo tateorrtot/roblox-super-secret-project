@@ -55,28 +55,17 @@ local function findNearestFreeSideOfTile(position: Position, tile: Tile): (Direc
 	return nearestSide, nearestDistance
 end
 
-local function spawnAndMergeStack(
-	groundItems: GroundItems,
-	stack: ItemStack,
-	position: Position,
-	velocity: GroundItems.Velocity,
-	now: number
-)
-	local id = GroundItems.spawnStack(groundItems, stack, position, velocity, now)
-	GroundItems.mergeItemIntoNearbyItem(groundItems, id)
-end
-
 local function pushGroundItemOutOfTile(groundItems: GroundItems, id: number, tile: Tile, now: number)
 	local position = groundItems.itemsById[id].position
 	local stack = GroundItems.removeItem(groundItems, id) :: ItemStack
 	local side, distance = findNearestFreeSideOfTile(position, tile)
 	if side == nil then
 		local top = tile.center.y + Plot.TILE_SIZE
-		spawnAndMergeStack(groundItems, stack, Position.new(position.x, top, position.z), NO_VELOCITY, now)
+		GroundItems.spawnStack(groundItems, stack, Position.new(position.x, top, position.z), NO_VELOCITY, now)
 		return
 	end
 	local outside = Position.new(position.x + side.x * distance, position.y, position.z + side.z * distance)
-	spawnAndMergeStack(groundItems, stack, outside, {
+	GroundItems.spawnStack(groundItems, stack, outside, {
 		x = side.x * PlotCollision.PUSHED_GROUND_ITEM_SPEED,
 		y = 0,
 		z = side.z * PlotCollision.PUSHED_GROUND_ITEM_SPEED,
@@ -91,8 +80,7 @@ end
 --- than it was, moving away from the tile along the ground at `PUSHED_GROUND_ITEM_SPEED`. A side
 --- at the edge of the plot has nothing against it. Of sides equally near, the one towards greater
 --- x is used first, then lesser x, then greater z, then lesser z. If all four sides have a placed
---- item against them, the stack is spawned again on top of the cube instead, not moving. A stack spawned again
---- beside a ground item of the same item that has room for all of it merges into that one. Ground
+--- item against them, the stack is spawned again on top of the cube instead, not moving. Ground
 --- items are pushed in the order of their ids, lowest first.
 --- Note: it does not check that anything stands on the tile, and where a pushed ground item
 --- lands is not checked either. One that lay across a corner of the tile can land partly inside a

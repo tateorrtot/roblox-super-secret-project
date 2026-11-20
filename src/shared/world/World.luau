@@ -132,21 +132,17 @@ function World.removePlayer(world: World, playerId: number): PlayerState?
 	return player
 end
 
---- Spawns a stack into the world as a ground item at `position`, moving at `velocity`, and
---- returns the ground item's id. If that puts it beside a ground item of the same item that has
---- room for all of it, it merges into that one, and that one's id is returned.
+--- Spawns a stack into the world as a new ground item at `position`, moving at `velocity`, at
+--- the world's time, and returns the ground item's id.
 --- Note: `spawnStack` does not take the stack from anywhere.
 function World.spawnStack(world: World, stack: ItemStack, position: Position, velocity: GroundItems.Velocity): number
-	local id = GroundItems.spawnStack(world.groundItems, stack, position, velocity, world.now)
-	return GroundItems.mergeItemIntoNearbyItem(world.groundItems, id)
+	return GroundItems.spawnStack(world.groundItems, stack, position, velocity, world.now)
 end
 
---- Records that a ground item is now at `position`, the middle of its underside. If that puts it
---- beside another ground item of the same item that has room for all of its stack, it merges into
---- that one. Does nothing if no ground item has that id.
+--- Records that a ground item is now at `position`, the middle of its underside. Does nothing if
+--- no ground item has that id.
 function World.setGroundItemPosition(world: World, groundItemId: number, position: Position)
 	GroundItems.setItemPosition(world.groundItems, groundItemId, position)
-	GroundItems.mergeItemIntoNearbyItem(world.groundItems, groundItemId)
 end
 
 --- Throws a stack into the world from a character: it spawns `CHARACTER_THROW_START_HEIGHT` above the
@@ -246,8 +242,7 @@ end
 --- The ground items that lie where the placed item now stands are pushed out of its tile. Each is
 --- taken out of the world and its stack is spawned again, as a new ground item with a new id:
 --- just outside the tile and moving away from it along the ground, or on top of the placed item,
---- not moving, if it is closed in on all four sides. A stack spawned again beside a ground item
---- of the same item that has room for all of it merges into that one.
+--- not moving, if it is closed in on all four sides.
 function World.placeItem(world: World, itemId: string, x: number, z: number): number?
 	if World.isTileStoodOn(world, x, z) then
 		return nil
@@ -297,8 +292,7 @@ end
 --- in its inventory from the lowest slot up, is spawned as `spawnStack` does, and the inventory is
 --- left holding nothing. Each spawns in the middle of the tile the placed item stood on, moving
 --- upwards at `PLACED_ITEM_THROW_UPWARD_SPEED` and outwards at `PLACED_ITEM_THROW_OUTWARD_SPEED`,
---- each a different way from the one before. Stacks of the same item that fit in one stack merge
---- as they spawn, and move the way the first of them was thrown.
+--- each a different way from the one before.
 --- Note: it does not take the placed item off the plot. For one that still stands there, the item
 --- exists twice.
 function World.throwPlacedItemAndContents(world: World, placedItem: Plot.PlacedItem)
@@ -338,8 +332,10 @@ local function closeScreenIfOutOfReach(world: World, player: PlayerState)
 	end
 end
 
---- Moves the world on to the time `now`. Each player with a character picks up the ground items
---- near them, the player with the lowest id first. A player whose screen is open on a placed item
+--- Moves the world on to the time `now`. Each ground item that was spawned, or given a new
+--- position, since the world was last moved on merges into a ground item of the same item beside
+--- it that has room for all of its stack. Each player with a character then picks up the ground
+--- items near them, the player with the lowest id first. A player whose screen is open on a placed item
 --- has it closed, as `closeScreen` does, if they stand more than `SCREEN_CLOSES_BEYOND` from it or
 --- if it is no longer on the plot. Every station burns and works for the time that has passed.
 --- Ground items that have been in the world too long are removed. If `now` is earlier than the
@@ -347,6 +343,7 @@ end
 function World.advanceTo(world: World, now: number)
 	local elapsed = math.max(now - world.now, 0)
 	world.now = now
+	GroundItems.mergeMovedItems(world.groundItems)
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
 		pickUpNearbyStacks(world, player)

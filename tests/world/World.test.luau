@@ -293,18 +293,12 @@ do -- spawning a stack
 	check(wasSpawnedMovingAt(apple, 2, 5, -1), "spawnStack: moving at the velocity given")
 	check(apple.spawnTime == 100, "spawnStack: spawned at the world's time")
 	World.advanceTo(world, 150)
-	local joined = World.spawnStack(world, ItemStack.new("apple", 2), at(60.5, 3, 60), STILL)
-	local apples = groundStacks(world, "apple")
+	local beside = World.spawnStack(world, ItemStack.new("apple", 2), at(60.5, 3, 60), STILL)
 	check(
-		joined == id and #apples == 1 and is(apples[1].stack, "apple", 5),
-		"spawnStack: a stack spawned beside its own kind merges into it, and that one's id is returned"
+		beside ~= id and #groundStacks(world, "apple") == 2,
+		"spawnStack: a stack spawned beside its own kind is a new ground item all the same"
 	)
-	check(apples[1].spawnTime == 150, "spawnStack: which then counts as spawned at the time the world has reached")
-	local apart = World.spawnStack(world, ItemStack.new("apple", 16), at(60, 3, 60), STILL)
-	check(
-		apart ~= id and #groundStacks(world, "apple") == 2,
-		"spawnStack: a stack that does not fit with its own kind is a ground item of its own"
-	)
+	check(world.groundItems.itemsById[beside].spawnTime == 150, "spawnStack: spawned at the time the world has reached")
 end
 
 do -- throwing a stack from a character
@@ -334,11 +328,6 @@ do -- throwing a stack from a character
 		),
 		"throwStackFromCharacter: a character facing another way throws that way"
 	)
-	World.throwStackFromCharacter(world, { position = at(60, 2, 60), facing = ALONG_X }, ItemStack.new("apple", 2))
-	check(
-		#groundStacks(world, "apple") == 1 and onGround(world, "apple") == 5,
-		"throwStackFromCharacter: a stack thrown from where its own kind still is merges into it"
-	)
 	check(
 		World.CHARACTER_THROW_START_HEIGHT == 3
 			and World.CHARACTER_THROW_FORWARD_SPEED == 24
@@ -360,16 +349,53 @@ do -- a ground item's position
 
 	World.spawnStack(world, ItemStack.new("apple", 2), at(80, 0, 60), STILL)
 	World.setGroundItemPosition(world, flying, at(80.5, 0, 60))
-	local apples = groundStacks(world, "apple")
 	check(
-		#apples == 1 and is(apples[1].stack, "apple", 5) and apples[1].position.x == 80,
-		"setGroundItemPosition: a ground item that comes to be beside its own kind merges into it"
+		#groundStacks(world, "apple") == 2 and isAt(world.groundItems.itemsById[flying], 80.5, 0, 60),
+		"setGroundItemPosition: a ground item that comes to be beside its own kind is still a ground item of its own"
 	)
-	World.setGroundItemPosition(world, flying, at(0, 0, 0))
 	World.setGroundItemPosition(world, 999, at(0, 0, 0))
 	check(
-		groundItemCount(world) == 1 and onGround(world, "apple") == 5,
+		groundItemCount(world) == 2 and onGround(world, "apple") == 5,
 		"setGroundItemPosition: does nothing for an id that no ground item has"
+	)
+end
+
+do -- time passing: ground items merge
+	local world = newWorld()
+	local lying = World.spawnStack(world, ItemStack.new("apple", 2), at(80, 0, 60), STILL)
+	local flying = World.spawnStack(world, ItemStack.new("apple", 3), at(60, 3, 60), { x = 24, y = 8, z = 0 })
+	World.advanceTo(world, 101)
+	check(#groundStacks(world, "apple") == 2, "advanceTo: ground items of one kind that are apart stay apart")
+	World.setGroundItemPosition(world, flying, at(80.5, 0, 60))
+	World.advanceTo(world, 102)
+	local apples = groundStacks(world, "apple")
+	check(
+		#apples == 1 and is(apples[1].stack, "apple", 5) and world.groundItems.itemsById[flying] == nil,
+		"advanceTo: a ground item that has come beside its own kind merges into it"
+	)
+	check(isAt(world.groundItems.itemsById[lying], 80, 0, 60), "advanceTo: the one it merged into stays where it is")
+	World.spawnStack(world, ItemStack.new("apple", 4), at(80.5, 0, 60), STILL)
+	World.advanceTo(world, 103)
+	check(
+		#groundStacks(world, "apple") == 1 and onGround(world, "apple") == 9,
+		"advanceTo: a stack spawned beside its own kind merges into it too"
+	)
+	World.spawnStack(world, ItemStack.new("apple", 16), at(80.5, 0, 60), STILL)
+	World.advanceTo(world, 104)
+	check(
+		#groundStacks(world, "apple") == 2 and onGround(world, "apple") == 25,
+		"advanceTo: one that does not fit with its own kind stays a ground item of its own"
+	)
+
+	-- Merging comes before picking up. Player 1 stands at 6, 0, 0.
+	local order, orderState = newWorld()
+	World.spawnStack(order, ItemStack.new("apple", 2), at(7, 0, 1), STILL)
+	World.advanceTo(order, 100 + GroundItems.PICKUP_DELAY_SECONDS - 0.1)
+	World.spawnStack(order, ItemStack.new("apple", 3), at(7.5, 0, 1), STILL)
+	World.advanceTo(order, 100 + GroundItems.PICKUP_DELAY_SECONDS)
+	check(
+		Inventory.countItems(orderState.pack, "apple") == 0 and #groundStacks(order, "apple") == 1,
+		"advanceTo: merging comes before picking up, so a stack that a new one has merged into is not picked up yet"
 	)
 end
 
@@ -761,10 +787,15 @@ do -- taking a placed item off
 	Inventory.setStack(inParts, 9, ItemStack.new("fish", 8))
 	local partsWorld = World.new(parts, at(0, 0, 0), 0)
 	knockOff(partsWorld, partsCrate)
+	check(
+		#groundStacks(partsWorld, "fish") == 3,
+		"throwPlacedItemAndContents: each stack that was inside is a ground item of its own"
+	)
+	World.advanceTo(partsWorld, 0.1)
 	local spilled = groundStacks(partsWorld, "fish")
 	check(
 		#spilled == 2 and is(spilled[1].stack, "fish", 7) and is(spilled[2].stack, "fish", 8),
-		"throwPlacedItemAndContents: two part stacks of one kind spill as one, and a full stack apart"
+		"advanceTo: two part stacks of one kind thrown from one place merge, and a full stack stays apart"
 	)
 
 	-- A placed item with nothing in it, and one with nothing to hold.

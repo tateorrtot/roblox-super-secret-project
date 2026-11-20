@@ -4,10 +4,11 @@
 ---
 --- A ground item is a stack, the position it is at, the velocity it was spawned with and the time
 --- it was spawned. `spawnStack` makes one. Nothing here moves a ground item afterwards:
---- `setItemPosition` records where it has got to. `mergeItemIntoNearbyItem` makes two ground items
---- of the same item that are close together into one. `moveNearbyStacksToInventory` moves ground
---- items into an inventory, `removeItem` takes one out of the world, and `removeExpiredItems`
---- removes the ones that have been out too long. Ground items are numbered from 1 in the order
+--- `setItemPosition` records where it has got to. `mergeMovedItems` makes ground items of the same
+--- item that have come close together into one: it looks only at the ones spawned or given a new
+--- position since it last ran. `moveNearbyStacksToInventory` moves ground items into an inventory,
+--- `removeItem` takes one out of the world, and `removeExpiredItems` removes the ones that have
+--- been out too long. Ground items are numbered from 1 in the order
 --- they were spawned, and a number is never used twice. Time is a number of seconds, passed in as
 --- `now`, from any clock that only goes forward. Positions and distances are in studs. Ground items
 --- are never saved.
@@ -47,6 +48,9 @@ export type GroundItems = {
 	--- Note: ids are not consecutive, because a ground item that is picked up, merged or expired
 	--- leaves its id unused. `#itemsById` is not the number of ground items.
 	itemsById: { [number]: GroundItem },
+	--- The ids of the ground items spawned, or given a new position, since `mergeMovedItems` last
+	--- ran. An id may be listed after its ground item has gone.
+	movedIds: { [number]: true },
 }
 
 --- How long a ground item lasts before `removeExpiredItems` removes it, in seconds.
@@ -65,8 +69,8 @@ GroundItems.PICKUP_REACH_UP = 7
 --- How far below the position `moveNearbyStacksToInventory` picks up from, in studs.
 GroundItems.PICKUP_REACH_DOWN = 2
 
---- How near two ground items of the same item must be for `mergeItemIntoNearbyItem` to make them
---- one, in studs.
+--- How near two ground items of the same item must be for `mergeItemIntoNearbyItem` and
+--- `mergeMovedItems` to make them one, in studs.
 GroundItems.MERGE_RADIUS = 1.5
 
 --- How wide, deep and tall a ground item is, in studs: it takes up a cube this wide, standing on
@@ -115,7 +119,7 @@ end
 
 --- Returns a new set of ground items with nothing in the world.
 function GroundItems.new(): GroundItems
-	return { nextId = 1, itemsById = {} }
+	return { nextId = 1, itemsById = {}, movedIds = {} }
 end
 
 --- Makes a new ground item that holds `stack`, at `position` and moving at `velocity`, spawned at
@@ -137,6 +141,7 @@ function GroundItems.spawnStack(
 		spawnTime = now,
 	})
 	groundItems.nextId = id + 1
+	groundItems.movedIds[id] = true
 	return id
 end
 
@@ -153,6 +158,7 @@ function GroundItems.setItemPosition(groundItems: GroundItems, id: number, posit
 		spawnVelocity = groundItem.spawnVelocity,
 		spawnTime = groundItem.spawnTime,
 	})
+	groundItems.movedIds[id] = true
 end
 
 --- Merges the ground item `id` into another ground item of the same item that is within
@@ -182,6 +188,21 @@ function GroundItems.mergeItemIntoNearbyItem(groundItems: GroundItems, id: numbe
 		spawnTime = math.max(other.spawnTime, groundItem.spawnTime),
 	})
 	return otherId
+end
+
+--- Merges each ground item that was spawned, or given a new position, since this last ran, as
+--- `mergeItemIntoNearbyItem` does, the lowest id first. A ground item that has lain still since
+--- then is not looked at, though one that moved may merge into it.
+function GroundItems.mergeMovedItems(groundItems: GroundItems)
+	local ids = {}
+	for id in groundItems.movedIds do
+		table.insert(ids, id)
+	end
+	table.sort(ids)
+	table.clear(groundItems.movedIds)
+	for _, id in ids do
+		GroundItems.mergeItemIntoNearbyItem(groundItems, id)
+	end
 end
 
 --- Takes the ground item `id` out of the world and returns its stack. Returns `nil`, changing

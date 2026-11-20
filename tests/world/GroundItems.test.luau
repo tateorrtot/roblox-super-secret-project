@@ -691,4 +691,76 @@ do -- many random drops, moves, pickups and expiries: no item is made, and none 
 	check(allValid, "random play: every ground item holds a real stack under an id already given out")
 end
 
+do -- merging the ground items that moved
+	local ground = GroundItems.new()
+	local lying = GroundItems.spawnStack(ground, ItemStack.new("log", 3), at(10, 0, 0), STILL, 0)
+	local far = GroundItems.spawnStack(ground, ItemStack.new("log", 4), at(50, 0, 0), STILL, 5)
+	GroundItems.mergeMovedItems(ground)
+	check(groundItemCount(ground) == 2, "mergeMovedItems: ground items that are apart stay apart")
+	GroundItems.setItemPosition(ground, far, at(10.5, 0, 0))
+	check(
+		groundItemCount(ground) == 2,
+		"setItemPosition: a ground item set beside its own kind does not merge by that alone"
+	)
+	GroundItems.mergeMovedItems(ground)
+	check(
+		ground.itemsById[far] == nil and holds(ground, lying, "log", 7),
+		"mergeMovedItems: a ground item given a new position beside its own kind merges into it"
+	)
+	check(
+		ground.itemsById[lying].spawnTime == 5,
+		"mergeMovedItems: which then counts as spawned at the later of the two times"
+	)
+	local fresh = GroundItems.spawnStack(ground, ItemStack.new("log", 2), at(10.5, 0, 0), STILL, 9)
+	check(groundItemCount(ground) == 2, "spawnStack: a stack spawned beside its own kind does not merge by that alone")
+	GroundItems.mergeMovedItems(ground)
+	check(
+		ground.itemsById[fresh] == nil and holds(ground, lying, "log", 9),
+		"mergeMovedItems: a ground item spawned beside its own kind merges into it"
+	)
+
+	-- Two that moved to the same place: the one with the lower id is merged first, into the other.
+	local pair = GroundItems.new()
+	local first = GroundItems.spawnStack(pair, ItemStack.new("log", 3), at(0, 0, 0), STILL, 0)
+	local second = GroundItems.spawnStack(pair, ItemStack.new("log", 4), at(0, 0, 0), STILL, 0)
+	GroundItems.mergeMovedItems(pair)
+	check(
+		pair.itemsById[first] == nil and holds(pair, second, "log", 7),
+		"mergeMovedItems: of two that moved, the one with the lower id is merged first"
+	)
+
+	-- A ground item that has lain still is not looked at. A full stack and a part stack lie side by
+	-- side; some of the full one is then picked up, which leaves room, and moves neither.
+	local still = GroundItems.new()
+	local full = GroundItems.spawnStack(still, ItemStack.new("log", 16), at(0, 0, 0), STILL, 0)
+	local part = GroundItems.spawnStack(still, ItemStack.new("log", 3), at(1, 0, 0), STILL, 0)
+	GroundItems.mergeMovedItems(still)
+	check(groundItemCount(still) == 2, "mergeMovedItems: (set up) a full stack and a part stack side by side stay two")
+	local nearlyFull = Inventory.new(1)
+	Inventory.addItems(nearlyFull, "log", 10)
+	GroundItems.moveNearbyStacksToInventory(still, at(0, 0, 0), nearlyFull, 10)
+	check(holds(still, full, "log", 10) and holds(still, part, "log", 3), "mergeMovedItems: (set up) six are picked up")
+	GroundItems.mergeMovedItems(still)
+	check(
+		groundItemCount(still) == 2,
+		"mergeMovedItems: ground items that have lain still are not looked at, though they would now fit in one stack"
+	)
+	GroundItems.setItemPosition(still, part, at(1, 0, 0))
+	GroundItems.mergeMovedItems(still)
+	check(
+		still.itemsById[part] == nil and holds(still, full, "log", 13),
+		"mergeMovedItems: until one of them is given a position again"
+	)
+
+	-- An id whose ground item has gone is passed over.
+	local gone = GroundItems.new()
+	local taken = GroundItems.spawnStack(gone, ItemStack.new("log", 3), at(0, 0, 0), STILL, 0)
+	GroundItems.removeItem(gone, taken)
+	GroundItems.mergeMovedItems(gone)
+	check(groundItemCount(gone) == 0, "mergeMovedItems: a ground item that moved and has since gone is passed over")
+	local none = GroundItems.new()
+	GroundItems.mergeMovedItems(none)
+	check(groundItemCount(none) == 0, "mergeMovedItems: does nothing when nothing has moved")
+end
+
 Check.finish("GroundItems")
