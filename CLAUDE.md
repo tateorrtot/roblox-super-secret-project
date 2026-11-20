@@ -35,7 +35,7 @@ More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
 | `docs/status/now.md`, `docs/status/next.md` | Where things stand, and what comes next | At the start of a session |
 | `docs/status/asked-of-the-user.md` | What the user has been asked and has not answered | Before asking them anything |
 | `docs/status/claudes-calls.md` | Decisions Claude made, for the user to veto | Before building on one of them |
-| `docs/game/` | The brief, the core rule, the setting, design decisions, the consistency rule | Designing anything a player meets |
+| `docs/game/` | The brief, the core rule, the setting, design decisions, the consistency rule, dropped items | Designing anything a player meets |
 | `docs/working/` | How the user and Claude work, and the user's engineering rules | Planning work |
 | `docs/working/code-reviews/` | The user's reviews of the code, in their words | Before showing them code |
 | `docs/code/names.md`, `docs/code/conventions.md` | How things are named, and how code is written | Before changing code. Both load by themselves when a file in `src` or `tests` is opened |

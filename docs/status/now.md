@@ -46,10 +46,10 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 - **A real server.** In Studio there is no delay. On a real server the screen waits for the server's answer after each click, and will feel a little late.
 
 ## Known problems
-Three bugs found by reading, not yet reproduced in Studio and not fixed (`docs/code/reviews/15-code-double-check-2026-11-20.md`):
-- A stack dropped while facing a placed block lands on top of it, out of reach from the ground.
-- The faint block shows on tiles the server will refuse, such as the one the player stands on.
-- A lit stove held open resends the whole pack about ten times a second.
+Three problems found by reading the code (`docs/code/reviews/15-code-double-check-2026-11-20.md`). None is fixed.
+- **A dropped stack can land where the player cannot pick it up.** A dropped stack does not fly: it appears on the ground 6 studs in front of the player. If a placed block stands there, it appears on top of the block, and the top of a 4-stud block is out of the 4-stud pickup range, which is measured from the player's feet. The user wants dropped items reworked to behave as Minecraft's do, which removes this (`docs/game/dropped-items.md`).
+- **The faint block shows on tiles the server will refuse,** such as the one the player stands on.
+- **Watching a lit stove wastes network traffic.** The server sends a player everything they hold, pack and all, whenever any of it changes. While a player has a burning stove open, the stove's two gauges change ten times a second, so everything is sent ten times a second. Measured by the server's own rule, outside Roblox: about 0.4 KB each time with four stacks in the pack, and about 1.6 KB each time with a full pack, which is 16 KB a second for two numbers. An unlit stove sends once. Nothing looks wrong on screen. The cure is to send the gauges apart from the inventories, or to send when the fire was lit and how long it will burn, and let the player's machine draw the gauge.
 
 Left from the audits and not done (`build/audit.json` has the full list, and is not kept in git):
 - The inventory screen's drawing code does two jobs, the screen and the stove's panel, and finds the stove's parts by their place in a list.
