@@ -14,6 +14,8 @@ The game
     Hotbar            the first slots, and the selected one            built
   Where and which way
     Position, Direction   a point in the world; a way in the world          built
+  How one rule tells another
+    Signal            a list of listeners that a thing calls when it changes   built
   Players
     PlayerState       one player: pack, hotbar, the screen they have open, where their character is   built
   Plots and building
@@ -34,7 +36,10 @@ The game
     SlotGestures, InventoryControls   mouse and keys on the screen     built, PC only
     UseAndHit         the two actions on the world                     built, PC only; no Hit by touch
     InventoryGui, HotbarGui, SlotGui, StackIcon, PlotPointer, PlacementGhost   built, placeholder look
+    ScreenScale       how big the screens are drawn in this window     built
+    Remotes           the messages, as the player's machine finds them   built
   On the server
+    Remotes           the messages, as the server makes them           built
     GroundItemParts   each ground item as a part Roblox's physics moves   built, placeholder blocks
     CollisionGroups   ground items pass through each other and characters   built
     PlotParts, PlaceholderWorld                                        built, placeholder blocks
@@ -67,13 +72,16 @@ On the server:
 5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`.
 6. `World.advanceTo` then runs `GroundItems.mergeItems`: of two ground items of one kind that are close together and fit in one stack, the bigger takes in the smaller. One that was spawned or moved is looked at then, and one that lies still every two seconds (`docs/game/dropped-items.md`).
 
-`PlotCollision.pushGroundItemsOutOfTile` is the one rule about motion that is ours: when an item is placed, it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side. `World.placeItem` calls it.
+`PlotCollision.pushGroundItemsOutOfTile` is the one rule about motion that is ours: when an item is placed, it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side. The world calls it when its plot says that an item was placed.
+
+## How one rule tells another
+`Plot.placeItem` and `Plot.removePlacedItem` fire the plot's two signals, `placedItemAdded` and `placedItemRemoved`. The world connected to both when it was made: for an item placed it pushes ground items out of the tile and starts a station if the item is one, and for an item taken off it closes the screens open on it and ends its station. The plot knows nothing of screens, stations or ground items.
 
 ## What knows what
 `docs/code/requires.svg` is the chart: a box for each folder with its modules, and an arrow for each require. `lune run tools/requires --chart` draws it from the code, and `lune run tools/check` fails if it has gone out of date. `python tools/delete_directory_test.py` tests the same thing by deleting.
 
-In short: the Roblox side requires the rules and never the other way. In the rules, `requests` is on top, then `world`, then `players`, `plots` and `stations`, which know nothing of one another, then `inventory`, then `items`.
+In short: the Roblox side requires the rules and never the other way, and the rules' folders require one way only, in the order given under "Where it lives". `players`, `plots` and `stations` know nothing of one another.
 
-`World` is the only piece of the rules that knows `players`, `plots` and `stations` together. It also holds rules of its own that could live in smaller pieces: the push out of a tile, reach, and what a placed item does over time. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list.
+`World` is the only piece of the rules that knows `players`, `plots` and `stations` together. It also holds rules of its own that could live in smaller pieces: reach, and what a placed item does over time. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list.
 
 Nothing on the server knows that a mouse exists. Nothing is applied on the player's machine before the server answers (`docs/status/next.md`).

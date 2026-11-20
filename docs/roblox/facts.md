@@ -1,6 +1,6 @@
 # Roblox facts that constrain the design
 
-Details and sources are in the docs. Roblox changed these roughly monthly through 2026; check the live docs page before relying on a number.
+Details and sources are in `docs/research/`, whose README says which file answers what. Roblox changed these roughly monthly through 2026; check the live docs page before relying on a number.
 - **New games are shown first only to age-checked 16+ users.** Under-16s unlock after 250 plays by highly engaged 16+ players within 60 days (a drop to 100 was announced), or a refundable 50,000 Robux expedited review.
 - **Home ranking** weighs play-through from the thumbnail, leaving within 60 and 180 seconds (negative), play days across days 1, 2-7 and 8-28, playtime up to 60 minutes a day, deliberately playing with friends, and days on which a player spends. Players acquired through ads never count.
 - **Only near-identical copies are suppressed** as non-unique.

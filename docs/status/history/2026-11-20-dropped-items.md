@@ -49,3 +49,13 @@ Their words are in `docs/working/code-reviews/2026-11-20-6-check-then-act.md` an
 - **They said what a station is to them:** a black box. `Station` in the code is a furnace (`docs/game/placed-items.md`).
 - **They chose our own prediction,** and asked how it stays out of the existing pieces. The plan is in `docs/status/next.md`.
 - **They gave much more of the game:** more of what they draw on, more examples, plots with owners, walls and floors, three kinds of process, and helpers who do what a player can.
+
+## The same day: quality before speed
+Their last message of the day was answers, and one sentence above the rest: "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
+- **The play test had its clean run,** 71 of 71, with the user watching and their hands off. The two failed runs before it had come while they were at the PC.
+- **Check, then act:** seven functions stopped looking first, and each got a `can...` beside it. `World.placeItem` went.
+- **Signals:** they said "Okay I stand corrected. Signals are good." `Signal` was built, a plot says when an item is placed or taken off, and the world listens. `World.takePlacedItemOffPlot` went.
+- **Merging was copied from Minecraft:** the bigger stack takes in the smaller, a stack that lies still is looked at every two seconds, and reach is a box.
+- **A throw goes up and down with the view in first person.** A direction became a way in the world, where it had been a way along the ground.
+- **The play test then failed 4 of 77, and the code was not at fault.** Every throw of that run came to rest about 20 studs ahead, where 7.6 is usual. Two short traces could not repeat it. A third, throwing from chosen spots, could: the test character had spawned where a thrown block clips the edge of the spawn pad as it falls. The play test now stands its character on open ground first, and passed 83 of 83.
+- **The notes and the memory were cleaned up,** which they said to do regularly: the status files rewritten around what is approved and what is still asked, rules that had been met taken out, and duplicates merged.

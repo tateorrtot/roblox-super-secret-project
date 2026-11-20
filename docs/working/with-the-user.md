@@ -7,6 +7,7 @@ Who does what, what works with this user, and how code gets built here.
 - **The user is an experienced programmer and systems architect** (8 years coding, about 5 years and 4,000 hours in Godot). Talk to them as one.
 - **What works with this user:** ask one precise question, show reasoning, and expect to be challenged; they invite pushback ("youre free to challenge me"). What failed: handing over finished designs, panels of agents judging taste, rules derived from market research, and designing the whole architecture on paper through repeated drafts and agent reviews before any code existed.
 - When you need something from the user, name the exact task.
+- **Helper agents are used sparingly,** on Sonnet and a few at a time. One overnight run used the account's whole weekly allowance. A names test is cheap, because its reader uses no tools. Mutation runs and checks of bad arguments are done in the session.
 
 ## Ideas beyond what was asked (the user's correction, 2026-11-20)
 Claude was building dropped items and was about to add a lighter gravity, custom friction and a guard against a case it had never seen. The user:
@@ -29,14 +30,14 @@ Claude was building dropped items and was about to add a lighter gravity, custom
 > Im noticing the roblox tests are always running? Are you constantly waiting on that? ... Cant you make changes, with lots of checkpoints, then test, then go back and see where when and why it broke? ... Im just wondering if anything in particular is making your replies and work take 30+ minutes everytime?
 
 - **The fast checks run after every change.** `lune run tools/check` takes under a minute and does not touch Studio.
-- **The play test runs once, when a turn's code changes are done.** It takes three to four minutes and drives Studio with the mouse and the keyboard, so the user sees it, and their own use of the PC breaks it. Say so before starting it.
-- **Commits are the checkpoints.** If the play test fails, go back through them to find where. Do not run it after each one.
+- **The play test runs once, when a turn's code changes are done.** It takes about four minutes and drives Studio with the mouse and the keyboard, so the user sees it, and their own use of the PC can spoil it. Say so before starting it, and say what to look for: they offered to watch with their hands off ("Go ahead ill watch you").
+- **Commits are the checkpoints.** If the play test fails, find the cause before running it again. A short trace of the one thing that failed takes half a minute, where the whole test takes four. On 2026-11-20 two such traces showed that a failure came from where the test character had spawned, and not from the code.
 - **Read a result before building on it.** Claude once chained a commit after a play test run and committed a failure unread.
-- **Keep turns short.** A turn that carries three code changes, four reviews and a long report takes half an hour. One change, checked and shown, is better.
+- **Quality comes before speed.** The user, later that day: "quality is a lot more important than speed!" Their words are at the top of `engineering-rules.md`. A turn may be long when the work needs it: say early what is taking the time, and keep saying where things are.
 
 ## Rules come from mistakes
 - **When the user corrects something, name the pattern and write it as a rule** in the file for its topic. They steer by this: "Whenever it messes up, I tell it to add some rule/recognize the pattern and it puts it in as a rule".
-- **Every couple of milestones, offer to audit the rule files:** merge duplicates, delete what a later rule replaced, and show the diff before saving. Another assistant suggested it to the user on 2026-11-20 and they passed it on. It has not been run yet.
+- **Clean the notes up regularly, without asking first.** Merge duplicates, delete what a later rule replaced, move what is over to `status/history/`, and check each status file against what the user last said. The user, 2026-11-20: "You can take some time to clean it up and anything else youre using to manage the project if you need. I encourage you do this regularly if it helps you." The first clean-up was that day. `python tools/notes.py` checks paths and lengths, and cannot tell that a note has gone stale.
 
 ## Who decides what (confirmed: "that three tier split works for me")
 | Tier | Who | What |

@@ -2,18 +2,17 @@
 
 How code is written in this project. Read it before changing anything in `src` or `tests`.
 
-The rules come from Godot's class reference, from FoxFabric's `adder.gd` (the user's own standard for the shape of a piece), and from the user's four reviews of the code (`docs/working/code-reviews/`). The user has not reviewed this list as a whole.
+The rules come from Godot's class reference, from FoxFabric's `adder.gd` (the user's own standard for the shape of a piece), and from the user's reviews of the code (`docs/working/code-reviews/`). The user has not reviewed this list as a whole.
 
 ## Names
 Names have a file of their own, `names.md`. In short: a function's name says what it acts on and where, every function starts with a verb, and a name is a promise the function keeps.
 
 ## Data
-- **Nothing is `nil`.** No placeholder values and no empty records. How many places a thing has (`slotCount`) and what is in them are separate facts.
+- **Empty is empty.** Where there is nothing there is `nil`: no placeholder value, no sentinel and no empty record stands in for it. How many places a thing has (`slotCount`) and what is in them are separate facts.
 - **A value never changes,** and its functions return new values: `ItemStack`, an item definition, a `Position`. It is frozen, and its fields are typed `read`.
-- **A thing changes in place, through its own module's functions:** `Inventory`, `InventoryScreen`, `Hotbar`, `World`. A field its module assigns is a plain field. Only fields that never change after the thing is made are `read`. Code outside the module does not assign a thing's fields.
+- **A thing changes in place, through its own module's functions:** `Inventory`, `InventoryScreen`, `Hotbar`, `World`. Only a thing's own module assigns its fields, and it offers a function for each change that keeps the thing whole: `PlayerState.openPackScreen`, not `player.screen = ...` from somewhere else. A field its module assigns is a plain field. Only fields that never change after the thing is made are `read`.
 - **A function that moves items returns what the caller is left holding,** and no item is made or lost.
 - **Keep the facts, and work the rest out where it is used.** A value worked out from others is not stored. A player's state holds where their character is; the throw of a dropped stack is worked out when the stack is dropped, from the direction the request brings. Claude once stored it, in a function named for a position, and the user called that spaghetti.
-- **Only a thing's own module assigns its fields,** and it offers a function for each change that keeps the thing whole: `PlayerState.openPackScreen`, not `player.screen = ...` from somewhere else.
 
 Plain fields on things are Claude's call of 2026-11-20, for the user to veto. The earlier rule typed every field `read`, which made each module write its own fields through a cast to `any`.
 
@@ -22,8 +21,10 @@ The user's rule, 2026-11-20: "if you say "jump" dont have a check inside that me
 - **A function does what its name says, every time it is called.** It does not look first and quietly do nothing.
 - **The check is a function of its own,** named `can...` or `is...`, and the caller asks it first. A request from a player's machine asks; a caller that means to force the thing does not.
 - **The same goes for a tool.** `python tools/studio.py sync` syncs. Whether the code passed its checks is another command's to say.
-- **Not yet brought to this rule:** `World.placeItem`, `Plot.placeItem`, `World.openPlacedItemScreen`, `PlayerState.openPackScreen`, `PlayerState.openPlacedItemScreen` and `InventoryScreen.swapCarriedStackWithSlot` each look first and return `nil` or `false`. `Plot.canPlaceItem` is the one check that already stands by itself. New code follows the rule.
+- **An action that cannot be carried out fails loudly,** where going on would spoil the data, and its comment says so as Godot does: "Fails if ...". It never quietly does nothing.
+- **The pairs in the rules:** `Plot.canPlaceItem` and `World.canPlaceItem` before `Plot.placeItem`; `World.canOpenPlacedItemScreen` before `World.openPlacedItemScreen`; `PlayerState.canOpenScreen` before `PlayerState.openPackScreen` and `openPlacedItemScreen`; `InventoryScreen.canSwapCarriedStackWithSlot` and `canSwapSlots` before the two swaps.
 - A function that is asked to remove a thing that is not there has nothing to do, and that is not a check: `removeCharacter`, `closeScreen`.
+- **A rule of the game is not a check.** `GroundItems.moveNearbyStacksToInventory` leaves alone a ground item that is too new to pick up, and `GroundItems.mergeItems` looks only at the ground items whose turn it is. Each says so in its comment.
 
 ## Failure
 - **What can happen in play is a return value.** No room, nothing there.
@@ -52,16 +53,18 @@ Comments are written as Godot's class reference is. Read `doc/classes/Timer.xml`
 - **The rules know nothing of the mouse, the keyboard or a touch screen.** They offer operations named for what they do to the game (`pickUpFromSlot`, `putDownInSlot`, `swapSlots`). Which operation a click or a tap asks for is decided on the player's machine, by a piece named for that device's controls, and the request it sends names the operation.
 - **The server sends when something happens, not as time passes.** A thing that moves with time alone, such as a stove's gauges, is sent as the times that decide it, and drawn on the player's machine from its own clock (`StationProgress`). Before adding anything to what a player is told, ask whether it changes while nothing happens. This is Claude's rule, from a stove that had the server sending a player's whole pack ten times a second.
 - **Deleting one directory of the rules must not break the one beside it.** `players`, `plots` and `stations` know nothing of one another. `python tools/delete_directory_test.py` shows what breaks when each directory goes. This is the user's test, 2026-11-20.
+- **One rule tells another with a signal.** A thing that changes says so by firing a `Signal` it holds, as a plot fires `placedItemAdded`, and each piece that cares connects to it. The function that makes the change does not know who listens. The user asked for this of removing a placed item: "the placedItem itself should signal / event "hey im getting deleted!" and that end up cascading into the items splling and the inventory closing elsewhere."
+- **Roblox's own events are for where the engine speaks to us:** input, a player joining, a message from the other machine. The user asked why we would have two systems. A `BindableEvent` is an Instance, copies the tables passed through it, and runs its listeners later and in no promised order, so it cannot carry the rules' own values or keep their order (`docs/research/19-roblox-events.md`). The user, having heard that: "Okay I stand corrected. Signals are good."
 - **Break it up.** When a piece does more than one thing, split it: a directory, a file, a function, a block. Decide which layer each part belongs on, and build the higher on the lower.
 - **On the Roblox side** (`src/server`, `src/client`):
   - A piece that draws is named for what it draws, ending in `Gui` on a player's machine (`SlotGui`, `HotbarGui`) and `Parts` on the server (`GroundItemParts`). It is told what to show, reports clicks through callbacks it was given, and never changes the game's state.
-  - A piece that turns input into requests is named for the controls it is (`InventoryControls`, `UseAndHit`).
+  - A piece that turns input into requests is named for the controls it is (`InventoryControls`). `UseAndHit` is one too, and is owed a name without `And` in it.
   - `Main.server.luau` and `Main.client.luau` are the only scripts that run by themselves, and they join the pieces.
-  - Anything that is there only until the real thing exists has `Placeholder` in its name.
+  - A piece that will be deleted when the real thing exists has `Placeholder` in its name (`PlaceholderWorld`). A piece that stays, and only draws stand-in shapes for now, does not (`GroundItemParts`, `PlotParts`): its comment says that the shapes are placeholders.
 
 ## Tests
 - Tests are plain scripts in `tests/`, mirroring `src/shared`, using `tests/Check.luau`. The plain-Luau pieces on the player's machine (`SlotGestures`, `InventoryControls`) are tested the same way, in `tests/client`.
-- A check's message says what should be true.
+- A check's message says what should be true, and starts with the name of the function it is about.
 - `Check.raises` also requires the error to blame the calling script.
 - A corner copied from Minecraft is stated by a test.
 
@@ -74,4 +77,4 @@ Comments are written as Godot's class reference is. Read `doc/classes/Timer.xml`
 6. On the Roblox side, `python tools/playtest.py` passes, with a step added for what the piece does.
 
 ## Where these came from
-Godot never wrote down what its verbs mean, and its inconsistencies come from that, so these are written down. They were rewritten three times on 2026-11-20, once after each of the user's reviews. The first version had asked for long comments and for checks in every function, which contradicted `adder.gd`. The second leaned on outside knowledge. The third fixed the rule for names. All of the code was brought to them that day.
+Godot never wrote down what its verbs mean, and its inconsistencies come from that, so these are written down. They were rewritten three times on 2026-11-20, once after each of the user's first reviews that day. The first version had asked for long comments and for checks in every function, which contradicted `adder.gd`. The second leaned on outside knowledge. The third fixed the rule for names. Check, then act, and the two rules about signals, came from the reviews after those. All of the code was brought to each rule on the day it was written.

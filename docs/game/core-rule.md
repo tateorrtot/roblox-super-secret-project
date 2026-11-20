@@ -1,8 +1,6 @@
 # The core of the game
 
-The game has no core activity. It has a core rule. The user confirmed this, and their own examples are the test for any design.
-
-The game has no core activity. It has a core rule, the way Minecraft has blocks.
+The game has no core activity. It has a core rule, the way Minecraft has blocks. The user confirmed this, and their own examples are the test for any design.
 
 > The core idea is just inputs and outputs but DIVERSE inputs and outputs, and have them be real and tangiable physical things (a cake) or real things occuring (like a service). Theres processes to change these inputs and outputs.
 

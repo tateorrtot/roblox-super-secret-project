@@ -1,9 +1,9 @@
 # Claude's calls, for the user to veto
 
-Decisions Claude made without asking. Each stands until the user says otherwise.
+Decisions Claude made without asking. Each stands until the user says otherwise. One that they confirm moves to `docs/game/decisions.md` or to the rule it belongs with.
 
 - **Names chosen on 2026-11-20, which the user has not confirmed:** the files `InventoryScreen` (two readers shown only the name expected a drawn window; the alternative offered was `OpenInventories`), `SlotGestures`, `InventoryControls`, `PlayerSnapshot`, `Requests` and `UseAndHit`, and every function name changed after their third review. The words those names are built from are Claude's too: `carriedStack` for the stack being moved between slots, `side` for which of the two open inventories, `placedItem` for a thing standing on a plot.
-- **`usePlacedItem` and `hitPlacedItem` keep the game's two verbs, Use and Hit.** What each does depends on the item, by design. An auditor and two readers wanted names that say what happens; those are the names of what `World` does: `openPlacedItemScreen`, and `takePlacedItemOffPlot` with `throwPlacedItemAndContents`.
+- **`usePlacedItem` and `hitPlacedItem` keep the game's two verbs, Use and Hit.** What each does depends on the item, by design. An auditor and two readers wanted names that say what happens; those are the names of what the rules do: `World.openPlacedItemScreen`, and `Plot.removePlacedItem` with `World.throwPlacedItemAndContents`.
 - **Things have plain fields** (see "Data" in `docs/code/conventions.md`).
 - **A mistake in our own code is no longer refused with a named error at every layer.** The guards that remain are listed under "Failure" in `docs/code/conventions.md`.
 - **`Inventory.countItems` and `Inventory.isEmpty` have no caller in the game** and are kept because the tests measure with them. `SaveData` has no caller until saving is built.
@@ -12,7 +12,7 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
 - The screen's actions are named for what they do (`pickUpFromSlot`, `putDownInSlot`, `swapSlots`), because Minecraft on phones has no right click. The PC mouse's meaning is `InventoryControls`, on the player's machine.
 - Asking how many of an unknown item id an inventory holds (`countItems`) answers 0; adding one or making a stack of one is an error.
 - Pack 36 slots, hotbar 9: Minecraft's numbers.
-- Ground items: the three numbers above, joining on drop, and that a player keeps their pack when their character dies.
+- Ground items: a pickup delay of 1.5 seconds and a pickup radius of 4 studs, and that a player keeps their pack when their character dies. The five minutes a stack lasts are the user's choice.
 - **Dropped items, 2026-11-20.** The user approved the outline; these details are Claude's.
   - The six speeds and heights at the top of `src/shared/world/World.luau`: a character throws from 3 studs above its feet at 24 studs a second forwards and 8 upwards, which lands about 7 studs ahead; a placed item knocked off the plot and what was in it leave at 6 outwards and 20 upwards; a pushed ground item at 6.
   - A ground item takes up a cube 1.2 studs wide, whatever its count. Pickup reaches 4 studs along the ground, 7 up from the feet and 2 down.
@@ -36,7 +36,15 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
 - **How a station works.** The user chose the furnace form; the rest is Claude's, with placeholder numbers. A fire is lit only when there is something to work on, and once lit burns its fuel out. Work done on an item is lost if the fire goes out for want of fuel, if the input is changed, or if the output has no room, as in Minecraft. A stove works whether or not anyone is near it. One knocked off the plot loses its fire, and the fuel that was burning. Fuel is a property of the item; a recipe is one item in and one out.
 - **Known and left for now:** reach is measured from where a player's own machine says their character is, so a cheating machine could reach anything. Nothing is gained by it while the one plot is shared by all; it needs an answer when plots have owners.
 - **A crate knocked off the plot spills what was in it,** as a Minecraft chest does. Claude's restatement in `docs/game/consistency-rule.md` says a crate keeps its contents; that needs an item that carries an inventory, which does not exist yet.
-- The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the player's machine. The fix for the delay on a real server is known: apply the same rule locally first, since the rules are shared code.
+- The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the player's machine yet; the plan the user approved is in `next.md`.
+- **Signals, 2026-11-20.** The user said to build them; the shape is Claude's.
+  - `Signal` is plain Luau with three functions: `new`, `connect` and `fire`. Listeners run at once, inside `fire`, in the order they were connected, and a listener that fails stops the rest. There is no way to disconnect one yet, because nothing needs it.
+  - A plot holds two, `placedItemAdded` and `placedItemRemoved`, and fires them from `placeItem` and `removePlacedItem`. The world connects to both when it is made. `World.placeItem` and `World.takePlacedItemOffPlot` are gone.
+- **Check, then act, 2026-11-20.** The rule is the user's; these details are Claude's.
+  - An action that cannot be carried out fails loudly where going on would spoil the data: `Plot.placeItem` on a taken tile, and opening a screen for a player who cannot have one. The two swaps of `InventoryScreen` always swap, and their `can...` functions say whether the slot's rule allows it.
+  - `World.canPlaceItem` adds to `Plot.canPlaceItem` that no player stands on the tile. `Plot.placeItem` does not ask it; a request does.
+- **The coupling review's faults 5 to 9** are fixed when the code they sit in is next changed, not as a job of their own (`next.md` says which goes with what). The user asked what they were, and then spoke of stations.
+- **The play test moves its character off the spawn pad before it throws anything** (`docs/code/checks.md`).
 - Keys: E for the pack, 1 to 9 for the hotbar, Q to drop one; over a slot of the open screen, 1 to 9 swap it with that hotbar slot and Q drops from it (Ctrl and Q the whole stack: checked over a slot by the play test, not in the world). The mouse wheel is left to Roblox's camera.
 - How an item looks (`ItemLooks`) is kept apart from what it is (`ItemDefinitions`).
 - The eight item rows, every name, the hint on the inventory screen and the label on the crate are placeholders and draft words.

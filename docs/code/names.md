@@ -17,7 +17,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 
 **A name is a promise, and the function keeps it.** `drop` leaves the stack on the ground. A function that only takes the stack out is `take`. If what a function does cannot be said plainly in a sentence built from its name, it is the wrong shape: split it or rename it.
 - **A setter names the thing it sets:** `set` and the property. The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPosition`.
-- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." One name still has it, `throwPlacedItemAndContents`, and waits for their word.
+- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." Two names still have it and wait for their word: the function `throwPlacedItemAndContents` and the class `UseAndHit`.
 - **A long name is a flag too, and not always wrong.** `pushGroundItemsOutOfTile` stands: the user called it "one of these times a mouthful may be okay".
 - **A word names a real thing in the code, or it is not used.** The user, of a `Transform` that did not exist: "is transform a defined solid thing? like a class? if not dont do transform".
 - **There is no exception.** The user allowed one on 2026-11-20, for two functions of `World` that also merged ground items, and it was lifted the same day when the merge moved to `World.advanceTo`.
@@ -56,7 +56,9 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `spawn` | Makes a thing appear in the world at a position | Its id |
 | `merge` | Makes things of one kind into one | Given two stacks, the stack that holds both, and then what did not fit. Given every ground item, nothing |
 | `count` | Counts | A number |
-| `has`, `is`, `can` | Asks, and changes nothing | `true` or `false` |
+| `has`, `is`, `can` | Asks, and changes nothing. `can` with an action's name asks whether that action could be carried out now: `canPlaceItem` before `placeItem` | `true` or `false` |
+| `connect` | Adds a listener to a signal | Nothing |
+| `fire` | Calls every listener of a signal, at once and in the order they were connected | Nothing |
 | `find` | Looks for one that may not be there | It, or `nil` |
 | `advance` | Moves a thing on in time: `advance` by so many seconds, `advanceTo` a time | Nothing |
 | `update` | Makes a drawing piece match what it is given | Nothing |

@@ -1,23 +1,24 @@
 # Asked of the user, not yet answered
 
-- To play the build and say what feels wrong.
-- To play with dropped items again now that Roblox owns their motion, and say how they feel: whether the delay when throwing is gone, how far a throw goes, how a broken crate spills, whether items should fall more lightly.
-- Their read of the plan for prediction on the player's machine, and a yes to build it (`next.md`, shown 2026-11-20).
-- Whether `throwPlacedItemAndContents` should be split, since it has `And` in its name: one function to throw the placed item, one to throw what is inside it.
-- Whether to bring the six functions that look first and do nothing to their rule of check, then act (`docs/code/conventions.md`).
-- Whether a throw in first person should go up and down with the view. It goes along the ground in both views now.
-- Whether a carried stack that does not fit the pack may be dropped at the feet when a screen closes, as it now is.
-- Which of the coupling review's faults 5 to 9 to fix, and when (`docs/code/reviews/16-coupling-review-2026-11-20.md`).
-- Which, if any, of the ideas Claude set aside they want. The list is at the end of `docs/game/dropped-items.md`.
-- Whether they want an audit of the rule files: merging duplicates and deleting what a later rule replaced, with the diff shown first.
-- Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.
-- Their read of the rewritten and untangled code, and their verdict on the names Claude chose (listed in `claudes-calls.md`).
-- Whether they would rather read the code in the method form (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).
-- Whether screens and models are made in Studio, as scenes are in Godot, or stay in code.
-- To run the one-line download of Roblox's type definitions themselves (the command is in `docs/roblox/studio.md`), since the app refused it for Claude. It is passed to luau-lsp as `--definitions:@roblox=<file>`, with a Rojo sourcemap.
-- For saving, when it is the next piece: to publish the place and switch on Studio's access (the steps are in `docs/roblox/studio.md`), and a clear yes to downloading ProfileStore (one file, Apache 2.0 licence, from its GitHub repository or the Creator Store), which the survey in docs/research/13 recommends wrapping behind a module of ours.
-- For each place or people they picture: what it needs and what it makes.
-- One Blockbench model with a stepped animation, in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.
-- Budget for a small ad test and for the 1,000 Robux fee that lets under-16s see the game later.
-- Personal or group ownership, and a brand name.
-- Whether they have a cheap Android phone to test on.
+Only what is still open. When they answer, the answer goes where it belongs and the line leaves this file.
+
+## About the code
+- **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
+- **What a crate does when it is knocked off the plot.** Today the crate becomes an item on the ground and each stack inside it becomes one too, as a Minecraft chest spills. The other way is that the crate keeps what is in it, as one item, which needs an item that can carry an inventory. `World.throwPlacedItemAndContents` is the function that spills; if spilling stays, whether to split it in two, since it has `And` in its name. Explained to them on 2026-11-20, after they asked "Its just an item - no?"
+- **Whether to rename the class `UseAndHit`,** which has `And` in its name. Claude would call it `PlotControls`, beside `InventoryControls`.
+- **Whether they would rather read the code in the method form** (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).
+- **Whether screens and models are made in Studio,** as scenes are in Godot, or stay in code.
+
+## About the game
+- **Their feedback on the build:** "a LOT of feedback and little issues / tweaks". They are holding it until the code is checked.
+- **How dropped items feel now:** how far a throw goes, how a broken crate spills, whether items should fall more lightly, and whether the two differences from Minecraft that are left in merging matter to them (`docs/game/dropped-items.md`).
+- **Which, if any, of the ideas Claude set aside they want.** The list is at the end of `docs/game/dropped-items.md`.
+- **For each place or people they picture:** what it needs and what it makes.
+- **Personal or group ownership, and a brand name.**
+
+## Things only they can do
+- **Run the one-line download of Roblox's type definitions,** since the app refused it for Claude. The command is in `docs/roblox/studio.md`. With it the server's and the client's scripts can be type-checked.
+- **For saving, when it is the next piece:** publish the place and switch on Studio's access (the steps are in `docs/roblox/studio.md`), and a clear yes to downloading ProfileStore, which the survey in docs/research/13 recommends wrapping behind a module of ours.
+- **One Blockbench model with a stepped animation,** in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.
+- **A budget** for a small ad test, and for the 1,000 Robux fee that lets under-16s see the game later.
+- **Whether they have a cheap Android phone to test on.**

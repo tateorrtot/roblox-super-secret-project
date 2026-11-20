@@ -12,6 +12,6 @@ Claude's restatement of the inventory under that rule (awaiting the user's yes):
 1. Everything is an item, including a machine, a crate and a vehicle.
 2. Items sit in slots and stack up to that item's stack size.
 3. Any item can be dropped on the ground.
-4. An item that can be placed becomes a thing in the world when placed, and becomes an item again when broken or picked up. A crate keeps its contents.
-5. A container is a placed item with slots. A station is a container with a process.
+4. An item that can be placed becomes a thing in the world when placed, and becomes an item again when broken or picked up. A crate keeps its contents. (It is built the other way: a crate knocked off the plot spills what is in it. The user has been asked which they want.)
+5. A container is a placed item with slots. What else a placed item does is its own business, in the user's later words (`placed-items.md`). Claude had written "a station is a container with a process", which cast a general kind from one example.
 6. Stack size is the one knob that makes hauling matter: bulky things stack small (a machine stacks to one), and the player's own pack is small, so a truck with crates carries far more.
