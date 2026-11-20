@@ -19,6 +19,7 @@ The game
     Footprint, a plot of one's own, walls, floors and ceilings         not started
   Stations and recipes
     RecipeRegistry, RecipeDefinitions, Station                         built: the stove
+    StationProgress   a station's fire and work, as times                built
   The world
     GroundItems       stacks lying on the ground                       built
     World             the game's state and what can be done in it      built

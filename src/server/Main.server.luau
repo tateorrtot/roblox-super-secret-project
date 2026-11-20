@@ -109,7 +109,7 @@ local function sendSnapshotIfChanged(player: Player)
 	local asText = HttpService:JSONEncode(snapshot)
 	if asText ~= lastSent[player] then
 		lastSent[player] = asText
-		remotes.snapshotChanged:FireClient(player, snapshot, world.now)
+		remotes.snapshotChanged:FireClient(player, snapshot, os.clock())
 	end
 end
 

@@ -1,6 +1,7 @@
 # Asked of the user, not yet answered
 
 - To play the build and say what feels wrong.
+- Whether to build a throwaway demo of thrown items for them to try in Studio, so that they can judge how an item should fall (asked 2026-11-20).
 - Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.
 - Their read of the rewritten code, and their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - Whether they would rather read the code in the method form (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).

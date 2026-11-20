@@ -24,7 +24,7 @@ The user is here to help with whatever Claude can't do.
 ## Where things stand (2026-11-20)
 - **Playable:** a first loop on grey boxes, for PC. A pack and hotbar, stacks on the ground, one shared plot of tiles, a crate, and a stove that cooks.
 - **The code** was broken up, rewritten and renamed on 2026-11-20 after three reviews by the user. Branch `first-pieces`. Nothing is pushed.
-- **Checked:** `lune run tools/check` passes, and the play test passed 61 of 61 in Studio on the final code.
+- **Checked:** `lune run tools/check` passes, and the play test passes 63 of 63 in Studio.
 - **Waiting on the user:** their read of the rewritten code, and then their feedback on the game, which they are holding until the code is checked.
 
 More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
