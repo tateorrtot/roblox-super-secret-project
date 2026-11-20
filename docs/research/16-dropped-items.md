@@ -55,6 +55,17 @@ A fourth experiment, the same day, with cubes 1.2 studs across thrown at 24 stud
 
 Only the first row is used. The game throws plain parts on Roblox's own gravity, because the user asked on 2026-11-20 for nothing to be tuned before there is a game to play. The lighter fall is here for when they want to compare.
 
+## How late a thrown part is drawn, by who owns it
+Measured on 2026-11-20 in a play test the user was running, with one player and a ping of 1 millisecond (`build/throw_delay_live.py`, not kept in git). Plain cubes were thrown beside the character, four of each kind. Times are after the server threw the cube.
+
+| Who owns the part | It appears on the player's machine | It is first drawn moving | It is drawn at rest |
+|---|---|---|---|
+| The server, `SetNetworkOwner(nil)`: how the game does it | 50 ms | 250 to 330 ms | 1,030 to 1,140 ms, when the server had it at rest at 715 ms |
+| The player's machine, `SetNetworkOwner(player)` | 50 ms | 50 to 100 ms | 1,000 to 1,070 ms |
+| Left to Roblox | 50 ms | 65 to 215 ms | 1,020 to 1,070 ms |
+
+A part the server owns is drawn about a third of a second behind where it is, for its whole flight. That is the delay the user felt when throwing. Roblox's documentation says of `SetNetworkOwner(nil)`: "you should do so conservatively since it may result in jittery physics interactions for clients." It also says that a client can teleport a part it owns, which is why Claude had chosen the server. Nobody had asked for that guard.
+
 ## What Roblox's documentation and developers say
 - **Collision groups** make "collides with the world, not with other items or with characters". At most 32 groups. Characters must be put in a group of their own, each time one spawns.
 - **Ownership.** Left alone, Roblox hands an unanchored part near a player to that player's machine, which can then put it anywhere. `SetNetworkOwner(nil)` keeps it with the server.

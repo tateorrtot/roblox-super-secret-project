@@ -20,6 +20,8 @@ Claude was building dropped items and was about to add a lighter gravity, custom
 - **Use what the engine already does** before writing or tuning anything of our own. "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
 - **No tuning of feel and no safeguard for an unseen problem before there is a game to play.** They called it "pre-mature optimization".
 - **Say plainly what is being done.** "Physics experiment" read to them as Claude writing a physics engine. It was measuring Roblox's.
+- **Changing an engine's default is a decision to put to the user, with what it costs.** Claude took ownership of dropped items' parts for the server, as a guard against cheating that nobody had asked for, and every thrown item drew a third of a second late. The user: "Im not even sure if its going to be an issue yet and youre changing a default for some reason?"
+- **A small diff is not worth a tangled function.** Claude made `World.setPlayerPosition` also work out how a player's drops set off, because that kept the change small. The user: "Why is this method tied to that? Spaghetti!"
 
 ## Rules come from mistakes
 - **When the user corrects something, name the pattern and write it as a rule** in the file for its topic. They steer by this: "Whenever it messes up, I tell it to add some rule/recognize the pattern and it puts it in as a rule".

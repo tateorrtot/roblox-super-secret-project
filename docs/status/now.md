@@ -49,10 +49,12 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 - **A real server.** In Studio there is no delay. On a real server the screen waits for the server's answer after each click, and will feel a little late.
 
 ## Known problems
+- **A thrown item is drawn about a third of a second late.** The server owns each ground item's part, by Claude's choice, and Roblox draws a part the server owns that far behind. Measured: 250 to 330 milliseconds before it is seen to move, against 50 to 100 when the player's machine owns it (`docs/research/16-dropped-items.md`). Not changed: the user asked to know why first.
+- **The code was reviewed for coupling at the user's word** (`docs/code/reviews/16-coupling-review-2026-11-20.md`). It is not spaghetti, and ten faults are worth acting on, `World.setPlayerPosition` first. None is fixed yet.
 - **The faint block shows on tiles the server will refuse,** such as the one the player stands on. Found by reading the code (`docs/code/reviews/15-code-double-check-2026-11-20.md`), and not fixed.
 - **A ground item's block that falls out of the world is not noticed.** Roblox destroys the part, and the ground item stays in the rules, out of reach, until its five minutes are up. It cannot happen on the placeholder map, whose ground is 1,024 studs across.
 - **Many items moving at once are compared pair by pair.** Each moving stack is checked against every other for joining, ten times a second. Nobody has measured where that gets slow; a reviewer put it at hundreds of items moving together.
-- **`World.setPlayerPosition` does more than its name says.** It also takes the way the character faces, and works out how the player's drops set off. A reader with no context said so. The user's to decide.
+- **`Throw` reads as a verb.** The user: "Thats just a verb as a class? ... You get some weird things like Throw.new. Verb.new. What?" Classes are nouns in Godot and in Roblox. It needs a noun, or to go.
 
 Left from the audits and not done (`build/audit.json` has the full list, and is not kept in git):
 - The inventory screen's drawing code does two jobs, the screen and the stove's panel, and finds the stove's parts by their place in a list.

@@ -2,6 +2,11 @@
 
 - To play the build and say what feels wrong.
 - To play with dropped items and say how they feel: how far a throw goes, how a broken crate spills, whether items should fall more lightly (built 2026-11-20, on the branch `dropped-items`).
+- Whether to hand dropped items back to Roblox's default ownership, which removes most of the delay when throwing (asked 2026-11-20).
+- Whether to untangle `World.setPlayerPosition` as proposed: the player's state holds where the character is and which way it faces, and the throw is worked out when something is dropped.
+- A noun for `Throw`.
+- Which of the review's ten faults to fix, and when (`docs/code/reviews/16-coupling-review-2026-11-20.md`).
+- What they picture for plots, now that they have asked "couldnt a plot be, anywhere? Like the world is a plot?" The agreed decisions say a plot for each player, as in Lumber Tycoon, and building on vehicles as in ARK.
 - Which, if any, of the ideas Claude set aside they want. The list is at the end of `docs/game/dropped-items.md`.
 - Whether they want an audit of the rule files: merging duplicates and deleting what a later rule replaced, with the diff shown first.
 - Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.

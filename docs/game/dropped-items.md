@@ -31,7 +31,7 @@ Also built, from the outline they approved: a player picks up what lies up to 7 
 ## How it is built
 - **Roblox's physics does all the motion.** We wrote no physics. The user, 2026-11-20: "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
 - **The rules decide how a stack sets off** (`Throw`), and are told where each one has got to (`World.moveGroundItemTo`), as they are told where each character is.
-- **The server alone moves the parts.** Roblox sends their motion to players by itself. `docs/research/17-physics-networking.md` has what was found about that.
+- **The server alone moves the parts,** and that makes a thrown item draw about a third of a second late on the thrower's own machine. The user felt it the first time they played. Claude had taken ownership for the server as a guard against cheating, which nobody had asked for. Roblox's default hands a part to the nearest player's machine, and starts drawing it moving in about a quarter of the time. The numbers are in `docs/research/16-dropped-items.md`. Whether to go back to the default is the user's to say.
 - `docs/code/pieces.md` lists the pieces. `docs/research/16-dropped-items.md` has how Minecraft does each thing and what was measured in Roblox.
 
 ## Ideas not built, for the user to choose
