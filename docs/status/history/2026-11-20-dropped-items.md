@@ -46,7 +46,7 @@ Their words are in `docs/working/code-reviews/2026-11-20-6-check-then-act.md` an
 - **A throw goes the way the camera looks along the ground.** The three drop requests carry the direction. The rules stopped keeping which way a character faces, which left one setter, `setCharacterPosition`, and answered their objection to `setCharacterPositionAndFacing`.
 - **Two rules:** a function does what its name says and the check is kept apart, and `And` in a name means two functions.
 - **They asked why Claude would reinvent Roblox's events.** Claude had not said what Roblox has. The answer is `docs/research/19-roblox-events.md`, and nothing is built.
-- **They said what a station is to them:** a black box. `Station` in the code is a furnace (`docs/game/placed-items.md`).
+- **They said what a station is to them:** a black box. `Station` in the code is a furnace (`docs/game/placed-objects.md`).
 - **They chose our own prediction,** and asked how it stays out of the existing pieces. The plan is in `docs/status/next.md`.
 - **They gave much more of the game:** more of what they draw on, more examples, plots with owners, walls and floors, three kinds of process, and helpers who do what a player can.
 

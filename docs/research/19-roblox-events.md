@@ -33,5 +33,5 @@ So a signal of our own would not be a second system brought over from Godot. It 
 
 ## What follows
 - **One kind of event for one kind of thing.** Roblox's events where Roblox speaks to us: a player joins, a key is pressed, a RemoteEvent arrives. A plain Luau signal, if the rules get one, where one rule tells another.
-- **Nothing is built.** The user chose to leave `World` as it is for now. The question comes back with the second kind of placed thing that acts (`docs/game/placed-items.md`).
+- **Nothing is built.** The user chose to leave `World` as it is for now. The question comes back with the second kind of placed thing that acts (`docs/game/placed-objects.md`).
 - **The choice then:** about 20 lines of our own, which run each listener at once and in the order they were connected; or GoodSignal, which needs Roblox's `task` library and so could not run in our tests, and whose download needs the user's yes.

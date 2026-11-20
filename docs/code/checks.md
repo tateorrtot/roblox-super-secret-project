@@ -24,7 +24,7 @@ The user's PowerShell may need `~/.rokit/bin/lune` in place of `lune`.
 
 ## What is type-checked, and what is not
 - **`src/shared`, `tests` and `demos` are type-checked** with `luau-lsp analyze --platform=standard --flag:LuauSolverV2=true`. That means no Roblox globals, and the new solver only, because read-only fields (`read`) are a syntax error under the old one. The two plain-Luau pieces in `src/client`, `SlotGestures` and `InventoryControls`, are checked through their tests.
-- **`src/server` and `src/client` are formatted and linted, and not type-checked.** luau-lsp needs Roblox's type definitions file for that, and it is not downloaded (`docs/roblox/studio.md`). Until it is, mistakes there are found by `tools/members.py` and by the play test.
+- **`src/server` and `src/client` are formatted and linted, and not type-checked by `lune run tools/check`.** They can be checked by hand: Roblox's type definitions are downloaded, and `docs/roblox/studio.md` has the command. A run on 2026-11-20 gave seven reports in two places, none of them new. Until the check is part of the rest, mistakes there are found by `tools/members.py`, by that command and by the play test.
 
 ## The requires check
 `lune run tools/requires` prints what requires what, folder by folder and module by module. It fails if:
@@ -35,12 +35,12 @@ The user's PowerShell may need `~/.rokit/bin/lune` in place of `lune`.
 Use it when the user asks which scripts and directories are coupled to which, and draw the diagram from its output, not from memory.
 
 ## The play test
-`python tools/playtest.py` copies `src/` into Studio, starts a play test, and drives the test character with keys, clicks and walking through the whole loop: the pack, dropping, picking up, the crate, placing, using and hitting, dragging a stack across slots, reach, and baking an apple in the stove. After each step it checks what the screen shows and what is in the world. Then it stops the play test.
+`python tools/playtest.py` copies `src/` into Studio, starts a play test, and drives the test character with keys, clicks and walking through the whole loop: the pack, dropping, picking up, the crate, placing, interacting and breaking, dragging a stack across slots, reach, and baking an apple in the stove. After each step it checks what the screen shows and what is in the world. Then it stops the play test.
 
-- 83 checks, in about four minutes. The last clean run was on 2026-11-20, on the merge copied from Minecraft and the first-person throw.
+- 83 checks, in about four minutes. The last clean run was on 2026-11-20, after items and placed objects were split into two systems.
 - It first stands the test character on open ground, 10 studs past the spawn pad. A player spawns at a random spot on the pad, which is a stud high, and a block thrown from some of those spots clips the pad's edge as it falls and tumbles about 20 studs, where on open ground it comes to rest after 7.6. That spoiled one run on 2026-11-20 with four failures that had nothing to do with the code (`build/throw_from_places.py` shows it on demand).
 - One step sends every request with nonsense, as a tampered machine might, and checks that nothing breaks.
-- Another asks the server outright to use and to hit a crate from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
+- Another asks the server outright to interact with a crate and to break it from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
 - A third counts how many times a player watching a lit stove is told what they hold, in three seconds. It was 27 before `StationProgress`, and must be 3 or fewer.
 - It waits for thrown stacks to come to rest before it looks at them, and places a crate on a log to see the log pushed out.
 - Its last steps tilt the camera and read the velocity a thrown block starts with: along the ground in third person however the camera is tilted, and the way the view looks in first person, up and then down. The camera's look is read at the moment Q goes down, so a mouse that moves cannot spoil the check.
@@ -55,6 +55,6 @@ Use it when the user asks which scripts and directories are coupled to which, an
 - Python 3 is needed for the tools written in Python.
 
 ## Git
-- Branch `first-pieces`, and `dropped-items` cut from it on 2026-11-20 and not merged. `main` has no commits.
+- Three branches, each cut from the one before and none merged: `first-pieces`, `dropped-items` and `placed-objects`, all of 2026-11-19 and 2026-11-20. `main` has no commits.
 - Work is committed as it is done. The user, 2026-11-19: "Yes, commit as you go".
 - Nothing is pushed anywhere. Push only when the user asks.

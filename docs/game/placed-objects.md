@@ -1,6 +1,6 @@
-# Items, placed items, and what each one does
+# Items, placed objects, and what each kind does
 
-How the user pictures a thing in the game, and how far the code is from it. Their words are from 2026-11-20.
+How the user pictures a thing in the game, and how the code follows it. Their words are from 2026-11-20.
 
 ## The user's picture
 > I see a "log" as something that can be in item or block/placed form. In item form it has a texture a name and a max stack. Maybe some other data later. In block form its associated with some kinda grid, has a position, a texture, and some other properties we cant really predict quite yet (what tools breaks it faster? how long does it take to break? does it have orientation? is it like stairs where it can be placed in all kinds of orientatinos with special block state depending on other things like a block update triggered by a block being placed adajacent to it making it a corner stair?
@@ -13,35 +13,49 @@ How the user pictures a thing in the game, and how far the code is from it. Thei
 
 > We cant really predict what its going to be or "genericize" a lot of the time if that makes sense. I.e. its gonna be spaghettii but we gotta contain the spaghettii.
 
-And on the same day, after Claude asked whether "a crate" should spill or keep what is in it:
+After Claude asked whether "a crate" should spill or keep what is in it:
 > Shouldnt it be the item itself that determines what happens when it breaks? For example obsidian in minecraft doesnt drop its item unless you got a diamond pickaxe or netherite pickaxe. its the strategy pattern basically.
 
 > a wand and a log are both just plain inventory items ... if you interact with a log over a valid plot spot it places. if you do the same with a wand it might cast a spell. see how that works? it sounds like youre favoring inheritance over composition - thats bad!
 
 > Its per placed item (or whatever were calling it). ... What if we have a sack like from the mod supplementaries? You break it and the items stay inside like a shulker box. ... What if we break it and the items transform. What if we break it and theres not items in there. What if we break it and its like a cage thats containing an entity so now the entity should actually pop out say a bunny rabbit.
 
+On what the two systems are, and the name:
+> the item in the inventories, and the placed object should be entirely seperate and decoupled. they are two v e r y different systems that shouldnt rely on or mention eachother i feel. Glue code for them should exist outside of them.
+
+> I like PlacedObject!
+
+And on how each kind is written, when Claude showed the three steps:
+> Yup so placed items shouldnt have an inventory. They could have some kinda "component" tacked on.
+
+> Placed items kinda each get their own class / script. That contains the spaghettiii. its basically the mediator pattern. Its main thing is that its a placed item. It CAN have an inventory. It CAN have a process. It CAN have giant explosion when clicked. Who knows the spaghetti is contained to that script.
+
 How they picture the furnace's screen: a background, three slots laid out as fuel, what is worked on and what comes out, and other parts drawn over them, such as a fuel bar and an arrow that shows how far the work has got.
 
 ## What follows
-- **An item has two forms:** held, and placed. Each form has its own facts.
-- **What a placed thing does is its own business.** The game knows that it is there and that using it may open a screen. What is behind the screen is that thing's to say.
+- **Items and placed objects are two systems.** A thing in a slot is an item. A thing standing on a plot is a placed object. Neither knows the other.
+- **Each kind of placed object has a script of its own,** and what that kind does stays inside it. The rest of the game knows that a placed object was interacted with or broken, and nothing of what follows.
+- **A placed object has nothing but its kind and its tile.** Its kind's script gives it more: an inventory, a station, or anything else.
 - **A thing held in the hand can open a screen too,** or show something with no screen at all.
-- **Nothing is made general ahead of the things that need it.** The mess a kind of thing needs stays inside that kind.
-- **The item decides what interacting with it does, and what breaking it leaves.** The game knows only that it was interacted with or broken. A kind is put together from parts, each with its own behaviour.
+- **Nothing is made general ahead of the things that need it.**
 - **A crate that is broken spills what is in it.** That is the crate's own doing, and says nothing of a sack or a cage.
 
 ## The processes they want next
 > Something simple like the furnace - two inputs and an output in a single block - something very different - like a basin from create where items can be put in its inventory and depending on other things like a "mixer" or a "press" above will enact processes on the basin and change its contents - and something that is very different - like a fan processor from the create mod where if say put water infront and an item on certain specified inventories like belts or "depots" that it can reach (unobstructed) will wash the items. Change the water out for lava and now it smelts. Or even just put the loose item out infront no inventory. For something like a press in create it works on loose items too with no basin.
 
-Three kinds, then: a block that works on what is inside it; a block that is worked on by what stands over it; and a block that works on what is in front of it, in an inventory or loose on the ground.
+Three kinds, then: one that works on what is inside it; one that is worked on by what stands over it; and one that works on what is in front of it, in an inventory or loose on the ground.
 
 ## Where the code is
-- **`Station` is a furnace under a general name.** It has three slots for what is worked on, fuel and what is made; a fire; and recipes of one item in and one item out. The stove is the only one.
-- **The screen has one special case,** written into the inventory screen's drawing code. An inventory of three slots that belongs to a station is drawn with the slot for what is worked on above the slot for fuel, a fire gauge between them, and the slot for what is made to the right, past a work gauge. It is close to what the user pictures, and it is not the furnace's own.
-- **`World` knows stations by name.** It keeps a list of them and moves each on in time.
-- **A crate is not a station.** It is a placed item with an inventory, and the same screen draws it as a plain grid.
-- **A held item cannot open a screen.**
-- **A break is the same for every placed item:** it comes off the plot and drops itself and every stack inside it. `PlotRequests.hitPlacedItem` and `World.throwPlacedItemAndContents` say so for all of them.
-- **A click on a tile with a placeable item in hand always places it.** The player's machine decides that, before the server hears of it.
+Built on 2026-11-20, on the branch `placed-objects`. How it is put together is in `docs/code/pieces.md`.
+- **A placed object is a kind and a tile.** `plots` requires neither `items` nor `inventory`.
+- **Each kind is a module in `src/shared/placedObjectKinds`:** `Crate` and `Stove`. Each has three functions, `place`, `interact` and `breakPlacedObject`, and says in its own file what they do.
+- **What a kind gives its objects is kept by the world,** by the placed object's id, and goes when the object is taken off the plot.
+- **Which item places which kind is a table outside both systems,** `PlaceableItems`.
 
-None of the three processes above fits `Station`. The second one to be built will show what the kinds really share, and that is the time to give each kind a place of its own. Until then `Station` should be read as "the furnace".
+What the game still decides for every kind alike, each for the piece named:
+- **A screen is a pack, another inventory and a furnace's gauges.** The player's machine draws a grid, or the furnace if the inventory has three slots. Any other screen needs the screens to be the kind's own.
+- **Over time, the one thing a placed object can do is be a furnace:** the world advances every `Station`. `Station` is a furnace under a general name, and the user said to leave it until a second process shows what the kinds share.
+- **A placed object is a cube that fills one tile.**
+- **The one thing an item in the hand does to a bare tile is place an object.** A wand that casts a spell needs the item's side of this: what interacting with an item in hand does, said for each item.
+- **The item in hand takes no part when a placed object is interacted with,** though a kind's `interact` is handed the player and could look.
+- **A break is at once.** A kind can leave what it likes, and nothing yet takes time or a tool.

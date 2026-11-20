@@ -15,7 +15,7 @@ The user is here to help with whatever Claude can't do.
 - **The user is an experienced programmer and Godot architect who has never used Roblox or Luau.** Talk to them as one. Explain Roblox by its Godot counterpart. Ask one precise question, show the reasoning, and expect to be challenged. Show structure as a diagram, not a listing.
 - **Build small pieces, one at a time.** No design document is a gate before code. No giant diffs and no rewrites: past a few hundred lines, show the plan first. Shared machinery is shown before it is written.
 - **Quality before speed.** The user, 2026-11-20: "Cant build ontop a foundation made on mud." Maintainable, decoupled, checked code outranks finishing sooner (`docs/working/engineering-rules.md`).
-- **Before changing code, read `docs/code/names.md` and `docs/code/conventions.md`.** In short: a class makes sense from its bare names with no context; a name says what it acts on and where, and keeps its promise; a function does one thing, every time, with any check kept apart as `can...`; `And` in a name is two functions; deleting a directory does not break the one beside it; one rule tells another with a signal; items and placed objects are two systems that do not know each other, with glue outside both; no function does the same to every kind of thing; every word in a name is a real thing in the code, in Roblox's word first and Godot's second; a comment says completely what a thing does, in its own words; the rules know nothing of the mouse; nothing nests more than two deep. `lune run tools/check` must pass.
+- **Before changing code, read `docs/code/names.md` and `docs/code/conventions.md`.** In short: a class makes sense from its bare names with no context; a name says what it acts on and where, and keeps its promise; a function does one thing, every time, with any check kept apart as `can...`; `And` in a name is two functions; deleting a directory does not break the one beside it; one rule tells another with a signal; items and placed objects are two systems that do not know each other, with glue outside both; each kind of placed object says what it does in a module of its own; no function does the same to every kind of thing; every word in a name is a real thing in the code, in Roblox's word first and Godot's second; a comment says completely what a thing does, in its own words; the rules know nothing of the mouse; nothing nests more than two deep. `lune run tools/check` must pass.
 - **Roblox first.** Before proposing a thing of our own, say what Roblox has for it and why that will not do.
 - **Before showing the user code, read `docs/working/code-reviews/README.md`.** They have corrected the code nine times, and the same mistakes are easy to repeat.
 - **Commit as work is done. Push nothing unless asked.**
@@ -25,9 +25,9 @@ The user is here to help with whatever Claude can't do.
 
 ## Where things stand (2026-11-20)
 - **Playable:** a first loop on grey boxes, for PC. A pack and hotbar, stacks that are thrown and land, one shared plot of tiles, a crate, and a stove that cooks.
-- **The code** was broken up, rewritten and renamed on 2026-11-20 after three reviews by the user, on the branch `first-pieces`. Dropped items were rebuilt on the branch `dropped-items` and untangled there over four more reviews. Check-then-act, signals, merging copied from Minecraft and a first-person throw followed. Neither branch is merged. Nothing is pushed.
-- **Checked:** on `dropped-items`, `lune run tools/check` passes, and the play test passes 83 of 83 in Studio.
-- **Next:** prediction on the player's machine, which the user approved.
+- **The code** was broken up, rewritten and renamed on 2026-11-20 after three reviews by the user, on the branch `first-pieces`. Dropped items were rebuilt on the branch `dropped-items` over four more reviews. After two more, items and placed objects were split into two systems on the branch `placed-objects`, in three steps the user approved. No branch is merged. Nothing is pushed.
+- **Checked:** on `placed-objects`, `lune run tools/check` passes, and the play test passes 83 of 83 in Studio.
+- **Next:** input for the world through Roblox's own input system, so that the class `UseAndHit` goes; then prediction on the player's machine, which the user approved.
 - **Waiting on the user:** their read of the code; then their feedback on the game, which they are holding until the code is checked.
 
 More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
@@ -38,7 +38,7 @@ More in `docs/status/now.md`. What comes after is in `docs/status/next.md`.
 | `docs/status/now.md`, `docs/status/next.md` | Where things stand, and what comes next | At the start of a session |
 | `docs/status/asked-of-the-user.md` | What the user has been asked and has not answered | Before asking them anything |
 | `docs/status/claudes-calls.md` | Decisions Claude made, for the user to veto | Before building on one of them |
-| `docs/game/` | The brief, the core rule, the setting, design decisions, the consistency rule, dropped items, placed items | Designing anything a player meets |
+| `docs/game/` | The brief, the core rule, the setting, design decisions, the consistency rule, dropped items, placed objects | Designing anything a player meets |
 | `docs/working/` | How the user and Claude work, and the user's engineering rules | Planning work |
 | `docs/working/code-reviews/` | The user's reviews of the code, in their words | Before showing them code |
 | `docs/code/names.md`, `docs/code/conventions.md` | How things are named, and how code is written | Before changing code. Both load by themselves when a file in `src` or `tests` is opened |

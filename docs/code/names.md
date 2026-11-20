@@ -7,18 +7,18 @@ How things in the code are named. The user reads an outline of bare names, with 
 
 **A function's name says what it acts on, and where.** Read alone, with no arguments and no comment, `Module.name` tells a stranger what the function does.
 - A bare verb means the whole of the thing the file is named for. `Station.advance` advances the station. `Inventory.encode` encodes the inventory.
-- Anything else names its object, and the place when there is one. `Hotbar.selectSlot`, `Plot.placeItem`, `World.throwStackFromCharacter`, `InventoryScreen.pickUpFromSlot`, `InventoryScreen.swapCarriedStackWithSlot`.
+- Anything else names its object, and the place when there is one. `Hotbar.selectSlot`, `Plot.placeObject`, `World.throwStackFromCharacter`, `InventoryScreen.pickUpFromSlot`, `InventoryScreen.swapCarriedStackWithSlot`.
 - A noun in a name is a part of the thing, or something the caller passes or gets back. A name with `Stack` in it takes or returns a stack. One with `Slot` takes a slot.
 - Arguments come in the order the name gives them: the thing first, then where, then how much.
-- No name stops at an adjective. `placedItem`, not `placed`. `carriedStack`, not `carried`.
-- The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `spawn`, `swap`, `use` and `hit` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStackFromCharacter`, `spawnStack`, `swapSlots`, `usePlacedItem`. No verb is excused for being familiar.
-- **`use` and `hit` are Claude's words for the game's two actions. The user says `interact` and `break`.** The names change to theirs when that code is next rewritten.
+- No name stops at an adjective. `placedObject`, not `placed`. `carriedStack`, not `carried`.
+- The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `spawn`, `swap`, `place`, `interact` and `break` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStackFromCharacter`, `spawnStack`, `swapSlots`, `interactWithPlacedObject`. No verb is excused for being familiar.
+- **`interact` and `break` are the user's words for the game's two actions on the world,** and the names use them. Luau keeps the word `break` for itself, so no function can be called that alone: it names what is broken, `breakPlacedObject`, as Roblox's own `BreakJoints` does. Claude's earlier words, `use` and `hit`, are left only in `UseAndHit`, which goes when input is rebuilt.
 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
 **A name is a promise, and the function keeps it.** `drop` leaves the stack on the ground. A function that only takes the stack out is `take`. If what a function does cannot be said plainly in a sentence built from its name, it is the wrong shape: split it or rename it.
 - **A setter names the thing it sets:** `set` and the property. The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPosition`.
-- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." Two names still have it. The function `throwPlacedItemAndContents` goes when a placed item says for itself what breaking it leaves (`conventions.md`, "What an item does"). The class `UseAndHit` wants a name the user can read; they turned down `PlotControls`.
+- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." One name still has it: the class `UseAndHit`, which wants a name the user can read; they turned down `PlotControls`. `throwPlacedItemAndContents` went on 2026-11-20, when each kind of placed object began to say for itself what breaking it leaves.
 - **A long name is a flag too, and not always wrong.** `pushGroundItemsOutOfTile` stands: the user called it "one of these times a mouthful may be okay".
 - **A word names a real thing in the code, or it is not used.** The user, of a `Transform` that did not exist: "is transform a defined solid thing? like a class? if not dont do transform". An adjective counts too. Of `mergeDueItems`, which Claude offered the same day: "what are due items. did you just invent that. ... But a "DueItem". is that a class? What is that?" Every word in a name is a type, a field or a constant of the code, a word from the two tables below, or a plain word nobody could doubt, such as `nearest` or `empty`.
 - **Roblox's word first, then Godot's, and never one of ours.** Where Roblox has a word for a thing, the code uses it and keeps to it: `connect` and `fire` for a signal, as `RBXScriptSignal:Connect` and `BindableEvent:Fire` have them. Where Roblox has none, Godot's. The user, 2026-11-20: "If youre following roblox conventions stick to it. If youre following invented conventions - go with godots". They confirmed it of `fire` the same day: "no lets keep things more styled to roblox / in tune to it". Whether calls are written `Module.verb(thing)` or as methods is a separate question, and waits for them.
@@ -33,7 +33,9 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `itemId`, `count`, `stack`, `inventory`, `screen` | What they say |
 | `carriedStack` | The stack a player is moving between slots |
 | `player` | A `PlayerState`, in the rules |
-| `placedItem`, `placedItemId` | A thing standing on a plot, and its id. The user turned the name down on 2026-11-20: "Who said it had anything to do with an item." It is to be `PlacedObject` or `Structure`, and never "block" |
+| `placedObject`, `placedObjectId` | A thing standing on a plot, and its id. The name is the user's, 2026-11-20: "I like PlacedObject!" Never "block", and never "placed item": "Who said it had anything to do with an item." |
+| `kindId` | The id of a kind, on a thing of that kind: a placed object's is its kind of placed object, such as `"crate"`. A kind's own module names it in full, `PLACED_OBJECT_KIND_ID`, since a cold reader asked "kind of what?" |
+| `tileX`, `tileZ` | The numbers of a plot's tile along x and along z, from 1. `...InTiles` is a length counted in tiles: `widthInTiles` |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
 | `character` | A player's body in the world, as far as the rules know it: its `position`. `nil` while they have none |
 | `direction` | A way in the world, `{ x, y, z }` with a length of 1. `y` is upwards, and one with a `y` of 0 lies along the ground |
@@ -58,9 +60,11 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `remove` | Takes out wherever it is | Given a count, how many were removed. Given one thing, that thing if a caller has a use for it |
 | `move` | Takes items from where they are to somewhere else | How many items moved |
 | `spawn` | Makes a thing appear in the world at a position | Its id |
+| `place` | Stands an object on a tile of a plot | The placed object's id |
+| `interact`, `break` | A player does it to a thing. What follows is for that kind of thing to say | Nothing |
 | `merge` | Makes things of one kind into one | Given two stacks, the stack that holds both, and then what did not fit. Given every ground item, nothing |
 | `count` | Counts | A number |
-| `has`, `is`, `can` | Asks, and changes nothing. `can` with an action's name asks whether that action could be carried out now: `canPlaceItem` before `placeItem` | `true` or `false` |
+| `has`, `is`, `can` | Asks, and changes nothing. `can` with an action's name asks whether that action could be carried out now: `canPlaceObject` before `placeObject` | `true` or `false` |
 | `connect` | Connects a callback to a signal | Nothing |
 | `fire` | Calls every callback connected to a signal, at once and in the order they were connected | Nothing |
 | `find` | Looks for one that may not be there | It, or `nil` |

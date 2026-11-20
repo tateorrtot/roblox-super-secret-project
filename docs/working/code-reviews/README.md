@@ -19,6 +19,8 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
+Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). They have not read the code that came of it.
+
 ## What to check before showing them code
 These are Claude's readings of the nine reviews. The quotes are in the files.
 

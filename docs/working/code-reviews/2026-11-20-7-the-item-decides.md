@@ -36,7 +36,7 @@ And of the question itself:
 - **Composition, not inheritance.** A kind of item is put together from parts, and each part brings its own behaviour: one that places, one that holds stacks, one that casts a spell.
 - **A question that offers two answers for all items is the wrong question.** A crate spills. A sack keeps what is in it. A cage lets a creature out.
 - **Say "break", and "interact".** "Knocked off the plot" was Claude's phrase, and the user had to ask what it meant. Their words are the ones in the names.
-- This is the seventh review's "contain the spaghettii" again (`docs/game/placed-items.md`). Claude wrote it down then, left the code as it was, and built a question on the old shape.
+- This is the seventh review's "contain the spaghettii" again (`docs/game/placed-objects.md`). Claude wrote it down then, left the code as it was, and built a question on the old shape.
 
 ## Names that cannot be read
 Of the class `UseAndHit`, and of `PlotControls`, which Claude had offered in its place:

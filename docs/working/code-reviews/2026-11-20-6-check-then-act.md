@@ -40,7 +40,7 @@ Claude had named a furnace `Station`, as if every placed thing that works were o
 
 - **A general name on one example is a promise the code cannot keep.** `Station` is a furnace.
 - **Each kind of thing keeps its own workings to itself.** The rest of the game knows only that it is a placed item which may open a screen.
-- Their words in full, and what follows, are in `docs/game/placed-items.md`.
+- Their words in full, and what follows, are in `docs/game/placed-objects.md`.
 
 ## Glue, again
 > If we dont need to split our "autoload" World up and what youre doing is standard in a lot of games anyway we can leave it for now.
