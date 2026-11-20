@@ -279,6 +279,29 @@ task.wait(1)
 return "first person"
 '''
 
+# Stands the test character on the ground 10 studs past the spawn pad, facing the way it spawned,
+# and says where it then is and what it stands on, as "x,z,name". A player spawns at a random spot
+# on the pad, which is a stud high. A block thrown from some of those spots clips the pad's edge as
+# it falls, and tumbles about 20 studs where on open ground it comes to rest after 7.6.
+STAND_ON_OPEN_GROUND = '''
+local player = game:GetService("Players"):GetPlayers()[1]
+local character = player.Character
+local root = character.HumanoidRootPart
+local pad = workspace:FindFirstChildOfClass("SpawnLocation")
+local x = if pad then pad.Position.X else root.Position.X
+local z = if pad then pad.Position.Z - pad.Size.Z / 2 - 10 else root.Position.Z
+local params = RaycastParams.new()
+params.FilterDescendantsInstances = { character }
+params.FilterType = Enum.RaycastFilterType.Exclude
+local below = workspace:Raycast(root.Position, Vector3.new(0, -50, 0), params)
+local height = if below then root.Position.Y - below.Position.Y else 3
+local ground = workspace:Raycast(Vector3.new(x, 50, z), Vector3.new(0, -100, 0), params)
+character:PivotTo(CFrame.new(x, (if ground then ground.Position.Y else 0) + height, z))
+root.AssemblyLinearVelocity = Vector3.zero
+task.wait(1.5)
+return string.format("%f,%f,%s", root.Position.X, root.Position.Z, if ground then ground.Instance.Name else "nothing")
+'''
+
 # The speeds a character throws at, in studs a second, as World has them.
 THROW_FORWARD_SPEED = 24
 THROW_UPWARD_SPEED = 8
@@ -470,6 +493,8 @@ class Playtest:
         world = self.world()
         check(world['ground'] == [], 'nothing lies on the ground while the placeholder restock is off')
         check(sorted(entry['item'] for entry in world['placed']) == ['crate', 'stove'], 'a crate and a stove stand on the plot')
+        stood = self.studio.luau(STAND_ON_OPEN_GROUND, 'Server').strip().split(',')
+        check(len(stood) == 3 and stood[2] == 'Baseplate', 'the test character is stood on open ground, clear of the spawn pad', stood)
 
         # The pack, by mouse.
         self.keys('E')

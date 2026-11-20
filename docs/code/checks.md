@@ -37,7 +37,8 @@ Use it when the user asks which scripts and directories are coupled to which, an
 ## The play test
 `python tools/playtest.py` copies `src/` into Studio, starts a play test, and drives the test character with keys, clicks and walking through the whole loop: the pack, dropping, picking up, the crate, placing, using and hitting, dragging a stack across slots, reach, and baking an apple in the stove. After each step it checks what the screen shows and what is in the world. Then it stops the play test.
 
-- 71 checks, in about two minutes.
+- 83 checks, in about four minutes. The last clean run was on 2026-11-20, on the merge copied from Minecraft and the first-person throw.
+- It first stands the test character on open ground, 10 studs past the spawn pad. A player spawns at a random spot on the pad, which is a stud high, and a block thrown from some of those spots clips the pad's edge as it falls and tumbles about 20 studs, where on open ground it comes to rest after 7.6. That spoiled one run on 2026-11-20 with four failures that had nothing to do with the code (`build/throw_from_places.py` shows it on demand).
 - One step sends every request with nonsense, as a tampered machine might, and checks that nothing breaks.
 - Another asks the server outright to use and to hit a crate from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
 - A third counts how many times a player watching a lit stove is told what they hold, in three seconds. It was 27 before `StationProgress`, and must be 3 or fewer.
