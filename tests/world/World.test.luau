@@ -466,7 +466,11 @@ end
 
 do -- opening a placed item
 	local world, state, ids = newWorld()
-	check(World.openPlacedItemScreen(world, state, ids.crate), "openPlacedItemScreen: returns true for a crate")
+	check(
+		World.canOpenPlacedItemScreen(world, state, ids.crate),
+		"canOpenPlacedItemScreen: true for a crate on the plot and a player with a character"
+	)
+	World.openPlacedItemScreen(world, state, ids.crate)
 	local screen = state.screen
 	check(screen ~= nil and screen.pack == state.pack, "openPlacedItemScreen: the screen shows the player's pack")
 	check(
@@ -477,12 +481,17 @@ do -- opening a placed item
 	check(screen ~= nil and screen.otherSlotAcceptsItem == nil, "openPlacedItemScreen: a crate's slots take anything")
 
 	local first = state.screen
-	check(World.openPlacedItemScreen(world, state, ids.crate), "openPlacedItemScreen: opening it again returns true")
-	check(state.screen ~= first and state.screen ~= nil, "openPlacedItemScreen: and opens it afresh")
+	check(
+		World.canOpenPlacedItemScreen(world, state, ids.crate),
+		"canOpenPlacedItemScreen: true for a player who has a screen open already"
+	)
+	World.openPlacedItemScreen(world, state, ids.crate)
+	check(state.screen ~= first and state.screen ~= nil, "openPlacedItemScreen: opening it again opens it afresh")
 
 	-- Another screen is closed first, as closeScreen does.
 	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
-	check(World.openPlacedItemScreen(world, state, ids.oven), "openPlacedItemScreen: an oven opens")
+	World.openPlacedItemScreen(world, state, ids.oven)
+	check(state.openedPlacedItemId == ids.oven, "openPlacedItemScreen: an oven opens")
 	check(
 		Inventory.countItems(state.pack, "fish") == 5 and onGround(world, "fish") == 0,
 		"openPlacedItemScreen: what was carried on the screen it replaces is back in the pack"
@@ -522,12 +531,19 @@ do -- opening a placed item
 	-- Nothing to open: the screen stays as it was.
 	local before = state.screen
 	check(
-		not World.openPlacedItemScreen(world, state, ids.stove),
-		"openPlacedItemScreen: returns false for a placed item that holds nothing"
+		not World.canOpenPlacedItemScreen(world, state, ids.stove),
+		"canOpenPlacedItemScreen: false for a placed item that holds nothing"
 	)
 	check(
-		not World.openPlacedItemScreen(world, state, 999),
-		"openPlacedItemScreen: and false for an id that no placed item has"
+		not World.canOpenPlacedItemScreen(world, state, 999),
+		"canOpenPlacedItemScreen: false for an id that no placed item has"
+	)
+	local failed = Check.errorFrom(function()
+		World.openPlacedItemScreen(world, state, ids.stove)
+	end)
+	check(
+		failed ~= nil and string.find(failed, "this placed item's screen cannot be opened", 1, true) ~= nil,
+		"openPlacedItemScreen: fails for a placed item whose screen cannot be opened"
 	)
 	check(
 		state.screen == before and state.openedPlacedItemId == ids.oven,
@@ -535,16 +551,13 @@ do -- opening a placed item
 	)
 	local other = World.addPlayer(world, 2)
 	check(
-		not World.openPlacedItemScreen(world, other, 999) and other.screen == nil,
-		"openPlacedItemScreen: a player with no screen still has none"
-	)
-	check(
-		not World.openPlacedItemScreen(world, other, ids.oven) and other.screen == nil,
-		"openPlacedItemScreen: returns false for a player with no character, and opens nothing"
+		not World.canOpenPlacedItemScreen(world, other, ids.oven),
+		"canOpenPlacedItemScreen: false for a player with no character"
 	)
 	World.setCharacterPosition(world, 2, at(14, 0, 6))
+	World.openPlacedItemScreen(world, other, ids.oven)
 	check(
-		World.openPlacedItemScreen(world, other, ids.oven),
+		other.openedPlacedItemId == ids.oven and state.openedPlacedItemId == ids.oven,
 		"openPlacedItemScreen: two players may have the same oven open"
 	)
 	check(
@@ -614,26 +627,35 @@ do -- placing an item
 		placedItemId ~= nil and insideOf(world, placedItemId).slotCount == 27,
 		"placeItem: with an inventory of its own"
 	)
-	check(World.placeItem(world, "crate", 1, 1) == nil, "placeItem: returns nil for a tile something stands on")
-	check(World.placeItem(world, "log", 3, 1) == nil, "placeItem: and for an item that cannot be placed")
+	check(
+		World.canPlaceItem(world, "crate", 1, 2) and not World.canPlaceItem(world, "crate", 1, 1),
+		"canPlaceItem: true for a tile that holds nothing, and false for a tile something stands on"
+	)
+	check(not World.canPlaceItem(world, "log", 3, 1), "canPlaceItem: false for an item that cannot be placed")
+	check(not World.canPlaceItem(world, "crate", 7, 1), "canPlaceItem: false for a tile the plot does not have")
+	check(Check.errorFrom(function()
+		World.placeItem(world, "crate", 1, 1)
+	end) ~= nil, "placeItem: fails where the plot cannot take the item")
 	check(world.plot.nextId == (placedItemId :: number) + 1, "placeItem: and places nothing then")
 
 	-- Tile 3, 3 has its middle at 10, 10. Player 1 stands 3 studs from it.
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
-	local nextId = world.plot.nextId
-	check(World.placeItem(world, "stove", 3, 3) == nil, "placeItem: returns nil for a tile a player stands on")
-	check(
-		world.plot.nextId == nextId
-			and not Plot.hasTile(world.plot, 3.5, 3)
-			and world.plot.placedItemsById[nextId] == nil,
-		"placeItem: and places nothing then"
-	)
+	check(not World.canPlaceItem(world, "stove", 3, 3), "canPlaceItem: false for a tile a player stands on")
 	World.setCharacterPosition(world, 1, at(13.01, 0, 10))
-	check(World.placeItem(world, "stove", 3, 3) ~= nil, "placeItem: but places on it once the player has stepped off")
+	check(World.canPlaceItem(world, "stove", 3, 3), "canPlaceItem: true once the player has stepped off")
+	World.setCharacterPosition(world, 1, at(13, 0, 10))
+	local forced = World.placeItem(world, "stove", 3, 3)
+	check(
+		world.plot.placedItemsById[forced].itemId == "stove",
+		"placeItem: it does not ask whether a player stands on the tile"
+	)
 
 	-- A world needs no player to place in it.
 	local empty = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
-	check(World.placeItem(empty, "post", 2, 2) == 1, "placeItem: works with no player in the world")
+	check(
+		World.canPlaceItem(empty, "post", 2, 2) and World.placeItem(empty, "post", 2, 2) == 1,
+		"canPlaceItem, placeItem: work with no player in the world"
+	)
 	local nowhere = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	local lost = World.addPlayer(nowhere, 1)
 	check(
@@ -661,10 +683,9 @@ do -- placing an item where ground items lie
 
 	local refused = newWorld()
 	local stays = GroundItems.spawnStack(refused.groundItems, ItemStack.new("apple", 1), at(6, 0, 6.5), STILL, 0)
-	check(
-		World.placeItem(refused, "post", 2, 2) == nil and refused.groundItems.itemsById[stays] ~= nil,
-		"placeItem: a placing that is refused pushes nothing"
-	)
+	check(Check.errorFrom(function()
+		World.placeItem(refused, "post", 2, 2)
+	end) ~= nil and refused.groundItems.itemsById[stays] ~= nil, "placeItem: a placing that fails pushes nothing")
 end
 
 do -- taking a placed item off
@@ -1182,7 +1203,10 @@ do -- several players, several things at once, and no item is made or lost
 						local slot = random(PlayerState.PACK_SLOT_COUNT)
 						local taken = Inventory.takeFromSlot(state.pack, slot, 1)
 						if taken ~= nil then
-							if World.placeItem(world, taken.itemId, random(6), random(6)) == nil then
+							local x, z = random(6), random(6)
+							if World.canPlaceItem(world, taken.itemId, x, z) then
+								World.placeItem(world, taken.itemId, x, z)
+							else
 								local leftover = Inventory.addStack(state.pack, taken)
 								expect(leftover == nil, "an item taken from a slot goes back into the pack")
 							end
@@ -1200,10 +1224,13 @@ do -- several players, several things at once, and no item is made or lost
 					run(function()
 						local id = if #ids > 0 and random(5) > 1 then ids[random(#ids)] else random(40)
 						local openedBefore = state.openedPlacedItemId
-						local opened = World.openPlacedItemScreen(world, state, id)
+						local canOpen = World.canOpenPlacedItemScreen(world, state, id)
+						if canOpen then
+							World.openPlacedItemScreen(world, state, id)
+						end
 						expect(
-							state.openedPlacedItemId == (if opened then id else openedBefore),
-							"openPlaced opens that placed item, or changes nothing and says so"
+							state.openedPlacedItemId == (if canOpen then id else openedBefore),
+							"openPlacedItemScreen opens the placed item that canOpenPlacedItemScreen allowed"
 						)
 					end)
 				end
@@ -1218,7 +1245,7 @@ do -- several players, several things at once, and no item is made or lost
 					end)
 				end
 			elseif action == 15 then
-				if state ~= nil then
+				if state ~= nil and PlayerState.canOpenScreen(state) then
 					PlayerState.openPackScreen(state)
 				end
 			elseif action <= 20 then

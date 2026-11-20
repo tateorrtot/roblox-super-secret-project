@@ -106,7 +106,8 @@ end
 
 do -- opening the pack
 	local player = newPlayerWithCharacter()
-	check(PlayerState.openPackScreen(player), "openPackScreen: returns true when it opens the screen")
+	check(PlayerState.canOpenScreen(player), "canOpenScreen: true for a player with a character and no screen open")
+	PlayerState.openPackScreen(player)
 	local screen = player.screen
 	check(
 		screen ~= nil and screen.pack == player.pack and screen.otherInventory == nil,
@@ -114,14 +115,22 @@ do -- opening the pack
 	)
 	check(screen ~= nil and screen.carriedStack == nil, "openPackScreen: with nothing carried")
 	check(player.openedPlacedItemId == nil, "openPackScreen: and no placed item is open")
-	check(not PlayerState.openPackScreen(player), "openPackScreen: returns false when a screen is open already")
+	check(not PlayerState.canOpenScreen(player), "canOpenScreen: false while a screen is open")
+	check(
+		Check.raises("a screen can be opened only for a player with a character and no screen open", function()
+			PlayerState.openPackScreen(player)
+		end),
+		"openPackScreen: fails when a screen is open already"
+	)
 	check(player.screen == screen, "openPackScreen: and leaves that screen as it was")
 
 	local noCharacter = PlayerState.new()
-	check(
-		not PlayerState.openPackScreen(noCharacter) and noCharacter.screen == nil,
-		"openPackScreen: does nothing for a player with no character"
-	)
+	check(not PlayerState.canOpenScreen(noCharacter), "canOpenScreen: false for a player with no character")
+	check(Check.raises("a screen can be opened only for a player with a character and no screen open", function()
+		PlayerState.openPackScreen(noCharacter)
+	end) and noCharacter.screen == nil, "openPackScreen: fails for a player with no character")
+	PlayerState.closeScreen(player)
+	check(PlayerState.canOpenScreen(player), "canOpenScreen: true again once the screen is closed")
 end
 
 do -- opening a placed item
@@ -130,10 +139,7 @@ do -- opening a placed item
 	local accepts = function(slot: number, itemId: string): boolean
 		return slot == 1 and itemId == "log"
 	end
-	check(
-		PlayerState.openPlacedItemScreen(player, 7, inside, accepts),
-		"openPlacedItemScreen: returns true when it opens the screen"
-	)
+	PlayerState.openPlacedItemScreen(player, 7, inside, accepts)
 	local screen = player.screen
 	check(
 		screen ~= nil and screen.pack == player.pack and screen.otherInventory == inside,
@@ -147,8 +153,10 @@ do -- opening a placed item
 		"openPlacedItemScreen: its slots take what the rule given says"
 	)
 	check(
-		not PlayerState.openPlacedItemScreen(player, 8, Inventory.new(3)),
-		"openPlacedItemScreen: returns false when a screen is open already"
+		Check.raises("a screen can be opened only for a player with a character and no screen open", function()
+			PlayerState.openPlacedItemScreen(player, 8, Inventory.new(3))
+		end),
+		"openPlacedItemScreen: fails when a screen is open already"
 	)
 	check(
 		player.screen == screen and player.openedPlacedItemId == 7,
@@ -164,10 +172,12 @@ do -- opening a placed item
 
 	local noCharacter = PlayerState.new()
 	check(
-		not PlayerState.openPlacedItemScreen(noCharacter, 7, inside)
+		Check.raises("a screen can be opened only for a player with a character and no screen open", function()
+			PlayerState.openPlacedItemScreen(noCharacter, 7, inside)
+		end)
 			and noCharacter.screen == nil
 			and noCharacter.openedPlacedItemId == nil,
-		"openPlacedItemScreen: does nothing for a player with no character"
+		"openPlacedItemScreen: fails for a player with no character"
 	)
 end
 

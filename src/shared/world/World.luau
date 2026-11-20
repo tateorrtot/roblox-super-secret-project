@@ -196,27 +196,30 @@ function World.removeCharacter(world: World, playerId: number)
 	PlayerState.removeCharacter(player)
 end
 
---- Opens a player's inventory screen on their pack with the inventory of a placed item beside it,
---- and returns `true`. Any screen they had open is closed first, as `closeScreen` does. If the
---- placed item is a station, each of its slots takes only what a station's slot takes. Returns
---- `false`, changing nothing, if no placed item has that id, if it has no inventory, or if the
---- player has no character.
-function World.openPlacedItemScreen(world: World, player: PlayerState, placedItemId: number): boolean
+--- Returns `true` if a placed item's screen can be opened for a player: the placed item is on the
+--- plot and has an inventory, and the player has a character.
+function World.canOpenPlacedItemScreen(world: World, player: PlayerState, placedItemId: number): boolean
 	local placedItem = world.plot.placedItemsById[placedItemId]
-	local inventory = if placedItem then placedItem.inventory else nil
-	if placedItem == nil or inventory == nil or player.character == nil then
-		return false
-	end
+	return placedItem ~= nil and placedItem.inventory ~= nil and player.character ~= nil
+end
+
+--- Opens a player's inventory screen on their pack with the inventory of a placed item beside it.
+--- Any screen they had open is closed first, as `closeScreen` does. If the placed item is a
+--- station, each of its slots takes only what a station's slot takes. Fails if
+--- `canOpenPlacedItemScreen` would return `false`.
+function World.openPlacedItemScreen(world: World, player: PlayerState, placedItemId: number)
+	assert(World.canOpenPlacedItemScreen(world, player, placedItemId), "this placed item's screen cannot be opened")
+	local placedItem = world.plot.placedItemsById[placedItemId]
 	World.closeScreen(world, player)
 	local itemId = placedItem.itemId
 	local stationSlotAcceptsItem = function(slot: number, putItemId: string): boolean
 		return Station.slotAcceptsItem(itemId, slot, putItemId)
 	end
 	local isStation = world.stations[placedItemId] ~= nil
-	return PlayerState.openPlacedItemScreen(
+	PlayerState.openPlacedItemScreen(
 		player,
 		placedItemId,
-		inventory,
+		placedItem.inventory :: Inventory,
 		if isStation then stationSlotAcceptsItem else nil
 	)
 end
@@ -243,24 +246,27 @@ function World.isTileStoodOn(world: World, x: number, z: number): boolean
 	return false
 end
 
---- Places one of an item on a tile and returns the placed item's id. Returns `nil`, placing
---- nothing, if the plot has no such tile, if a player stands on the tile, if something already
---- stands on it, or if the item is not one that can be placed. The item is not taken from
+--- Returns `true` if an item can be placed on a tile: the plot has that tile, nothing stands on
+--- it, the item is one that can be placed, and no player's character stands on it. Fails if no
+--- item has that id.
+function World.canPlaceItem(world: World, itemId: string, x: number, z: number): boolean
+	return Plot.canPlaceItem(world.plot, itemId, x, z) and not World.isTileStoodOn(world, x, z)
+end
+
+--- Places one of an item on a tile and returns the placed item's id. The item is not taken from
 --- anywhere. An item that is a station starts as a station with no fire.
 ---
 --- The ground items that lie where the placed item now stands are pushed out of its tile. Each is
 --- taken out of the world and its stack is spawned again, as a new ground item with a new id:
 --- just outside the tile and moving away from it along the ground, or on top of the placed item,
 --- not moving, if it is closed in on all four sides.
-function World.placeItem(world: World, itemId: string, x: number, z: number): number?
-	if World.isTileStoodOn(world, x, z) then
-		return nil
-	end
+---
+--- Fails if the plot cannot take the item there, as `Plot.canPlaceItem` says.
+--- Note: it does not ask whether a player stands on the tile. `canPlaceItem` says.
+function World.placeItem(world: World, itemId: string, x: number, z: number): number
 	local placedItemId = Plot.placeItem(world.plot, itemId, x, z)
-	if placedItemId ~= nil then
-		world.stations[placedItemId] = newStationFor(world.plot.placedItemsById[placedItemId])
-		PlotCollision.pushGroundItemsOutOfTile(world.groundItems, world.plot, world.plotCorner, x, z, world.now)
-	end
+	world.stations[placedItemId] = newStationFor(world.plot.placedItemsById[placedItemId])
+	PlotCollision.pushGroundItemsOutOfTile(world.groundItems, world.plot, world.plotCorner, x, z, world.now)
 	return placedItemId
 end
 

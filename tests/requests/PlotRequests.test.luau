@@ -442,7 +442,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 			end
 			-- Players change what is in hand, and open a screen, as other requests would.
 			Hotbar.selectSlot(player.hotbar, random(9))
-			if random(10) == 1 then
+			if random(10) == 1 and PlayerState.canOpenScreen(player) then
 				PlayerState.openPackScreen(player)
 			end
 			local name = names[random(#names)]

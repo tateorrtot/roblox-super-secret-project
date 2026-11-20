@@ -89,11 +89,11 @@ end
 
 --- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed item. If
 --- the item's definition has a `slotCount`, the placed item gets a new inventory of that many
---- slots, holding nothing. Returns `nil`, and changes nothing, if `canPlaceItem` would return
---- `false`. Fails if no item has that id.
-function Plot.placeItem(plot: Plot, itemId: string, x: number, z: number): number?
+--- slots, holding nothing. Fails if `canPlaceItem` would return `false`: a tile holds one item,
+--- and only an item that can be placed stands on the plot. Fails if no item has that id.
+function Plot.placeItem(plot: Plot, itemId: string, x: number, z: number): number
 	if not Plot.canPlaceItem(plot, itemId, x, z) then
-		return nil
+		error(`the item "{itemId}" cannot be placed on the tile {x}, {z}`, 2)
 	end
 	local definition = ItemRegistry.get(itemId)
 	local id = plot.nextId

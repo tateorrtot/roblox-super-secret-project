@@ -145,46 +145,49 @@ function InventoryScreen.putDownInSlot(screen: InventoryScreen, side: Side, slot
 	return moved
 end
 
---- Exchanges the carried stack with the stack in a slot, even when both are of the same item.
---- Either may be nothing: with nothing carried the slot's stack becomes the carried stack, and a
---- slot that holds nothing takes the carried stack. Returns `true` if anything changed. Returns
---- `false`, changing nothing, if the slot does not accept the carried item, or if nothing is
---- carried and the slot holds nothing.
-function InventoryScreen.swapCarriedStackWithSlot(screen: InventoryScreen, side: Side, slot: number): boolean
-	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
-	local there = Inventory.getStack(inventory, slot)
+--- Returns `true` if the slot accepts the carried stack in exchange for its own: that is, if
+--- nothing is carried, or the slot accepts the carried item.
+function InventoryScreen.canSwapCarriedStackWithSlot(screen: InventoryScreen, side: Side, slot: number): boolean
 	local carried = screen.carriedStack
-	if carried ~= nil and not InventoryScreen.slotAcceptsItem(screen, side, slot, carried.itemId) then
-		return false
-	end
-	Inventory.setStack(inventory, slot, carried)
-	screen.carriedStack = there
-	return there ~= nil or carried ~= nil
+	return carried == nil or InventoryScreen.slotAcceptsItem(screen, side, slot, carried.itemId)
 end
 
---- Exchanges the stacks in two slots. Either slot may hold nothing. Returns `true` if the stacks
---- were exchanged, and `false`, changing nothing, if either slot does not accept the stack from
---- the other.
-function InventoryScreen.swapSlots(
+--- Exchanges the carried stack with the stack in a slot, even when both are of the same item.
+--- Either may be nothing: with nothing carried the slot's stack becomes the carried stack, and a
+--- slot that holds nothing takes the carried stack.
+--- Note: it does not ask whether the slot accepts the carried item. `canSwapCarriedStackWithSlot`
+--- says.
+function InventoryScreen.swapCarriedStackWithSlot(screen: InventoryScreen, side: Side, slot: number)
+	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
+	local there = Inventory.getStack(inventory, slot)
+	Inventory.setStack(inventory, slot, screen.carriedStack)
+	screen.carriedStack = there
+end
+
+--- Returns `true` if each of two slots accepts the stack in the other. A slot that holds nothing
+--- asks nothing of the other.
+function InventoryScreen.canSwapSlots(
 	screen: InventoryScreen,
 	side: Side,
 	slot: number,
 	withSide: Side,
 	withSlot: number
 ): boolean
+	local stack = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, side), slot)
+	local withStack = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, withSide), withSlot)
+	local slotAccepts = withStack == nil or InventoryScreen.slotAcceptsItem(screen, side, slot, withStack.itemId)
+	local withSlotAccepts = stack == nil or InventoryScreen.slotAcceptsItem(screen, withSide, withSlot, stack.itemId)
+	return slotAccepts and withSlotAccepts
+end
+
+--- Exchanges the stacks in two slots. Either slot may hold nothing.
+--- Note: it does not ask whether each slot accepts the other's stack. `canSwapSlots` says.
+function InventoryScreen.swapSlots(screen: InventoryScreen, side: Side, slot: number, withSide: Side, withSlot: number)
 	local inventory = InventoryScreen.getInventoryOnSide(screen, side)
 	local withInventory = InventoryScreen.getInventoryOnSide(screen, withSide)
 	local stack = Inventory.getStack(inventory, slot)
-	local withStack = Inventory.getStack(withInventory, withSlot)
-	if withStack ~= nil and not InventoryScreen.slotAcceptsItem(screen, side, slot, withStack.itemId) then
-		return false
-	end
-	if stack ~= nil and not InventoryScreen.slotAcceptsItem(screen, withSide, withSlot, stack.itemId) then
-		return false
-	end
-	Inventory.setStack(inventory, slot, withStack)
+	Inventory.setStack(inventory, slot, Inventory.getStack(withInventory, withSlot))
 	Inventory.setStack(withInventory, withSlot, stack)
-	return true
 end
 
 local function slotsAccepting(

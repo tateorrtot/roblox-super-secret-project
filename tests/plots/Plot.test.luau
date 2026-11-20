@@ -67,12 +67,22 @@ do -- placing
 	check(table.isfrozen(placed), "placeItem: a placed item's record never changes")
 
 	check(not Plot.canPlaceItem(plot, "crate", 2, 3), "canPlaceItem: not on a tile that is taken")
-	check(Plot.placeItem(plot, "crate", 2, 3) == nil, "placeItem: nil on a tile that is taken")
-	check(placedCount(plot) == 1 and plot.nextId == 2, "placeItem: a refused placing changes nothing")
+	check(
+		Check.raises('the item "crate" cannot be placed on the tile 2, 3', function()
+			Plot.placeItem(plot, "crate", 2, 3)
+		end),
+		"placeItem: fails on a tile that is taken"
+	)
+	check(placedCount(plot) == 1 and plot.nextId == 2, "placeItem: a placing that fails changes nothing")
 	check(Plot.canPlaceItem(plot, "crate", 3, 2), "canPlaceItem: x and z are not swapped")
 
 	check(not Plot.canPlaceItem(plot, "apple", 1, 1), "canPlaceItem: not an item that cannot be placed")
-	check(Plot.placeItem(plot, "apple", 1, 1) == nil, "placeItem: nil for an item that cannot be placed")
+	check(
+		Check.raises('the item "apple" cannot be placed on the tile 1, 1', function()
+			Plot.placeItem(plot, "apple", 1, 1)
+		end),
+		"placeItem: fails for an item that cannot be placed"
+	)
 	check(placedCount(plot) == 1 and plot.nextId == 2, "placeItem: and again nothing changes")
 
 	local crate = Plot.placeItem(plot, "crate", 1, 1)
@@ -164,9 +174,11 @@ do -- a tile the plot does not have
 			not Plot.canPlaceItem(plot, "stove", tile[1], tile[2]),
 			`canPlace: false for tile x {tile[1]}, z {tile[2]}, which the plot does not have`
 		)
-		check(Plot.placeItem(plot, "stove", tile[1], tile[2]) == nil, `place: nil for tile x {tile[1]}, z {tile[2]}`)
+		check(Check.errorFrom(function()
+			Plot.placeItem(plot, "stove", tile[1], tile[2])
+		end) ~= nil, `placeItem: fails for tile x {tile[1]}, z {tile[2]}, which the plot does not have`)
 	end
-	check(placedCount(plot) == 0 and plot.nextId == 1, "placeItem: a tile the plot does not have changes nothing")
+	check(placedCount(plot) == 0 and plot.nextId == 1, "placeItem: a placing that fails changes nothing")
 end
 
 Check.finish("Plot")

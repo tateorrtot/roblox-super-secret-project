@@ -55,9 +55,11 @@ local function throwFromCharacter(
 end
 
 --- Opens the player's inventory screen on their pack alone. Does nothing if they have a screen
---- open.
+--- open or have no character.
 function InventoryRequests.openPack(_world: World, player: PlayerState)
-	PlayerState.openPackScreen(player)
+	if PlayerState.canOpenScreen(player) then
+		PlayerState.openPackScreen(player)
+	end
 end
 
 --- Closes the player's inventory screen. The stack they were carrying goes back into their pack,
@@ -96,15 +98,17 @@ function InventoryRequests.putDownInSlot(
 	end
 end
 
---- Exchanges the carried stack with the stack in a slot of the open screen.
+--- Exchanges the carried stack with the stack in a slot of the open screen. Does nothing if the
+--- slot does not accept the carried item.
 function InventoryRequests.swapCarriedStackWithSlot(_world: World, player: PlayerState, side: unknown, slot: unknown)
 	local screen = screenWithSlot(player, side, slot)
-	if screen ~= nil then
+	if screen ~= nil and InventoryScreen.canSwapCarriedStackWithSlot(screen, side :: any, slot :: any) then
 		InventoryScreen.swapCarriedStackWithSlot(screen, side :: any, slot :: any)
 	end
 end
 
---- Exchanges the stacks in two slots of the open screen.
+--- Exchanges the stacks in two slots of the open screen. Does nothing if either slot does not
+--- accept the stack in the other.
 function InventoryRequests.swapSlots(
 	_world: World,
 	player: PlayerState,
@@ -114,7 +118,10 @@ function InventoryRequests.swapSlots(
 	withSlot: unknown
 )
 	local screen = screenWithSlot(player, side, slot)
-	if screen ~= nil and InventoryScreen.hasSlot(screen, withSide, withSlot) then
+	if screen == nil or not InventoryScreen.hasSlot(screen, withSide, withSlot) then
+		return
+	end
+	if InventoryScreen.canSwapSlots(screen, side :: any, slot :: any, withSide :: any, withSlot :: any) then
 		InventoryScreen.swapSlots(screen, side :: any, slot :: any, withSide :: any, withSlot :: any)
 	end
 end

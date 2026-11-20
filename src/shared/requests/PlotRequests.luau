@@ -30,7 +30,10 @@ function PlotRequests.placeSelectedItem(world: World, player: PlayerState, x: un
 		return
 	end
 	local tileX, tileZ = x :: number, z :: number
-	if World.canReachTile(world, player, tileX, tileZ) and World.placeItem(world, selected.itemId, tileX, tileZ) then
+	local canPlace = World.canReachTile(world, player, tileX, tileZ)
+		and World.canPlaceItem(world, selected.itemId, tileX, tileZ)
+	if canPlace then
+		World.placeItem(world, selected.itemId, tileX, tileZ)
 		Hotbar.takeFromSelectedSlot(player.hotbar, 1)
 	end
 end
@@ -39,7 +42,9 @@ end
 --- screen, beside their pack, in place of any screen they had open. Does nothing if no placed item
 --- has that id, if it has no inventory, or if the player stands more than `World.REACH` from it.
 function PlotRequests.usePlacedItem(world: World, player: PlayerState, placedItemId: unknown)
-	if isPlacedItemInReach(world, player, placedItemId) then
+	local canOpen = isPlacedItemInReach(world, player, placedItemId)
+		and World.canOpenPlacedItemScreen(world, player, placedItemId :: number)
+	if canOpen then
 		World.openPlacedItemScreen(world, player, placedItemId :: number)
 	end
 end

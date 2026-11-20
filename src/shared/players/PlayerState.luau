@@ -3,7 +3,8 @@
 --- in the world.
 ---
 --- `openPackScreen` and `openPlacedItemScreen` open the player's inventory screen, and
---- `closeScreen` closes it. Only a player with a character can have a screen open.
+--- `closeScreen` closes it. Only a player with a character can have a screen open, and
+--- `canOpenScreen` says whether one can be opened now.
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -63,33 +64,37 @@ function PlayerState.removeCharacter(player: PlayerState)
 	player.character = nil
 end
 
---- Opens the player's inventory screen on their pack alone, and returns `true`. Returns `false`,
---- changing nothing, if they have a screen open already or have no character.
-function PlayerState.openPackScreen(player: PlayerState): boolean
-	if player.screen ~= nil or player.character == nil then
-		return false
+--- Returns `true` if a screen can be opened for the player: they have a character, and no
+--- screen open.
+function PlayerState.canOpenScreen(player: PlayerState): boolean
+	return player.screen == nil and player.character ~= nil
+end
+
+--- Opens the player's inventory screen on their pack alone. Fails if `canOpenScreen` would return
+--- `false`: a screen opened over another would lose the stack that was carried, and only a player
+--- with a character has a screen.
+function PlayerState.openPackScreen(player: PlayerState)
+	if not PlayerState.canOpenScreen(player) then
+		error("a screen can be opened only for a player with a character and no screen open", 2)
 	end
 	player.screen = InventoryScreen.new(player.pack)
-	return true
 end
 
 --- Opens the player's inventory screen on their pack with the inventory of a placed item beside
---- it, and returns `true`. `placedItemId` is the placed item's id and `inventory` is what is inside
---- it. `slotAcceptsItem`, if given, says whether a slot of `inventory` takes an item: it is called
---- with the slot and the item's id. Returns `false`, changing nothing, if the player has a screen
---- open already or has no character.
+--- it. `placedItemId` is the placed item's id and `inventory` is what is inside it.
+--- `slotAcceptsItem`, if given, says whether a slot of `inventory` takes an item: it is called
+--- with the slot and the item's id. Fails if `canOpenScreen` would return `false`.
 function PlayerState.openPlacedItemScreen(
 	player: PlayerState,
 	placedItemId: number,
 	inventory: Inventory.Inventory,
 	slotAcceptsItem: ((slot: number, itemId: string) -> boolean)?
-): boolean
-	if player.screen ~= nil or player.character == nil then
-		return false
+)
+	if not PlayerState.canOpenScreen(player) then
+		error("a screen can be opened only for a player with a character and no screen open", 2)
 	end
 	player.screen = InventoryScreen.new(player.pack, inventory, slotAcceptsItem)
 	player.openedPlacedItemId = placedItemId
-	return true
 end
 
 --- Closes the player's inventory screen. The stack they were carrying goes back into their pack,
