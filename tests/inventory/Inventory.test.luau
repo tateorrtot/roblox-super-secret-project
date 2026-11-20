@@ -177,6 +177,18 @@ do -- addStack
 	)
 end
 
+do -- addItems, one item at a time
+	local stoves = inventoryOf("-, -, -")
+	check(
+		Inventory.addItems(stoves, "stove", 3) == 3,
+		"addItems: three of an item that does not stack fill three slots"
+	)
+	check(contents(stoves) == "stove 1, stove 1, stove 1", "addItems: the last one of them is added too")
+	local logs = inventoryOf("-, log 15")
+	check(Inventory.addItems(logs, "log", 1) == 1, "addItems: a single item is added")
+	check(contents(logs) == "-, log 16", "addItems: a single item tops up a stack before it takes an empty slot")
+end
+
 do -- addItems and addStack into listed slots
 	local pack = inventoryOf("log 10, -, -, log 14, -, -")
 	check(
