@@ -14,6 +14,7 @@ local Plot = require("../plots/Plot")
 local Position = require("../Position")
 local RecipeRegistry = require("../stations/RecipeRegistry")
 local Station = require("../stations/Station")
+local Throw = require("./Throw")
 
 local World = {}
 
@@ -92,7 +93,7 @@ end
 
 --- Puts a stack on the ground at a position.
 function World.dropStackAt(world: World, stack: ItemStack, position: Position)
-	GroundItems.dropStackAt(world.groundItems, stack, position, world.now)
+	GroundItems.throwStack(world.groundItems, stack, Throw.newAtRest(position), world.now)
 end
 
 --- Closes a player's inventory screen. The stack they were carrying goes back into their pack,

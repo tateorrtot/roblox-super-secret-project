@@ -15,6 +15,7 @@ local Inventory = require(Shared.inventory.Inventory)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local Plot = require(Shared.plots.Plot)
+local Throw = require(Shared.world.Throw)
 
 local PlaceholderWorld = {}
 
@@ -175,7 +176,7 @@ function PlaceholderWorld.restockGroundItems(
 	local definitions = ItemRegistry.getAll()
 	local definition = definitions[random:NextInteger(1, #definitions)]
 	local count = random:NextInteger(1, definition.stackSize)
-	GroundItems.dropStackAt(groundItems, ItemStack.new(definition.id, count), spot, now)
+	GroundItems.throwStack(groundItems, ItemStack.new(definition.id, count), Throw.newAtRest(spot), now)
 end
 
 return PlaceholderWorld
