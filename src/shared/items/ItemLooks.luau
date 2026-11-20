@@ -1,24 +1,12 @@
 --!strict
---[=[
-	How each item is shown while it has no art of its own: the name a player
-	reads, and the colour of the plain block that stands in for it.
-
-	There is one row for each item in ItemDefinitions, under the item's id.
-	Nothing in the rules reads this. Only code that draws does.
-
-	The names are a draft for review, and the colours are placeholders that go
-	when an item gets a model and an icon.
-
-	```lua
-	ItemLooks.log.name --> "Log"
-	ItemLooks.log.color --> { 133, 94, 66 }
-	```
-]=]
+--- How each item is shown while it has no art of its own, by item id.
+---
+--- There is one row for each item in `ItemDefinitions`. The names and colours are placeholders.
 
 export type ItemLook = {
-	--- The name a player reads.
+	--- The name shown for the item.
 	read name: string,
-	--- The colour of its placeholder block, as red, green and blue, each from 0 to 255.
+	--- The colour of the item's placeholder block, as red, green and blue, each from 0 to 255.
 	read color: { number },
 }
 

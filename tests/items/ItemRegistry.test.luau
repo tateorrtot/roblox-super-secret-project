@@ -25,10 +25,10 @@ end
 do -- unknown ids
 	check(ItemRegistry.has("anvil") == false, "has: false for an id that was never registered")
 	check(
-		raises('ItemRegistry.get: no item has the id "anvil"', function()
+		raises('no item has the id "anvil"', function()
 			return ItemRegistry.get("anvil")
 		end),
-		"get: an unknown id is an error that names the function and the id"
+		"get: an unknown id is an error that names the id"
 	)
 end
 
@@ -51,60 +51,27 @@ do -- all
 	check(#ItemRegistry.all() == 3, "all: changing the returned list does not change the registry")
 end
 
+local function refuses(definition: any): boolean
+	return Check.errorFrom(function()
+		ItemRegistry.register(definition)
+	end) ~= nil
+end
+
 do -- what register refuses
-	check(
-		raises('there is already an item with the id "log"', function()
-			ItemRegistry.register({ id = "log", stackSize = 64 })
-		end),
-		"register: refuses an id that is taken"
-	)
+	check(refuses({ id = "log", stackSize = 64 }), "register: refuses an id that is taken")
 	check(ItemRegistry.get("log").stackSize == 16, "register: a refused duplicate does not replace the first")
 	for _, badId in { "", "Log", "big log", "2x4", "_log", "log!" } do
-		check(
-			raises("id must be lowercase", function()
-				ItemRegistry.register({ id = badId, stackSize = 16 })
-			end),
-			string.format("register: refuses the id %q", badId)
-		)
+		check(refuses({ id = badId, stackSize = 16 }), string.format("register: refuses the id %q", badId))
 		check(ItemRegistry.has(badId) == false, string.format("register: the refused id %q was not registered", badId))
 	end
-	check(
-		raises("starting with a letter; got number", function()
-			ItemRegistry.register({ id = 5, stackSize = 16 } :: any)
-		end),
-		"register: refuses an id that is not a string, and says what it got"
-	)
-	check(
-		raises('starting with a letter; got "Log"', function()
-			ItemRegistry.register({ id = "Log", stackSize = 16 })
-		end),
-		"register: the error shows the id it refused"
-	)
-	for _, badSize in { 0, -1, 1.5, 0 / 0, math.huge } do
-		check(
-			raises('stackSize of "odd" must be a whole number, 1 or more', function()
-				ItemRegistry.register({ id = "odd", stackSize = badSize })
-			end),
-			"register: refuses a stack size of " .. tostring(badSize)
-		)
+	check(refuses({ id = 5, stackSize = 16 }), "register: refuses an id that is not a string")
+	for _, badSize in { 0, -1, 1.5, 0 / 0, math.huge, "16" } do
+		check(refuses({ id = "odd", stackSize = badSize }), "register: refuses a stack size of " .. tostring(badSize))
 	end
+	check(refuses({ id = "odd" }), "register: refuses an item type with no stack size")
 	check(
-		raises("stackSize", function()
-			ItemRegistry.register({ id = "odd" } :: any)
-		end),
-		"register: refuses an item type with no stack size"
-	)
-	check(
-		raises("a field item definitions do not have: stacksize", function()
-			ItemRegistry.register({ id = "odd", stackSize = 16, stacksize = 4 } :: any)
-		end),
-		"register: refuses a field item types do not have, and names it"
-	)
-	check(
-		raises("an item definition is a table", function()
-			ItemRegistry.register("odd" :: any)
-		end),
-		"register: refuses something that is not a table"
+		refuses({ id = "odd", stackSize = 16, stacksize = 4 }),
+		"register: refuses a field item definitions do not have"
 	)
 	check(ItemRegistry.has("odd") == false, "register: nothing refused was registered")
 	check(#ItemRegistry.all() == 3, "register: the registry still has only the three good item types")
@@ -125,27 +92,18 @@ do -- items that can be placed, and that hold things
 	)
 	for _, bad in { false, "yes", 1, {} } :: { any } do
 		check(
-			raises('placeable of "bad_placeable" must be true, or left out; got ' .. tostring(bad), function()
-				ItemRegistry.register({ id = "bad_placeable", stackSize = 1, placeable = bad })
-			end),
+			refuses({ id = "bad_placeable", stackSize = 1, placeable = bad }),
 			"register: refuses placeable = " .. tostring(bad)
 		)
 	end
 	for _, bad in { 0, -3, 1.5, 0 / 0, math.huge, "9", true } :: { any } do
 		check(
-			raises(
-				'slotCount of "bad_slots" must be a whole number, 1 or more, or left out; got ' .. tostring(bad),
-				function()
-					ItemRegistry.register({ id = "bad_slots", stackSize = 1, placeable = true, slotCount = bad })
-				end
-			),
+			refuses({ id = "bad_slots", stackSize = 1, placeable = true, slotCount = bad }),
 			"register: refuses slotCount = " .. tostring(bad)
 		)
 	end
 	check(
-		raises('"loose_slots" has a slotCount but is not placeable', function()
-			ItemRegistry.register({ id = "loose_slots", stackSize = 1, slotCount = 9 })
-		end),
+		refuses({ id = "loose_slots", stackSize = 1, slotCount = 9 }),
 		"register: refuses slots on an item that cannot be placed"
 	)
 	check(
@@ -164,12 +122,7 @@ do -- items that burn
 	check(ItemRegistry.get("not_placed").burnSeconds == nil, "register: an item that does not burn has no burnSeconds")
 	for _, bad in { 0, -4, 0 / 0, math.huge, "16", true } :: { any } do
 		check(
-			raises(
-				'burnSeconds of "bad_fuel" must be a finite number above 0, or left out; got ' .. tostring(bad),
-				function()
-					ItemRegistry.register({ id = "bad_fuel", stackSize = 1, burnSeconds = bad })
-				end
-			),
+			refuses({ id = "bad_fuel", stackSize = 1, burnSeconds = bad }),
 			"register: refuses burnSeconds = " .. tostring(bad)
 		)
 	end

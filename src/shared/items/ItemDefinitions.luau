@@ -1,27 +1,9 @@
 --!strict
---[=[
-	The written definition of every item in the game, one row each.
-
-	A row says what the rules need to know about an item: its id, how many of
-	it fit in one stack, whether it can be placed on a plot, how many slots it
-	has inside it once placed, and how long it burns as fuel. Bulky things
-	stack small, and a thing that is placed whole, such as a stove, does not
-	stack at all. What a station makes of an item is not here: see
-	RecipeDefinitions.
-
-	When the game starts, on the server and on each player's machine, every
-	row is given to `ItemRegistry.register`. How an item looks is not here: see
-	ItemLooks.
-
-	These first rows are placeholders to build the game's machinery with. They
-	are a draft, and which items the game really has is still to be decided.
-
-	```lua
-	for _, definition in ItemDefinitions do
-		ItemRegistry.register(definition)
-	end
-	```
-]=]
+--- The written definition of every item in the game, one row each.
+---
+--- A row is an `ItemRegistry.ItemDefinition`: its id, its stack size, and when it applies whether it
+--- can be placed, how many slots it has once placed, and how long it burns as fuel. These rows are
+--- placeholders.
 local ItemRegistry = require("./ItemRegistry")
 
 local definitions: { ItemRegistry.ItemDefinition } = {
