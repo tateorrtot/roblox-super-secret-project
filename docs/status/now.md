@@ -7,9 +7,9 @@ As of 2026-11-20. This file holds only what is true now. What is over is in `his
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | Rewritten and renamed on 2026-11-20 to the user's standard. Branch `first-pieces`, nothing pushed |
-| **Checked** | `lune run tools/check` passes, with 1,786 test checks. Mutation testing catches 1,437 of 1,487 deliberate bugs |
-| **Not checked** | The Roblox side of the final code has not been run. A phone. Two players. A real server |
-| **Waiting on the user** | To open Studio. Their read of the rewritten code. Then their feedback on the game |
+| **Checked** | `lune run tools/check` passes, with 1,786 test checks. Mutation testing catches 1,437 of 1,487 deliberate bugs. The play test passes, 61 of 61 |
+| **Not checked** | A phone. Two players. A real server |
+| **Waiting on the user** | Their read of the rewritten code. Then their feedback on the game |
 
 ## With the user
 - **They reviewed the code three times on 2026-11-20,** and everything they asked for is done and committed. Their words are in `docs/working/code-reviews/`. The story of the day is `history/2026-11-20-code-rewrite.md`.
@@ -36,10 +36,11 @@ Press Play in Studio and you appear on a grey plot, with a hotbar along the bott
 - **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 1,786 test checks and the demo.
 - **Mutation testing** on every plain-Luau piece catches 1,437 of 1,487 deliberate bugs (`python build/mutate_all.py`). The 50 that survive are listed in `build/mutate-names.txt`, which is not kept in git. They are the wording of `ItemRegistry`'s error messages, changes that alter nothing a caller can see, exactly where each stack lands around a crate that is knocked over, and one guard against two requests sharing a name.
 - **The names** were tested on readers given nothing but the names. See `history/2026-11-20-code-rewrite.md`.
-- **By play, on 2026-11-19 and 2026-11-20,** driving a test character through Studio's connector: every action in the list above; that a player keeps their pack when their character dies; that ground items vanish after five minutes and fresh ones turn up; that a player who leaves while carrying a stack causes no error.
+- **The play test** (`python tools/playtest.py`) passed 61 of 61 in Studio on the final code on 2026-11-20, after all of the renaming. It drives a test character through every action in the list above.
+- **The server's and the client's scripts were read by four reviewers** on 2026-11-20, since they are not type-checked: every name that crosses a file, every request against the function that answers it, every call from the server into the rules, and every comment. They found nothing that breaks or misbehaves, and a handful of comments that no longer matched the code, which are fixed.
+- **By hand, on 2026-11-19,** driving a test character through Studio's connector: that a player keeps their pack when their character dies; that ground items vanish after five minutes and fresh ones turn up; that a player who leaves while carrying a stack causes no error.
 
 ## What has not been checked
-- **The Roblox side of the final code has not been run.** The play test passed 61 of 61 on the restructured code. The last audit's fixes and all of the renaming came after that, and Studio had been closed. Until it runs, the renames there rest on `tools/members.py` (every member and message the server's and client's scripts use exists) and on a one-off check that every request name the client and the play test send is one the rules define. **Run `python tools/playtest.py` first thing when Studio is open.**
 - **A phone, or any touch screen.**
 - **Two players at once.** The crate is shared and each player is sent its changes, but nobody has watched two screens.
 - **A real server.** In Studio there is no delay. On a real server the screen waits for the server's answer after each click, and will feel a little late.

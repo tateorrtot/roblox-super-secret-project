@@ -5,10 +5,10 @@
 --- standing on the plot, in the colour of its item and with its name above it. `update` makes the
 --- blocks match what is placed: a new block for each newly placed item and none for one that was
 --- removed. The slab is tagged `Plot` and has the attributes `width` and `depth` in tiles and
---- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.getTileAt` wants it. Each block has
---- the attribute `placedItemId`, the id of its placed item, and a station's block has the attribute
---- `burning`. The blocks are placeholders until items have models, and the plot must lie square to
---- the world's x and z axes.
+--- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.getTileAt` wants it. Each block
+--- has the attribute `placedItemId`, the id of its placed item, and the attribute `burning`, which
+--- is `true` while the block is a station whose fire is burning. The blocks are placeholders until
+--- items have models, and the plot must lie square to the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

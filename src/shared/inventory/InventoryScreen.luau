@@ -1,9 +1,10 @@
 --!strict
 --- What a player has open: their pack, another inventory beside it, and the stack they carry.
 ---
---- A player moves items by carrying them. `pickUpFromSlot` moves items from a slot onto the carried stack
---- and `putDownInSlot` moves them from the carried stack into a slot. The carried stack belongs to the
---- screen, not to either inventory, and the inventories live on after the screen is gone.
+--- A player moves items by carrying them. `pickUpFromSlot` moves items from a slot onto the carried
+--- stack and `putDownInSlot` moves them from the carried stack into a slot. The carried stack
+--- belongs to the screen, not to either inventory, and the inventories live on after the screen is
+--- gone.
 --- Note: a screen that is thrown away while a stack is carried loses that stack. Take it out with
 --- `takeCarriedStack` first.
 local Inventory = require("./Inventory")
@@ -14,7 +15,8 @@ local InventoryScreen = {}
 type ItemStack = ItemStack.ItemStack
 type Inventory = Inventory.Inventory
 
---- Which of the screen's inventories a slot is in: the player's pack, or the other one that is open.
+--- Which of the screen's inventories a slot is in: the player's pack, or the other one that is
+--- open.
 export type Side = "pack" | "other"
 
 --- One slot of the screen.
@@ -27,8 +29,8 @@ export type InventoryScreen = {
 	read otherInventory: Inventory?,
 	--- The stack being carried between slots. `nil` when nothing is carried.
 	carriedStack: ItemStack?,
-	--- Says whether a slot of `otherInventory` accepts an item, given the slot's number and the item's id.
-	--- `nil` when every slot of `otherInventory` accepts every item.
+	--- Says whether a slot of `otherInventory` accepts an item, given the slot's number and the
+	--- item's id. `nil` when every slot of `otherInventory` accepts every item.
 	read otherSlotAcceptsItem: ((slot: number, itemId: string) -> boolean)?,
 }
 

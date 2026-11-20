@@ -11,8 +11,8 @@ table.insert(toServer, "askForSnapshot")
 --- which asks the server to send `snapshotChanged` again.
 Messages.toServer = table.freeze(toServer)
 
---- The messages the server sends: `snapshotChanged`, with what `PlayerSnapshot.encode` returns for the
---- player it is sent to.
+--- The messages the server sends: `snapshotChanged`, with what `PlayerSnapshot.encode` returns for
+--- the player it is sent to.
 Messages.toClient = table.freeze({ "snapshotChanged" })
 
 return Messages

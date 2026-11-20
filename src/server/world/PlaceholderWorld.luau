@@ -2,9 +2,10 @@
 --- A grey stand-in for the game's world.
 ---
 --- `build` makes a flat plot beside the place where players appear, with a post at each corner and
---- a crate and a stove standing on it. `restockGroundItems` keeps a few stacks of items lying on the plot, and
---- `addStartingItemsToPack` gives a new player something to hold. All of it is placeholder content, made by code
---- so that the project folder alone is enough to run the game, and it goes when there is a real map.
+--- a crate and a stove standing on it. `restockGroundItems` keeps a few stacks of items lying on
+--- the plot, and `addStartingItemsToPack` gives a new player something to hold. All of it is
+--- placeholder content, made by code so that the project folder alone is enough to run the game,
+--- and it goes when there is a real map.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -134,11 +135,12 @@ function PlaceholderWorld.addStartingItemsToPack(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "crate", 1)
 end
 
---- Drops a stack of a random item on a random tile of the plot, unless `GROUND_ITEMS_KEPT` ground
---- items already lie about, a stack was dropped less than `SECONDS_BETWEEN_RESTOCKS` before `now`,
---- or a crate could not be placed on the chosen tile because something stands there, in which case
---- nothing is dropped until the next call. Does nothing while the Workspace attribute
---- `PlaceholderRestock` is `false`, which the play test sets so that it knows what lies on the ground.
+--- Drops a stack of a random item on a random tile of the plot. Does nothing if
+--- `GROUND_ITEMS_KEPT` ground items already lie about, or if it last chose a tile less than
+--- `SECONDS_BETWEEN_RESTOCKS` before `now`. If something stands on the tile it chooses, it drops
+--- nothing, and waits `SECONDS_BETWEEN_RESTOCKS` before it chooses again. Does nothing while the
+--- Workspace attribute `PlaceholderRestock` is `false`, which the play test sets so that it knows
+--- what lies on the ground.
 function PlaceholderWorld.restockGroundItems(
 	placeholder: PlaceholderWorld,
 	groundItems: GroundItems.GroundItems,

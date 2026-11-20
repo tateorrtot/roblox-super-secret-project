@@ -26,8 +26,8 @@ local PlaceholderWorld = require(script.Parent.world.PlaceholderWorld)
 local PlotParts = require(script.Parent.world.PlotParts)
 local Remotes = require(script.Parent.Remotes)
 
---- How often the World is stepped, in seconds.
-local STEP_SECONDS = 0.1
+--- How long the server waits between advancing the World, in seconds.
+local SECONDS_BETWEEN_ADVANCES = 0.1
 
 --- How many requests one player's machine may make in a second. The rest of that second's are
 --- ignored. A person clicking as fast as they can makes far fewer.
@@ -169,18 +169,18 @@ for _, player in Players:GetPlayers() do
 	addPlayer(player)
 end
 
-local function step()
+local function advanceWorld()
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
 			try("reading where a player stands", tellPosition, player)
 		end
 	end
-	try("stepping the World", World.advanceTo, world, os.clock())
+	try("advancing the World", World.advanceTo, world, os.clock())
 	try("restocking the plot", PlaceholderWorld.restockGroundItems, placeholder, world.groundItems, world.now)
 	showWorldToPlayers()
 end
 
-local sinceStep = 0
+local sinceAdvance = 0
 local sinceCountsCleared = 0
 RunService.Heartbeat:Connect(function(deltaTime: number)
 	sinceCountsCleared += deltaTime
@@ -188,10 +188,10 @@ RunService.Heartbeat:Connect(function(deltaTime: number)
 		sinceCountsCleared = 0
 		table.clear(requestsThisSecond)
 	end
-	sinceStep += deltaTime
-	if sinceStep >= STEP_SECONDS then
-		sinceStep = 0
-		step()
+	sinceAdvance += deltaTime
+	if sinceAdvance >= SECONDS_BETWEEN_ADVANCES then
+		sinceAdvance = 0
+		advanceWorld()
 	elseif needsShow then
 		showWorldToPlayers()
 	end

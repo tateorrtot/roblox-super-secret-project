@@ -22,12 +22,13 @@ becomes a Folder, `Name.luau` a ModuleScript, `Name.server.luau` a Script and `N
 LocalScript. Everything under those three places is replaced, so the project folder stays the
 only source of the code.
 """
-import base64, io, json, os, queue, subprocess, sys, threading
+import base64, io, json, os, queue, subprocess, sys, threading, time
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAT = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Roblox', 'mcp.bat')
 TIMEOUT = float(os.environ.get('STUDIO_TIMEOUT', '120'))
+ATTACH_SECONDS = 10  # how long to wait for Studio to attach to a connector that has just started
 MAPPING = [
     ('src/shared', ['ReplicatedStorage', 'Shared']),
     ('src/server', ['ServerScriptService', 'Server']),
@@ -85,14 +86,23 @@ class Studio:
                     raise SystemExit('Studio refused %s: %s' % (method, json.dumps(answer['error'])))
                 return answer.get('result')
 
+    def wait_for_studio(self):
+        """Returns the first Studio attached to the connector. Studio attaches a moment after the
+        connector starts, so an empty answer is asked again for a few seconds before giving up."""
+        deadline = time.time() + ATTACH_SECONDS
+        while True:
+            found = json.loads(self.call('list_roblox_studios', {}, needs_studio=False)[0]).get('studios', [])
+            if found:
+                return found[0]
+            if time.time() > deadline:
+                raise SystemExit('No Roblox Studio is connected. Open Studio on a place and enable its MCP server.')
+            time.sleep(0.5)
+
     def call(self, tool, arguments=None, needs_studio=True):
         arguments = dict(arguments or {})
         if needs_studio and 'studio_id' not in arguments:
             if self.studio_id is None:
-                found = json.loads(self.call('list_roblox_studios', {}, needs_studio=False)[0]).get('studios', [])
-                if not found:
-                    raise SystemExit('No Roblox Studio is connected. Open Studio on a place and enable its MCP server.')
-                self.studio_id = found[0]['id']
+                self.studio_id = self.wait_for_studio()['id']
             arguments['studio_id'] = self.studio_id
         result = self.request('tools/call', {'name': tool, 'arguments': arguments})
         texts, images = [], []

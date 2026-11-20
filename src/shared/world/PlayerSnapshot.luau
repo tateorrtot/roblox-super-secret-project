@@ -13,7 +13,8 @@ local PlayerSnapshot = {}
 
 --- How far a station's fire and work have got.
 export type StationProgress = {
-	--- What `Station.getFuelLeftRatio` returns: 1 when the fuel was just lit, 0 when the fire is out.
+	--- What `Station.getFuelLeftRatio` returns: 1 when the fuel was just lit, 0 when the fire is
+	--- out.
 	fuelLeftRatio: number,
 	--- What `Station.getWorkDoneRatio` returns: 0 when the work has not begun, 1 when it is done.
 	workDoneRatio: number,
@@ -25,10 +26,12 @@ export type EncodedSnapshot = {
 	screen: {
 		--- The other inventory that is open. `nil` when the pack is open alone.
 		otherInventory: Inventory.EncodedInventory?,
-		--- The id of the item that the placed item whose inventory `otherInventory` is, is: `"crate"`.
+		--- The item id of the placed item that `otherInventory` is inside, such as `"crate"`. `nil`
+		--- when the pack is open alone.
 		otherInventoryItemId: string?,
 		carriedStack: { itemId: string, count: number }?,
-		--- How far the fire and the work have got. `nil` unless `otherInventory` is a station's inventory.
+		--- How far the fire and the work have got. `nil` unless `otherInventory` is a station's
+		--- inventory.
 		stationProgress: StationProgress?,
 	}?,
 }
@@ -37,7 +40,8 @@ export type PlayerSnapshot = {
 	pack: Inventory.Inventory,
 	--- The open inventory screen, over `pack`. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
-	--- The id of the item that the placed item shown beside the pack is, such as `"crate"`.
+	--- The item id of the placed item whose inventory is shown beside the pack, such as `"crate"`.
+	--- `nil` when the pack is open alone.
 	otherInventoryItemId: string?,
 	--- How far the fire and the work have got. `nil` unless that placed item is a station.
 	stationProgress: StationProgress?,
@@ -73,8 +77,8 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 	}
 end
 
---- Returns the snapshot read from data that `encode` made. Fails if the data holds an inventory or a
---- stack that cannot be read.
+--- Returns the snapshot read from data that `encode` made. Fails if the data holds an inventory or
+--- a stack that cannot be read.
 function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 	local pack = assert(Inventory.decode(encoded.pack))
 	local encodedScreen = encoded.screen

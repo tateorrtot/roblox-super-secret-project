@@ -8,7 +8,8 @@ local SlotGestures = {}
 
 export type Button = "left" | "right"
 
---- One slot of the inventory screen: the side it is on, `"pack"` or `"other"`, and its number there.
+--- One slot of the inventory screen: the side it is on, `"pack"` or `"other"`, and its number
+--- there.
 export type Slot = { read side: string, read slot: number }
 
 export type Gesture = {
@@ -44,7 +45,8 @@ function SlotGestures.new(): SlotGestures
 	return {}
 end
 
---- Begins a gesture: a mouse button went down on a slot. A gesture already in progress is forgotten.
+--- Begins a gesture: a mouse button went down on a slot. A gesture already in progress is
+--- forgotten.
 function SlotGestures.beginGesture(gestures: SlotGestures, button: Button, slot: Slot)
 	gestures.gestureInProgress = { button = button, slots = { slot } }
 end

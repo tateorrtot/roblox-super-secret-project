@@ -2,7 +2,6 @@
 
 - To play the build and say what feels wrong.
 - Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.
-- To open Studio on the place, so that the play test can run on the final code.
 - Their read of the rewritten code, and their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - Whether they would rather read the code in the method form (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).
 - Whether screens and models are made in Studio, as scenes are in Godot, or stay in code.

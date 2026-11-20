@@ -1,12 +1,13 @@
 --!strict
---- The inventory screen, which shows the player's pack, another inventory beside it, and the stack being carried.
+--- The inventory screen, which shows the player's pack, another inventory beside it, and the stack
+--- being carried.
 ---
---- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are its
---- bottom row, a little apart from the rest. The carried stack follows the pointer. When the other
---- inventory is a station's, its first slot is drawn above its second, with a fire gauge between them,
---- and its third slot to the right, past a work gauge. `show` draws, `setHighlightedSlots` brightens slots and
---- `hide` closes the screen. The screen changes no inventory: it reports what the player does on its slots
---- through its `callbacks`.
+--- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are
+--- its bottom row, a little apart from the rest. The carried stack follows the pointer. When the
+--- other inventory is a station's, its first slot is drawn above its second, with a fire gauge
+--- between them, and its third slot to the right, past a work gauge. `show` draws,
+--- `setHighlightedSlots` brightens slots and `hide` closes the screen. The screen changes no
+--- inventory: it reports what the player does on its slots through its `callbacks`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -43,7 +44,8 @@ export type InventoryGui = {
 	read screenGui: ScreenGui,
 	--- The panel the slots are on.
 	read panel: Frame,
-	--- The words at the top of the panel: the name of the other inventory, or "Pack" when the pack is shown alone.
+	--- The words at the top of the panel: the name of the other inventory, or "Pack" when the pack
+	--- is shown alone.
 	read title: TextLabel,
 	--- The word "Pack" above the pack's slots, visible when another inventory is above them.
 	read packTitle: TextLabel,
@@ -65,8 +67,9 @@ export type InventoryGui = {
 	hoveredSlot: { side: Side, slot: number }?,
 	--- Whether the other inventory is drawn as a station's.
 	showsStation: boolean,
-	--- The parts that are only there for a station: the fill of its fire gauge, the fill of its work
-	--- gauge, and every part in `all`: the two gauges, then the words beside its input, fuel and output slots.
+	--- The parts that are only there for a station: the fill of its fire gauge, the fill of its
+	--- work gauge, and every part in `all`: the two gauges, then the words beside its input, fuel
+	--- and output slots.
 	read stationParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
 }
 
@@ -384,8 +387,8 @@ local function makeCarried(screenGui: ScreenGui): (Frame, StackIcon.StackIcon)
 	return carriedFrame, carriedIcon
 end
 
---- Returns a new inventory screen, hidden, in a ScreenGui inside `parent`. `hotbarSlotCount` is how many
---- of the pack's first slots are its hotbar.
+--- Returns a new inventory screen, hidden, in a ScreenGui inside `parent`. `hotbarSlotCount` is how
+--- many of the pack's first slots are its hotbar.
 function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: Callbacks): InventoryGui
 	local screenGui = makeScreenGui()
 	makeBackdrop(screenGui, callbacks)
@@ -462,8 +465,8 @@ function InventoryGui.show(
 	inventoryGui.screenGui.Enabled = true
 end
 
---- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An empty
---- list gives every slot its plain edge. A named slot that does not exist is ignored.
+--- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An
+--- empty list gives every slot its plain edge. A named slot that does not exist is ignored.
 function InventoryGui.setHighlightedSlots(
 	inventoryGui: InventoryGui,
 	screenSlots: { { read side: string, read slot: number } }
@@ -483,8 +486,8 @@ function InventoryGui.setHighlightedSlots(
 	end
 end
 
---- Closes the screen, clears the bright edges, forgets the slot under the pointer and stops moving the
---- carried stack. Does nothing if the screen is closed already.
+--- Closes the screen, clears the bright edges, forgets the slot under the pointer and stops moving
+--- the carried stack. Does nothing if the screen is closed already.
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
 	InventoryGui.setHighlightedSlots(inventoryGui, {})

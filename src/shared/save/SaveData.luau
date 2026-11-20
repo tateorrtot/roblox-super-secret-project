@@ -25,11 +25,11 @@ function SaveData.encode(pack: Inventory.Inventory): SavedPlayer
 	return { version = SaveData.CURRENT_VERSION, pack = Inventory.encode(pack) }
 end
 
---- Returns the pack read from saved data. If the data is not something this version of the game
---- can read, returns `nil` and what is wrong with it, in words: it is not a table, its version is
---- not a whole number from 1 to `CURRENT_VERSION`, it has a field saved data does not have, or its
---- pack is not an inventory of `PlayerState.PACK_SLOT_COUNT` slots that `Inventory.decode` can read.
---- The data may be anything at all.
+--- Returns the pack read from saved data. If the data is not something this version of the game can
+--- read, returns `nil` and what is wrong with it, in words: it is not a table, its version is not a
+--- whole number from 1 to `CURRENT_VERSION`, it has a field saved data does not have, or its pack
+--- is not an inventory of `PlayerState.PACK_SLOT_COUNT` slots that `Inventory.decode` can read. The
+--- data may be anything at all.
 function SaveData.decode(saved: unknown): (Inventory.Inventory?, string?)
 	if type(saved) ~= "table" then
 		return nil, "saved data must be a table; got a " .. type(saved)

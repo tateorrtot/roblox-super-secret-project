@@ -1,10 +1,10 @@
 --!strict
 --- Shows the stacks lying on the ground as blocks in the world.
 ---
---- Each ground item gets one plain block in the colour of its item, with a label that says what it is
---- and how many. `update` makes the blocks match a `GroundItems` as it is now: a new block for each new
---- ground item, a changed label when part of a stack was picked up, and no block for what is gone. The
---- blocks are placeholders until items have models.
+--- Each ground item gets one plain block in the colour of its item, with a label that says what it
+--- is and how many. `update` makes the blocks match a `GroundItems` as it is now: a new block for
+--- each new ground item, a changed label when part of a stack was picked up, and no block for what
+--- is gone. The blocks are placeholders until items have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -72,8 +72,8 @@ local function fitPartToGroundItem(part: Part, id: number, groundItem: GroundIte
 	setLabelText(part, stack.itemId, stack.count)
 end
 
---- Returns a new set of blocks, with none made yet, that will be kept in a folder called `GroundItems`
---- inside `parent`.
+--- Returns a new set of blocks, with none made yet, that will be kept in a folder called
+--- `GroundItems` inside `parent`.
 function GroundItemParts.new(parent: Instance): GroundItemParts
 	local folder = Instance.new("Folder")
 	folder.Name = "GroundItems"
@@ -81,9 +81,9 @@ function GroundItemParts.new(parent: Instance): GroundItemParts
 	return { folder = folder, partsById = {} }
 end
 
---- Makes the blocks match `groundItems` as they are now. A ground item with no block gets one; a block
---- whose stack changed in size is resized and relabelled; a block whose ground item is gone is destroyed.
---- A bigger stack makes a bigger block, resting on the ground where the stack lies.
+--- Makes the blocks match `groundItems` as they are now. A ground item with no block gets one; a
+--- block whose stack changed in size is resized and relabelled; a block whose ground item is gone
+--- is destroyed. A bigger stack makes a bigger block, resting on the ground where the stack lies.
 function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: GroundItems.GroundItems)
 	local partsById = groundItemParts.partsById
 	for id, groundItem in groundItems.itemsById do

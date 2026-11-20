@@ -2,11 +2,11 @@
 --- The stacks of items lying on the ground in one running game.
 ---
 --- A ground item is a stack, the position where it lies and the time it was dropped. Ground items
---- are numbered from 1 in the order they were dropped, and a number is never used twice. `dropStackAt`
---- puts a stack on the ground, `moveNearbyStacksToInventory` moves ground items into an inventory, and `removeExpiredStacks`
---- removes the ones that have lain too long. Time is a number of seconds, passed in as `now`, from
---- any clock that only goes forward. Positions and distances are in studs. Ground items are never
---- saved.
+--- are numbered from 1 in the order they were dropped, and a number is never used twice.
+--- `dropStackAt` puts a stack on the ground, `moveNearbyStacksToInventory` moves ground items into
+--- an inventory, and `removeExpiredStacks` removes the ones that have lain too long. Time is a
+--- number of seconds, passed in as `now`, from any clock that only goes forward. Positions and
+--- distances are in studs. Ground items are never saved.
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
@@ -45,7 +45,8 @@ GroundItems.LIFETIME_SECONDS = 300
 --- How long after it was dropped a ground item cannot be picked up, in seconds.
 GroundItems.PICKUP_DELAY_SECONDS = 1.5
 
---- How near a position must be to a ground item for `moveNearbyStacksToInventory` to pick it up, in studs.
+--- How near a position must be to a ground item for `moveNearbyStacksToInventory` to pick it up, in
+--- studs.
 GroundItems.PICKUP_RADIUS = 4
 
 --- How near a stack must be dropped to a ground item of the same item to join it, in studs.
@@ -76,10 +77,10 @@ end
 --- ground item that holds it. If a ground item of the same item lies within `MERGE_RADIUS` of
 --- `position` and has room for all of `stack`, the stack joins it: that ground item holds more,
 --- stays where it lies and counts as dropped at `now`. With several such ground items it joins the
---- nearest, and of two equally near, the one with the lower id. Otherwise a new ground item is
---- made at `position`.
---- Note: `dropStackAt` does not take the stack from anywhere. A stack that is also left where it came
---- from exists twice.
+--- nearest, and of two equally near, the one with the lower id. Otherwise a new ground item is made
+--- at `position`.
+--- Note: `dropStackAt` does not take the stack from anywhere. A stack that is also left where it
+--- came from exists twice.
 function GroundItems.dropStackAt(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
 	for _, id in idsNearestFirst(groundItems, position, GroundItems.MERGE_RADIUS) do
 		local joined = groundItems.itemsById[id]

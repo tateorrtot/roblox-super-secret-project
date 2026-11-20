@@ -14,7 +14,8 @@ local Station = {}
 type Inventory = Inventory.Inventory
 
 export type Station = {
-	--- The id of the item this station is, such as `"stove"`. Its recipes are the ones registered for that item.
+	--- The id of the item this station is, such as `"stove"`. Its recipes are the ones registered
+	--- for that item.
 	read itemId: string,
 	--- Its three slots.
 	read inventory: Inventory,
@@ -22,7 +23,8 @@ export type Station = {
 	burnSecondsLeft: number,
 	--- How many seconds the item of fuel now burning burns in all. 0 when the fire is out.
 	burnSecondsTotal: number,
-	--- How many seconds the item in the input slot has been worked on. 0 when nothing is being worked on.
+	--- How many seconds the item in the input slot has been worked on. 0 when nothing is being
+	--- worked on.
 	workedSeconds: number,
 	--- The id of the item that work is being done on. `nil` when nothing is being worked on.
 	workingOnItemId: string?,

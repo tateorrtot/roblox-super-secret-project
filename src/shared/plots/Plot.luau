@@ -3,10 +3,10 @@
 ---
 --- A plot is `width` tiles along x and `depth` tiles along z. A tile is named by two whole numbers
 --- counted from 1, so the corner tile is x 1, z 1. Each tile holds one placed item or nothing.
---- `placeItem` stands an item on a tile and `removePlacedItem` takes it off. A placed item whose definition has a
---- `slotCount` has an inventory inside it. Placed items are numbered from 1 in the order they were
---- placed, and a number is never used twice. `getTileAt` and `getTileCenter` turn a position in the world
---- into a tile and back.
+--- `placeItem` stands an item on a tile and `removePlacedItem` takes it off. A placed item whose
+--- definition has a `slotCount` has an inventory inside it. Placed items are numbered from 1 in the
+--- order they were placed, and a number is never used twice. `getTileAt` and `getTileCenter` turn a
+--- position in the world into a tile and back.
 local Inventory = require("../inventory/Inventory")
 local ItemRegistry = require("../items/ItemRegistry")
 local Position = require("../Position")
@@ -39,8 +39,8 @@ export type Plot = {
 	--- The id the next placed item will get.
 	nextId: number,
 	--- Every placed item, by id. An id with no entry is not on the plot.
-	--- Note: ids are not consecutive once an item has been removed, so `#placedItemsById` is not the
-	--- number of placed items.
+	--- Note: ids are not consecutive once an item has been removed, so `#placedItemsById` is not
+	--- the number of placed items.
 	placedItemsById: { [number]: PlacedItem },
 }
 

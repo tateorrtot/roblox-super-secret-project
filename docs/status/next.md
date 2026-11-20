@@ -1,6 +1,6 @@
 # What comes next
 
-1. **Run the play test** (`python tools/playtest.py`) as soon as Studio is open, since the last fixes and the renaming were made after it was closed. Then get the user's read of the rewritten code, and after that their feedback on the game. What the audits left is listed in `now.md`; none of it is urgent, and the screen's drawing code is best left until the user decides whether screens are made in Studio.
+1. **Get the user's read of the rewritten code, and after that their feedback on the game.** What the audits left is listed in `now.md`; none of it is urgent, and the screen's drawing code is best left until the user decides whether screens are made in Studio.
 2. Carry on down the tree one piece at a time. For each: write the calling code first; build it with tests; then run the checks listed in `docs/code/conventions.md`.
 3. Be sparing with agents. One overnight run used the account's whole usage limit. Reader tests are cheap (no tools). Do mutation and bad-argument checks in the session. Two small workflows on the Sonnet model (nine agents for the library survey, eight for the code review, a little under a million tokens each) ran on 2026-11-19 without trouble.
 4. The plot, and Use and Hit, were built on proposals so that the user can judge them by playing. Their answer is needed before more is built on them: walls, things that cover two tiles, a plot of one's own, and how Hit works on a phone.

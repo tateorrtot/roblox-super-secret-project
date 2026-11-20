@@ -33,7 +33,8 @@ local function dropAtPlayer(world: World, player: PlayerState, stack: ItemStack.
 	end
 end
 
---- Opens the player's inventory screen on their pack alone. Does nothing if they have a screen open.
+--- Opens the player's inventory screen on their pack alone. Does nothing if they have a screen
+--- open.
 function InventoryRequests.openPack(_world: World, player: PlayerState)
 	if player.screen == nil then
 		player.screen = InventoryScreen.new(player.pack)

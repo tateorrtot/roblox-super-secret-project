@@ -15,10 +15,11 @@ export type PlayerState = {
 	read hotbar: Hotbar.Hotbar,
 	--- The inventory screen the player has open. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
-	--- The id of the placed item whose inventory `screen` shows beside the pack. `nil` when the pack
-	--- is open alone, or no screen is open.
+	--- The id of the placed item whose inventory `screen` shows beside the pack. `nil` when the
+	--- pack is open alone, or no screen is open.
 	openedPlacedItemId: number?,
-	--- The point on the ground under the player's character. `nil` while they have no living character.
+	--- The point on the ground under the player's character. `nil` while they have no living
+	--- character.
 	position: Position.Position?,
 	--- The point on the ground where a stack the player drops lands.
 	dropPosition: Position.Position,

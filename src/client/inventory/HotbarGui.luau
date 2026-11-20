@@ -1,10 +1,10 @@
 --!strict
 --- The hotbar drawn along the bottom of the screen: one slot for each hotbar slot of the player's
---- pack, a bright edge on the one in hand, the name of what is in hand above the slots, and a button
---- that opens the pack.
+--- pack, a bright edge on the one in hand, the name of what is in hand above the slots, and a
+--- button that opens the pack.
 ---
---- `update` draws the pack's first slots and the one in hand. The hotbar changes no inventory: a click
---- on a slot or on the pack button is reported through the `Callbacks` given to `new`.
+--- `update` draws the pack's first slots and the one in hand. The hotbar changes no inventory: a
+--- click on a slot or on the pack button is reported through the `Callbacks` given to `new`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")

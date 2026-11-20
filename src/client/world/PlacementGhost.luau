@@ -1,8 +1,8 @@
 --!strict
 --- A see-through block that shows where the item in hand would stand on a tile.
 ---
---- `show` puts the block on a tile in the item's colour, and `hide` takes it away. It is only a picture
---- on this player's machine: showing it places nothing.
+--- `show` puts the block on a tile in the item's colour, and `hide` takes it away. It is only a
+--- picture on this player's machine: showing it places nothing.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -44,7 +44,8 @@ function PlacementGhost.new(): PlacementGhost
 	return { part = part }
 end
 
---- Shows the ghost as the item with the id `itemId`, standing on the tile whose middle is at `tileCenter`.
+--- Shows the ghost as the item with the id `itemId`, standing on the tile whose middle is at
+--- `tileCenter`.
 function PlacementGhost.show(ghost: PlacementGhost, itemId: string, tileCenter: Vector3)
 	local color = ItemLooks[itemId].color
 	local part = ghost.part

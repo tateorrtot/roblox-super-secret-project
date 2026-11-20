@@ -2,9 +2,9 @@
 --- Everything in one running copy of the game: the plot, the stacks on the ground, and the players.
 ---
 --- The server keeps one world. It adds and removes players, says where each one stands with
---- `setPlayerPosition`, and moves time on with `advanceTo`. The other functions are what can be done
---- in the world: dropping a stack, opening a placed item, closing a player's screen, placing an
---- item on the plot and taking it off again.
+--- `setPlayerPosition`, and moves time on with `advanceTo`. The other functions are what can be
+--- done in the world: dropping a stack, opening a placed item, closing a player's screen, placing
+--- an item on the plot and taking it off again.
 local GroundItems = require("./GroundItems")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")

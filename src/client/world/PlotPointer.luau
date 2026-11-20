@@ -1,9 +1,10 @@
 --!strict
---- Works out what a point on the screen is over: an item placed on a plot, or a tile of a plot that nothing stands on.
+--- Works out what a point on the screen is over: an item placed on a plot, or a tile of a plot that
+--- nothing stands on.
 ---
---- `getTargetAt` looks through the camera at a point and reads what it hits. A block with the attribute `placedItemId`
---- is a placed item. The top of a slab tagged `Plot`, which has the attributes `cornerX`, `cornerY`, `cornerZ`,
---- `width` and `depth`, is a grid of tiles.
+--- `getTargetAt` looks through the camera at a point and reads what it hits. A block with the
+--- attribute `placedItemId` is a placed item. The top of a slab tagged `Plot`, which has the
+--- attributes `cornerX`, `cornerY`, `cornerZ`, `width` and `depth`, is a grid of tiles.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,8 +15,8 @@ local Plot = require(Shared.plots.Plot)
 
 local PlotPointer = {}
 
---- What a point on the screen is over. `center` is the middle of the bare tile, or the middle of the
---- placed item's block.
+--- What a point on the screen is over. `center` is the middle of the bare tile, or the middle of
+--- the placed item's block.
 export type Target =
 	{ kind: "placedItem", placedItemId: number, part: BasePart, center: Vector3 }
 	| { kind: "tile", x: number, z: number, center: Vector3 }
@@ -52,12 +53,12 @@ local function tileTarget(hit: RaycastResult): Target?
 	return { kind = "tile", x = x, z = z, center = Vector3.new(center.x, center.y, center.z) }
 end
 
---- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed item nor a
---- bare tile of a plot. The player's own character is looked through. Anything else in the way hides
---- what is behind it. Only the top of a plot's slab counts as tiles, not its sides.
+--- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed item nor
+--- a bare tile of a plot. The player's own character is looked through. Anything else in the way
+--- hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides.
 ---
---- Note: `viewportPoint` is in pixels from the top left of the whole window, which includes the strip
---- along the top of the screen.
+--- Note: `viewportPoint` is in pixels from the top left of the whole window, which includes the
+--- strip along the top of the screen.
 function PlotPointer.getTargetAt(viewportPoint: Vector2): Target?
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
