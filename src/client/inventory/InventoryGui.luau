@@ -420,10 +420,10 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 end
 
 --- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
---- there is one, and the `otherInventory` inventory above the pack if there is one. `otherInventoryName` is written
---- over the other inventory and is not used when there is none. If `gauges` is given and `otherInventory` has
---- three slots, they are drawn as a station's input, fuel and output, and the gauges are filled as far
---- as `gauges` says.
+--- there is one, and `otherInventory` above the pack if there is one. `otherInventoryName` is
+--- written over the other inventory and is not used when there is none. If `gauges` is given and
+--- `otherInventory` has three slots, they are drawn as a station's input, fuel and output, and the
+--- gauges are filled as far as `gauges` says.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
