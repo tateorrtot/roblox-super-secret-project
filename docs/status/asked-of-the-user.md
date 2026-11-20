@@ -1,16 +1,15 @@
 # Asked of the user, not yet answered
 
 - To play the build and say what feels wrong.
-- To play with dropped items and say how they feel: how far a throw goes, how a broken crate spills, whether items should fall more lightly (built 2026-11-20, on the branch `dropped-items`).
-- Whether to hand dropped items back to Roblox's default ownership, which removes most of the delay when throwing (asked 2026-11-20).
-- Whether to untangle `World.setPlayerPosition` as proposed: the player's state holds where the character is and which way it faces, and the throw is worked out when something is dropped.
-- A noun for `Throw`.
-- Which of the review's ten faults to fix, and when (`docs/code/reviews/16-coupling-review-2026-11-20.md`).
+- To play with dropped items again now that Roblox owns their motion, and say how they feel: whether the delay when throwing is gone, how far a throw goes, how a broken crate spills, whether items should fall more lightly.
+- Whether merging moves out of `World.spawnStack` and `World.setGroundItemPosition` into `World.advanceTo`, so that each of those two does only what its name says (asked 2026-11-20). It would mean every ground item is looked at for merging ten times a second, moving or not, and a stack spawned beside its own kind merges up to a tenth of a second later.
+- Whether the hotbar's highlight may wait for the server, as it does since fix 4 (told 2026-11-20). The other way is for the player's machine to show its own choice at once and be corrected by the server.
+- Which of the coupling review's other six faults to fix, and when (`docs/code/reviews/16-coupling-review-2026-11-20.md`), and whether to make `World` thinner.
 - What they picture for plots, now that they have asked "couldnt a plot be, anywhere? Like the world is a plot?" The agreed decisions say a plot for each player, as in Lumber Tycoon, and building on vehicles as in ARK.
 - Which, if any, of the ideas Claude set aside they want. The list is at the end of `docs/game/dropped-items.md`.
 - Whether they want an audit of the rule files: merging duplicates and deleting what a later rule replaced, with the diff shown first.
 - Their feedback on the first build: "a LOT of feedback and little issues / tweaks", promised for the day after.
-- Their read of the rewritten code, and their verdict on the names Claude chose (listed in `claudes-calls.md`).
+- Their read of the rewritten and untangled code, and their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - Whether they would rather read the code in the method form (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).
 - Whether screens and models are made in Studio, as scenes are in Godot, or stay in code.
 - To run the one-line download of Roblox's type definitions themselves (the command is in `docs/roblox/studio.md`), since the app refused it for Claude. It is passed to luau-lsp as `--definitions:@roblox=<file>`, with a Rojo sourcemap.

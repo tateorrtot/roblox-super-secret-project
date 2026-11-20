@@ -64,6 +64,8 @@ Measured on 2026-11-20 in a play test the user was running, with one player and 
 | The player's machine, `SetNetworkOwner(player)` | 50 ms | 50 to 100 ms | 1,000 to 1,070 ms |
 | Left to Roblox | 50 ms | 65 to 215 ms | 1,020 to 1,070 ms |
 
+A second run threw real stacks, eight for each kind of ownership, with the character walking on between throws (`build/throw_ownership_batches.py`): first seen moving after 118 to 234 ms left to Roblox (median 142), 117 to 167 ms given to the thrower (median 142), and 266 to 368 ms kept by the server (median 284). Every one of the 32 came to rest 7.5 to 7.9 studs ahead. One earlier session had thrown 18 to 23 studs under Roblox's ownership and 9.8 under the server's; it did not happen again in five more sessions, and nobody knows why it happened.
+
 A part the server owns is drawn about a third of a second behind where it is, for its whole flight. That is the delay the user felt when throwing. Roblox's documentation says of `SetNetworkOwner(nil)`: "you should do so conservatively since it may result in jittery physics interactions for clients." It also says that a client can teleport a part it owns, which is why Claude had chosen the server. Nobody had asked for that guard.
 
 ## What Roblox's documentation and developers say

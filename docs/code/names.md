@@ -11,7 +11,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 - A noun in a name is a part of the thing, or something the caller passes or gets back. A name with `Stack` in it takes or returns a stack. One with `Slot` takes a slot.
 - Arguments come in the order the name gives them: the thing first, then where, then how much.
 - No name stops at an adjective. `placedItem`, not `placed`. `carriedStack`, not `carried`.
-- The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `swap`, `use` and `hit` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStack`, `swapSlots`, `usePlacedItem`. No verb is excused for being familiar.
+- The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `spawn`, `swap`, `use` and `hit` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStackFromCharacter`, `spawnStack`, `swapSlots`, `usePlacedItem`. No verb is excused for being familiar.
 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
@@ -27,9 +27,10 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `player` | A `PlayerState`, in the rules |
 | `placedItem`, `placedItemId` | A thing standing on a plot, and its id |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
+| `character` | A player's body in the world: its `position` and its `facing`. `nil` while they have none |
 | `facing`, `direction` | A way along the ground, `{ x, z }` with a length of 1 |
-| `throw` | How a stack sets off into the world: where from, and how fast. A player drops; what happens to the stack is a throw |
 | `velocity` | How fast along each axis, `{ x, y, z }` in studs a second |
+| `...Time` | A moment on the world's clock, in seconds: `spawnTime` |
 | `now` | The present time, in seconds |
 | `selected` | The hotbar's selected slot. A comment may say that what it holds is in the player's hand. No function is named for a hand |
 | `...Seconds`, `..._SECONDS` | A length of time: `burnSecondsLeft`, `LIFETIME_SECONDS` |
@@ -46,7 +47,9 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `put` | Puts into a named place | The stack that did not fit |
 | `take` | Takes out of a named place for the caller | The stack taken |
 | `remove` | Takes out wherever it is | How many were removed |
-| `move` | Takes a thing from where it is to somewhere else: stacks into an inventory, a ground item to a position | How many items moved, when it moves items |
+| `move` | Takes items from where they are to somewhere else | How many items moved |
+| `spawn` | Makes a thing appear in the world at a position | Its id |
+| `merge` | Makes two things one | The id of the one that is left |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing | `true` or `false` |
 | `find` | Looks for one that may not be there | It, or `nil` |
@@ -59,7 +62,12 @@ How things in the code are named. The user reads an outline of bare names, with 
 A number returned is how many items moved. A stack returned is one the caller now holds: what was taken out, or what is left of the stack that was put in.
 
 ## The names test
-A reader is given nothing but each file's first line and the bare names of its public functions (`python tools/outline.py --sheet`), and writes what each function takes and does.
-- The reader is a fresh agent of the `Explore` type, on Sonnet, told to use no tools. That type is not shown `CLAUDE.md`; most others are, and the notes describe the code.
-- A question the reader is left with about what a function acts on, or where, is a failed name. Fix it by renaming or reshaping, not by adding a sentence.
-- A question about how much moves, or what comes back, is the signature's to answer.
+The user, 2026-11-20: "I see just the class. ... I look in the class. ... these are my methods. ... If it doesnt work out of context. It doesnt work." Their words are in `docs/working/code-reviews/2026-11-20-4-out-of-context.md`.
+
+- **A reader is shown one class and nothing else:** its name, the fields of its types, its constants and its functions. `python tools/bare_names.py World` prints exactly that.
+- No first line of the file, no comments, no arguments, no other class, and no word of what the program is.
+- The reader writes what the class is and what each member is or does, and marks each `clear`, `guess` or `no idea`.
+- **A guess is a failure, even when it is right.** Claude's readers are far more forgiving than the user. On 2026-11-20 two of them read all 345 names, got none wrong and 28 right only by guessing, and the user could make nothing of a class among those.
+- The reader is a fresh agent of the `Explore` type, on Sonnet, told to use no tools. That type is not shown `CLAUDE.md`.
+- A doubt about what a member acts on, or where, is a failed name. A doubt about how much moves, or what comes back, is the signature's to answer.
+- **A class is a noun,** as `PlayerState` is. When no noun works, the class is wrong, not the name: split it, or give its parts to the things they belong to.

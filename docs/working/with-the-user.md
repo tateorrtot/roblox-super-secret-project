@@ -22,6 +22,8 @@ Claude was building dropped items and was about to add a lighter gravity, custom
 - **Say plainly what is being done.** "Physics experiment" read to them as Claude writing a physics engine. It was measuring Roblox's.
 - **Changing an engine's default is a decision to put to the user, with what it costs.** Claude took ownership of dropped items' parts for the server, as a guard against cheating that nobody had asked for, and every thrown item drew a third of a second late. The user: "Im not even sure if its going to be an issue yet and youre changing a default for some reason?"
 - **A small diff is not worth a tangled function.** Claude made `World.setPlayerPosition` also work out how a player's drops set off, because that kept the change small. The user: "Why is this method tied to that? Spaghetti!"
+- **A fix has a cost too, and it is said when the fix is proposed.** This one is Claude's own, 2026-11-20. Fix 4 of the coupling review made the server the one keeper of the selected hotbar slot, so the highlight now waits for the server's answer. Claude proposed the fix without saying so, and a reviewer found it afterwards.
+- **A restructuring is reviewed against the rule it was done for.** The untangle of `setPlayerPosition` produced two new functions that also did more than their names said. A reviewer caught them, not Claude.
 
 ## Rules come from mistakes
 - **When the user corrects something, name the pattern and write it as a rule** in the file for its topic. They steer by this: "Whenever it messes up, I tell it to add some rule/recognize the pattern and it puts it in as a rule".

@@ -13,3 +13,18 @@ What happened when dropped items were rebuilt to behave as Minecraft's do. Where
   - The readers understood each piece from its file alone. They could not tell what `LIFT`, `SPILL_TURN`, `MOVE_NOTICED` and two private constants were, and two comments promised more than the code does. All were renamed or reworded.
   - They also said that `World.setPlayerPosition` does more than its name says, since it takes the way the character faces. That is left for the user to decide.
 - **Mutation testing found gaps in Claude's own tests of the push:** nothing checked two of the four sides, or an item lying under a block. Checks were added.
+
+## The same day: the user played it, and the untangle
+- **The user played it and read some of the code.** They felt "a big delay when throwing", asked why Claude had switched off Roblox's ownership of the parts, called `World.setPlayerPosition` spaghetti because it also worked out the throw, and could make nothing of the class `Throw` out of context. Their words are in `docs/working/code-reviews/2026-11-20-4-out-of-context.md`.
+- **The delay was measured before anything was changed,** at their word. A part the server owns is first seen moving 250 to 370 milliseconds after the throw, against about 140 when Roblox chooses the owner (`docs/research/16-dropped-items.md`).
+- **The coupling was reviewed** by ten agents on Sonnet. Not spaghetti, and ten faults worth acting on (`docs/code/reviews/16-coupling-review-2026-11-20.md`).
+- **They approved four things, done in one commit:** ground items handed back to Roblox's ownership; a player's state holds a `character` and the throw is worked out when a stack is dropped, so `Throw` is gone; removing a placed item is split into taking it off the plot and throwing it; only `PlayerState` assigns a player's fields; the server alone keeps the selected hotbar slot.
+- **The names test was run their way first,** on bare names with no first line. Two readers got none of 345 names wrong and 28 right only by guessing, which showed the readers are more forgiving than the user. The new names were then chosen from candidates by readers shown names alone.
+- **Their delete test was run:** `players`, `plots` and `stations` do not break one another (`python tools/delete_directory_test.py`).
+- **The fixes were reviewed** by three readers of bare names and two reviewers, each reviewer checked by a skeptic.
+  - Nothing breaks in play, and no item is made or lost.
+  - `World.spawnStack` and `World.setGroundItemPosition`, both new, also merge ground items, which their names do not say. Left for the user to choose, since the fix changes when stacks merge.
+  - Fix 4 made the hotbar's highlight wait for the server. Claude had not told the user that cost when proposing the fix.
+  - A reader took `PUSHED_GROUND_ITEM_SPEED` for a character pushing an item, and could not tell whether `CHARACTER_THROW_HEIGHT` was where a throw starts or how high it goes. Both were renamed, and a second reader read them correctly.
+  - Three comments promised more than the code does, and were corrected. Mutation testing found that no test checked the selected slot in a snapshot, or the order a placed item and its stacks are thrown in. Both have checks now.
+  - Left as known problems in `docs/status/now.md`: a pushed item is not checked where it lands, and a block placed under an item in flight can miss it.

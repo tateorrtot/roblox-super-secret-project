@@ -158,7 +158,7 @@ do -- closeScreen
 	for _, groundItem in fullWorld.groundItems.itemsById do
 		check(
 			groundItem.position.x == 6
-				and groundItem.position.y == World.CHARACTER_THROW_HEIGHT
+				and groundItem.position.y == World.CHARACTER_THROW_START_HEIGHT
 				and groundItem.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
 				and groundItem.spawnTime == 100,
 			"closeScreen: it is thrown from the player's character, at the world's time"
@@ -775,7 +775,7 @@ do -- dropCarriedStack
 	local groundItem = world.groundItems.itemsById[landed :: number]
 	check(
 		groundItem.position.x == 6
-			and groundItem.position.y == World.CHARACTER_THROW_HEIGHT
+			and groundItem.position.y == World.CHARACTER_THROW_START_HEIGHT
 			and groundItem.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED,
 		"dropCarriedStack: thrown from the player's character, the way it faces"
 	)
@@ -814,7 +814,7 @@ do -- dropCarriedStack
 	local movedItem = movedWorld.groundItems.itemsById[next(movedWorld.groundItems.itemsById) :: number]
 	check(
 		movedItem.position.x == 1
-			and movedItem.position.y == World.CHARACTER_THROW_HEIGHT
+			and movedItem.position.y == World.CHARACTER_THROW_START_HEIGHT
 			and movedItem.spawnVelocity.z == World.CHARACTER_THROW_FORWARD_SPEED,
 		"dropCarriedStack: throws from the player's character where it is now, the way it faces"
 	)
@@ -852,7 +852,7 @@ do -- dropFromSlot
 	local landed = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
 		landed.position.x == 6
-			and landed.position.y == World.CHARACTER_THROW_HEIGHT
+			and landed.position.y == World.CHARACTER_THROW_START_HEIGHT
 			and landed.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
 			and landed.spawnTime == 100,
 		"dropFromSlot: thrown from the player's character, at the world's time"
@@ -930,7 +930,7 @@ do -- dropFromSelectedSlot
 	local landed = world.groundItems.itemsById[next(world.groundItems.itemsById) :: number]
 	check(
 		landed.position.x == 6
-			and landed.position.y == World.CHARACTER_THROW_HEIGHT
+			and landed.position.y == World.CHARACTER_THROW_START_HEIGHT
 			and landed.spawnVelocity.x == World.CHARACTER_THROW_FORWARD_SPEED
 			and landed.spawnTime == 100,
 		"dropFromSelectedSlot: thrown from the player's character, at the world's time"

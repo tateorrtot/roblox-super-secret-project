@@ -54,7 +54,7 @@ World.SCREEN_CLOSES_BEYOND = World.REACH + 4
 World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
 
 --- How far above a character's feet a stack that the character throws starts, in studs.
-World.CHARACTER_THROW_HEIGHT = 3
+World.CHARACTER_THROW_START_HEIGHT = 3
 
 --- How fast a stack that a character throws starts moving the way the character faces, in studs a
 --- second.
@@ -71,9 +71,9 @@ World.PLACED_ITEM_THROW_OUTWARD_SPEED = 6
 --- starts moving upwards, in studs a second.
 World.PLACED_ITEM_THROW_UPWARD_SPEED = 20
 
---- How fast a ground item that `placeItem` pushes out of the way starts moving along the ground,
---- in studs a second.
-World.PUSHED_GROUND_ITEM_SPEED = 6
+--- How fast a ground item that `placeItem` pushes out of a tile starts moving away from the tile
+--- along the ground, in studs a second.
+World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED = 6
 
 local RADIANS_BETWEEN_THROWN_STACKS = 2.4
 local NO_VELOCITY: GroundItems.Velocity = table.freeze({ x = 0, y = 0, z = 0 })
@@ -161,14 +161,14 @@ function World.setGroundItemPosition(world: World, groundItemId: number, positio
 	GroundItems.mergeItemIntoNearbyItem(world.groundItems, groundItemId)
 end
 
---- Throws a stack into the world from a character: it spawns `CHARACTER_THROW_HEIGHT` above the
+--- Throws a stack into the world from a character: it spawns `CHARACTER_THROW_START_HEIGHT` above the
 --- character's feet, moving the way the character faces at `CHARACTER_THROW_FORWARD_SPEED` and
 --- upwards at `CHARACTER_THROW_UPWARD_SPEED`.
 --- Note: it does not take the stack from anywhere.
 function World.throwStackFromCharacter(world: World, character: PlayerState.Character, stack: ItemStack)
 	local feet = character.position
 	local facing = character.facing
-	World.spawnStack(world, stack, Position.new(feet.x, feet.y + World.CHARACTER_THROW_HEIGHT, feet.z), {
+	World.spawnStack(world, stack, Position.new(feet.x, feet.y + World.CHARACTER_THROW_START_HEIGHT, feet.z), {
 		x = facing.x * World.CHARACTER_THROW_FORWARD_SPEED,
 		y = World.CHARACTER_THROW_UPWARD_SPEED,
 		z = facing.z * World.CHARACTER_THROW_FORWARD_SPEED,
@@ -278,9 +278,9 @@ local function pushGroundItemOutOfTile(world: World, groundItemId: number, x: nu
 	end
 	local outside = Position.new(position.x + side.x * distance, position.y, position.z + side.z * distance)
 	World.spawnStack(world, stack, outside, {
-		x = side.x * World.PUSHED_GROUND_ITEM_SPEED,
+		x = side.x * World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 		y = 0,
-		z = side.z * World.PUSHED_GROUND_ITEM_SPEED,
+		z = side.z * World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 	})
 end
 
@@ -305,9 +305,12 @@ end
 --- A placed item fills its tile as a cube `Plot.TILE_SIZE` on each side. Every ground item that
 --- reaches more than a tenth of a stud into that cube is pushed out of it: it is spawned again
 --- just outside the nearest side of the tile that has no placed item against it, moving away from
---- the tile along the ground at `PUSHED_GROUND_ITEM_SPEED`. A side at the edge of the plot has
+--- the tile along the ground at `GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED`. A side at the edge of the plot has
 --- nothing against it. If all four sides have a placed item against them, it is spawned again on
 --- top of the cube instead, not moving.
+--- Note: a ground item is pushed straight out through that side, and where it lands is not
+--- checked. One that lay across a corner of the tile can land partly inside a placed item that
+--- stands on the tile diagonally across that corner.
 function World.placeItem(world: World, itemId: string, x: number, z: number): number?
 	if World.isTileStoodOn(world, x, z) then
 		return nil
@@ -353,11 +356,12 @@ local function takeEveryStack(inventory: Inventory): { ItemStack }
 	return stacks
 end
 
---- Throws a placed item into the world, with everything inside it: the item becomes a ground
---- item, and so does each stack in its inventory, which is left holding nothing. Each spawns in
---- the middle of the tile the placed item stood on, moving upwards at
---- `PLACED_ITEM_THROW_UPWARD_SPEED` and outwards at `PLACED_ITEM_THROW_OUTWARD_SPEED`, the item
---- first and each stack a different way from the one before.
+--- Throws a placed item into the world, with everything inside it: the item, and then each stack
+--- in its inventory from the lowest slot up, is spawned as `spawnStack` does, and the inventory is
+--- left holding nothing. Each spawns in the middle of the tile the placed item stood on, moving
+--- upwards at `PLACED_ITEM_THROW_UPWARD_SPEED` and outwards at `PLACED_ITEM_THROW_OUTWARD_SPEED`,
+--- each a different way from the one before. Stacks of the same item that fit in one stack merge
+--- as they spawn, and move the way the first of them was thrown.
 --- Note: it does not take the placed item off the plot. For one that still stands there, the item
 --- exists twice.
 function World.throwPlacedItemAndContents(world: World, placedItem: Plot.PlacedItem)

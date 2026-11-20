@@ -30,8 +30,8 @@ Also built, from the outline they approved: a player picks up what lies up to 7 
 
 ## How it is built
 - **Roblox's physics does all the motion.** We wrote no physics. The user, 2026-11-20: "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
-- **The rules decide how a stack sets off** (`Throw`), and are told where each one has got to (`World.moveGroundItemTo`), as they are told where each character is.
-- **The server alone moves the parts,** and that makes a thrown item draw about a third of a second late on the thrower's own machine. The user felt it the first time they played. Claude had taken ownership for the server as a guard against cheating, which nobody had asked for. Roblox's default hands a part to the nearest player's machine, and starts drawing it moving in about a quarter of the time. The numbers are in `docs/research/16-dropped-items.md`. Whether to go back to the default is the user's to say.
+- **The rules decide where a stack starts and how fast,** and are told where each one has got to (`World.setGroundItemPosition`), as they are told where each character is.
+- **Which machine works out a part's motion is left to Roblox,** which gives a part near a player to that player's machine. Claude had first taken every part for the server, as a guard against cheating that nobody had asked for, and every thrown item drew about a third of a second late. The user felt it the first time they played, and said to go back to the default. The numbers are in `docs/research/16-dropped-items.md`.
 - `docs/code/pieces.md` lists the pieces. `docs/research/16-dropped-items.md` has how Minecraft does each thing and what was measured in Roblox.
 
 ## Ideas not built, for the user to choose
@@ -43,4 +43,4 @@ None is needed now. Each was Claude's idea, set aside when the user asked it to 
 - **Keeping an item's age when it is pushed out of a block.** A pushed item is taken up and thrown again, so its five minutes and its pickup delay start over.
 
 ## The user's to judge by playing
-How far a throw goes, how a spill looks, and whether items should fall more lightly. The numbers are in `src/shared/Throw.luau`, and are Claude's first guesses.
+How far a throw goes, how a knocked-off crate scatters, and whether items should fall more lightly. The numbers are the constants at the top of `src/shared/world/World.luau`, and are Claude's first guesses.

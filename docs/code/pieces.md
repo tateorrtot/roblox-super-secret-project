@@ -14,9 +14,8 @@ The game
     Hotbar            the first slots, and the selected one            built
   Where and which way
     Position, Direction   a point in the world; a way along the ground      built
-    Throw             how a stack sets off: where from, how fast           built
   Players
-    PlayerState       one player: pack, hotbar, screen, where their character is, how their drops set off   built
+    PlayerState       one player: pack, hotbar, the screen they have open, their character   built
   Plots and building
     Plot              a grid of tiles and the items placed on it       built: one shared plot, one item to a tile
     Footprint, a plot of one's own, walls, floors and ceilings         not started
@@ -24,7 +23,7 @@ The game
     RecipeRegistry, RecipeDefinitions, Station                         built: the stove
     StationProgress   a station's fire and work, as times                built
   The world
-    GroundItems       stacks loose in the world: thrown, moved, merged, picked up   built
+    GroundItems       stacks loose in the world: spawned, merged, picked up, expired   built
     World             the game's state and what can be done in it      built
     PlayerSnapshot    what a player's machine is told                  built
   Requests: what a player's machine may ask for
@@ -60,12 +59,31 @@ On the server:
 8. `PlayerSnapshot.encode` makes what the player's machine is told, and the screen redraws from it.
 
 ## How a dropped stack moves
-1. A request such as `dropFromSelectedSlot` takes the stack out of the pack and calls `World.throwStack` with the player's `throw`.
-2. `GroundItems.throwStack` makes a ground item that remembers the throw.
-3. `GroundItemParts.update` makes a part for it, where the throw leaves from and moving as fast.
-4. Roblox's physics moves the part, and shows that to every player. We wrote no physics.
-5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.moveGroundItemTo`. A ground item that comes to lie by its own kind joins it there.
+1. A request such as `dropFromSelectedSlot` takes the stack out of the pack and calls `World.throwStackFromCharacter` with the player's character.
+2. That works out where the stack starts and how fast, and calls `World.spawnStack`, which makes a ground item and merges it into its own kind if one is beside it.
+3. `GroundItemParts.update` makes a part for it, at its position and moving at the velocity it was spawned with.
+4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks which machine works the motion out.
+5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`. A ground item that has come beside its own kind merges into it there.
 
-`World.placeItem` is the one rule about motion that is ours: it takes each ground item lying where the placed item now stands and throws it again from just outside the nearest free side.
+`World.placeItem` is the one rule about motion that is ours: it takes each ground item lying where the placed item now stands and spawns it again just outside the nearest free side.
+
+## What knows what
+`lune run tools/requires` prints this from the code, and `python tools/delete_directory_test.py` tests it by deleting.
+
+```
+client, server                 the Roblox side: wiring, drawing, input
+      |
+   requests                    what a player's machine may ask for
+      |
+    world                      where the pieces meet
+   /  |  \
+players  plots  stations       know nothing of one another
+   \  |  /
+  inventory
+      |
+    items
+```
+
+`World` is the only piece of the rules that knows `players`, `plots` and `stations` together. It also holds rules of its own that could live in smaller pieces: the push out of a tile, reach, and what a placed item does over time. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list.
 
 Nothing on the server knows that a mouse exists. Nothing is applied on the player's machine before the server answers (`docs/status/next.md`).

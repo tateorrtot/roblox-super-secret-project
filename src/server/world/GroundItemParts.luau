@@ -8,8 +8,9 @@
 --- that it is an ordinary unanchored part: Roblox's physics makes it fall, land and come to rest,
 --- and shows its motion to every player. Which machine works its motion out is left to Roblox,
 --- which gives a part near a player to that player's machine. A block passes through the other
---- blocks and through characters, and collides with everything else. A pointer passes through it too, to whatever is behind. `getMovedPositions` says where
---- the blocks have got to. The blocks are placeholders until items have models.
+--- blocks and through characters, and collides with everything else. A pointer passes through it
+--- too, to whatever is behind. `getMovedPositions` says where the blocks have got to. The blocks
+--- are placeholders until items have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")

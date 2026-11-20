@@ -266,7 +266,7 @@ do -- a player's character
 	)
 	local fish = groundStacks(full, "fish")
 	check(
-		#fish == 1 and is(fish[1].stack, "fish", 5) and isAt(fish[1], 6, World.CHARACTER_THROW_HEIGHT, 0),
+		#fish == 1 and is(fish[1].stack, "fish", 5) and isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0),
 		"setCharacter: and what they carried is thrown from where the character was"
 	)
 end
@@ -300,7 +300,7 @@ do -- throwing a stack from a character
 	local apples = groundStacks(world, "apple")
 	check(#apples == 1 and is(apples[1].stack, "apple", 3), "throwStackFromCharacter: the stack is a ground item")
 	check(
-		isAt(apples[1], 60, 2 + World.CHARACTER_THROW_HEIGHT, 60),
+		isAt(apples[1], 60, 2 + World.CHARACTER_THROW_START_HEIGHT, 60),
 		"throwStackFromCharacter: it spawns above the character's feet"
 	)
 	check(
@@ -327,7 +327,7 @@ do -- throwing a stack from a character
 		"throwStackFromCharacter: a stack thrown from where its own kind still is merges into it"
 	)
 	check(
-		World.CHARACTER_THROW_HEIGHT == 3
+		World.CHARACTER_THROW_START_HEIGHT == 3
 			and World.CHARACTER_THROW_FORWARD_SPEED == 24
 			and World.CHARACTER_THROW_UPWARD_SPEED == 8,
 		"a character throws from 3 studs above its feet, at 24 studs a second forwards and 8 upwards"
@@ -401,7 +401,7 @@ do -- closing a player's screen
 		"closeScreen: what the pack has no room for is loose in the world"
 	)
 	check(
-		isAt(fish[1], 6, World.CHARACTER_THROW_HEIGHT, 0)
+		isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0)
 			and wasSpawnedMovingAt(fish[1], World.CHARACTER_THROW_FORWARD_SPEED, World.CHARACTER_THROW_UPWARD_SPEED, 0),
 		"closeScreen: thrown from the player's character, the way it faces"
 	)
@@ -634,7 +634,7 @@ do -- placing an item where ground items lie
 		"placeItem: from just outside the nearest side of the tile, no higher and no further along that side"
 	)
 	check(
-		apples[1].spawnVelocity.x == -World.PUSHED_GROUND_ITEM_SPEED
+		apples[1].spawnVelocity.x == -World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED
 			and apples[1].spawnVelocity.y == 0
 			and apples[1].spawnVelocity.z == 0,
 		"placeItem: along the ground and away from the tile"
@@ -653,7 +653,7 @@ do -- placing an item where ground items lie
 	World.placeItem(blocked, "crate", 3, 3)
 	local pushed = groundStacks(blocked, "apple")[1]
 	check(
-		isAt(pushed, 9, 0, 10 + touching) and pushed.spawnVelocity.z == World.PUSHED_GROUND_ITEM_SPEED,
+		isAt(pushed, 9, 0, 10 + touching) and pushed.spawnVelocity.z == World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 		"placeItem: a side with a placed item against it is not used, and the next nearest is"
 	)
 
@@ -666,22 +666,22 @@ do -- placing an item where ground items lie
 	World.placeItem(sides, "crate", 3, 3)
 	check(
 		isAt(groundStacks(sides, "apple")[1], 10 + touching, 0, 10)
-			and groundStacks(sides, "apple")[1].spawnVelocity.x == World.PUSHED_GROUND_ITEM_SPEED,
+			and groundStacks(sides, "apple")[1].spawnVelocity.x == World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 		"placeItem: a ground item nearest the side of greater x is pushed out of that side"
 	)
 	check(
 		isAt(groundStacks(sides, "fish")[1], 10 - touching, 0, 10)
-			and groundStacks(sides, "fish")[1].spawnVelocity.x == -World.PUSHED_GROUND_ITEM_SPEED,
+			and groundStacks(sides, "fish")[1].spawnVelocity.x == -World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 		"placeItem: one nearest the side of lesser x, out of that side"
 	)
 	check(
 		isAt(groundStacks(sides, "post")[1], 10, 0, 10 + touching)
-			and groundStacks(sides, "post")[1].spawnVelocity.z == World.PUSHED_GROUND_ITEM_SPEED,
+			and groundStacks(sides, "post")[1].spawnVelocity.z == World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 		"placeItem: one nearest the side of greater z, out of that side"
 	)
 	check(
 		isAt(groundStacks(sides, "stove")[1], 10, 0, 10 - touching)
-			and groundStacks(sides, "stove")[1].spawnVelocity.z == -World.PUSHED_GROUND_ITEM_SPEED,
+			and groundStacks(sides, "stove")[1].spawnVelocity.z == -World.GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED,
 		"placeItem: one nearest the side of lesser z, out of that side"
 	)
 
@@ -849,7 +849,7 @@ do -- taking a placed item off
 	)
 	check(
 		Plot.canPlaceItem(world.plot, "stove", 2, 2) and World.placeItem(world, "stove", 2, 2) ~= nil,
-		"throwPlacedItemAndContents: and the tile holds nothing, so another item can be placed there"
+		"takePlacedItemOffPlot: the tile holds nothing, so another item can be placed there"
 	)
 
 	-- Each stack from inside is thrown a way of its own.
@@ -878,6 +878,18 @@ do -- taking a placed item off
 		onGround(ringWorld, "fish") == 2 and onGround(ringWorld, "apple") == 3 and onGround(ringWorld, "log") == 4,
 		"throwPlacedItemAndContents: and each is whole"
 	)
+	local function idOf(itemId: string): number
+		for id, groundItem in ringWorld.groundItems.itemsById do
+			if groundItem.stack.itemId == itemId then
+				return id
+			end
+		end
+		return 0
+	end
+	check(
+		idOf("crate") == 1 and idOf("fish") == 2 and idOf("apple") == 3 and idOf("log") == 4,
+		"throwPlacedItemAndContents: the item is spawned first, then each stack from the lowest slot up"
+	)
 
 	-- Two part stacks of one kind that were inside come out as one.
 	local parts = Plot.new(3, 3)
@@ -905,12 +917,9 @@ do -- taking a placed item off
 	knockOff(world, ids.stove)
 	check(
 		groundItemCount(world) == groundBefore,
-		"throwPlacedItemAndContents: does nothing for an id that no placed item has"
+		"takePlacedItemOffPlot: changes nothing for an id that no placed item has"
 	)
-	check(
-		world.plot.placedItemsById[ids.oven] ~= nil,
-		"throwPlacedItemAndContents: and takes nothing else off the plot"
-	)
+	check(world.plot.placedItemsById[ids.oven] ~= nil, "takePlacedItemOffPlot: and takes nothing else off the plot")
 
 	-- A player's screen open on something else is left alone.
 	local keep, keepState, keepIds = newWorld()
@@ -918,7 +927,33 @@ do -- taking a placed item off
 	knockOff(keep, keepIds.oven)
 	check(
 		keepState.screen ~= nil and keepState.openedPlacedItemId == keepIds.crate,
-		"throwPlacedItemAndContents: a screen open on another placed item stays open"
+		"takePlacedItemOffPlot: a screen open on another placed item stays open"
+	)
+end
+
+do -- taking a placed item off the plot, and throwing one, each by itself
+	local world, _, ids = newWorld()
+	local taken = World.takePlacedItemOffPlot(world, ids.crate)
+	check(
+		taken ~= nil and taken.itemId == "crate" and taken.x == 2 and taken.z == 2,
+		"takePlacedItemOffPlot: returns the placed item"
+	)
+	local inside = if taken then taken.inventory else nil
+	check(
+		inside ~= nil and Inventory.countItems(inside, "fish") == 5,
+		"takePlacedItemOffPlot: with what was inside it still inside it"
+	)
+	check(groundItemCount(world) == 0, "takePlacedItemOffPlot: nothing is thrown into the world")
+	check(
+		World.takePlacedItemOffPlot(world, ids.crate) == nil and World.takePlacedItemOffPlot(world, 999) == nil,
+		"takePlacedItemOffPlot: returns nil for an id that no placed item has"
+	)
+
+	local standing = world.plot.placedItemsById[ids.stove]
+	World.throwPlacedItemAndContents(world, standing)
+	check(
+		#groundStacks(world, "stove") == 1 and world.plot.placedItemsById[ids.stove] == standing,
+		"throwPlacedItemAndContents: does not take the placed item off the plot, so one that still stands there exists twice"
 	)
 end
 
@@ -929,19 +964,16 @@ do -- an oven taken off the plot
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
 	Inventory.setStack(state.pack, 1, nil)
 	World.advanceTo(world, 104)
-	check(world.stations[ids.oven] ~= nil, "throwPlacedItemAndContents: (set up) the oven is a station with a fire lit")
-	check(Station.isBurning(world.stations[ids.oven]), "throwPlacedItemAndContents: (set up) and burning")
+	check(world.stations[ids.oven] ~= nil, "takePlacedItemOffPlot: (set up) the oven is a station with a fire lit")
+	check(Station.isBurning(world.stations[ids.oven]), "takePlacedItemOffPlot: (set up) and burning")
 	knockOff(world, ids.oven)
-	check(world.stations[ids.oven] == nil, "throwPlacedItemAndContents: its station goes with it, and its fire is out")
+	check(world.stations[ids.oven] == nil, "takePlacedItemOffPlot: its station goes with it, and its fire is out")
 	check(
 		#groundStacks(world, "oven") == 1 and onGround(world, "fish") == 3 and onGround(world, "log") == 3,
 		"throwPlacedItemAndContents: what was in it lies on the ground, and the log that was burning is gone"
 	)
 	World.advanceTo(world, 200)
-	check(
-		onGround(world, "cooked_fish") == 0,
-		"throwPlacedItemAndContents: nothing more is cooked once it is off the plot"
-	)
+	check(onGround(world, "cooked_fish") == 0, "takePlacedItemOffPlot: nothing more is cooked once it is off the plot")
 end
 
 do -- time passing: picking up
@@ -1047,7 +1079,7 @@ do -- time passing: screens close
 	check(
 		fullState.screen == nil
 			and #fish == 1
-			and isAt(fish[1], 6, World.CHARACTER_THROW_HEIGHT, 200)
+			and isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 200)
 			and wasSpawnedMovingAt(fish[1], 0, World.CHARACTER_THROW_UPWARD_SPEED, World.CHARACTER_THROW_FORWARD_SPEED),
 		"advanceTo: a screen closed for being out of reach throws what is left of the carried stack into the world"
 	)
@@ -1151,7 +1183,7 @@ do -- a player leaves
 		"removePlayer: a carried stack the pack has no room for is thrown into the world"
 	)
 	check(
-		isAt(fish[1], 6, World.CHARACTER_THROW_HEIGHT, 0)
+		isAt(fish[1], 6, World.CHARACTER_THROW_START_HEIGHT, 0)
 			and wasSpawnedMovingAt(fish[1], World.CHARACTER_THROW_FORWARD_SPEED, World.CHARACTER_THROW_UPWARD_SPEED, 0),
 		"removePlayer: from their character, the way it faces"
 	)

@@ -2,6 +2,7 @@
 -- Tests for PlotRequests. Run from the repository root: lune run tests/requests/PlotRequests.test.luau
 
 local Check = require("../Check")
+local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
@@ -96,7 +97,7 @@ end
 
 do -- placeSelectedItem
 	local world, state = newWorld()
-	state.hotbar.selectedSlot = 2
+	Hotbar.selectSlot(state.hotbar, 2)
 	send("placeSelectedItem", world, state, 1, 1)
 	local placedItemId = world.plot.nextId - 1
 	local placed = world.plot.placedItemsById[placedItemId]
@@ -111,7 +112,7 @@ do -- placeSelectedItem
 		"placeSelectedItem: a crate placed has an inventory that holds nothing"
 	)
 
-	state.hotbar.selectedSlot = 3
+	Hotbar.selectSlot(state.hotbar, 3)
 	send("placeSelectedItem", world, state, 1, 1)
 	check(is(Inventory.getStack(state.pack, 3), "oven", 1), "placeSelectedItem: not on a tile that something stands on")
 	send("placeSelectedItem", world, state, 2, 1)
@@ -128,27 +129,27 @@ do -- placeSelectedItem
 		"placeSelectedItem: not on a tile that is not on the plot, or with nonsense"
 	)
 
-	state.hotbar.selectedSlot = 1
+	Hotbar.selectSlot(state.hotbar, 1)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(
 		is(Inventory.getStack(state.pack, 1), "log", 12) and world.plot.nextId == placedItemId + 1,
 		"placeSelectedItem: not an item that cannot be placed"
 	)
-	state.hotbar.selectedSlot = 9
+	Hotbar.selectSlot(state.hotbar, 9)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(world.plot.nextId == placedItemId + 1, "placeSelectedItem: not with an empty hand")
 
-	state.hotbar.selectedSlot = 3
-	state.screen = InventoryScreen.new(state.pack)
+	Hotbar.selectSlot(state.hotbar, 3)
+	PlayerState.openPackScreen(state)
 	send("placeSelectedItem", world, state, 3, 1)
 	check(
 		is(Inventory.getStack(state.pack, 3), "oven", 1) and world.plot.nextId == placedItemId + 1,
 		"placeSelectedItem: not while the inventory screen is open"
 	)
-	state.screen = nil
+	PlayerState.closeScreen(state)
 
 	Inventory.setStack(state.pack, 5, ItemStack.new("post", 3))
-	state.hotbar.selectedSlot = 5
+	Hotbar.selectSlot(state.hotbar, 5)
 	send("placeSelectedItem", world, state, 4, 1)
 	check(is(Inventory.getStack(state.pack, 5), "post", 2), "placeSelectedItem: only one of a stack in hand is placed")
 	check(inWorld(world, "post") == 4, "placeSelectedItem: and the rest of the stack is still in hand")
@@ -159,7 +160,7 @@ do -- placeSelectedItem
 	)
 
 	-- The middle of tile 6, 1 is at 22, 2. Standing at 6, 2 it is exactly 16 studs away.
-	state.hotbar.selectedSlot = 3
+	Hotbar.selectSlot(state.hotbar, 3)
 	World.setCharacter(world, 1, { position = at(6, 0, 2), facing = ALONG_X })
 	send("placeSelectedItem", world, state, 6, 1)
 	check(Inventory.getStack(state.pack, 3) == nil, "placeSelectedItem: a tile exactly at reach can be placed on")
@@ -173,7 +174,7 @@ end
 
 do -- reach, and standing on a tile
 	local world, state = newWorld()
-	state.hotbar.selectedSlot = 3
+	Hotbar.selectSlot(state.hotbar, 3)
 	World.setCharacter(world, 1, { position = at(5.99, 0, 2), facing = ALONG_X })
 	send("placeSelectedItem", world, state, 6, 1)
 	check(is(Inventory.getStack(state.pack, 3), "oven", 1), "placeSelectedItem: not a tile just beyond reach")
@@ -194,7 +195,7 @@ do -- reach, and standing on a tile
 		"placeSelectedItem: on the tile once that player has stepped off it"
 	)
 	World.setCharacter(world, 2, nil)
-	state.hotbar.selectedSlot = 2
+	Hotbar.selectSlot(state.hotbar, 2)
 	send("placeSelectedItem", world, state, 4, 1)
 	check(Inventory.getStack(state.pack, 2) == nil, "placeSelectedItem: a player with no character stands on no tile")
 end
@@ -441,9 +442,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				end
 			end
 			-- Players change what is in hand, and open a screen, as other requests would.
-			player.hotbar.selectedSlot = random(9)
-			if random(10) == 1 and player.screen == nil then
-				player.screen = InventoryScreen.new(player.pack)
+			Hotbar.selectSlot(player.hotbar, random(9))
+			if random(10) == 1 then
+				PlayerState.openPackScreen(player)
 			end
 			local name = names[random(#names)]
 			local ok, result = pcall(send, name, world, player, argument(), argument(), argument())

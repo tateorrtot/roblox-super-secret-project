@@ -2,11 +2,13 @@
 -- Tests for PlayerSnapshot. Run from the repository root: lune run tests/world/PlayerSnapshot.test.luau
 
 local Check = require("../Check")
+local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local PlayerSnapshot = require("../../src/shared/world/PlayerSnapshot")
+local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
@@ -108,6 +110,16 @@ do -- no screen open
 	)
 	check(sameInventory(view.pack, world.players[1].pack), "decode: the pack is what the player holds")
 	check(view.pack ~= world.players[1].pack, "decode: but is a copy of it")
+	check(
+		encoded.selectedHotbarSlot == 1 and view.selectedHotbarSlot == 1,
+		"encode, decode: the selected hotbar slot is in the view, slot 1 for a new player"
+	)
+	Hotbar.selectSlot(world.players[1].hotbar, 4)
+	local reselected = PlayerSnapshot.encode(world, 1)
+	check(
+		reselected.selectedHotbarSlot == 4 and PlayerSnapshot.decode(reselected).selectedHotbarSlot == 4,
+		"encode, decode: and follows the slot the player's hotbar has selected"
+	)
 
 	local state = world.players[1]
 	Inventory.setStack(state.pack, 1, nil)
@@ -117,7 +129,7 @@ end
 do -- the pack open alone
 	local world = newWorld()
 	local state = world.players[1]
-	state.screen = InventoryScreen.new(state.pack)
+	PlayerState.openPackScreen(state)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(encoded.screen ~= nil, "encode: a player with the pack open has a screen in their view")
 	local screen = encoded.screen
@@ -143,14 +155,19 @@ do -- the pack open alone
 		"decode: and no placed item and no progress"
 	)
 	check(sameInventory(view.pack, state.pack), "decode: the pack is what the player holds")
+	Hotbar.selectSlot(state.hotbar, 6)
+	local reselected = PlayerSnapshot.encode(world, 1)
+	check(
+		reselected.selectedHotbarSlot == 6 and PlayerSnapshot.decode(reselected).selectedHotbarSlot == 6,
+		"encode, decode: the selected hotbar slot is in the view while a screen is open too"
+	)
 end
 
 do -- the pack open alone, with a stack carried
 	local world = newWorld()
 	local state = world.players[1]
-	local screen = InventoryScreen.new(state.pack)
-	state.screen = screen
-	InventoryScreen.pickUpFromSlot(screen, "pack", 7, 3)
+	PlayerState.openPackScreen(state)
+	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "pack", 7, 3)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local encodedScreen = encoded.screen
 	check(

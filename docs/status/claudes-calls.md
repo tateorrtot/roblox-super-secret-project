@@ -3,7 +3,7 @@
 Decisions Claude made without asking. Each stands until the user says otherwise.
 
 - **Names chosen on 2026-11-20, which the user has not confirmed:** the files `InventoryScreen` (two readers shown only the name expected a drawn window; the alternative offered was `OpenInventories`), `SlotGestures`, `InventoryControls`, `PlayerSnapshot`, `Requests` and `UseAndHit`, and every function name changed after their third review. The words those names are built from are Claude's too: `carriedStack` for the stack being moved between slots, `side` for which of the two open inventories, `placedItem` for a thing standing on a plot.
-- **`usePlacedItem` and `hitPlacedItem` keep the game's two verbs, Use and Hit.** What each does depends on the item, by design. An auditor and two readers wanted names that say what happens; those are the names of what `World` does, `openPlacedItem` and `removePlacedItem`.
+- **`usePlacedItem` and `hitPlacedItem` keep the game's two verbs, Use and Hit.** What each does depends on the item, by design. An auditor and two readers wanted names that say what happens; those are the names of what `World` does: `openPlacedItemScreen`, and `takePlacedItemOffPlot` with `throwPlacedItemAndContents`.
 - **Things have plain fields** (see "Data" in `docs/code/conventions.md`).
 - **A mistake in our own code is no longer refused with a named error at every layer.** The guards that remain are listed under "Failure" in `docs/code/conventions.md`.
 - **`Inventory.countItems` and `Inventory.isEmpty` have no caller in the game** and are kept because the tests measure with them. `SaveData` has no caller until saving is built.
@@ -14,10 +14,13 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
 - Pack 36 slots, hotbar 9: Minecraft's numbers.
 - Ground items: the three numbers above, joining on drop, and that a player keeps their pack when their character dies.
 - **Dropped items, 2026-11-20.** The user approved the outline; these details are Claude's.
-  - Every number in `src/shared/Throw.luau`: a character throws from 3 studs above its feet at 24 studs a second forwards and 8 upwards, which lands about 7 studs ahead; a spill leaves at 6 outwards and 20 upwards; a push at 6.
-  - A ground item takes up a cube 1.2 studs on a side, whatever its count. Pickup reaches 4 studs along the ground, 7 above the feet and 2 below.
-  - A player's state holds a `Throw`, how their drops set off, where it held a drop position. `World.setPlayerPosition` takes the way the character faces, and a reader with no context said the name no longer covers what it does. `Throw` is also the name for a spill and a push, which are not throws in the everyday sense.
-  - A ground item is set moving once, when it is made. To push one out of a placed item the world takes its stack and throws it again, so it gets a new id and its five minutes and pickup delay start over.
+  - The six speeds and heights at the top of `src/shared/world/World.luau`: a character throws from 3 studs above its feet at 24 studs a second forwards and 8 upwards, which lands about 7 studs ahead; a placed item knocked off the plot and what was in it leave at 6 outwards and 20 upwards; a pushed ground item at 6.
+  - A ground item takes up a cube 1.2 studs wide, whatever its count. Pickup reaches 4 studs along the ground, 7 up from the feet and 2 down.
+  - A player with no character has no screen open and can drop nothing. Losing the character closes the screen, and what was carried is thrown from where the character was.
+  - A ground item is set moving once, when it is spawned. To push one out of a placed item the world removes it and spawns its stack again, so it gets a new id and its five minutes and pickup delay start over.
+  - Which machine works out a ground item's motion is left to Roblox. A cheating machine can move a part it owns, so this needs another look when plots have owners and walls.
+  - The names `spawnStack`, `setItemPosition`, `mergeItemIntoNearbyItem`, `throwStackFromCharacter`, `takePlacedItemOffPlot`, `throwPlacedItemAndContents`, `setCharacter`, `openPackScreen`, `openPlacedItemScreen`, `CHARACTER_THROW_START_HEIGHT` and `GROUND_ITEM_PUSHED_OUT_OF_TILE_SPEED`, chosen with readers shown names alone. Two readers of `World` could not tell whether `setCharacter` gives a player a character or says where it is. The user has not read them.
+  - The selected hotbar slot is kept by the server alone, and the player's machine shows what the server last said. The cost is under "Known problems" in `now.md`.
   - A moving stack joins the one it comes near, whichever is bigger. Minecraft has the bigger absorb the smaller.
   - A broken crate's two part stacks of one kind come out as one stack.
   - Items fall on Roblox's own gravity and tumble as any part does.

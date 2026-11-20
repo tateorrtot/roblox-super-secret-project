@@ -49,5 +49,16 @@ Named by more than one reviewer: `Throw`, `Direction`, `Position`, `Plot`, `Grou
 | A second plot, owned by a player | Many pieces | See above |
 | Saving the plot | Many pieces, mostly unbuilt | An encoder for `Plot`, and stations' fires, which live outside the plot |
 
-## Not done
-Nothing was fixed. The user asked for the review before anything else was touched. What they chose is in `docs/status/now.md`.
+## Done since
+The user approved faults 1 to 4 the same day, and they were fixed on the branch `dropped-items`.
+
+| # | What it became |
+|---|---|
+| 1 | A player's state holds a `character`: its `position` and its `facing`. `World.setCharacter` records it, and `World.throwStackFromCharacter` works the throw out when a stack is dropped. The class `Throw` is gone. A player with no character has no screen open |
+| 2 | `World.takePlacedItemOffPlot` closes the screens open on a placed item, ends its station and returns it with its contents inside. `World.throwPlacedItemAndContents` throws one into the world. A hit calls both. Neither knows a stove from a crate |
+| 3 | `PlayerState.openPackScreen`, `openPlacedItemScreen`, `closeScreen` and `setCharacter` are the only code that assigns a player's fields. `InventoryScreen.new` takes the carried stack |
+| 4 | The server alone keeps the selected hotbar slot, and each snapshot carries it. The cost: the highlight moves when the server's answer arrives |
+
+Fault 10 is mostly gone with 1: the throw no longer depends on the order of calls. Faults 5 to 9, and the two that wait for a feature, are not done.
+
+A review of the fixes found that `World.spawnStack` and `World.setGroundItemPosition`, both written for fix 1, also merge ground items, which their names do not say. That is with the user (`docs/status/asked-of-the-user.md`).

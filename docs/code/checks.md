@@ -10,7 +10,9 @@ How the code is checked. Every command runs from the top of the repository.
 | `python tools/mutate.py <module> <tests...>` | Mutation testing: makes small deliberate bugs in one module and counts how many its tests catch |
 | `python tools/metrics.py --functions` | For every file in `src`: how much is comment, its longest function and its deepest nesting |
 | `python tools/unused.py` | The public functions nothing in the game calls |
-| `python tools/outline.py` | Every public function and constant. `--names` gives bare names, and `--sheet` the sheet for a names test |
+| `python tools/outline.py` | Every public function and constant, with `--names` for bare names |
+| `python tools/bare_names.py <Module>` | One class as a names test shows it: its name and its members' names, and nothing else |
+| `python tools/delete_directory_test.py` | Deletes each directory of the rules in a scratch copy, and lists what else stops working |
 | `python tools/faces.py <out.txt> <modules...>` | The public face of modules: comments, types and signatures, with no bodies |
 | `lune run tools/requires` | What requires what in `src`, read from the code |
 | `python tools/members.py` | That every member and message the server's and client's scripts use exists |
