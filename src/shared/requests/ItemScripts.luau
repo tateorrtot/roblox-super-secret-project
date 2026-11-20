@@ -2,10 +2,9 @@
 --- The script of each item: what happens when a player acts on the world while that item is in
 --- their selected hotbar slot.
 ---
---- A script is a table of functions. It is registered once, when the game starts, under the id
---- of its item, with `register`. `PlotRequests` asks `find` for the script of the item in a
---- player's selected hotbar slot, and calls the function for what the player did. Nothing happens
---- for an item that has no script, or whose script lacks that function.
+--- A script is a table of functions, one for each thing a player can do that the item answers.
+--- It is registered once, when the game starts, under the id of its item, with `register`, and
+--- `find` returns it. An item need not have a script, and a script need not have every function.
 local ItemRegistry = require("../items/ItemRegistry")
 local PlayerState = require("../players/PlayerState")
 local World = require("../world/World")

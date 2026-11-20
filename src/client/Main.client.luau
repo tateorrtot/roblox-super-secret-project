@@ -6,7 +6,8 @@
 ---
 --- The world: the player interacts with what the pointer is over, and breaks it. Those two are
 --- Roblox's input actions `Interact` and `Break`, under ReplicatedStorage.Inputs.World, and which
---- button each is bound to is written there and not here. A tap on a touch screen interacts.
+--- button each is bound to is written there and not here. A tap on a touch screen interacts. Where
+--- the pointer is comes from UserInputService.
 ---
 --- Keys: E opens the pack or closes the inventory screen, 1 to 9 select a hotbar slot, and Q drops
 --- one of what is in hand, or all of it with the left Ctrl key held. With the inventory screen
@@ -63,7 +64,6 @@ local remotes = Remotes.waitForAll()
 local worldInputs = ReplicatedStorage:WaitForChild("Inputs"):WaitForChild("World")
 local interactAction = worldInputs:WaitForChild("Interact") :: InputAction
 local breakAction = worldInputs:WaitForChild("Break") :: InputAction
-local pointerPositionAction = worldInputs:WaitForChild("PointerPosition") :: InputAction
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 --- What the server last said the player holds.
@@ -260,14 +260,6 @@ local function getWorldTargetAt(viewportPoint: Vector2): PlotPointer.Target?
 	return if snapshot.screen == nil then PlotPointer.getTargetAt(viewportPoint) else nil
 end
 
---- Where the pointer is on the screen, in pixels from the top left of the whole window, as
---- Roblox's input action `PointerPosition` has it.
---- Note: what that action holds on a machine with no mouse has not been tried. While its context
---- was disabled it held -1, -1, which is off the screen.
-local function getPointerPosition(): Vector2
-	return pointerPositionAction:GetState() :: Vector2
-end
-
 local function interactAt(viewportPoint: Vector2)
 	local target = getWorldTargetAt(viewportPoint)
 	if target ~= nil and target.kind == "placedObject" then
@@ -285,11 +277,11 @@ local function breakAt(viewportPoint: Vector2)
 end
 
 interactAction.Pressed:Connect(function()
-	interactAt(getPointerPosition())
+	interactAt(UserInputService:GetMouseLocation())
 end)
 
 BreakClick.connect(breakAction, function()
-	breakAt(getPointerPosition())
+	breakAt(UserInputService:GetMouseLocation())
 end)
 
 -- Note: Roblox's input actions have no tap, so a tap is still read from UserInputService. A tap's
@@ -301,8 +293,10 @@ UserInputService.TouchTapInWorld:Connect(function(position: Vector2, handledElse
 	end
 end)
 
+-- A machine with no mouse has no pointer to mark the place of.
 RunService.RenderStepped:Connect(function()
-	local target = getWorldTargetAt(getPointerPosition())
+	local hasPointer = UserInputService.MouseEnabled
+	local target = if hasPointer then getWorldTargetAt(UserInputService:GetMouseLocation()) else nil
 	local reached = if target ~= nil and LocalCharacter.canReachPoint(target.center) then target else nil
 	pointerOutline.Adornee = if reached ~= nil and reached.kind == "placedObject" then reached.part else nil
 	updateSelectedItemPiece(target)

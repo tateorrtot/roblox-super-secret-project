@@ -95,12 +95,18 @@ do -- place
 		"place: each crate has an id and an inventory of its own"
 	)
 
-	check(Check.errorFrom(function()
-		Crate.place(world, 2, 3)
-	end) ~= nil, "place: fails on a tile that is taken")
-	check(Check.errorFrom(function()
-		Crate.place(world, 5, 1)
-	end) ~= nil, "place: fails on a tile the plot does not have")
+	check(
+		string.find(Check.errorFrom(function()
+			Crate.place(world, 2, 3)
+		end) or "", "nothing can be placed on the tile 2, 3", 1, true) ~= nil,
+		"place: fails on a tile that is taken, saying so"
+	)
+	check(
+		string.find(Check.errorFrom(function()
+			Crate.place(world, 5, 1)
+		end) or "", "nothing can be placed on the tile 5, 1", 1, true) ~= nil,
+		"place: fails on a tile the plot does not have, saying so"
+	)
 	check(placedCount(world) == 2 and world.plot.nextId == second + 1, "place: a placing that fails places nothing")
 	check(
 		world.placedObjectInventories[second + 1] == nil,
@@ -132,12 +138,18 @@ do -- interact
 		"interact: and what was carried on the old screen is in the player's pack"
 	)
 
-	World.setCharacterPosition(world, 1, at(500, 0, 500))
+	-- The middle of the crate's tile is at 6, 6. Standing at 6, 22 it is exactly 16 studs away.
+	World.closeScreen(world, player)
+	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
+	Crate.interact(world, player, crateId)
+	check(player.screen == nil, "interact: nothing happens for a player who stands just beyond reach")
+	World.setCharacterPosition(world, 1, at(6, 0, 22))
 	Crate.interact(world, player, crateId)
 	check(
 		World.getOpenedPlacedObjectId(world, player) == crateId,
-		"interact: it does not ask how far from the crate the player stands"
+		"interact: the screen opens for a player who stands exactly at reach"
 	)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 
 	local otherCrateId = Crate.place(world, 3, 3)
 	Crate.interact(world, player, otherCrateId)
@@ -150,7 +162,7 @@ do -- interact
 	local second = World.addPlayer(world, 2)
 	check(Check.errorFrom(function()
 		Crate.interact(world, second, crateId)
-	end) ~= nil and second.screen == nil, "interact: fails for a player with no character")
+	end) == nil and second.screen == nil, "interact: nothing happens for a player with no character")
 	World.setCharacterPosition(world, 2, at(6, 0, 0))
 	Crate.interact(world, second, otherCrateId)
 	check(
@@ -170,8 +182,24 @@ do -- breakPlacedObject
 	Crate.interact(world, watcher, crateId)
 	InventoryScreen.pickUpFromSlot(watcher.screen :: InventoryScreen.InventoryScreen, "other", 3, 2)
 
+	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
 	Crate.breakPlacedObject(world, breaker, crateId)
-	check(world.plot.placedObjectsById[crateId] == nil, "breakPlacedObject: the crate is off the plot")
+	World.removeCharacter(world, 1)
+	Crate.breakPlacedObject(world, breaker, crateId)
+	check(
+		world.plot.placedObjectsById[crateId] ~= nil
+			and groundItemCount(world) == 0
+			and Inventory.countItems(inventory, "fish") == 3
+			and watcher.screen ~= nil,
+		"breakPlacedObject: nothing happens for a player just beyond reach, or with no character"
+	)
+	World.setCharacterPosition(world, 1, at(6, 0, 22))
+
+	Crate.breakPlacedObject(world, breaker, crateId)
+	check(
+		world.plot.placedObjectsById[crateId] == nil,
+		"breakPlacedObject: the crate is off the plot, broken from exactly at reach"
+	)
 	check(Plot.canPlaceObject(world.plot, 2, 2), "breakPlacedObject: and its tile holds nothing")
 	check(
 		world.placedObjectInventories[crateId] == nil and Inventory.isEmpty(inventory),
@@ -227,12 +255,36 @@ do -- breakPlacedObject
 	)
 
 	local emptyCrateId = Crate.place(world, 4, 4)
+	World.setCharacterPosition(world, 1, at(14, 0, 6))
 	Crate.breakPlacedObject(world, breaker, emptyCrateId)
 	check(
 		groundItemCount(world) == 4 and is(ground[4].stack, Crate.ITEM_ID_WHEN_BROKEN, 1),
 		"breakPlacedObject: a crate that holds nothing leaves one of the item ITEM_ID_WHEN_BROKEN and no more"
 	)
 	check(placedCount(world) == 0, "breakPlacedObject: and no crate is left standing")
+end
+
+do -- a placed object of the crate's kind that `place` did not place
+	local world, player = newWorld()
+	local bareId = Plot.placeObject(world.plot, Crate.PLACED_OBJECT_KIND_ID, 1, 1)
+	local message = "the placed object " .. bareId .. " is not a crate that Crate.place placed"
+	check(
+		Check.raises(message, function()
+			Crate.interact(world, player, bareId)
+		end),
+		"interact: fails for a placed object of the crate's kind that place did not place"
+	)
+	check(player.screen == nil, "interact: and opens no screen for it")
+	check(
+		Check.raises(message, function()
+			Crate.breakPlacedObject(world, player, bareId)
+		end),
+		"breakPlacedObject: fails for a placed object of the crate's kind that place did not place"
+	)
+	check(
+		world.plot.placedObjectsById[bareId] ~= nil and groundItemCount(world) == 0,
+		"breakPlacedObject: and leaves it standing, with nothing thrown"
+	)
 end
 
 Check.finish("Crate")

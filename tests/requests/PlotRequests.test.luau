@@ -40,14 +40,11 @@ local function takeCalls(): { Call }
 end
 
 -- A function for an item's script, which records each call under `name`. A call is allowed if the
--- plot has the tile, the player has no screen open, and `itemId` is in their selected hotbar slot.
+-- plot has the tile and `itemId` is in the player's selected hotbar slot.
 local function recordTileCall(name: string, itemId: string)
 	return function(world: World.World, player: PlayerState.PlayerState, tileX: number, tileZ: number)
 		local selected = Hotbar.getSelectedStack(player.hotbar)
-		local allowed = Plot.hasTile(world.plot, tileX, tileZ)
-			and player.screen == nil
-			and selected ~= nil
-			and selected.itemId == itemId
+		local allowed = Plot.hasTile(world.plot, tileX, tileZ) and selected ~= nil and selected.itemId == itemId
 		table.insert(calls, {
 			name = name,
 			world = world,
@@ -60,13 +57,11 @@ local function recordTileCall(name: string, itemId: string)
 end
 
 -- A function for a placed object's script, which records each call under `name`. A call is allowed
--- if a placed object of the kind `kindId` has the id, and the player's character reaches its tile.
+-- if a placed object of the kind `kindId` has the id.
 local function recordPlacedObjectCall(name: string, kindId: string)
 	return function(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
 		local placedObject = world.plot.placedObjectsById[placedObjectId]
-		local allowed = placedObject ~= nil
-			and placedObject.kindId == kindId
-			and World.canReachTile(world, player, placedObject.tileX, placedObject.tileZ)
+		local allowed = placedObject ~= nil and placedObject.kindId == kindId
 		table.insert(calls, { name = name, world = world, player = player, first = placedObjectId, allowed = allowed })
 	end
 end
@@ -111,8 +106,8 @@ end
 
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
 -- tile x, z is at x * 4 - 2, z * 4 - 2. A bell stands on tile 2, 2 (its middle is 6, 6), a gong on
--- 3, 2, a vase on 4, 2, a post on 2, 3 and a rock on 3, 3. Player 1 stands at 6, 0, 0, within reach of
--- all five, with a wand in hotbar slot 1, 3 sticks in slot 2 and 5 feathers in slot 3.
+-- 3, 2, a vase on 4, 2, a post on 2, 3 and a rock on 3, 3. Player 1 stands at 6, 0, 0, with a wand in
+-- hotbar slot 1, 3 sticks in slot 2 and 5 feathers in slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlacedObjectIds)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
 	local ids = {
@@ -208,10 +203,7 @@ do -- interactWithTile
 	Hotbar.selectSlot(player.hotbar, 1)
 	PlayerState.openScreen(player)
 	send("interactWithTile", world, player, 5, 1)
-	check(#takeCalls() == 0, "interactWithTile: does nothing while the player has a screen open")
-	PlayerState.closeScreen(player)
-	send("interactWithTile", world, player, 5, 1)
-	check(#takeCalls() == 1, "interactWithTile: and calls the script again once the screen is closed")
+	check(#takeCalls() == 1, "interactWithTile: it does not ask whether the player has a screen open")
 end
 
 do -- interactWithPlacedObject
@@ -245,21 +237,20 @@ do -- interactWithPlacedObject
 	check(#takeCalls() == 0, "interactWithPlacedObject: does nothing for an id that is not a placed object's")
 	check(isAsNew(world, player), "interactWithPlacedObject: and changes nothing itself")
 
-	-- The middle of the bell's tile is at 6, 6. Standing at 6, 22 it is exactly 16 studs away.
-	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
+	World.setCharacterPosition(world, 1, at(500, 0, 500))
 	send("interactWithPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 0, "interactWithPlacedObject: not from beyond reach")
-	World.setCharacterPosition(world, 1, at(6, 0, 22))
-	send("interactWithPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "interactWithPlacedObject: from exactly at reach")
+	check(
+		#takeCalls() == 1,
+		"interactWithPlacedObject: it does not ask how far from the placed object the player stands"
+	)
 	World.removeCharacter(world, 1)
 	send("interactWithPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 0, "interactWithPlacedObject: not by a player with no character")
+	check(#takeCalls() == 1, "interactWithPlacedObject: or whether the player has a character")
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	PlayerState.openScreen(player)
 	send("interactWithPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "interactWithPlacedObject: it does not ask whether the player has a screen open")
+	check(#takeCalls() == 1, "interactWithPlacedObject: or whether the player has a screen open")
 	Hotbar.selectSlot(player.hotbar, 9)
 	send("interactWithPlacedObject", world, player, ids.bell)
 	check(#takeCalls() == 1, "interactWithPlacedObject: or what is in their selected hotbar slot")
@@ -304,20 +295,17 @@ do -- breakPlacedObject
 	check(#takeCalls() == 0, "breakPlacedObject: does nothing for an id that is not a placed object's")
 	check(isAsNew(world, player), "breakPlacedObject: and none of those raises an error or changes anything")
 
-	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
+	World.setCharacterPosition(world, 1, at(500, 0, 500))
 	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 0, "breakPlacedObject: not from beyond reach")
-	World.setCharacterPosition(world, 1, at(6, 0, 22))
-	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "breakPlacedObject: from exactly at reach")
+	check(#takeCalls() == 1, "breakPlacedObject: it does not ask how far from the placed object the player stands")
 	World.removeCharacter(world, 1)
 	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 0, "breakPlacedObject: not by a player with no character")
+	check(#takeCalls() == 1, "breakPlacedObject: or whether the player has a character")
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	PlayerState.openScreen(player)
 	send("breakPlacedObject", world, player, ids.bell)
-	check(#takeCalls() == 1, "breakPlacedObject: it does not ask whether the player has a screen open")
+	check(#takeCalls() == 1, "breakPlacedObject: or whether the player has a screen open")
 
 	Plot.removePlacedObject(world.plot, ids.bell)
 	send("breakPlacedObject", world, player, ids.bell)
@@ -407,7 +395,7 @@ do -- whatever a player's machine sends, nothing raises an error, and a script i
 	check(errors == 0, "random run: none of 12,000 requests raises an error (first: " .. firstError .. ")")
 	check(
 		allAllowed,
-		"random run: a script is called only for the player who asked, and only as the request's comment allows"
+		"random run: a script is called only for the player who asked, with a tile or a placed object that is there"
 	)
 	check(allAsNew, "random run: and no request places or removes anything itself")
 	for _, name in

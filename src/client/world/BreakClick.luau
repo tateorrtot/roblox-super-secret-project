@@ -10,11 +10,11 @@ local Workspace = game:GetService("Workspace")
 local BreakClick = {}
 
 --- A press is a click only if the action is released within this many seconds of it.
-BreakClick.WITHIN_SECONDS = 0.35
+BreakClick.RELEASED_WITHIN_SECONDS = 0.35
 
---- The camera faces the same way at two moments if the dot product of the two directions it
---- looked in is this or more.
-BreakClick.SAME_DIRECTION = 0.9995
+--- The camera has turned between two moments if the dot product of the two directions it looked
+--- in is below this.
+BreakClick.CAMERA_TURNED_BELOW = 0.9995
 
 local function getCameraLook(): Vector3
 	local camera = Workspace.CurrentCamera
@@ -22,8 +22,8 @@ local function getCameraLook(): Vector3
 end
 
 --- Connects `callback` to the clicks of `breakAction`. From then on it is called, with nothing,
---- each time the action is released within `WITHIN_SECONDS` of being pressed while the camera
---- faces the way it did at the press, as `SAME_DIRECTION` measures it.
+--- each time the action is released within `RELEASED_WITHIN_SECONDS` of being pressed, unless the
+--- camera has turned since the press, as `CAMERA_TURNED_BELOW` measures it.
 function BreakClick.connect(breakAction: InputAction, callback: () -> ())
 	local pressedAt: number? = nil
 	local lookWhenPressed = Vector3.zero
@@ -37,8 +37,8 @@ function BreakClick.connect(breakAction: InputAction, callback: () -> ())
 		local heldSeconds = if pressedAt ~= nil then os.clock() - pressedAt else math.huge
 		pressedAt = nil
 		if
-			heldSeconds < BreakClick.WITHIN_SECONDS
-			and getCameraLook():Dot(lookWhenPressed) >= BreakClick.SAME_DIRECTION
+			heldSeconds < BreakClick.RELEASED_WITHIN_SECONDS
+			and getCameraLook():Dot(lookWhenPressed) >= BreakClick.CAMERA_TURNED_BELOW
 		then
 			callback()
 		end

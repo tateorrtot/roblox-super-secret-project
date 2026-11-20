@@ -2,10 +2,10 @@
 --- The script of each kind of placed object: what happens when a player interacts with an object
 --- of that kind, and when a player breaks one.
 ---
---- A script is a table of functions. It is registered once, when the game starts, under the id
---- of its kind, with `register`. `PlotRequests` asks `find` for the script of the placed object
---- that a player acted on, and calls the function for what the player did. Nothing happens to an
---- object whose kind has no script, or whose script lacks that function.
+--- A script is a table of functions, one for each thing a player can do to an object of the
+--- kind. It is registered once, when the game starts, under the id of its kind, with `register`,
+--- and `find` returns it. A kind need not have a script, and a script need not have every
+--- function.
 local PlayerState = require("../players/PlayerState")
 local World = require("../world/World")
 

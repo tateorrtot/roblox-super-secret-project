@@ -25,14 +25,6 @@
               "$className": "InputBinding",
               "$properties": { "KeyCode": "MouseRightButton" }
             }
-          },
-          "PointerPosition": {
-            "$className": "InputAction",
-            "$properties": { "Type": "ViewportPosition" },
-            "MousePosition": {
-              "$className": "InputBinding",
-              "$properties": { "KeyCode": "MousePosition" }
-            }
           }
         }
       }

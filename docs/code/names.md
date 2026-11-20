@@ -12,13 +12,13 @@ How things in the code are named. The user reads an outline of bare names, with 
 - Arguments come in the order the name gives them: the thing first, then where, then how much.
 - No name stops at an adjective. `placedObject`, not `placed`. `carriedStack`, not `carried`.
 - The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `spawn`, `swap`, `place`, `interact` and `break` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStackFromCharacter`, `spawnStack`, `swapSlots`, `interactWithPlacedObject`. No verb is excused for being familiar.
-- **`interact` and `break` are the user's words for the game's two actions on the world,** and the names use them. Luau keeps the word `break` for itself, so no function can be called that alone: it names what is broken, `breakPlacedObject`, as Roblox's own `BreakJoints` does. Claude's earlier words, `use` and `hit`, are left only in `UseAndHit`, which goes when input is rebuilt.
+- **`interact` and `break` are the user's words for the game's two actions on the world,** and the names use them. Luau keeps the word `break` for itself, so no function can be called that alone: it names what is broken, `breakPlacedObject`, as Roblox's own `BreakJoints` does. Claude's earlier words, `use` and `hit`, went from the code on 2026-11-20 with the class `UseAndHit`.
 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
 **A name is a promise, and the function keeps it.** `drop` leaves the stack on the ground. A function that only takes the stack out is `take`. If what a function does cannot be said plainly in a sentence built from its name, it is the wrong shape: split it or rename it.
 - **A setter names the thing it sets:** `set` and the property. The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPosition`.
-- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." One name still has it: the class `UseAndHit`, which wants a name the user can read; they turned down `PlotControls`. `throwPlacedItemAndContents` went on 2026-11-20, when each kind of placed object began to say for itself what breaking it leaves.
+- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." No name has it now. `throwPlacedItemAndContents` went on 2026-11-20, when each kind of placed object began to say for itself what breaking it leaves, and the class `UseAndHit` went the same day, when the clicks on the world moved to Roblox's input actions.
 - **A long name is a flag too, and not always wrong.** `pushGroundItemsOutOfTile` stands: the user called it "one of these times a mouthful may be okay".
 - **A word names a real thing in the code, or it is not used.** The user, of a `Transform` that did not exist: "is transform a defined solid thing? like a class? if not dont do transform". An adjective counts too. Of `mergeDueItems`, which Claude offered the same day: "what are due items. did you just invent that. ... But a "DueItem". is that a class? What is that?" Every word in a name is a type, a field or a constant of the code, a word from the two tables below, or a plain word nobody could doubt, such as `nearest` or `empty`.
 - **Roblox's word first, then Godot's, and never one of ours.** Where Roblox has a word for a thing, the code uses it and keeps to it: `connect` and `fire` for a signal, as `RBXScriptSignal:Connect` and `BindableEvent:Fire` have them. Where Roblox has none, Godot's. The user, 2026-11-20: "If youre following roblox conventions stick to it. If youre following invented conventions - go with godots". They confirmed it of `fire` the same day: "no lets keep things more styled to roblox / in tune to it". Whether calls are written `Module.verb(thing)` or as methods is a separate question, and waits for them.
@@ -35,6 +35,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `player` | A `PlayerState`, in the rules |
 | `placedObject`, `placedObjectId` | A thing standing on a plot, and its id. The name is the user's, 2026-11-20: "I like PlacedObject!" Never "block", and never "placed item": "Who said it had anything to do with an item." |
 | `kindId` | The id of a kind, on a thing of that kind: a placed object's is its kind of placed object, such as `"crate"`. A kind's own module names it in full, `PLACED_OBJECT_KIND_ID`, since a cold reader asked "kind of what?" |
+| `script` | The functions that say what one thing of the game does when a player acts: an item's is an `ItemScript`, and a kind of placed object's a `PlacedObjectScript`. The word is the user's: "Placed items kinda each get their own class / script." It is a table of functions and not Roblox's `Script`, which is an Instance: a reviewer flagged that, and the user has not ruled on it |
 | `tileX`, `tileZ` | The numbers of a plot's tile along x and along z, from 1. `...InTiles` is a length counted in tiles: `widthInTiles` |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |
 | `character` | A player's body in the world, as far as the rules know it: its `position`. `nil` while they have none |
@@ -51,6 +52,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | Verb | Means | Returns |
 |---|---|---|
 | `new` | Makes one | It |
+| `register` | Hands a row or a script to the registry that holds it, once, when the game starts. Fails for one that is there already | Nothing |
 | `open`, `close` | Opens or closes a screen for a player | Nothing |
 | `get` | Reads what is there | It, or `nil` when nothing is there |
 | `set` | Replaces; `nil` removes | Nothing |
@@ -61,7 +63,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `move` | Takes items from where they are to somewhere else | How many items moved |
 | `spawn` | Makes a thing appear in the world at a position | Its id |
 | `place` | Stands an object on a tile of a plot | The placed object's id |
-| `interact`, `break` | A player does it to a thing. What follows is for that kind of thing to say | Nothing |
+| `interact`, `break` | A player does it to a thing. What follows is for that thing's script to say: it may do nothing at all | Nothing |
 | `merge` | Makes things of one kind into one | Given two stacks, the stack that holds both, and then what did not fit. Given every ground item, nothing |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing. `can` with an action's name asks whether that action could be carried out now: `canPlaceObject` before `placeObject` | `true` or `false` |
@@ -70,6 +72,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `find` | Looks for one that may not be there | It, or `nil` |
 | `advance` | Moves a thing on in time: `advance` by so many seconds, `advanceTo` a time | Nothing |
 | `update` | Makes a drawing piece match what it is given | Nothing |
+| `show`, `hide` | Puts a drawing piece in view, or takes it out of view | Nothing |
 | `clear` | Empties | Nothing |
 | `encode`, `decode` | Turns a thing into plain data, and back | The plain data; the thing, or `nil` and what was wrong |
 | `validate` | Checks a value that came from outside | `nil`, or what is wrong with it, in words |

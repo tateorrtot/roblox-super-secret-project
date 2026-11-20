@@ -56,6 +56,7 @@ What the game still decides for every kind alike, each for the piece named:
 - **A screen is a pack, another inventory and a furnace's gauges.** The player's machine draws a grid, or the furnace if the inventory has three slots. Any other screen needs the screens to be the kind's own.
 - **Over time, the one thing a placed object can do is be a furnace:** the world advances every `Station`. `Station` is a furnace under a general name, and the user said to leave it until a second process shows what the kinds share.
 - **A placed object is a cube that fills one tile.**
-- **The one thing an item in the hand does to a bare tile is place an object.** A wand that casts a spell needs the item's side of this: what interacting with an item in hand does, said for each item.
-- **The item in hand takes no part when a placed object is interacted with,** though a kind's `interact` is handed the player and could look.
+- **An item's script is told of one thing only: that a bare tile was interacted with.** That was all the crate and the stove needed. A wand cast at a creature, at a placed object or at nothing needs a function for each, added when the wand is.
+- **The item in hand takes no part when a placed object is interacted with or broken,** though the kind's script is handed the player and could look. Which of the two answers first, the object or the item, is not decided: nothing needs it yet.
+- **How far a player may stand from a placed object is the same for every kind,** `World.CHARACTER_REACH`, asked by the request. For a bare tile it is the item's own to ask.
 - **A break is at once.** A kind can leave what it likes, and nothing yet takes time or a tool.

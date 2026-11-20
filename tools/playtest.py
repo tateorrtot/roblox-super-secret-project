@@ -212,11 +212,15 @@ return table.concat(found, " ")
 '''
 
 # The see-through blocks that show where an object would stand, as a list of where each is and which kind's
-# colour it has, and the id of the placed object that the white outline is around, if any.
+# colour it has; the id of the placed object that the white outline is around, if any; and the id of the
+# placed object that the pointer is over, as the game's own PlotPointer has it, whether in reach or not.
 POINTER_MARKS = '''
 local HttpService = game:GetService("HttpService")
 local PlacedObjectLooks = require(game:GetService("ReplicatedStorage").Shared.content.PlacedObjectLooks)
+local PlotPointer = require(game:GetService("Players").LocalPlayer.PlayerScripts.Client.world.PlotPointer)
 local marks = { ghosts = {} }
+local target = PlotPointer.getTargetAt(game:GetService("UserInputService"):GetMouseLocation())
+marks.over = if target ~= nil and target.kind == "placedObject" then target.placedObjectId else nil
 for _, child in workspace:GetChildren() do
 	if child.Name == "PlacementGhost" and child:IsA("BasePart") then
 		local kind = "unknown"
@@ -232,6 +236,27 @@ local outline = workspace:FindFirstChild("PointerOutline")
 local around = outline and outline.Adornee
 marks.outlined = if around then around:GetAttribute("placedObjectId") else nil
 return HttpService:JSONEncode(marks)
+'''
+
+# Turns the camera %f degrees a frame after the Break action is next pressed, once.
+TURN_CAMERA_AT_NEXT_BREAK_PRESS = '''
+local action = game:GetService("ReplicatedStorage").Inputs.World.Break
+local connection
+connection = action.Pressed:Connect(function()
+	connection:Disconnect()
+	task.wait()
+	local camera = workspace.CurrentCamera
+	camera.CFrame = camera.CFrame * CFrame.Angles(0, math.rad(%f), 0)
+end)
+return "waiting"
+'''
+
+# Turns the camera %f degrees, about the same axis as the script above.
+TURN_CAMERA = '''
+local camera = workspace.CurrentCamera
+camera.CFrame = camera.CFrame * CFrame.Angles(0, math.rad(%f), 0)
+task.wait(0.4)
+return "turned"
 '''
 
 # The length of a tile's side and of a ground item's block, in studs, as Plot and GroundItems have them.
@@ -562,7 +587,7 @@ class Playtest:
         stood = self.studio.luau(STAND_ON_OPEN_GROUND, 'Server').strip().split(',')
         check(len(stood) == 3 and stood[2] == 'Baseplate', 'the test character is stood on open ground, clear of the spawn pad', stood)
         inputs = self.studio.luau(READ_INPUTS, 'Client').strip()
-        check(inputs == 'Break(Bool):MouseRightButton Interact(Bool):MouseLeftButton PointerPosition(ViewportPosition):MousePosition',
+        check(inputs == 'Break(Bool):MouseRightButton Interact(Bool):MouseLeftButton',
               'the place has the input actions that the project file declares, each bound to its button', inputs)
 
         # The pack, by mouse.
@@ -713,6 +738,13 @@ class Playtest:
 
         # Placing, interacting and breaking on the plot.
         self.keys('Four')
+        self.walk_to(crate['x'] - 7, crate['z'] + 5)
+        point, on_screen = self.screen_point(crate['x'], crate['y'], crate['z'])
+        self.hover(point)
+        marks = self.pointer_marks()
+        check(on_screen and self.view()['held'] == 'Crate' and marks.get('over') == crate['id']
+              and marks.get('outlined') == crate['id'] and marks['ghosts'] == [],
+              'with the crate in hand and the pointer on a placed object, that object has the outline and no ghost shows', marks)
         found = self.studio.luau(FIND_TILE, 'Client').strip()
         check(found != 'none' and self.view()['held'] == 'Crate', 'with the crate in hand, a bare tile is in view and in reach', found)
         if found == 'none':
@@ -740,8 +772,7 @@ class Playtest:
             point, _ = self.screen_point(mine['x'], mine['y'], mine['z'])
             self.hover(point)
             marks = self.pointer_marks()
-            check(marks.get('outlined') == mine['id'] and marks['ghosts'] == [],
-                  'the placed crate under the pointer has the white outline, and no ghost shows on it', marks)
+            check(marks.get('outlined') == mine['id'], 'the placed crate under the pointer has the white outline', marks)
             self.click(point)
             view = self.view()
             check(view['open'] and view['title'] == 'Crate' and all(text == '' for text in view['other'].values()),
@@ -755,6 +786,15 @@ class Playtest:
             self.press_for(point, 'right', 700)
             check(any(entry['id'] == mine['id'] for entry in self.world()['placed']),
                   'the right button held on the crate for longer than a click breaks nothing')
+            self.studio.luau(TURN_CAMERA_AT_NEXT_BREAK_PRESS % 12, 'Client')
+            self.click(point, 'right')
+            check(any(entry['id'] == mine['id'] for entry in self.world()['placed']),
+                  'a right click during which the camera turns breaks nothing')
+            self.studio.luau(TURN_CAMERA % -12, 'Client')
+            point, _ = self.screen_point(mine['x'], mine['y'], mine['z'])
+            self.hover(point)
+            check(self.pointer_marks().get('over') == mine['id'], 'with the camera turned back, the pointer is on the crate again',
+                  self.pointer_marks())
             self.click(point, 'right')
             world = self.world()
             check(all(entry['id'] != mine['id'] for entry in world['placed']), 'a right click breaks the crate: it is off the plot')
@@ -823,7 +863,9 @@ class Playtest:
         check(on_screen and away > 16.5, 'the crate is in view from out of reach', {'studs away': away, 'at': point})
         self.click(point)
         check(not self.view()['open'], 'a click on it from there opens nothing')
-        check(self.pointer_marks().get('outlined') is None, 'and it has no outline, with the pointer on it', self.pointer_marks())
+        marks = self.pointer_marks()
+        check(marks.get('over') == crate['id'] and marks.get('outlined') is None,
+              'the pointer is on it, and it has no outline', marks)
         self.studio.luau(ASK_OUTRIGHT % ('interactWithPlacedObject', crate['id']), 'Client')
         self.studio.luau(ASK_OUTRIGHT % ('breakPlacedObject', crate['id']), 'Client')
         check(not self.view()['open'] and any(entry['id'] == crate['id'] for entry in self.world()['placed']),

@@ -20,8 +20,10 @@ Needs Python 3, and Roblox Studio open on a place with its MCP server enabled
 folder of src/ is copied to that place: a folder becomes a Folder, `Name.luau` a ModuleScript,
 `Name.server.luau` a Script and `Name.client.luau` a LocalScript. Where it gives a `$className`
 with no `$path`, an instance of that class is made there, with the properties and the children the
-file lists for it: that is how the input actions under ReplicatedStorage.Inputs come to be.
-Everything at those places is replaced, so the project folder stays the only source of both.
+file lists for it: that is how the input actions under ReplicatedStorage.Inputs come to be. A
+property is set from what JSON can hold: text, a number, or true or false. Text names an enum's item.
+Each folder and each declared instance is replaced whole, so the project folder stays the only
+source of both. One that the file no longer names is left in the place: remove that by hand.
 """
 import base64, io, json, os, queue, subprocess, sys, threading, time
 
@@ -137,9 +139,10 @@ def read_project():
                 continue
             if '$path' in child:
                 folders.append((child['$path'], place_path + [name]))
-            elif '$className' in child:
+            elif '$className' in child and place_path:
                 declared.append((place_path, name, child))
             else:
+                # A service, which is there already whatever the file says of it, or a folder to look inside.
                 walk(child, place_path + [name])
 
     walk(tree, [])

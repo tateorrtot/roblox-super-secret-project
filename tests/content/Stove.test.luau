@@ -112,9 +112,12 @@ do -- place
 		second ~= id and world.stations[second] ~= station and world.stations[second].inventory ~= station.inventory,
 		"place: each stove has an id, a station and slots of its own"
 	)
-	check(Check.errorFrom(function()
-		Stove.place(world, 2, 3)
-	end) ~= nil, "place: fails on a tile that is taken")
+	check(
+		string.find(Check.errorFrom(function()
+			Stove.place(world, 2, 3)
+		end) or "", "nothing can be placed on the tile 2, 3", 1, true) ~= nil,
+		"place: fails on a tile that is taken, saying so"
+	)
 	check(
 		world.plot.nextId == second + 1 and world.stations[second + 1] == nil,
 		"place: a placing that fails places nothing and makes no station"
@@ -173,17 +176,23 @@ do -- interact
 		"interact: and what was carried on the old screen is in the player's pack"
 	)
 
-	World.setCharacterPosition(world, 1, at(500, 0, 500))
+	-- The middle of the stove's tile is at 6, 6. Standing at 6, 22 it is exactly 16 studs away.
+	World.closeScreen(world, player)
+	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
+	Stove.interact(world, player, stoveId)
+	check(player.screen == nil, "interact: nothing happens for a player who stands just beyond reach")
+	World.setCharacterPosition(world, 1, at(6, 0, 22))
 	Stove.interact(world, player, stoveId)
 	check(
 		World.getOpenedPlacedObjectId(world, player) == stoveId,
-		"interact: it does not ask how far from the stove the player stands"
+		"interact: the screen opens for a player who stands exactly at reach"
 	)
+	World.setCharacterPosition(world, 1, at(6, 0, 0))
 
 	local second = World.addPlayer(world, 2)
 	check(Check.errorFrom(function()
 		Stove.interact(world, second, stoveId)
-	end) ~= nil and second.screen == nil, "interact: fails for a player with no character")
+	end) == nil and second.screen == nil, "interact: nothing happens for a player with no character")
 end
 
 do -- breakPlacedObject
@@ -201,8 +210,24 @@ do -- breakPlacedObject
 	World.setCharacterPosition(world, 2, at(10, 0, 10))
 	Stove.interact(world, watcher, stoveId)
 
+	World.setCharacterPosition(world, 1, at(6, 0, 22.01))
 	Stove.breakPlacedObject(world, breaker, stoveId)
-	check(world.plot.placedObjectsById[stoveId] == nil, "breakPlacedObject: the stove is off the plot")
+	World.removeCharacter(world, 1)
+	Stove.breakPlacedObject(world, breaker, stoveId)
+	check(
+		world.plot.placedObjectsById[stoveId] ~= nil
+			and groundItemCount(world) == 0
+			and world.stations[stoveId] == station
+			and watcher.screen ~= nil,
+		"breakPlacedObject: nothing happens for a player just beyond reach, or with no character"
+	)
+	World.setCharacterPosition(world, 1, at(6, 0, 22))
+
+	Stove.breakPlacedObject(world, breaker, stoveId)
+	check(
+		world.plot.placedObjectsById[stoveId] == nil,
+		"breakPlacedObject: the stove is off the plot, broken from exactly at reach"
+	)
 	check(Plot.canPlaceObject(world.plot, 2, 2), "breakPlacedObject: and its tile holds nothing")
 	check(world.stations[stoveId] == nil, "breakPlacedObject: it is a station no longer")
 	check(
@@ -266,6 +291,29 @@ do -- breakPlacedObject
 	check(
 		groundItemCount(emptyWorld) == 1 and is(emptyWorld.groundItems.itemsById[1].stack, Stove.ITEM_ID_WHEN_BROKEN, 1),
 		"breakPlacedObject: a stove whose slots hold nothing leaves one of the item ITEM_ID_WHEN_BROKEN and no more"
+	)
+end
+
+do -- a placed object of the stove's kind that `place` did not place
+	local world, player = newWorld()
+	local bareId = Plot.placeObject(world.plot, Stove.PLACED_OBJECT_KIND_ID, 1, 1)
+	local message = "the placed object " .. bareId .. " is not a stove that Stove.place placed"
+	check(
+		Check.raises(message, function()
+			Stove.interact(world, player, bareId)
+		end),
+		"interact: fails for a placed object of the stove's kind that place did not place"
+	)
+	check(player.screen == nil, "interact: and opens no screen for it")
+	check(
+		Check.raises(message, function()
+			Stove.breakPlacedObject(world, player, bareId)
+		end),
+		"breakPlacedObject: fails for a placed object of the stove's kind that place did not place"
+	)
+	check(
+		world.plot.placedObjectsById[bareId] ~= nil and groundItemCount(world) == 0,
+		"breakPlacedObject: and leaves it standing, with nothing thrown"
 	)
 end
 
