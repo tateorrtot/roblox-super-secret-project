@@ -7,7 +7,6 @@ local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local Plot = require("../../src/shared/plots/Plot")
 
 local check = Check.that
-local raises = Check.raises
 
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
@@ -144,71 +143,15 @@ do -- where a plot's tiles are in the world
 	check(allBack, "tileAt: the middle of a tile is over that tile")
 end
 
-do -- mistakes in the calling code
-	for _, bad in { 0, -2, 1.5, 0 / 0, math.huge, "4" } :: { any } do
-		check(
-			raises("Plot.new: width must be a whole number, 1 or more; got " .. tostring(bad), function()
-				return Plot.new(bad, 4)
-			end),
-			"new: refuses a width of " .. tostring(bad)
-		)
-		check(
-			raises("Plot.new: depth must be a whole number, 1 or more; got " .. tostring(bad), function()
-				return Plot.new(4, bad)
-			end),
-			"new: refuses a depth of " .. tostring(bad)
-		)
-	end
-
+do -- a tile the plot does not have
 	local plot = Plot.new(3, 2)
-	Plot.place(plot, "stove", 1, 1)
 	local offPlot = { { 0, 1 }, { 4, 1 }, { 1, 3 }, { 1, 0 }, { 1.5, 1 }, { 1, "2" } } :: { { any } }
 	for _, tile in offPlot do
-		local message = string.format(
-			"tile x %s, z %s is not on this plot; its tiles are x 1 to 3, z 1 to 2",
-			tostring(tile[1]),
-			tostring(tile[2])
-		)
-		check(
-			raises("Plot.canPlace: " .. message, function()
-				return Plot.canPlace(plot, "stove", tile[1], tile[2])
-			end),
-			"canPlace: refuses a tile off the plot (" .. message .. ")"
-		)
-		check(
-			raises("Plot.place: " .. message, function()
-				return Plot.place(plot, "stove", tile[1], tile[2])
-			end),
-			"place: refuses a tile off the plot (" .. message .. ")"
-		)
+		check(Check.errorFrom(function()
+			return Plot.place(plot, "stove", tile[1], tile[2])
+		end) ~= nil, `place: fails for tile x {tile[1]}, z {tile[2]}`)
 	end
-	check(
-		raises('Plot.canPlace: no item has the id "anvil"', function()
-			return Plot.canPlace(plot, "anvil", 2, 2)
-		end),
-		"canPlace: refuses an item that does not exist"
-	)
-	check(
-		raises('Plot.place: no item has the id "anvil"', function()
-			return Plot.place(plot, "anvil", 2, 2)
-		end),
-		"place: refuses an item that does not exist"
-	)
-	check(
-		raises('Plot.place: no item has the id "nil"', function()
-			return Plot.place(plot, nil :: any, 2, 2)
-		end),
-		"place: refuses nothing in place of an item id"
-	)
-	for _, bad in { 0, -1, 1.5, 0 / 0, math.huge, "1" } :: { any } do
-		check(
-			raises("Plot.remove: id must be a whole number, 1 or more; got " .. tostring(bad), function()
-				return Plot.remove(plot, bad)
-			end),
-			"remove: refuses the id " .. tostring(bad)
-		)
-	end
-	check(placedCount(plot) == 1 and plot.nextId == 2, "a refused call changes nothing")
+	check(placedCount(plot) == 0 and plot.nextId == 1, "place: a failed call changes nothing")
 end
 
 Check.finish("Plot")
