@@ -25,6 +25,15 @@ Claude was building dropped items and was about to add a lighter gravity, custom
 - **A fix has a cost too, and it is said when the fix is proposed.** This one is Claude's own, 2026-11-20. Fix 4 of the coupling review made the server the one keeper of the selected hotbar slot, so the highlight now waits for the server's answer. Claude proposed the fix without saying so, and a reviewer found it afterwards.
 - **A restructuring is reviewed against the rule it was done for.** The untangle of `setPlayerPosition` produced two new functions that also did more than their names said. A reviewer caught them, not Claude.
 
+## Time, and the play test (the user's question, 2026-11-20)
+> Im noticing the roblox tests are always running? Are you constantly waiting on that? ... Cant you make changes, with lots of checkpoints, then test, then go back and see where when and why it broke? ... Im just wondering if anything in particular is making your replies and work take 30+ minutes everytime?
+
+- **The fast checks run after every change.** `lune run tools/check` takes under a minute and does not touch Studio.
+- **The play test runs once, when a turn's code changes are done.** It takes three to four minutes and drives Studio with the mouse and the keyboard, so the user sees it, and their own use of the PC breaks it. Say so before starting it.
+- **Commits are the checkpoints.** If the play test fails, go back through them to find where. Do not run it after each one.
+- **Read a result before building on it.** Claude once chained a commit after a play test run and committed a failure unread.
+- **Keep turns short.** A turn that carries three code changes, four reviews and a long report takes half an hour. One change, checked and shown, is better.
+
 ## Rules come from mistakes
 - **When the user corrects something, name the pattern and write it as a rule** in the file for its topic. They steer by this: "Whenever it messes up, I tell it to add some rule/recognize the pattern and it puts it in as a rule".
 - **Every couple of milestones, offer to audit the rule files:** merge duplicates, delete what a later rule replaced, and show the diff before saving. Another assistant suggested it to the user on 2026-11-20 and they passed it on. It has not been run yet.
