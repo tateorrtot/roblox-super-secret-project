@@ -8,15 +8,18 @@ local ItemRegistry = {}
 
 --- What one kind of item is.
 export type ItemDefinition = {
-	--- The name the item goes by in code and in saved data, such as `"log"`. Lowercase letters, digits and underscores, starting with a letter.
+	--- The name the item goes by in code and in saved data, such as `"log"`: lowercase letters,
+	--- digits and underscores, starting with a letter.
 	read id: string,
-	--- The most of this item that one inventory slot can hold: a whole number, 1 or more. 1 for an item that does not stack.
+	--- The most of this item that one inventory slot can hold: a whole number, 1 or more.
 	read stackSize: number,
 	--- `true` for an item that can be placed on a plot. Left out for an item that cannot.
 	read placeable: boolean?,
-	--- How many inventory slots the item has once it is placed, as a crate does: a whole number, 1 or more. Left out for an item that holds nothing. Only a placeable item has it.
+	--- How many inventory slots the item has once it is placed, as a crate does: a whole number,
+	--- 1 or more. Left out for an item that holds nothing. Only a placeable item has it.
 	read slotCount: number?,
-	--- How long one of this item burns as fuel, in seconds: a number above 0. Left out for an item that does not burn.
+	--- How long one of this item burns as fuel, in seconds: a number above 0. Left out for an
+	--- item that does not burn.
 	read burnSeconds: number?,
 }
 
@@ -36,9 +39,13 @@ local function findUnknownField(definition: ItemDefinition): unknown
 	return nil
 end
 
---- Adds `definition` to the registry as a copy, so changing the given table afterwards changes nothing. Fails if `id` is not lowercase letters, digits and underscores starting with a letter, if `stackSize` is not a whole number of 1 or more, if `placeable` is given and is not `true`, if `slotCount` is given and is not a whole number of 1 or more or the item is not placeable, if `burnSeconds` is given and is not a finite number above 0, if the table has a field that `ItemDefinition` does not list, or if an item with that id is already registered.
+--- Adds a copy of `definition` to the registry. The copy is frozen, and changing `definition`
+--- afterwards changes nothing. Fails if a field is not what `ItemDefinition` says it must be, if
+--- the table has a field that `ItemDefinition` does not list, or if an item with that id is
+--- already registered.
 function ItemRegistry.register(definition: ItemDefinition)
 	local id, slotCount, burnSeconds = definition.id, definition.slotCount, definition.burnSeconds
+	local unknownField = findUnknownField(definition)
 	assert(
 		string.match(id, "^[a-z][a-z0-9_]*$"),
 		`id "{id}" is not lowercase letters, digits and underscores, starting with a letter`
@@ -48,13 +55,10 @@ function ItemRegistry.register(definition: ItemDefinition)
 	assert(slotCount == nil or isCount(slotCount), `"{id}" has a slotCount that is not a whole number, 1 or more`)
 	assert(slotCount == nil or definition.placeable, `"{id}" has a slotCount but is not placeable`)
 	assert(
-		burnSeconds == nil or (burnSeconds > 0 and burnSeconds < math.huge),
+		burnSeconds == nil or (type(burnSeconds) == "number" and burnSeconds > 0 and burnSeconds < math.huge),
 		`"{id}" has a burnSeconds that is not a finite number above 0`
 	)
-	assert(
-		findUnknownField(definition) == nil,
-		`"{id}" has a field item definitions do not have: {findUnknownField(definition)}`
-	)
+	assert(unknownField == nil, `"{id}" has a field item definitions do not have: {unknownField}`)
 	assert(definitions[id] == nil, `there is already an item with the id "{id}"`)
 	definitions[id] = table.freeze(table.clone(definition))
 end
@@ -69,7 +73,7 @@ function ItemRegistry.has(id: string): boolean
 	return definitions[id] ~= nil
 end
 
---- Returns the definition of every registered item, ordered by id.
+--- Returns a new list of the definition of every registered item, ordered by id.
 function ItemRegistry.all(): { ItemDefinition }
 	local all: { ItemDefinition } = {}
 	for _, definition in definitions do

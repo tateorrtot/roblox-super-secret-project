@@ -26,7 +26,8 @@ export type PlacedItem = {
 	read x: number,
 	--- The number of the tile it stands on along z.
 	read z: number,
-	--- What is inside it. `nil` if the item's definition has no `slotCount`.
+	--- What is inside it, which changes as items are put in and taken out. `nil` if the item's
+	--- definition has no `slotCount`.
 	read inventory: Inventory?,
 }
 
@@ -37,17 +38,17 @@ export type Plot = {
 	read depth: number,
 	--- The id the next placed item will get.
 	nextId: number,
-	--- Every placed item, by id. An id with no entry is not on the plot. Note: the table has gaps
-	--- after an item is removed, so iterate it with `for id, placedItem in plot.placedById`, not
-	--- with `#` or `ipairs`.
+	--- Every placed item, by id. An id with no entry is not on the plot.
+	--- Note: ids are not consecutive once an item has been removed, so `#placedById` is not the
+	--- number of placed items.
 	placedById: { [number]: PlacedItem },
 }
 
 --- The length of a tile's side, in studs.
 Plot.TILE_SIZE = 4
 
---- How far from the middle of a tile a player may stand and still place an item on it, or use or
---- hit what stands on it, in studs along the ground.
+--- How far from the middle of a tile the tile is in reach, in studs along the ground. Nothing
+--- in Plot checks it.
 Plot.REACH = 16
 
 local function isWholeNumber(value: unknown): boolean
@@ -64,6 +65,7 @@ local function isTileTaken(plot: Plot, x: number, z: number): boolean
 end
 
 --- Returns a new plot of `width` by `depth` tiles with nothing placed on it.
+--- Note: `width` and `depth` must be whole numbers of 1 or more. They are not checked.
 function Plot.new(width: number, depth: number): Plot
 	return { width = width, depth = depth, nextId = 1, placedById = {} }
 end
@@ -80,7 +82,8 @@ function Plot.hasTile(plot: Plot, x: unknown, z: unknown): boolean
 end
 
 --- Returns `true` if the item `itemId` could be placed on the tile `x`, `z`: the item's definition
---- says it is `placeable`, and the tile holds nothing.
+--- says it is `placeable`, and the tile holds nothing. Fails if no item has that id.
+--- Note: this does not check that the plot has the tile. See `hasTile`.
 function Plot.canPlace(plot: Plot, itemId: string, x: number, z: number): boolean
 	return ItemRegistry.get(itemId).placeable == true and not isTileTaken(plot, x, z)
 end
@@ -88,10 +91,11 @@ end
 --- Places one of the item `itemId` on the tile `x`, `z`, and returns the id of the placed item. If
 --- the item's definition has a `slotCount`, the placed item gets a new inventory of that many
 --- slots, holding nothing. Returns `nil`, and changes nothing, if the item is not `placeable` or
---- the tile already holds something. No items are taken from anywhere. Fails if `x`, `z` is not a
---- tile of the plot.
+--- the tile already holds something. Fails if the plot has no such tile, or if no item has that id.
 function Plot.place(plot: Plot, itemId: string, x: number, z: number): number?
-	assert(Plot.hasTile(plot, x, z), `the plot has no tile x {x}, z {z}`)
+	if not Plot.hasTile(plot, x, z) then
+		error(`the plot has no tile x {x}, z {z}`, 2)
+	end
 	if not Plot.canPlace(plot, itemId, x, z) then
 		return nil
 	end
@@ -107,9 +111,9 @@ function Plot.place(plot: Plot, itemId: string, x: number, z: number): number?
 	return id
 end
 
---- Takes the placed item with the id `id` off the plot and returns it, with whatever is in its
---- inventory. Its tile then holds nothing. Returns `nil` if no placed item has that id. No items
---- are given to anywhere: what is in the returned inventory is lost unless it is moved.
+--- Takes the placed item with the id `id` off the plot and returns it, with its inventory still
+--- inside it. Its tile then holds nothing, and its id is never given out again. Returns `nil`,
+--- changing nothing, if no placed item has that id.
 function Plot.remove(plot: Plot, id: number): PlacedItem?
 	local placedItem = plot.placedById[id]
 	plot.placedById[id] = nil

@@ -136,7 +136,7 @@ return "none"
 # Sends every request there is with nonsense, as a tampered machine might, and says how many were sent.
 JUNK_REQUESTS = '''
 local remotes = game:GetService("ReplicatedStorage").Remotes
-local Messages = require(game:GetService("ReplicatedStorage").Shared.Messages)
+local Messages = require(game:GetService("ReplicatedStorage").Shared.requests.Messages)
 local junk = { 0, -1, 0.5, 1e300, 0 / 0, math.huge, "", "pack", "other", "left", true, false, {}, { 1, 2 }, { side = "pack" } }
 local sent = 0
 for _, name in Messages.toServer do

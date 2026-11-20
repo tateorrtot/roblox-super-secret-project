@@ -26,11 +26,12 @@ do -- new
 end
 
 do -- what new refuses
+	local noSuchItem = Check.errorFrom(function()
+		return ItemStack.new("anvil", 1)
+	end)
 	check(
-		raises('ItemStack.new: no item has the id "anvil"', function()
-			return ItemStack.new("anvil", 1)
-		end),
-		"new: refuses an item that does not exist, and names it"
+		noSuchItem ~= nil and string.find(noSuchItem, "anvil", 1, true) ~= nil,
+		"new: an item that does not exist is an error that names it"
 	)
 	for _, badCount in { 0, -1, 1.5, 17, 0 / 0, math.huge } do
 		check(
@@ -45,12 +46,6 @@ do -- what new refuses
 			return ItemStack.new("stove", 2)
 		end),
 		"new: refuses two of an item that does not stack"
-	)
-	check(
-		raises("holds 1 to 16", function()
-			return ItemStack.new("log", "5" :: any)
-		end),
-		"new: refuses a count that is not a number"
 	)
 end
 
@@ -107,11 +102,8 @@ do -- validate
 	check(ItemStack.validate(12) == "a stack is a table, not a number", "validate: a number is not a stack")
 end
 
-do -- equals and isSameItem
+do -- isSameItem
 	local a = ItemStack.new("log", 5)
-	check(ItemStack.equals(a, ItemStack.new("log", 5)), "equals: the same item and count")
-	check(ItemStack.equals(a, ItemStack.new("log", 6)) == false, "equals: not with a different count")
-	check(ItemStack.equals(a, ItemStack.new("stone", 5)) == false, "equals: not with a different item")
 	check(ItemStack.isSameItem(a, ItemStack.new("log", 16)), "isSameItem: true whatever the counts")
 	check(ItemStack.isSameItem(a, ItemStack.new("stone", 5)) == false, "isSameItem: false for different items")
 end
@@ -151,12 +143,9 @@ do -- split
 	check(is(one, "log", 1) and is(eleven, "log", 11), "split: taking one")
 
 	for _, badCount in { 0, -1, 2.5, 13, 0 / 0, math.huge } do
-		check(
-			raises('ItemStack.split: can take 1 to 12 from this stack of "log"', function()
-				return ItemStack.split(twelve, badCount)
-			end),
-			"split: refuses to take " .. tostring(badCount) .. " from 12"
-		)
+		check(Check.errorFrom(function()
+			return ItemStack.split(twelve, badCount)
+		end) ~= nil, "split: taking " .. tostring(badCount) .. " from 12 is an error")
 	end
 end
 

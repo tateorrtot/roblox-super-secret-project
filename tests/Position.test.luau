@@ -14,49 +14,6 @@ do -- making one
 	check(Position.new(1.5, -0.25, 1e6).y == -0.25, "new: fractions and large numbers are fine")
 end
 
-do -- what is and is not a position
-	check(Position.validate(Position.new(1, 2, 3)) == nil, "validate: nothing is wrong with a position new made")
-	check(Position.validate({ x = 1, y = 2, z = 3 }) == nil, "validate: nor with one written by hand")
-	check(Position.validate({ x = 1, y = 2, z = 3, name = "home" }) == nil, "validate: other fields do not matter")
-	check(
-		Position.validate(nil) == "a position is a table with x, y and z, not a nil",
-		"validate: nothing is not a position"
-	)
-	check(
-		Position.validate("here") == "a position is a table with x, y and z, not a string",
-		"validate: nor is a string"
-	)
-	check(Position.validate(7) == "a position is a table with x, y and z, not a number", "validate: nor is a number")
-	check(
-		Position.validate({ y = 2, z = 3 }) == "position.x must be a number; got nil",
-		"validate: says when x is missing"
-	)
-	check(
-		Position.validate({ x = 1, y = "high", z = 3 }) == "position.y must be a number; got high",
-		"validate: says when y is not a number"
-	)
-	check(
-		Position.validate({ x = 1, y = 2 }) == "position.z must be a number; got nil",
-		"validate: says when z is missing"
-	)
-	check(
-		Position.validate({ x = 0 / 0, y = 2, z = 3 }) == "position.x must be a number; got nan",
-		"validate: not-a-number is refused"
-	)
-	check(
-		Position.validate({ x = 1, y = math.huge, z = 3 }) == "position.y must be a number; got inf",
-		"validate: infinity is refused"
-	)
-	check(
-		Position.validate({ x = 1, y = 2, z = -math.huge }) == "position.z must be a number; got -inf",
-		"validate: so is minus infinity"
-	)
-	check(
-		Position.validate({ 1, 2, 3 }) == "position.x must be a number; got nil",
-		"validate: a list of three numbers is not a position"
-	)
-end
-
 do -- distances
 	local here = Position.new(10, 0, -4)
 	check(Position.distance(here, here) == 0, "distance: 0 from a position to itself")

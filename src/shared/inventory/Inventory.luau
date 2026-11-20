@@ -1,50 +1,10 @@
 --!strict
---[=[
-	Slots that hold stacks of items: a player's pack, the inside of a crate.
-
-	An inventory has a fixed number of slots, numbered from 1. Each slot holds
-	one ItemStack or nothing. A slot that holds nothing has no entry at all, so
-	a new inventory with 3 slots is `{ slotCount = 3, slots = {} }`, and with
-	5 logs in slot 2 it is
-	`{ slotCount = 3, slots = { [2] = { itemId = "log", count = 5 } } }`.
-
-	[method getStack], [method setStack], [method takeFromSlot] and
-	[method putInSlot] work on one numbered slot. The other functions work on
-	the whole inventory, wherever the items are.
-
-	A function that changes an inventory changes the one it is given. It does
-	not return a new one.
-
-	Items move between the inventory and the caller, and none is made or lost
-	on the way. [method addItems] and [method removeItems] are given a count
-	and return how many items they moved. A function that is given a stack
-	returns the stack of what did not fit, and [method takeFromSlot] returns
-	the stack it took out. Only
-	[method setStack] and [method clear] discard what a slot held.
-
-	A full inventory, or a slot that holds nothing, is ordinary: the function
-	does what it can and says so in what it returns. A mistake in the calling
-	code raises an error: a slot number that is not from 1 to `slotCount`, a
-	count that is not a whole number of 0 or more, or adding or removing an
-	item that does not exist.
-
-	Nothing here announces a change. Code that shows an inventory reads it
-	again after changing it.
-
-	To save an inventory, or send it to another machine, use [method encode]
-	and [method decode]. Never hand an inventory itself to a data store or a
-	remote: its `slots` table has gaps, and Roblox drops or re-keys the
-	entries of a table with gaps.
-
-	```lua
-	local pack = Inventory.new(27)
-	Inventory.addItems(pack, "log", 40) --> 40: all of them were added, as 16, 16 and 8 in slots 1 to 3
-	Inventory.countItems(pack, "log") --> 40
-	Inventory.getStack(pack, 3) --> 8 logs
-	Inventory.getStack(pack, 4) --> nil: slot 4 holds nothing
-	Inventory.getStack(pack, 28) --> error: slot 28 is out of range
-	```
-]=]
+--- Slots that hold stacks of items: a player's pack, the inside of a crate.
+---
+--- An inventory has a fixed number of slots, numbered from 1. Each slot holds one ItemStack or
+--- nothing. `getStack`, `setStack`, `takeFromSlot` and `putInSlot` work on one slot. `addItems` and
+--- `addStack` put items wherever they fit. Only `setStack` can make or lose an item; the others move
+--- items between the inventory and the caller.
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemStack = require("../items/ItemStack")
 
@@ -52,310 +12,147 @@ local Inventory = {}
 
 type ItemStack = ItemStack.ItemStack
 
---- `read` means code outside this module cannot assign the field. Change an inventory with the functions below.
 export type Inventory = {
-	--- How many slots it has. Fixed when the inventory is made.
+	--- How many slots it has.
 	read slotCount: number,
-	--- What each slot holds, by slot number. A slot that holds nothing has no entry.
-	--- The table has gaps, so do not use `#` or `ipairs` on it: to visit the slots in order, loop
-	--- from 1 to `slotCount` and call [method getStack].
-	read slots: { read [number]: ItemStack? },
+	--- The stack in each slot, by slot number. A slot that holds nothing has no entry.
+	--- Note: the table has gaps, so `#` and `ipairs` do not work on it. Loop from 1 to `slotCount`.
+	read slots: { [number]: ItemStack? },
 }
 
---- An inventory as plain data, made by [method encode] and read by [method decode].
---- Every table in it is a list with no gaps or a record with named fields, so it survives a data store or a remote.
+--- An inventory as plain data, which a data store or a remote carries unchanged.
 export type EncodedInventory = {
 	slotCount: number,
 	--- One entry for each slot that holds something, lowest slot first.
 	stacks: { { slot: number, itemId: string, count: number } },
 }
 
-local function isWholeNumber(value: unknown): boolean
-	return type(value) == "number" and value == math.floor(value) and value ~= math.huge and value ~= -math.huge
-end
-
-local function writableSlots(inventory: Inventory): { [number]: ItemStack? }
-	return inventory.slots :: any
-end
-
--- Raises `problem` as an error that names the public function and blames the code that called it.
-local function failIf(problem: string?, functionName: string)
-	if problem ~= nil then
-		error(functionName .. ": " .. problem, 3)
+local function checkSlot(inventory: Inventory, slot: number)
+	if slot % 1 ~= 0 or slot < 1 or slot > inventory.slotCount then
+		error(`an inventory of {inventory.slotCount} slots has no slot {slot}`, 3)
 	end
 end
 
-local function slotProblem(inventory: Inventory, slot: number): string?
-	if isWholeNumber(slot) and slot >= 1 and slot <= inventory.slotCount then
-		return nil
-	end
-	return string.format(
-		"slot %s is out of range; this inventory has slots 1 to %d",
-		tostring(slot),
-		inventory.slotCount
-	)
-end
-
-local function countProblem(count: number): string?
-	if isWholeNumber(count) and count >= 0 then
-		return nil
-	end
-	return string.format("count must be a whole number, 0 or more; got %s", tostring(count))
-end
-
-local function rangeProblem(inventory: Inventory, firstSlot: number?, lastSlot: number?): string?
-	if firstSlot == nil and lastSlot == nil then
-		return nil
-	end
-	local isRange = isWholeNumber(firstSlot)
-		and isWholeNumber(lastSlot)
-		and (firstSlot :: number) >= 1
-		and (lastSlot :: number) <= inventory.slotCount
-		and (firstSlot :: number) <= (lastSlot :: number)
-	if isRange then
-		return nil
-	end
-	return string.format(
-		"slots %s to %s are not a run of this inventory's slots; it has slots 1 to %d",
-		tostring(firstSlot),
-		tostring(lastSlot),
-		inventory.slotCount
-	)
-end
-
-local function itemProblem(itemId: string): string?
-	if type(itemId) == "string" and ItemRegistry.has(itemId) then
-		return nil
-	end
-	return string.format('no item has the id "%s"', tostring(itemId))
-end
-
---[=[
-	Returns a new inventory with `slotCount` slots, all holding nothing.
-
-	Raises an error if `slotCount` is not a whole number of 1 or more.
-]=]
+--- Returns a new inventory of `slotCount` slots, all holding nothing.
 function Inventory.new(slotCount: number): Inventory
-	if not isWholeNumber(slotCount) or slotCount < 1 then
-		error(
-			string.format("Inventory.new: slotCount must be a whole number, 1 or more; got %s", tostring(slotCount)),
-			2
-		)
-	end
 	return table.freeze({ slotCount = slotCount, slots = {} })
 end
 
---[=[
-	Returns `true` if no slot holds anything.
-]=]
-function Inventory.isEmpty(inventory: Inventory): boolean
-	return next(writableSlots(inventory)) == nil
+--- Returns `true` if `slot` is the number of one of the inventory's slots. `slot` may be any
+--- value at all, so this is the check for a slot number that arrives from outside the game.
+function Inventory.hasSlot(inventory: Inventory, slot: unknown): boolean
+	return type(slot) == "number" and slot % 1 == 0 and slot >= 1 and slot <= inventory.slotCount
 end
 
---[=[
-	Returns the stack in the slot numbered `slot`, or `nil` if the slot holds nothing.
+--- Returns the number of every slot, lowest first.
+function Inventory.getSlots(inventory: Inventory): { number }
+	local slots = {}
+	for slot = 1, inventory.slotCount do
+		table.insert(slots, slot)
+	end
+	return slots
+end
 
-	Raises an error if `slot` is not from 1 to `slotCount`.
-]=]
+--- Returns `true` if no slot holds anything.
+function Inventory.isEmpty(inventory: Inventory): boolean
+	return next(inventory.slots) == nil
+end
+
+--- Returns the stack in a slot, or `nil` if the slot holds nothing. Fails if the inventory has no
+--- such slot.
 function Inventory.getStack(inventory: Inventory, slot: number): ItemStack?
-	failIf(slotProblem(inventory, slot), "Inventory.getStack")
+	checkSlot(inventory, slot)
 	return inventory.slots[slot]
 end
 
---[=[
-	Makes the slot numbered `slot` hold `stack`, in place of whatever it held.
-	Passing `nil` leaves the slot holding nothing.
-
-	What the slot held before is discarded. To keep it, use [method takeFromSlot] first.
-
-	Raises an error if `slot` is not from 1 to `slotCount`, or if `stack` is
-	not a stack that `ItemStack.new` could have made.
-]=]
+--- Makes a slot hold `stack`, or nothing if `stack` is `nil`. What the slot held before is
+--- discarded. Fails if the inventory has no such slot.
 function Inventory.setStack(inventory: Inventory, slot: number, stack: ItemStack?)
-	failIf(slotProblem(inventory, slot), "Inventory.setStack")
-	if stack == nil then
-		writableSlots(inventory)[slot] = nil
-		return
-	end
-	failIf(ItemStack.validate(stack), "Inventory.setStack")
-	writableSlots(inventory)[slot] = ItemStack.new(stack.itemId, stack.count)
+	checkSlot(inventory, slot)
+	inventory.slots[slot] = stack
 end
 
---[=[
-	Takes up to `count` items out of the slot numbered `slot` and returns them as a stack.
-
-	Leaving out `count` takes everything in the slot. Asking for more than the
-	slot holds takes what is there. Returns `nil` if nothing was taken, because
-	the slot holds nothing or `count` is 0.
-
-	Raises an error if `slot` is not from 1 to `slotCount`, or if `count` is
-	not a whole number of 0 or more.
-]=]
+--- Takes up to `count` items out of a slot and returns them as a stack. Takes everything in the
+--- slot if `count` is left out or is more than the slot holds. Returns `nil` if nothing was taken,
+--- because the slot holds nothing or `count` is 0. Fails if the inventory has no such slot.
 function Inventory.takeFromSlot(inventory: Inventory, slot: number, count: number?): ItemStack?
-	failIf(slotProblem(inventory, slot), "Inventory.takeFromSlot")
-	if count ~= nil then
-		failIf(countProblem(count), "Inventory.takeFromSlot")
-	end
-	local slots = writableSlots(inventory)
-	local stack = slots[slot]
+	checkSlot(inventory, slot)
+	local stack = inventory.slots[slot]
 	if stack == nil or count == 0 then
 		return nil
 	end
 	if count == nil or count >= stack.count then
-		slots[slot] = nil
+		inventory.slots[slot] = nil
 		return stack
 	end
 	local taken, rest = ItemStack.split(stack, count)
-	slots[slot] = rest
+	inventory.slots[slot] = rest
 	return taken
 end
 
---[=[
-	Puts `stack` into the slot numbered `slot`, and returns the stack of what
-	did not fit, or `nil` if all of it went in.
-
-	A slot that holds nothing takes the whole stack. A slot holding the same
-	item is topped up to that item's stack size. A slot holding a different
-	item takes nothing, and the whole of `stack` is returned.
-
-	Raises an error if `slot` is not from 1 to `slotCount`, or if `stack` is
-	not a stack that `ItemStack.new` could have made.
-]=]
+--- Puts a stack into a slot, and returns the part that did not fit, or `nil` if all of it went in.
+--- A slot that holds nothing takes the whole stack. A slot holding the same item is topped up to
+--- that item's stack size. A slot holding a different item takes nothing. Fails if the inventory
+--- has no such slot.
 function Inventory.putInSlot(inventory: Inventory, slot: number, stack: ItemStack): ItemStack?
-	failIf(slotProblem(inventory, slot), "Inventory.putInSlot")
-	failIf(ItemStack.validate(stack), "Inventory.putInSlot")
-	local slots = writableSlots(inventory)
-	local there = slots[slot]
+	checkSlot(inventory, slot)
+	local there = inventory.slots[slot]
 	if there == nil then
-		slots[slot] = ItemStack.new(stack.itemId, stack.count)
+		inventory.slots[slot] = stack
 		return nil
 	end
 	local merged, leftover = ItemStack.merge(there, stack)
-	slots[slot] = merged
+	inventory.slots[slot] = merged
 	return leftover
 end
 
---[=[
-	Adds up to `count` of the item with the id `itemId`, wherever they fit,
-	and returns how many were added.
+local function putItems(inventory: Inventory, slot: number, itemId: string, count: number): number
+	local offered = math.min(count, ItemRegistry.get(itemId).stackSize)
+	local leftover = Inventory.putInSlot(inventory, slot, ItemStack.new(itemId, offered))
+	return offered - (if leftover then leftover.count else 0)
+end
 
-	Stacks of the same item are topped up first, lowest slot first. Then slots
-	that hold nothing are filled, lowest slot first. What fits is added even
-	when the rest does not; ask [method spaceFor] first if it must be all or nothing.
-
-	Given `firstSlot` and `lastSlot`, only the slots from the one to the other
-	are used, and the rest of the inventory is left alone: that is how items
-	are sent to a hotbar and nowhere else. Leave both out to use every slot.
-
-	Raises an error if no item has the id `itemId`, if `count` is not a whole
-	number of 0 or more, or if `firstSlot` and `lastSlot` are given and are
-	not two of this inventory's slots with `firstSlot` no greater than
-	`lastSlot`.
-]=]
-function Inventory.addItems(
-	inventory: Inventory,
-	itemId: string,
-	count: number,
-	firstSlot: number?,
-	lastSlot: number?
-): number
-	failIf(itemProblem(itemId), "Inventory.addItems")
-	failIf(countProblem(count), "Inventory.addItems")
-	failIf(rangeProblem(inventory, firstSlot, lastSlot), "Inventory.addItems")
-	local first = firstSlot or 1
-	local last = lastSlot or inventory.slotCount
-	local stackSize = ItemRegistry.get(itemId).stackSize
-	local slots = writableSlots(inventory)
+--- Adds up to `count` of an item and returns how many were added. Stacks of the item are topped
+--- up first, and then slots that hold nothing are filled, each in the order the slots are listed.
+--- Only the slots in `intoSlots` are used, or every slot, lowest first, if it is left out. Fails
+--- if no item has the id `itemId`, if `count` is not a whole number of 0 or more, or if the
+--- inventory lacks a listed slot.
+function Inventory.addItems(inventory: Inventory, itemId: string, count: number, intoSlots: { number }?): number
+	if count % 1 ~= 0 or count < 0 then
+		error(`cannot add {count} items`, 2)
+	end
+	local slots = intoSlots or Inventory.getSlots(inventory)
+	for _, slot in slots do
+		checkSlot(inventory, slot)
+	end
 	local left = count
-	for slot = first, last do
-		if left == 0 then
-			break
-		end
-		local there = slots[slot]
-		if there ~= nil and there.itemId == itemId and there.count < stackSize then
-			local added = math.min(left, stackSize - there.count)
-			slots[slot] = ItemStack.new(itemId, there.count + added)
-			left -= added
+	for _, slot in slots do
+		if left > 0 and inventory.slots[slot] ~= nil then
+			left -= putItems(inventory, slot, itemId, left)
 		end
 	end
-	for slot = first, last do
-		if left == 0 then
-			break
-		end
-		if slots[slot] == nil then
-			local added = math.min(left, stackSize)
-			slots[slot] = ItemStack.new(itemId, added)
-			left -= added
+	for _, slot in slots do
+		if left > 0 and inventory.slots[slot] == nil then
+			left -= putItems(inventory, slot, itemId, left)
 		end
 	end
 	return count - left
 end
 
---[=[
-	Adds the items of `stack`, wherever they fit, and returns the stack of
-	what did not fit, or `nil` if all of it went in.
-
-	This is [method addItems] for a caller that is holding a stack. The items
-	go in the same order: stacks of the same item first, then slots that hold
-	nothing. Given `firstSlot` and `lastSlot`, only the slots from the one to
-	the other are used.
-
-	Raises an error if `stack` is not a stack that `ItemStack.new` could have
-	made, or if `firstSlot` and `lastSlot` are given and are not two of this
-	inventory's slots with `firstSlot` no greater than `lastSlot`.
-]=]
-function Inventory.addStack(inventory: Inventory, stack: ItemStack, firstSlot: number?, lastSlot: number?): ItemStack?
-	failIf(ItemStack.validate(stack), "Inventory.addStack")
-	failIf(rangeProblem(inventory, firstSlot, lastSlot), "Inventory.addStack")
-	local added = Inventory.addItems(inventory, stack.itemId, stack.count, firstSlot, lastSlot)
+--- Adds the items of a stack as `addItems` does, and returns the part that did not fit, or `nil`
+--- if all of it went in.
+function Inventory.addStack(inventory: Inventory, stack: ItemStack, intoSlots: { number }?): ItemStack?
+	local added = Inventory.addItems(inventory, stack.itemId, stack.count, intoSlots)
 	if added == stack.count then
 		return nil
 	end
 	return ItemStack.new(stack.itemId, stack.count - added)
 end
 
---[=[
-	Removes up to `count` of the item with the id `itemId`, from whichever
-	slots hold them, and returns how many were removed.
-
-	Items are taken from the lowest slot first. If the inventory holds fewer
-	than `count`, all of them are removed; ask [method hasItems] first if it
-	must be all or nothing.
-
-	Raises an error if no item has the id `itemId`, or if `count` is not a
-	whole number of 0 or more.
-]=]
-function Inventory.removeItems(inventory: Inventory, itemId: string, count: number): number
-	failIf(itemProblem(itemId), "Inventory.removeItems")
-	failIf(countProblem(count), "Inventory.removeItems")
-	local slots = writableSlots(inventory)
-	local left = count
-	for slot = 1, inventory.slotCount do
-		if left == 0 then
-			break
-		end
-		local there = slots[slot]
-		if there ~= nil and there.itemId == itemId then
-			if there.count <= left then
-				slots[slot] = nil
-				left -= there.count
-			else
-				slots[slot] = ItemStack.new(itemId, there.count - left)
-				left = 0
-			end
-		end
-	end
-	return count - left
-end
-
---[=[
-	Returns how many of the item with the id `itemId` the inventory holds,
-	over all its slots. 0 if it holds none, which is also the answer for an
-	id that no item has.
-]=]
+--- Returns how many of an item the inventory holds, over all its slots.
 function Inventory.countItems(inventory: Inventory, itemId: string): number
 	local total = 0
-	for _, stack in writableSlots(inventory) do
+	for _, stack in inventory.slots do
 		if stack ~= nil and stack.itemId == itemId then
 			total += stack.count
 		end
@@ -363,56 +160,7 @@ function Inventory.countItems(inventory: Inventory, itemId: string): number
 	return total
 end
 
---[=[
-	Returns `true` if the inventory holds at least `count` of the item with
-	the id `itemId`.
-
-	Raises an error if `count` is not a whole number of 0 or more.
-]=]
-function Inventory.hasItems(inventory: Inventory, itemId: string, count: number): boolean
-	failIf(countProblem(count), "Inventory.hasItems")
-	return Inventory.countItems(inventory, itemId) >= count
-end
-
---[=[
-	Returns how many more of the item with the id `itemId` would fit: the room
-	left in stacks of that item, plus a full stack for every slot that holds nothing.
-
-	[method addItems] with a count up to this number adds all of them.
-
-	Raises an error if no item has the id `itemId`, since how many fit depends
-	on the item's stack size.
-]=]
-function Inventory.spaceFor(inventory: Inventory, itemId: string): number
-	failIf(itemProblem(itemId), "Inventory.spaceFor")
-	local stackSize = ItemRegistry.get(itemId).stackSize
-	local space = 0
-	for slot = 1, inventory.slotCount do
-		local there = inventory.slots[slot]
-		if there == nil then
-			space += stackSize
-		elseif there.itemId == itemId then
-			space += stackSize - there.count
-		end
-	end
-	return space
-end
-
---[=[
-	Leaves every slot holding nothing. The items that were in them are discarded.
-]=]
-function Inventory.clear(inventory: Inventory)
-	table.clear(writableSlots(inventory))
-end
-
---[=[
-	Returns `inventory` as plain data, for saving or for sending to another machine.
-
-	The result holds only numbers, strings and lists with no gaps, and shares
-	nothing with the inventory. A slot that holds nothing is left out. An
-	inventory with 3 slots and 5 logs in slot 2 becomes
-	`{ slotCount = 3, stacks = { { slot = 2, itemId = "log", count = 5 } } }`.
-]=]
+--- Returns the inventory as plain data, which `decode` reads back.
 function Inventory.encode(inventory: Inventory): EncodedInventory
 	local stacks = {}
 	for slot = 1, inventory.slotCount do
@@ -424,81 +172,68 @@ function Inventory.encode(inventory: Inventory): EncodedInventory
 	return { slotCount = inventory.slotCount, stacks = stacks }
 end
 
---[=[
-	Returns a new inventory built from data that [method encode] made.
+local function unknownField(fields: { [unknown]: unknown }, known: { string }): unknown
+	for field in fields do
+		if table.find(known, field :: any) == nil then
+			return field
+		end
+	end
+	return nil
+end
 
-	The data comes from outside the game, so nothing about it is trusted. If
-	any part of it is not what [method encode] would have written, no inventory
-	is made: the function returns `nil` and a sentence saying what was wrong.
-	That covers a missing or extra field, a slot number that is out of range
-	or used twice, an id that no item has, and a count that a stack could not
-	have.
-]=]
+local function decodeEntry(inventory: Inventory, index: number, entry: unknown): string?
+	if type(entry) ~= "table" then
+		return `stacks must be a list with no gaps; entry {index} is a {type(entry)}`
+	end
+	local fields = entry :: { [unknown]: unknown }
+	local extra = unknownField(fields, { "slot", "itemId", "count" })
+	if extra ~= nil then
+		return `stacks[{index}] has no field called {extra}`
+	end
+	local slot = fields.slot
+	if not Inventory.hasSlot(inventory, slot) then
+		return `stacks[{index}].slot must be from 1 to {inventory.slotCount}; got {slot}`
+	end
+	if inventory.slots[slot :: number] ~= nil then
+		return `stacks[{index}].slot is {slot}, which an earlier entry already used`
+	end
+	local problem = ItemStack.validate({ itemId = fields.itemId, count = fields.count })
+	if problem ~= nil then
+		return `stacks[{index}]: {problem}`
+	end
+	inventory.slots[slot :: number] = ItemStack.new(fields.itemId :: string, fields.count :: number)
+	return nil
+end
+
+--- Returns a new inventory read from data that `encode` made. If any part of the data is not
+--- what `encode` would have written, returns `nil` and what is wrong with it, in words. The data
+--- may be anything at all, so this is the check for an inventory that arrives from outside.
 function Inventory.decode(encoded: unknown): (Inventory?, string?)
 	if type(encoded) ~= "table" then
 		return nil, "an encoded inventory is a table, not a " .. type(encoded)
 	end
 	local fields = encoded :: { [unknown]: unknown }
-	for field in fields do
-		if field ~= "slotCount" and field ~= "stacks" then
-			return nil, "an encoded inventory has no field called " .. tostring(field)
-		end
+	local extra = unknownField(fields, { "slotCount", "stacks" })
+	if extra ~= nil then
+		return nil, `an encoded inventory has no field called {extra}`
 	end
-	local slotCount = fields.slotCount
-	if not isWholeNumber(slotCount) or (slotCount :: number) < 1 then
-		return nil, "slotCount must be a whole number, 1 or more; got " .. tostring(slotCount)
+	local slotCount, stacks = fields.slotCount, fields.stacks
+	if type(slotCount) ~= "number" or slotCount % 1 ~= 0 or slotCount < 1 then
+		return nil, `slotCount must be a whole number, 1 or more; got {slotCount}`
 	end
-	local stacks = fields.stacks
 	if type(stacks) ~= "table" then
 		return nil, "stacks must be a list, not a " .. type(stacks)
 	end
-	local entries = stacks :: { [unknown]: unknown }
+	local inventory = Inventory.new(slotCount)
 	local entryCount = 0
-	for _ in entries do
+	for _ in stacks :: { [unknown]: unknown } do
 		entryCount += 1
 	end
-	local inventory = Inventory.new(slotCount :: number)
-	local slots = writableSlots(inventory)
 	for index = 1, entryCount do
-		local entry = entries[index]
-		if type(entry) ~= "table" then
-			return nil, string.format("stacks must be a list with no gaps; entry %d is a %s", index, type(entry))
+		local problem = decodeEntry(inventory, index, (stacks :: { unknown })[index])
+		if problem ~= nil then
+			return nil, problem
 		end
-		local stack = entry :: { [unknown]: unknown }
-		for field in stack do
-			if field ~= "slot" and field ~= "itemId" and field ~= "count" then
-				return nil, string.format("stacks[%d] has no field called %s", index, tostring(field))
-			end
-		end
-		local slot, itemId, count = stack.slot, stack.itemId, stack.count
-		if not isWholeNumber(slot) or (slot :: number) < 1 or (slot :: number) > (slotCount :: number) then
-			return nil,
-				string.format(
-					"stacks[%d].slot must be from 1 to %d; got %s",
-					index,
-					slotCount :: number,
-					tostring(slot)
-				)
-		end
-		if slots[slot :: number] ~= nil then
-			return nil,
-				string.format("stacks[%d].slot is %d, which an earlier entry already used", index, slot :: number)
-		end
-		if type(itemId) ~= "string" or not ItemRegistry.has(itemId) then
-			return nil, string.format('stacks[%d].itemId: no item has the id "%s"', index, tostring(itemId))
-		end
-		local stackSize = ItemRegistry.get(itemId).stackSize
-		if not isWholeNumber(count) or (count :: number) < 1 or (count :: number) > stackSize then
-			return nil,
-				string.format(
-					'stacks[%d].count: a stack of "%s" holds 1 to %d, not %s',
-					index,
-					itemId,
-					stackSize,
-					tostring(count)
-				)
-		end
-		slots[slot :: number] = ItemStack.new(itemId, count :: number)
 	end
 	return inventory, nil
 end

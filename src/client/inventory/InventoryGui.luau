@@ -1,38 +1,12 @@
 --!strict
---[=[
-	The inventory screen: the player's pack, the other inventory that is open
-	beside it if there is one, such as a crate's, and the stack being carried,
-	which follows the pointer.
-
-	It is laid out as Minecraft's is. The other inventory is at the top. Under
-	it is the pack, with its hotbar slots as the bottom row, a little apart
-	from the rest.
-
-	When the other inventory is a station's, such as a stove's, its three
-	slots are laid out as a Minecraft furnace's are: what goes in above the
-	fuel, with a gauge between them for how much of the burning fuel is
-	left, and what comes out to the right, past a gauge for how far the work
-	has got.
-
-	It draws what it is shown and reports what the player's mouse does on its
-	slots. It changes nothing itself: the code that made it decides what a
-	click or a drag does, and shows the screen again when the inventories
-	have changed.
-
-	```lua
-	local inventoryGui = InventoryGui.new(playerGui, 9, {
-		onSlotClicked = function(side, slot, button, shiftHeld) end, -- side is "pack" or "other", button "left" or "right"
-		onSlotPressed = function(side, slot, button) end, -- a button went down on a slot
-		onSlotDraggedOver = function(side, slot) end, -- the pointer came onto a slot with a button down
-		onOutsideClicked = function(button) end, -- a click on the dimmed world around the screen
-		onCloseClicked = function() end, -- a click on the screen's close button
-	})
-	InventoryGui.show(inventoryGui, pack, crate, "Crate", carried) -- the screen opens, or redraws if it was open
-	InventoryGui.show(inventoryGui, pack, stove, "Stove", carried, { burning = 0.5, working = 0.25 }) -- as a furnace
-	InventoryGui.markSlots(inventoryGui, { { side = "pack", slot = 3 } }) -- a bright edge on those slots and no others
-	InventoryGui.hide(inventoryGui)
-	```
-]=]
+--- The inventory screen, which shows the player's pack, another inventory beside it, and the stack being carried.
+---
+--- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are its
+--- bottom row, a little apart from the rest. The carried stack follows the pointer. When the other
+--- inventory is a station's, its first slot is drawn above its second, with a fire gauge between them,
+--- and its third slot to the right, past a work gauge. `show` draws, `markSlots` brightens slots and
+--- `hide` closes the screen. The screen changes no inventory: it reports what the player does on its slots
+--- through its `callbacks`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -47,52 +21,56 @@ local StackIcon = require(script.Parent.StackIcon)
 
 local InventoryGui = {}
 
+--- Which inventory a slot belongs to: the player's pack, or the other inventory beside it.
 export type Side = "pack" | "other"
+
+--- A mouse button, which a finger on a touch screen counts as the left one.
 export type Button = "left" | "right"
 
 export type Callbacks = {
-	--- Called when the player clicks a slot: a button goes down and comes up on it. `shiftHeld` is
-	--- `true` if a Shift key was down.
-	onSlotClicked: (side: Side, slot: number, button: Button, shiftHeld: boolean) -> (),
-	--- Called when a mouse button goes down on a slot.
+	--- Called when a mouse button, or a finger, goes down on a slot.
 	onSlotPressed: (side: Side, slot: number, button: Button) -> (),
 	--- Called when the pointer comes onto a slot while a mouse button is down.
-	onSlotDraggedOver: (side: Side, slot: number) -> (),
-	--- Called when the player clicks outside the screen, on the dimmed world.
+	onSlotEntered: (side: Side, slot: number) -> (),
+	--- Called when the player clicks outside the panel, on the dimmed world.
 	onOutsideClicked: (button: Button) -> (),
-	--- Called when the player clicks the screen's close button.
+	--- Called when the player clicks the panel's close button.
 	onCloseClicked: () -> (),
 }
 
 export type InventoryGui = {
+	--- The ScreenGui that holds the whole screen. It is enabled while the screen is open.
 	read screenGui: ScreenGui,
 	--- The panel the slots are on.
 	read panel: Frame,
-	--- The words at the top of the panel: the name of the other inventory, or of the pack when it is shown alone.
+	--- The words at the top of the panel: the name of the other inventory, or "Pack" when the pack is shown alone.
 	read title: TextLabel,
-	--- The word "Pack" above the pack's slots, shown when another inventory is above them.
+	--- The word "Pack" above the pack's slots, visible when another inventory is above them.
 	read packTitle: TextLabel,
-	--- How many of the pack's slots are its hotbar, drawn as the bottom row.
+	--- How many of the pack's first slots are its hotbar, drawn as the bottom row.
 	read hotbarSlotCount: number,
+	--- What the screen reports to.
 	read callbacks: Callbacks,
-	--- The pack's slots, in order. Made when the screen is first shown.
+	--- The pack's slots, in order. They are made when the screen first shows a pack.
 	read packSlots: { SlotGui.SlotGui },
-	--- The other inventory's slots, in order. Empty when the pack is shown alone.
+	--- The other inventory's slots, in order. There are none when the pack is shown alone.
 	read otherSlots: { SlotGui.SlotGui },
-	--- The picture of the carried stack, and the frame that moves it with the pointer.
+	--- The picture of the carried stack.
 	read carriedIcon: StackIcon.StackIcon,
+	--- The frame that moves the carried stack's picture with the pointer.
 	read carriedFrame: Frame,
-	--- The connection that moves the carried stack each frame while the screen is open.
-	read following: RBXScriptConnection?,
-	--- The slot the pointer is over, or `nil` when it is over none. For keys that act on the slot under the pointer.
-	read hovered: { side: Side, slot: number }?,
-	--- Whether the other inventory is laid out as a station's.
-	read showsStation: boolean,
-	--- The parts that are only there for a station: the fill of its two gauges, and the words beside its slots.
+	--- The connection that moves `carriedFrame` each frame, or `nil` while the screen is closed.
+	following: RBXScriptConnection?,
+	--- The slot the pointer is over, or `nil` when it is over none.
+	hovered: { side: Side, slot: number }?,
+	--- Whether the other inventory is drawn as a station's.
+	showsStation: boolean,
+	--- The parts that are only there for a station: the fill of its fire gauge, the fill of its work
+	--- gauge, and every part in `all`: the two gauges, then the words beside its input, fuel and output slots.
 	read stationParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
 }
 
---- How far a station's fire has burnt and its work has got, each from 0 to 1, as the server sends it.
+--- How far a station's fire has burnt down and how far its work has got, each from 0 to 1.
 export type StationGauges = { burning: number, working: number }
 
 local COLUMNS = 9
@@ -105,47 +83,39 @@ local PACK_NAME = "Pack"
 local FIRE_GAUGE_SIZE = Vector2.new(14, 40)
 local WORK_GAUGE_HEIGHT = 12
 
-local function isShiftHeld(): boolean
-	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
-end
-
 local function isMouseButtonDown(): boolean
 	return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
 		or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
 end
 
--- Makes one slot on the panel and connects what the mouse does on it.
 local function makeSlot(inventoryGui: InventoryGui, side: Side, slot: number): SlotGui.SlotGui
 	local slotGui = SlotGui.new(inventoryGui.panel)
 	slotGui.button.Name = (if side == "pack" then "PackSlot" else "OtherSlot") .. slot
-	slotGui.button.MouseButton1Click:Connect(function()
-		inventoryGui.callbacks.onSlotClicked(side, slot, "left", isShiftHeld())
-	end)
-	slotGui.button.MouseButton2Click:Connect(function()
-		inventoryGui.callbacks.onSlotClicked(side, slot, "right", isShiftHeld())
-	end)
+	local function press(button: Button)
+		inventoryGui.hovered = { side = side, slot = slot }
+		inventoryGui.callbacks.onSlotPressed(side, slot, button)
+	end
 	slotGui.button.MouseButton1Down:Connect(function()
-		inventoryGui.callbacks.onSlotPressed(side, slot, "left")
+		press("left")
 	end)
 	slotGui.button.MouseButton2Down:Connect(function()
-		inventoryGui.callbacks.onSlotPressed(side, slot, "right")
+		press("right")
 	end)
 	slotGui.button.MouseEnter:Connect(function()
-		(inventoryGui :: any).hovered = { side = side, slot = slot }
+		inventoryGui.hovered = { side = side, slot = slot }
 		if isMouseButtonDown() then
-			inventoryGui.callbacks.onSlotDraggedOver(side, slot)
+			inventoryGui.callbacks.onSlotEntered(side, slot)
 		end
 	end)
 	slotGui.button.MouseLeave:Connect(function()
 		local hovered = inventoryGui.hovered
 		if hovered ~= nil and hovered.side == side and hovered.slot == slot then
-			(inventoryGui :: any).hovered = nil
+			inventoryGui.hovered = nil
 		end
 	end)
 	return slotGui
 end
 
--- Makes `slots` hold exactly `slotCount` slots for one side, making or destroying slots as needed.
 local function resizeSlots(inventoryGui: InventoryGui, slots: { SlotGui.SlotGui }, side: Side, slotCount: number)
 	for slot = #slots + 1, slotCount do
 		slots[slot] = makeSlot(inventoryGui, side, slot)
@@ -156,8 +126,6 @@ local function resizeSlots(inventoryGui: InventoryGui, slots: { SlotGui.SlotGui 
 	end
 end
 
--- Places `count` slots of `slots`, starting from the slot numbered `first`, in rows of nine from
--- `top` downwards. Returns the height the rows take.
 local function placeRows(slots: { SlotGui.SlotGui }, first: number, count: number, top: number): number
 	local step = SlotGui.SIZE + GAP
 	for index = 0, count - 1 do
@@ -169,8 +137,6 @@ local function placeRows(slots: { SlotGui.SlotGui }, first: number, count: numbe
 	return if rows > 0 then rows * step - GAP else 0
 end
 
--- Places a station's three slots as a furnace's are, with its gauges and words, from `top` downwards.
--- What goes in is above the fuel, and what comes out is to the right. Returns the height it takes.
 local function placeStation(inventoryGui: InventoryGui, top: number): number
 	local step = SlotGui.SIZE + GAP
 	local function cell(column: number, row: number): Vector2
@@ -194,7 +160,6 @@ local function placeStation(inventoryGui: InventoryGui, top: number): number
 	workGauge.Position = UDim2.fromOffset(workLeft, between.Y + (SlotGui.SIZE - WORK_GAUGE_HEIGHT) / 2)
 	workGauge.Size = UDim2.fromOffset(output.X - 10 - workLeft, WORK_GAUGE_HEIGHT)
 
-	-- The words: to the left of what goes in and of the fuel, and to the right of what comes out.
 	local words = { parts.all[3], parts.all[4], parts.all[5] }
 	words[1].Position = UDim2.fromOffset(cell(1, 1).X, input.Y)
 	words[2].Position = UDim2.fromOffset(cell(1, 3).X, fuel.Y)
@@ -202,7 +167,6 @@ local function placeStation(inventoryGui: InventoryGui, top: number): number
 	return 3 * step - GAP
 end
 
--- Lays the panel out for the slots there are now: the other inventory, then the pack, then the pack's hotbar.
 local function layOut(inventoryGui: InventoryGui)
 	local packSlots = inventoryGui.packSlots
 	local otherSlots = inventoryGui.otherSlots
@@ -230,19 +194,30 @@ local function layOut(inventoryGui: InventoryGui)
 	inventoryGui.panel.Size = UDim2.fromOffset(width, top + HINT_HEIGHT + PADDING)
 end
 
---[=[
-	Returns a new inventory screen in a ScreenGui inside `parent`, hidden.
-	`hotbarSlotCount` is how many of the pack's first slots are its hotbar.
-]=]
-function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: Callbacks): InventoryGui
+local function followPointer(inventoryGui: InventoryGui)
+	if inventoryGui.following ~= nil then
+		return
+	end
+	local carriedFrame = inventoryGui.carriedFrame
+	local function moveToPointer()
+		local pointer = UserInputService:GetMouseLocation()
+		carriedFrame.Position = UDim2.fromOffset(pointer.X, pointer.Y)
+	end
+	moveToPointer()
+	inventoryGui.following = RunService.RenderStepped:Connect(moveToPointer)
+end
+
+local function makeScreenGui(): ScreenGui
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "Inventory"
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 10
 	screenGui.Enabled = false
+	return screenGui
+end
 
-	-- The dimmed world around the panel. Being modal, it frees the pointer even in first person.
+local function makeBackdrop(screenGui: ScreenGui, callbacks: Callbacks)
 	local outside = Instance.new("TextButton")
 	outside.Name = "Outside"
 	outside.Size = UDim2.fromScale(1, 1)
@@ -250,6 +225,7 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	outside.BackgroundTransparency = 0.5
 	outside.BorderSizePixel = 0
 	outside.AutoButtonColor = false
+	-- Note: a modal button frees the pointer even in first person.
 	outside.Modal = true
 	outside.Text = ""
 	outside.Parent = screenGui
@@ -259,7 +235,9 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	outside.MouseButton2Click:Connect(function()
 		callbacks.onOutsideClicked("right")
 	end)
+end
 
+local function makePanel(screenGui: ScreenGui): Frame
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -272,7 +250,10 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	panelCorner.CornerRadius = UDim.new(0, 10)
 	panelCorner.Parent = panel
 	ScreenScale.apply(panel)
+	return panel
+end
 
+local function makeTitle(panel: Frame): TextLabel
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Position = UDim2.fromOffset(PADDING, PADDING - 4)
@@ -284,12 +265,18 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	title.TextColor3 = Color3.fromRGB(225, 225, 230)
 	title.Text = PACK_NAME
 	title.Parent = panel
+	return title
+end
 
+local function makePackTitle(panel: Frame, title: TextLabel): TextLabel
 	local packTitle = title:Clone()
 	packTitle.Name = "PackTitle"
 	packTitle.Visible = false
 	packTitle.Parent = panel
+	return packTitle
+end
 
+local function makeCloseButton(panel: Frame, callbacks: Callbacks)
 	local close = Instance.new("TextButton")
 	close.Name = "Close"
 	close.AnchorPoint = Vector2.new(1, 0)
@@ -306,7 +293,9 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	closeCorner.CornerRadius = UDim.new(0, 6)
 	closeCorner.Parent = close
 	close.MouseButton1Click:Connect(callbacks.onCloseClicked)
+end
 
+local function makeHint(panel: Frame)
 	local hint = Instance.new("TextLabel")
 	hint.Name = "Hint"
 	hint.AnchorPoint = Vector2.new(0, 1)
@@ -323,35 +312,45 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 		.. "Shift and click: send across.  Drag: spread a stack.  Click outside: drop.  E: close.\n"
 		.. "Double click: gather a kind.  Over a slot, 1 to 9: swap with that hotbar slot.  Q: drop one."
 	hint.Parent = panel
+end
 
-	-- What is only there for a station: two gauges, and a word beside each of its slots.
-	local function makeGauge(name: string, fill: Color3): (Frame, Frame)
-		local gauge = Instance.new("Frame")
-		gauge.Name = name
-		gauge.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
-		gauge.BorderSizePixel = 0
-		gauge.Visible = false
-		gauge.Parent = panel
-		local gaugeFill = Instance.new("Frame")
-		gaugeFill.Name = "Fill"
-		gaugeFill.BackgroundColor3 = fill
-		gaugeFill.BorderSizePixel = 0
-		gaugeFill.Parent = gauge
-		return gauge, gaugeFill
-	end
-	local fireGauge, fireFill = makeGauge("FireGauge", Color3.fromRGB(255, 150, 50))
+local function makeGauge(panel: Frame, name: string, fill: Color3): (Frame, Frame)
+	local gauge = Instance.new("Frame")
+	gauge.Name = name
+	gauge.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+	gauge.BorderSizePixel = 0
+	gauge.Visible = false
+	gauge.Parent = panel
+	local gaugeFill = Instance.new("Frame")
+	gaugeFill.Name = "Fill"
+	gaugeFill.BackgroundColor3 = fill
+	gaugeFill.BorderSizePixel = 0
+	gaugeFill.Parent = gauge
+	return gauge, gaugeFill
+end
+
+local function makeFireGauge(panel: Frame): (Frame, Frame)
+	local fireGauge, fireFill = makeGauge(panel, "FireGauge", Color3.fromRGB(255, 150, 50))
 	fireGauge.Size = UDim2.fromOffset(FIRE_GAUGE_SIZE.X, FIRE_GAUGE_SIZE.Y)
 	fireFill.AnchorPoint = Vector2.new(0, 1)
 	fireFill.Position = UDim2.fromScale(0, 1)
 	fireFill.Size = UDim2.fromScale(1, 0)
-	local workGauge, workFill = makeGauge("WorkGauge", Color3.fromRGB(225, 225, 230))
+	return fireGauge, fireFill
+end
+
+local function makeWorkGauge(panel: Frame): (Frame, Frame)
+	local workGauge, workFill = makeGauge(panel, "WorkGauge", Color3.fromRGB(225, 225, 230))
 	workFill.Size = UDim2.fromScale(0, 1)
-	local stationParts: { GuiObject } = { fireGauge, workGauge }
+	return workGauge, workFill
+end
+
+local function makeSlotWords(panel: Frame): { TextLabel }
 	local slotWords = {
 		{ "In", Enum.TextXAlignment.Right },
 		{ "Fuel", Enum.TextXAlignment.Right },
 		{ "Out", Enum.TextXAlignment.Left },
 	}
+	local labels = {}
 	for _, word in slotWords do
 		local label = Instance.new("TextLabel")
 		label.Name = word[1] .. "Word"
@@ -364,9 +363,12 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 		label.Text = word[1] :: string
 		label.Visible = false
 		label.Parent = panel
-		table.insert(stationParts, label)
+		table.insert(labels, label)
 	end
+	return labels
+end
 
+local function makeCarried(screenGui: ScreenGui): (Frame, StackIcon.StackIcon)
 	local carriedFrame = Instance.new("Frame")
 	carriedFrame.Name = "Carried"
 	carriedFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -379,6 +381,26 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	carriedIcon.block.ZIndex = 10
 	carriedIcon.nameLabel.ZIndex = 10
 	carriedIcon.countLabel.ZIndex = 11
+	return carriedFrame, carriedIcon
+end
+
+--- Returns a new inventory screen, hidden, in a ScreenGui inside `parent`. `hotbarSlotCount` is how many
+--- of the pack's first slots are its hotbar.
+function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: Callbacks): InventoryGui
+	local screenGui = makeScreenGui()
+	makeBackdrop(screenGui, callbacks)
+	local panel = makePanel(screenGui)
+	local title = makeTitle(panel)
+	local packTitle = makePackTitle(panel, title)
+	makeCloseButton(panel, callbacks)
+	makeHint(panel)
+	local fireGauge, fireFill = makeFireGauge(panel)
+	local workGauge, workFill = makeWorkGauge(panel)
+	local stationParts: { GuiObject } = { fireGauge, workGauge }
+	for _, label in makeSlotWords(panel) do
+		table.insert(stationParts, label)
+	end
+	local carriedFrame, carriedIcon = makeCarried(screenGui)
 
 	screenGui.Parent = parent
 	return {
@@ -397,37 +419,32 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	}
 end
 
---[=[
-	Opens the screen, or redraws it if it is open, to show `pack`, the `other`
-	inventory above it if one is given, and the `carried` stack at the pointer
-	if there is one. `otherName` is written over the other inventory, and is
-	not used when there is none.
-
-	If the other inventory is a station's, give its gauges as `station`: its
-	three slots are then laid out as a furnace's, with the gauges filled as
-	far as `station` says.
-]=]
+--- Opens the screen, or redraws it if it is open, showing `pack`, the `carried` stack at the pointer if
+--- there is one, and the `other` inventory above the pack if there is one. `otherName` is written
+--- over the other inventory and is not used when there is none. If `gauges` is given and `other` has
+--- three slots, they are drawn as a station's input, fuel and output, and the gauges are filled as far
+--- as `gauges` says.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
 	other: Inventory.Inventory?,
 	otherName: string,
 	carried: ItemStack.ItemStack?,
-	station: StationGauges?
+	gauges: StationGauges?
 )
 	inventoryGui.title.Text = if other ~= nil then otherName else PACK_NAME
 	local otherSlotCount = if other ~= nil then other.slotCount else 0
-	local showsStation = station ~= nil and otherSlotCount == 3
-	if station ~= nil and showsStation then
-		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(station.burning, 0, 1))
-		inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(station.working, 0, 1), 1)
+	local showsStation = gauges ~= nil and otherSlotCount == 3
+	if gauges ~= nil and showsStation then
+		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(gauges.burning, 0, 1))
+		inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(gauges.working, 0, 1), 1)
 	end
 	if
 		#inventoryGui.packSlots ~= pack.slotCount
 		or #inventoryGui.otherSlots ~= otherSlotCount
 		or inventoryGui.showsStation ~= showsStation
 	then
-		(inventoryGui :: any).showsStation = showsStation
+		inventoryGui.showsStation = showsStation
 		resizeSlots(inventoryGui, inventoryGui.packSlots, "pack", pack.slotCount)
 		resizeSlots(inventoryGui, inventoryGui.otherSlots, "other", otherSlotCount)
 		layOut(inventoryGui)
@@ -441,24 +458,12 @@ function InventoryGui.show(
 		end
 	end
 	StackIcon.show(inventoryGui.carriedIcon, carried)
-
-	if inventoryGui.following == nil then
-		local carriedFrame = inventoryGui.carriedFrame
-		local function follow()
-			local pointer = UserInputService:GetMouseLocation()
-			carriedFrame.Position = UDim2.fromOffset(pointer.X, pointer.Y)
-		end
-		follow();
-		(inventoryGui :: any).following = RunService.RenderStepped:Connect(follow)
-	end
+	followPointer(inventoryGui)
 	inventoryGui.screenGui.Enabled = true
 end
 
---[=[
-	Gives the slots named in `screenSlots` a bright edge, and every other slot
-	its plain edge. A list of none clears the marks. It is how the slots of a
-	drag in progress are shown.
-]=]
+--- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An empty
+--- list gives every slot its plain edge. A named slot that does not exist is ignored.
 function InventoryGui.markSlots(inventoryGui: InventoryGui, screenSlots: { { read side: string, read slot: number } })
 	local marked: { [SlotGui.SlotGui]: boolean } = {}
 	for _, screenSlot in screenSlots do
@@ -475,17 +480,16 @@ function InventoryGui.markSlots(inventoryGui: InventoryGui, screenSlots: { { rea
 	end
 end
 
---[=[
-	Closes the screen. Does nothing if it is closed already.
-]=]
+--- Closes the screen, clears the bright edges, forgets the slot under the pointer and stops moving the
+--- carried stack. Does nothing if the screen is closed already.
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
-	InventoryGui.markSlots(inventoryGui, {});
-	(inventoryGui :: any).hovered = nil
+	InventoryGui.markSlots(inventoryGui, {})
+	inventoryGui.hovered = nil
 	local following = inventoryGui.following
 	if following ~= nil then
-		following:Disconnect();
-		(inventoryGui :: any).following = nil
+		following:Disconnect()
+		inventoryGui.following = nil
 	end
 end
 

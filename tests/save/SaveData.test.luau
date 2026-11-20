@@ -2,16 +2,13 @@
 -- Tests for SaveData. Run from the repository root: lune run tests/save/SaveData.test.luau
 
 local Check = require("../Check")
-local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
-local InventorySession = require("../../src/shared/inventory/InventorySession")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local SaveData = require("../../src/shared/save/SaveData")
 
 local check = Check.that
-local raises = Check.raises
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
@@ -43,7 +40,10 @@ local function samePack(a: Inventory.Inventory, b: Inventory.Inventory): boolean
 	end
 	for slot = 1, a.slotCount do
 		local inA, inB = Inventory.getStack(a, slot), Inventory.getStack(b, slot)
-		if (inA == nil) ~= (inB == nil) or (inA ~= nil and inB ~= nil and not ItemStack.equals(inA, inB)) then
+		if
+			(inA == nil) ~= (inB == nil)
+			or (inA ~= nil and inB ~= nil and (inA.itemId ~= inB.itemId or inA.count ~= inB.count))
+		then
 			return false
 		end
 	end
@@ -59,67 +59,55 @@ do -- the rules as numbers
 	check(SaveData.CURRENT_VERSION == 1, "saved data is at version 1")
 end
 
-do -- a new player
-	local saved = SaveData.encode(PlayerState.new())
+do -- an empty pack
+	local saved = SaveData.encode(Inventory.new(PlayerState.PACK_SLOTS))
 	check(saved.version == 1, "encode: carries the current version")
 	check(saved.pack.slotCount == 36 and #saved.pack.stacks == 0, "encode: an empty pack is 36 slots and no stacks")
 	check(isPlain(saved), "encode: the data is plain")
-	local state, problem = SaveData.decode(saved)
-	check(state ~= nil and problem == nil, "decode: reads what encode made")
-	check(
-		state ~= nil and Inventory.isEmpty(state.pack) and state.pack.slotCount == 36,
-		"decode: an empty pack of 36 slots"
-	)
+	local pack, problem = SaveData.decode(saved)
+	check(pack ~= nil and problem == nil, "decode: reads what encode made, with nothing wrong")
+	check(pack ~= nil and Inventory.isEmpty(pack) and pack.slotCount == 36, "decode: an empty pack of 36 slots")
 end
 
-do -- a player with things
-	local state = PlayerState.new()
-	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
-	Inventory.setStack(state.pack, 9, ItemStack.new("stove", 1))
-	Inventory.setStack(state.pack, 36, ItemStack.new("fish", 8))
-	Hotbar.select(state.hotbar, 9)
-	local saved = SaveData.encode(state)
+do -- a pack with things
+	local pack = Inventory.new(PlayerState.PACK_SLOTS)
+	Inventory.setStack(pack, 1, ItemStack.new("log", 12))
+	Inventory.setStack(pack, 9, ItemStack.new("stove", 1))
+	Inventory.setStack(pack, 36, ItemStack.new("fish", 8))
+	local saved = SaveData.encode(pack)
 	check(#saved.pack.stacks == 3 and isPlain(saved), "encode: one entry for each slot that holds something")
 	check(
 		saved.pack.stacks[1].slot == 1 and saved.pack.stacks[1].itemId == "log" and saved.pack.stacks[1].count == 12,
 		"encode: an entry says its slot, its item and its count"
 	)
+	check(Inventory.countItems(pack, "log") == 12, "encode: changes nothing in the pack")
 
-	local loaded = SaveData.decode(saved) :: PlayerState.PlayerState
-	check(samePack(loaded.pack, state.pack), "decode: the pack holds the same stacks in the same slots")
-	check(loaded.pack ~= state.pack, "decode: it is a new player, not the one that was saved")
-	check(loaded.hotbar.inventory == loaded.pack, "decode: the hotbar is over the new pack")
-	check(loaded.hotbar.selectedSlot == 1 and loaded.session == nil, "decode: slot 1 is selected and no screen is open")
+	local loaded = SaveData.decode(saved) :: Inventory.Inventory
+	check(samePack(loaded, pack), "decode: the pack holds the same stacks in the same slots")
+	check(loaded ~= pack, "decode: it is a new pack, not the one that was saved")
 
-	Inventory.clear(loaded.pack)
+	Inventory.takeFromSlot(loaded, 1)
 	check(
-		Inventory.countItems(state.pack, "log") == 12,
-		"decode: changing the loaded player changes nothing in the saved one"
+		Inventory.countItems(pack, "log") == 12,
+		"decode: changing the loaded pack changes nothing in the one that was saved"
 	)
-	local again = SaveData.decode(saved) :: PlayerState.PlayerState
-	check(samePack(again.pack, state.pack), "decode: the same saved data can be read again")
+	local again = SaveData.decode(saved) :: Inventory.Inventory
+	check(samePack(again, pack), "decode: the same saved data can be read again")
+	check(again ~= loaded, "decode: reading again gives a new pack each time")
 end
 
-do -- a screen that is open
-	local state = PlayerState.new()
-	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
-	local session = PlayerState.openInventory(state)
-	InventorySession.pickUp(session, "pack", 1)
-	check(
-		raises("SaveData.encode: the player has an inventory screen open; close it first", function()
-			return SaveData.encode(state)
-		end),
-		"encode: refuses while an inventory screen is open"
-	)
-	PlayerState.closeInventory(state)
-	check(#SaveData.encode(state).pack.stacks == 1, "encode: after closing, what was carried is saved with the pack")
+do -- encode writes whatever inventory it is given
+	local saved = SaveData.encode(Inventory.new(3))
+	check(saved.pack.slotCount == 3, "encode: writes the slot count of the inventory given")
+	local pack, problem = SaveData.decode(saved)
+	check(pack == nil and problem ~= nil, "decode: refuses data written from an inventory that is not a pack")
 end
 
 do -- data that cannot be read
 	local function refuses(what: string, expected: string, saved: any)
-		local ok, state, problem = pcall(SaveData.decode, saved)
+		local ok, pack, problem = pcall(SaveData.decode, saved)
 		check(ok, "decode: raises no error for " .. what)
-		check(state == nil, "decode: refuses " .. what)
+		check(pack == nil, "decode: refuses " .. what)
 		check(
 			type(problem) == "string" and string.find(problem, expected, 1, true) ~= nil,
 			"decode: says what is wrong with " .. what .. " (got: " .. tostring(problem) .. ")"
@@ -128,6 +116,7 @@ do -- data that cannot be read
 	refuses("nothing", "saved data is a table, not a nil", nil)
 	refuses("a string", "saved data is a table, not a string", "pack")
 	refuses("a number", "saved data is a table, not a number", 1)
+	refuses("a boolean", "saved data is a table, not a boolean", true)
 
 	for _, bad in { 0, -1, 1.5, 0 / 0, math.huge, "1" } :: { any } do
 		local saved = goodSave()
@@ -155,10 +144,10 @@ do -- data that cannot be read
 	refuses("no pack", "pack: ", noPack)
 	local badItem = goodSave()
 	badItem.pack.stacks[1].itemId = "anvil"
-	refuses("an item that does not exist", 'pack: stacks[1].itemId: no item has the id "anvil"', badItem)
+	refuses("an item that does not exist", 'pack: stacks[1]: no item has the id "anvil"', badItem)
 	local badCount = goodSave()
 	badCount.pack.stacks[1].count = 99
-	refuses("a stack over its size", "pack: stacks[1].count", badCount)
+	refuses("a stack over its size", 'pack: stacks[1]: a stack of "log" holds 1 to 16, not 99', badCount)
 	local smallPack = goodSave()
 	smallPack.pack.slotCount = 27
 	refuses("a pack of the wrong size", "pack has 27 slots, and a pack has 36", smallPack)
@@ -166,35 +155,37 @@ do -- data that cannot be read
 	bigPack.pack.slotCount = 37
 	refuses("a pack that is too big", "pack has 37 slots, and a pack has 36", bigPack)
 
-	check(SaveData.decode(goodSave()) ~= nil, "decode: the data these were spoiled from is itself readable")
+	local pack, problem = SaveData.decode(goodSave())
+	check(pack ~= nil and problem == nil, "decode: the data these were spoiled from is itself readable")
+	check(pack ~= nil and Inventory.countItems(pack, "log") == 5, "decode: reads the stacks of the pack in the data")
 end
 
-do -- many random players: what is saved is what comes back
+do -- many random packs: what is saved is what comes back
 	local seed = 4242
 	local function random(limit: number): number
-		seed = (seed * 1103515245 + 12345) % 2147483648
+		seed = (seed * 16807) % 2147483647
 		return math.floor(seed / 65536) % limit + 1
 	end
 	local itemIds = { "log", "fish", "stove" }
 	local stackSizes: { [string]: number } = { log = 16, fish = 8, stove = 1 }
 	local allSame, allPlain = true, true
 	for _ = 1, 60 do
-		local state = PlayerState.new()
+		local pack = Inventory.new(PlayerState.PACK_SLOTS)
 		for _ = 1, random(40) do
 			local itemId = itemIds[random(3)]
-			Inventory.setStack(state.pack, random(36), ItemStack.new(itemId, random(stackSizes[itemId])))
+			Inventory.setStack(pack, random(36), ItemStack.new(itemId, random(stackSizes[itemId])))
 		end
-		local saved = SaveData.encode(state)
+		local saved = SaveData.encode(pack)
 		local loaded = SaveData.decode(saved)
-		if loaded == nil or not samePack(loaded.pack, state.pack) then
+		if loaded == nil or not samePack(loaded, pack) then
 			allSame = false
 		end
 		if not isPlain(saved) then
 			allPlain = false
 		end
 	end
-	check(allSame, "random players: every pack comes back as it was saved")
-	check(allPlain, "random players: every save is plain data")
+	check(allSame, "random packs: every pack comes back as it was saved")
+	check(allPlain, "random packs: every save is plain data")
 end
 
 Check.finish("SaveData")

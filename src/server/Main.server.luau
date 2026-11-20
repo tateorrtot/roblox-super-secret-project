@@ -1,29 +1,10 @@
 --!strict
---[=[
-	Starts the game on the server and runs it. This is the only Script.
-
-	The game's rules are in ReplicatedStorage.Shared, and one World holds the
-	whole game. This script has no rules of its own. It does four things:
-	- When the server starts, it registers every item and recipe, makes the
-	  remotes, builds the placeholder world and makes the World.
-	- It tells the World what happens: a player joins or leaves, where each
-	  character stands, a request arrives from a player's machine, and, ten
-	  times a second, that time has passed.
-	- It draws the World: the blocks that show the ground items and the
-	  placed items.
-	- It tells each player's machine what that player holds, whenever that
-	  has changed.
-
-	A player's machine is not trusted to be polite, either. However many
-	requests arrive in a frame, the World is drawn and the machines are told
-	once, and a machine that sends more than `REQUESTS_PER_SECOND` in a
-	second has the rest of that second's ignored.
-
-	Reading where a character stands is the one thing here that the rules
-	cannot do, because it means asking Roblox. The World is told the point
-	on the ground under each character, and the point a little in front of
-	them where a stack they drop would land.
-]=]
+--- Starts the game on the server and runs it. This is the only Script.
+---
+--- The rules are in ReplicatedStorage.Shared, and one World holds the whole game. This script
+--- tells the World what happens: a player joins or leaves, where each character stands, what a
+--- player's machine asks for, and that time has passed. Then it draws the World, and tells each
+--- player's machine what that player holds.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -33,9 +14,11 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ItemDefinitions = require(Shared.items.ItemDefinitions)
 local ItemRegistry = require(Shared.items.ItemRegistry)
+local PlayerView = require(Shared.world.PlayerView)
 local Position = require(Shared.Position)
 local RecipeDefinitions = require(Shared.stations.RecipeDefinitions)
 local RecipeRegistry = require(Shared.stations.RecipeRegistry)
+local Requests = require(Shared.requests.Requests)
 local World = require(Shared.world.World)
 
 local GroundItemParts = require(script.Parent.world.GroundItemParts)
@@ -46,12 +29,12 @@ local Remotes = require(script.Parent.Remotes)
 --- How often the World is stepped, in seconds.
 local STEP_SECONDS = 0.1
 
---- How many requests one player's machine may make in a second. A person clicking as fast as they
---- can makes far fewer. The rest of that second's are ignored.
+--- How many requests one player's machine may make in a second. The rest of that second's are
+--- ignored. A person clicking as fast as they can makes far fewer.
 local REQUESTS_PER_SECOND = 60
 
---- How far in front of a player a stack they drop lands, in studs. It is beyond
---- `GroundItems.PICKUP_RADIUS`, so a player standing still does not take it back.
+--- How far in front of a player a stack they drop lands, in studs. It is farther than
+--- `GroundItems.PICKUP_RADIUS`, so that a player standing still does not pick it straight back up.
 local DROP_DISTANCE = 6
 
 for _, definition in ItemDefinitions do
@@ -67,7 +50,7 @@ local plotParts = PlotParts.new(placeholder.slab, placeholder.plot)
 local groundItemParts = GroundItemParts.new(Workspace)
 local world = World.new(placeholder.plot, plotParts.corner, os.clock())
 
---- What each player's machine was last told they hold, as text, to tell whether it has changed since.
+--- What each player's machine was last told, as text, to tell whether it has changed since.
 local lastSent: { [Player]: string } = {}
 --- How many requests each player's machine has made in the second now passing.
 local requestsThisSecond: { [Player]: number } = {}
@@ -78,14 +61,10 @@ local function toPosition(point: Vector3): Position.Position
 	return { x = point.X, y = point.Y, z = point.Z }
 end
 
--- Returns the point on the ground straight below `from`, or nil if there is none within 40 studs.
--- Characters are not ground.
 local function groundBelow(from: Vector3): Vector3?
 	local characters = {}
 	for _, player in Players:GetPlayers() do
-		if player.Character ~= nil then
-			table.insert(characters, player.Character)
-		end
+		table.insert(characters, player.Character)
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -94,25 +73,21 @@ local function groundBelow(from: Vector3): Vector3?
 	return if hit then hit.Position else nil
 end
 
--- Returns the root part of a player's character if the character is alive, or nil.
 local function livingRoot(player: Player): BasePart?
 	local character = player.Character
-	if character == nil then
-		return nil
-	end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local root = character:FindFirstChild("HumanoidRootPart")
-	if humanoid == nil or humanoid.Health <= 0 or root == nil or not root:IsA("BasePart") then
-		return nil
-	end
-	return root
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	local isAlive = humanoid ~= nil and humanoid.Health > 0
+	return if isAlive and root ~= nil and root:IsA("BasePart") then root else nil
 end
 
--- Tells the World where a player's character stands now, and where a stack they drop would land.
+local function isRealPlace(point: Vector3): boolean
+	return point == point and point.Magnitude < math.huge
+end
+
 local function tellPosition(player: Player)
 	local root = livingRoot(player)
-	-- A position that is not a real place (not-a-number, or infinitely far) is treated as no character.
-	if root == nil or root.Position ~= root.Position or root.Position.Magnitude == math.huge then
+	if root == nil or not isRealPlace(root.Position) then
 		World.setPlayerPosition(world, player.UserId, nil)
 		return
 	end
@@ -122,39 +97,33 @@ local function tellPosition(player: Player)
 	World.setPlayerPosition(world, player.UserId, toPosition(standing), toPosition(dropSpot))
 end
 
--- Calls `callback`, and if it raises an error, warns of it and carries on. For the work that is done
--- for every player in turn, so that a failure for one does not stop it for the rest.
 local function try(doing: string, callback: (...any) -> ...any, ...: any)
 	local ok, problem = pcall(callback, ...)
 	if not ok then
-		warn(string.format("An error while %s: %s", doing, tostring(problem)))
+		warn(`An error while {doing}: {problem}`)
 	end
 end
 
--- Tells a player's machine what the player holds, unless it is the same as it was last told.
-local function sendInventory(player: Player)
-	local pack, screen = World.encodeView(world, player.UserId)
-	local asText = HttpService:JSONEncode({ pack = pack, screen = screen })
+local function sendView(player: Player)
+	local view = PlayerView.encode(world, player.UserId)
+	local asText = HttpService:JSONEncode(view)
 	if asText ~= lastSent[player] then
 		lastSent[player] = asText
-		remotes.inventoryChanged:FireClient(player, pack, screen)
+		remotes.viewChanged:FireClient(player, view)
 	end
 end
 
--- Makes what the players see match the World: the blocks in the world, and what each machine has been told.
 local function show()
 	needsShow = false
 	GroundItemParts.update(groundItemParts, world.groundItems)
 	PlotParts.update(plotParts, world.plot, world.stations)
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then
-			try("telling a player what they hold", sendInventory, player)
+			try("telling a player what they hold", sendView, player)
 		end
 	end
 end
 
--- Counts one request from a player's machine. Returns true if it should be answered: the player is in
--- the World and their machine has not made too many requests this second.
 local function mayAsk(player: Player): boolean
 	if world.players[player.UserId] == nil then
 		return false
@@ -164,19 +133,17 @@ local function mayAsk(player: Player): boolean
 	return made <= REQUESTS_PER_SECOND
 end
 
--- Every request the World answers is handed to it as it came, with the player's position brought up
--- to date first. The World checks the request; what a machine sends is not trusted here either.
-for _, name in World.REQUEST_NAMES do
+for _, name in Requests.NAMES do
 	remotes[name].OnServerEvent:Connect(function(player: Player, ...: any)
 		if mayAsk(player) then
 			tellPosition(player)
-			World.answer(world, player.UserId, name, ...)
+			Requests.carryOut(world, player.UserId, name, ...)
 			needsShow = true
 		end
 	end)
 end
 
-remotes.askForInventory.OnServerEvent:Connect(function(player: Player)
+remotes.askForView.OnServerEvent:Connect(function(player: Player)
 	if mayAsk(player) then
 		lastSent[player] = nil
 		needsShow = true
@@ -184,11 +151,10 @@ remotes.askForInventory.OnServerEvent:Connect(function(player: Player)
 end)
 
 local function addPlayer(player: Player)
-	if world.players[player.UserId] ~= nil then
-		return
+	if world.players[player.UserId] == nil then
+		local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
+		PlaceholderWorld.fillPack(state.pack)
 	end
-	local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
-	PlaceholderWorld.fillPack(state.pack)
 end
 
 local function removePlayer(player: Player)

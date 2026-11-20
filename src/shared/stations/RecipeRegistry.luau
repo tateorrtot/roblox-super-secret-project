@@ -15,7 +15,7 @@ export type Recipe = {
 	read input: string,
 	--- The id of the item that comes out. One of it is made each time.
 	read output: string,
-	--- How long it takes, in seconds. Always above 0.
+	--- How long it takes, in seconds: a finite number above 0.
 	read seconds: number,
 }
 
@@ -25,9 +25,10 @@ RecipeRegistry.STATION_SLOTS = 3
 local recipesByStationThenInput: { [string]: { [string]: Recipe } } = {}
 
 --- Adds a copy of `recipe` to the registry, so that changing `recipe` afterwards changes nothing.
---- Fails if `recipe.station` is not a registered item that is placeable and has `STATION_SLOTS`
---- slots, if `recipe.input` or `recipe.output` is not a registered item, if `recipe.seconds` is not
---- above 0, or if the station already has a recipe for the input.
+--- Only the four fields of `Recipe` are copied. Fails if `recipe.station` is not a registered item
+--- that is placeable and has `STATION_SLOTS` slots, if `recipe.input` or `recipe.output` is not a
+--- registered item, if `recipe.seconds` is not a finite number above 0, or if the station already
+--- has a recipe for the input.
 function RecipeRegistry.register(recipe: Recipe)
 	local station, input = recipe.station, recipe.input
 	if not ItemRegistry.has(station) then
@@ -46,8 +47,8 @@ function RecipeRegistry.register(recipe: Recipe)
 	if not ItemRegistry.has(recipe.output) then
 		error(`station "{station}" with input "{input}": no item has the id "{recipe.output}"`, 2)
 	end
-	if not (recipe.seconds > 0) then
-		error(`station "{station}" with input "{input}": seconds must be above 0, not {recipe.seconds}`, 2)
+	if not (recipe.seconds > 0 and recipe.seconds < math.huge) then
+		error(`station "{station}" with input "{input}": seconds must be above 0 and finite, not {recipe.seconds}`, 2)
 	end
 	local ofStation = recipesByStationThenInput[station] or {}
 	if ofStation[input] ~= nil then
@@ -68,17 +69,6 @@ end
 --- Returns `true` if at least one recipe is registered for the item `itemId`.
 function RecipeRegistry.isStation(itemId: string): boolean
 	return recipesByStationThenInput[itemId] ~= nil
-end
-
---- Returns the ids of the items the station `station` has a recipe for, in alphabetical order.
---- Returns an empty list if `station` is not a station.
-function RecipeRegistry.inputsOf(station: string): { string }
-	local inputs = {}
-	for input in recipesByStationThenInput[station] or {} do
-		table.insert(inputs, input)
-	end
-	table.sort(inputs)
-	return inputs
 end
 
 return RecipeRegistry

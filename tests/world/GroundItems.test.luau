@@ -326,7 +326,7 @@ end
 do -- many random drops, pickups and expiries: no item is made, and none is lost except by expiring
 	local seed = 20261119
 	local function random(limit: number): number
-		seed = (seed * 1103515245 + 12345) % 2147483648
+		seed = (seed * 16807) % 2147483647
 		return math.floor(seed / 65536) % limit + 1
 	end
 	local itemIds = { "log", "fish", "stove" }

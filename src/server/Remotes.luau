@@ -1,29 +1,13 @@
 --!strict
---[=[
-	The RemoteEvents that the server and the players' machines talk through,
-	on the server's side.
-
-	[method create] makes one RemoteEvent for each name in Messages, in a
-	folder called `Remotes` in ReplicatedStorage, and returns them by name.
-	Call it once, when the server starts.
-
-	```lua
-	local remotes = Remotes.create()
-	remotes.clickSlot.OnServerEvent:Connect(function(player, side, slot, button) end)
-	remotes.inventoryChanged:FireClient(player, pack, screen)
-	```
-]=]
+--- The RemoteEvents that the server and the players' machines talk through, on the server's side.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Messages = require(ReplicatedStorage:WaitForChild("Shared").Messages)
+local Messages = require(ReplicatedStorage:WaitForChild("Shared").requests.Messages)
 
 local Remotes = {}
 
---[=[
-	Makes the RemoteEvents and returns them by message name.
-
-	Reading a name that is not in Messages from the table returned raises an error.
-]=]
+--- Makes one RemoteEvent for each name in Messages, in a folder called `Remotes` in
+--- ReplicatedStorage, and returns them by name. Reading a name that no message has fails.
 function Remotes.create(): { [string]: RemoteEvent }
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
@@ -39,10 +23,7 @@ function Remotes.create(): { [string]: RemoteEvent }
 	folder.Parent = ReplicatedStorage
 	return setmetatable(remotes, {
 		__index = function(_, name)
-			error(
-				string.format('Remotes: no message is called "%s"; the names are listed in Messages', tostring(name)),
-				2
-			)
+			error(`no message is called "{name}"`, 2)
 		end,
 	}) :: any
 end

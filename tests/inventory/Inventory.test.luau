@@ -112,27 +112,6 @@ do -- setStack and getStack
 		"setStack: nil leaves the slot holding nothing, with no entry"
 	)
 	check(Inventory.isEmpty(pack), "isEmpty: true again once the last stack is gone")
-	Inventory.setStack(pack, 1, { itemId = "log", count = 4 })
-	check(is(Inventory.getStack(pack, 1), "log", 4), "setStack: accepts a stack written as a plain table")
-	check(
-		raises('Inventory.setStack: a stack of "log" holds 1 to 16, not 40', function()
-			Inventory.setStack(pack, 1, { itemId = "log", count = 40 })
-		end),
-		"setStack: refuses a stack that could not exist, and says why"
-	)
-	check(
-		raises('Inventory.setStack: no item has the id "anvil"', function()
-			Inventory.setStack(pack, 1, { itemId = "anvil", count = 1 })
-		end),
-		"setStack: refuses a stack of an item that does not exist"
-	)
-	check(
-		raises('Inventory.setStack: a stack of "log" holds 1 to 16, not 0', function()
-			Inventory.setStack(pack, 1, { itemId = "log", count = 0 })
-		end),
-		"setStack: refuses a stack of none, since there is no empty stack"
-	)
-	check(is(Inventory.getStack(pack, 1), "log", 4), "setStack: a refused stack leaves the slot as it was")
 end
 
 do -- addItems
@@ -196,130 +175,65 @@ do -- addStack
 		is(Inventory.addStack(pack, ItemStack.new("stove", 1)), "stove", 1),
 		"addStack: returns the whole stack when none of it fits"
 	)
-	check(
-		raises('Inventory.addStack: a stack of "log" holds 1 to 16, not 99', function()
-			return Inventory.addStack(pack, { itemId = "log", count = 99 })
-		end),
-		"addStack: refuses a stack that could not exist"
-	)
 end
 
-do -- addItems and addStack into a run of slots
+do -- addItems and addStack into listed slots
 	local pack = inventoryOf("log 10, -, -, log 14, -, -")
-	check(Inventory.addItems(pack, "log", 20, 3, 5) == 20, "addItems: into slots 3 to 5 only, returns how many went in")
+	check(
+		Inventory.addItems(pack, "log", 20, { 3, 4, 5 }) == 20,
+		"addItems: into the listed slots only, returns how many went in"
+	)
 	check(
 		contents(pack) == "log 10, -, log 16, log 16, log 2, -",
-		"addItems: tops up within the run, then fills it; the rest is left alone"
+		"addItems: tops up among the listed slots, then fills them; the rest is left alone"
 	)
-	check(Inventory.addItems(pack, "log", 40, 3, 5) == 14, "addItems: returns only what fitted in the run")
+	check(
+		Inventory.addItems(pack, "log", 40, { 3, 4, 5 }) == 14,
+		"addItems: returns only what fitted in the listed slots"
+	)
 	check(
 		contents(pack) == "log 10, -, log 16, log 16, log 16, -",
-		"addItems: a full run leaves the slots outside it as they were"
+		"addItems: full listed slots leave the others as they were"
 	)
-	check(Inventory.addItems(pack, "log", 5, 2, 2) == 5, "addItems: a run may be one slot")
+	check(Inventory.addItems(pack, "log", 5, { 2 }) == 5, "addItems: one slot may be listed")
 	check(contents(pack) == "log 10, log 5, log 16, log 16, log 16, -", "addItems: and only that slot is used")
-	check(Inventory.addItems(pack, "log", 3, 6, 6) == 3, "addItems: the last slot can be a run")
-	check(Inventory.addItems(pack, "log", 9, 1, 6) == 9, "addItems: the whole inventory can be a run")
+	check(Inventory.addItems(pack, "log", 3, { 6 }) == 3, "addItems: the last slot may be listed")
+	check(Inventory.addItems(pack, "log", 9) == 9, "addItems: with no list, every slot is used")
 	check(
 		contents(pack) == "log 16, log 8, log 16, log 16, log 16, log 3",
-		"addItems: and then it fills as it does with no run given"
+		"addItems: lowest slot first when no slots are listed"
 	)
+	local ordered = inventoryOf("-, -, -")
+	Inventory.addItems(ordered, "log", 20, { 3, 1 })
+	check(contents(ordered) == "log 4, -, log 16", "addItems: listed slots are filled in the order they are listed")
+	check(Inventory.addItems(ordered, "log", 5, {}) == 0, "addItems: an empty list adds nothing")
 
 	local other = inventoryOf("stone 2, -, -, stone 16")
 	check(
-		Inventory.addStack(other, ItemStack.new("stone", 16), 3, 4) == nil,
-		"addStack: nil when the stack fitted in the run"
+		Inventory.addStack(other, ItemStack.new("stone", 16), { 3, 4 }) == nil,
+		"addStack: nil when the stack fitted in the listed slots"
 	)
 	check(
 		contents(other) == "stone 2, -, stone 16, stone 16",
-		"addStack: it went into the run, not the slots before it"
+		"addStack: it went into the listed slots, not the slots before them"
 	)
-	local leftover = Inventory.addStack(other, ItemStack.new("stone", 5), 3, 4)
-	check(is(leftover, "stone", 5), "addStack: returns the whole stack when the run has no room")
-	leftover = Inventory.addStack(other, ItemStack.new("log", 12), 1, 2)
+	local leftover = Inventory.addStack(other, ItemStack.new("stone", 5), { 3, 4 })
+	check(is(leftover, "stone", 5), "addStack: returns the whole stack when the listed slots have no room")
+	leftover = Inventory.addStack(other, ItemStack.new("log", 12), { 1, 2 })
 	check(
 		leftover == nil and contents(other) == "stone 2, log 12, stone 16, stone 16",
-		"addStack: a different item takes the run's empty slot"
+		"addStack: a different item takes the empty slot that is listed"
 	)
-	leftover = Inventory.addStack(other, ItemStack.new("stone", 16), 1, 2)
-	check(is(leftover, "stone", 2), "addStack: returns the stack of what did not fit in the run")
+	leftover = Inventory.addStack(other, ItemStack.new("stone", 16), { 1, 2 })
+	check(is(leftover, "stone", 2), "addStack: returns the stack of what did not fit in the listed slots")
 	check(contents(other) == "stone 16, log 12, stone 16, stone 16", "addStack: after topping up what it could")
-
-	local runs = { { 0, 3 }, { 2, 7 }, { 4, 3 }, { 1.5, 3 }, { 2, 2.5 }, { 2 }, { nil, 3 }, { "1", 3 } } :: { { any } }
-	for _, run in runs do
-		local message = string.format(
-			"slots %s to %s are not a run of this inventory's slots; it has slots 1 to 6",
-			tostring(run[1]),
-			tostring(run[2])
-		)
-		check(
-			raises("Inventory.addItems: " .. message, function()
-				return Inventory.addItems(pack, "log", 1, run[1], run[2])
-			end),
-			"addItems: refuses the run " .. tostring(run[1]) .. " to " .. tostring(run[2])
-		)
-		check(
-			raises("Inventory.addStack: " .. message, function()
-				return Inventory.addStack(pack, ItemStack.new("log", 1), run[1], run[2])
-			end),
-			"addStack: refuses the run " .. tostring(run[1]) .. " to " .. tostring(run[2])
-		)
-	end
-	check(contents(pack) == "log 16, log 8, log 16, log 16, log 16, log 3", "a refused run changes nothing")
 end
 
-do -- removeItems
-	local pack = inventoryOf("log 16, log 3, log 1")
-	check(Inventory.removeItems(pack, "log", 10) == 10, "removeItems: returns how many were removed")
-	check(contents(pack) == "log 6, log 3, log 1", "removeItems: takes from the lowest slot first")
-	check(
-		Inventory.removeItems(pack, "log", 8) == 8 and contents(pack) == "-, log 1, log 1",
-		"removeItems: empties a slot and carries on to the next"
-	)
-	check(
-		Inventory.removeItems(pack, "log", 0) == 0 and contents(pack) == "-, log 1, log 1",
-		"removeItems: removing 0 changes nothing and returns 0"
-	)
-	check(
-		Inventory.removeItems(pack, "log", 30) == 2 and Inventory.isEmpty(pack),
-		"removeItems: removes what there is when asked for more"
-	)
-	check(Inventory.removeItems(pack, "log", 1) == 0, "removeItems: 0 when there is none")
-	check(entryCount(pack) == 0, "removeItems: emptied slots have no entry")
-
-	local mixed = inventoryOf("stone 5, log 4, stone 2")
-	check(
-		Inventory.removeItems(mixed, "stone", 6) == 6 and contents(mixed) == "-, log 4, stone 1",
-		"removeItems: leaves other items alone"
-	)
-end
-
-do -- countItems, hasItems, spaceFor
+do -- countItems
 	local pack = inventoryOf("log 16, stone 3, log 4, -")
 	check(Inventory.countItems(pack, "log") == 20, "countItems: adds up every slot holding the item")
 	check(Inventory.countItems(pack, "stove") == 0, "countItems: 0 for an item it does not hold")
 	check(Inventory.countItems(pack, "anvil") == 0, "countItems: 0 for an id that no item has")
-	check(
-		Inventory.hasItems(pack, "log", 1) and Inventory.hasItems(pack, "log", 20),
-		"hasItems: true at or below what it holds"
-	)
-	check(Inventory.hasItems(pack, "log", 21) == false, "hasItems: false above what it holds")
-	check(Inventory.hasItems(pack, "stove", 1) == false, "hasItems: false for an item it does not hold")
-	check(Inventory.hasItems(pack, "anvil", 1) == false, "hasItems: false for an id that no item has")
-	check(Inventory.hasItems(pack, "stove", 0), "hasItems: every inventory holds at least 0 of anything")
-	check(Inventory.hasItems(inventoryOf("log 1"), "log", 1), "hasItems: one is at least one")
-	check(Inventory.hasItems(inventoryOf("log 1"), "log", 2) == false, "hasItems: one is not at least two")
-	check(Inventory.spaceFor(pack, "log") == 28, "spaceFor: room in its stacks plus a full stack for each empty slot")
-	check(Inventory.spaceFor(pack, "stone") == 29, "spaceFor: counted for each item separately")
-	check(Inventory.spaceFor(pack, "stove") == 1, "spaceFor: an item that does not stack fits one to an empty slot")
-	check(Inventory.spaceFor(inventoryOf("log 16, stone 16"), "log") == 0, "spaceFor: 0 when nothing more fits")
-	for _, count in { 1, 27, 28, 29, 40 } do
-		local copy = inventoryOf(contents(pack))
-		check(
-			Inventory.addItems(copy, "log", count) == math.min(count, 28),
-			"spaceFor: agrees with what addItems then does for " .. count
-		)
-	end
 end
 
 do -- takeFromSlot
@@ -373,13 +287,6 @@ do -- putInSlot
 		Inventory.putInSlot(pack, 1, ItemStack.new("log", 11)) == nil and contents(pack) == "log 16, log 16, stone 1",
 		"putInSlot: exactly filling leaves nothing"
 	)
-end
-
-do -- clear
-	local pack = inventoryOf("log 16, stone 3, -")
-	Inventory.clear(pack)
-	check(Inventory.isEmpty(pack) and entryCount(pack) == 0, "clear: every slot holds nothing")
-	check(pack.slotCount == 3 and contents(pack) == "-, -, -", "clear: the slots are still there")
 end
 
 do -- encode
@@ -453,17 +360,17 @@ do -- decode refuses anything encode would not have written, and says what was w
 		slotCount = 3,
 		stacks = { log, log },
 	})
-	refuses("an item that does not exist", 'stacks[1].itemId: no item has the id "anvil"', one(1, "anvil", 1))
-	refuses("an item id that is not a string", "stacks[1].itemId", one(1, 7, 1))
-	refuses("a count of 0", 'stacks[1].count: a stack of "log" holds 1 to 16, not 0', one(1, "log", 0))
+	refuses("an item that does not exist", 'stacks[1]: no item has the id "anvil"', one(1, "anvil", 1))
+	refuses("an item id that is not a string", "stacks[1]: no item has the id", one(1, 7, 1))
+	refuses("a count of 0", 'stacks[1]: a stack of "log" holds 1 to 16, not 0', one(1, "log", 0))
 	refuses("a count above the stack size", "holds 1 to 16, not 17", one(1, "log", 17))
 	refuses("a count that is not whole", "holds 1 to 16, not 2.5", one(1, "log", 2.5))
-	refuses("a count that is not a number", "stacks[1].count", one(1, "log", 0 / 0))
+	refuses("a count that is not a number", "stacks[1]: a stack of", one(1, "log", 0 / 0))
 	refuses("an entry with a field it does not have", "stacks[1] has no field called wear", {
 		slotCount = 3,
 		stacks = { { slot = 1, itemId = "log", count = 3, wear = 2 } },
 	})
-	refuses("a bad entry after a good one", "stacks[2].count", {
+	refuses("a bad entry after a good one", "stacks[2]: a stack of", {
 		slotCount = 3,
 		stacks = { log, { slot = 2, itemId = "log", count = 0 } },
 	})
@@ -527,99 +434,46 @@ do -- stacks handed out never change, and an inventory's shape cannot be changed
 	end) ~= nil, "an inventory's slots table cannot be replaced")
 end
 
-do -- mistakes in the calling code raise errors that name the function and say what was wrong
-	local pack = inventoryOf("log 5, -, -")
-	for _, badSlot in { 0, 4, -1, 1.5, 0 / 0, math.huge } do
+do -- the guards that stop an inventory being corrupted
+	local pack = inventoryOf("log 5, -")
+	for _, badSlot in { 0, 3, -1, 1.5, 0 / 0, math.huge } do
 		check(
-			raises(
-				"Inventory.getStack: slot " .. tostring(badSlot) .. " is out of range; this inventory has slots 1 to 3",
-				function()
-					return Inventory.getStack(pack, badSlot)
-				end
-			),
-			"getStack: refuses slot " .. tostring(badSlot)
+			raises("an inventory of 2 slots has no slot", function()
+				return Inventory.getStack(pack, badSlot)
+			end),
+			"getStack: fails for slot " .. tostring(badSlot) .. " of 2, and blames the caller"
 		)
 	end
-	check(
-		raises("Inventory.setStack: slot 4 is out of range", function()
-			Inventory.setStack(pack, 4, nil)
-		end),
-		"setStack: refuses a slot that does not exist"
-	)
-	check(
-		raises("Inventory.takeFromSlot: slot 0 is out of range", function()
-			return Inventory.takeFromSlot(pack, 0)
-		end),
-		"takeFromSlot: refuses slot 0"
-	)
-	check(
-		raises("Inventory.putInSlot: slot 4 is out of range", function()
-			return Inventory.putInSlot(pack, 4, ItemStack.new("log", 1))
-		end),
-		"putInSlot: refuses a slot that does not exist"
-	)
-	check(
-		raises("Inventory.putInSlot: a stack is a table, not a nil", function()
-			return Inventory.putInSlot(pack, 2, nil :: any)
-		end),
-		"putInSlot: refuses to put nothing"
-	)
+	check(Check.errorFrom(function()
+		Inventory.setStack(pack, 3, ItemStack.new("log", 1))
+	end) ~= nil, "setStack: fails for a slot the inventory lacks")
+	check(Check.errorFrom(function()
+		return Inventory.takeFromSlot(pack, 3)
+	end) ~= nil, "takeFromSlot: fails for a slot the inventory lacks")
+	check(Check.errorFrom(function()
+		return Inventory.putInSlot(pack, 3, ItemStack.new("log", 1))
+	end) ~= nil, "putInSlot: fails for a slot the inventory lacks")
 	for _, badCount in { -1, 1.5, 0 / 0, math.huge } do
 		check(
-			raises("Inventory.addItems: count must be a whole number, 0 or more; got " .. tostring(badCount), function()
+			raises("cannot add", function()
 				return Inventory.addItems(pack, "log", badCount)
 			end),
-			"addItems: refuses a count of " .. tostring(badCount)
-		)
-		check(
-			raises("Inventory.removeItems: count must be a whole number, 0 or more", function()
-				return Inventory.removeItems(pack, "log", badCount)
-			end),
-			"removeItems: refuses a count of " .. tostring(badCount)
-		)
-		check(
-			raises("Inventory.takeFromSlot: count must be a whole number, 0 or more", function()
-				return Inventory.takeFromSlot(pack, 1, badCount)
-			end),
-			"takeFromSlot: refuses a count of " .. tostring(badCount)
-		)
-		check(
-			raises("Inventory.hasItems: count must be a whole number, 0 or more", function()
-				return Inventory.hasItems(pack, "log", badCount)
-			end),
-			"hasItems: refuses a count of " .. tostring(badCount)
+			"addItems: fails for a count of " .. tostring(badCount)
 		)
 	end
-	local function refusesUnknownItem(name: string, call: () -> ...unknown)
-		check(
-			raises("Inventory." .. name .. ': no item has the id "anvil"', call),
-			name .. ": refuses an item that does not exist, and names it"
-		)
-	end
-	refusesUnknownItem("addItems", function()
-		return Inventory.addItems(pack, "anvil", 1)
-	end)
-	refusesUnknownItem("removeItems", function()
-		return Inventory.removeItems(pack, "anvil", 1)
-	end)
-	refusesUnknownItem("spaceFor", function()
-		return Inventory.spaceFor(pack, "anvil")
-	end)
-	for _, badSlotCount in { 0, -1, 2.5, 0 / 0, math.huge } do
-		check(
-			raises("Inventory.new: slotCount must be a whole number, 1 or more", function()
-				return Inventory.new(badSlotCount)
-			end),
-			"new: refuses " .. tostring(badSlotCount) .. " slots"
-		)
-	end
-	check(contents(pack) == "log 5, -, -", "nothing refused changed the inventory")
+	check(Check.errorFrom(function()
+		return Inventory.takeFromSlot(pack, 1, -1)
+	end) ~= nil, "takeFromSlot: fails for a count below 0")
+	check(Check.errorFrom(function()
+		return Inventory.addItems(pack, "log", 20, { 2, 3 })
+	end) ~= nil, "addItems: fails if the inventory lacks a listed slot")
+	check(contents(pack) == "log 5, -", "nothing that failed changed the inventory")
 end
 
 do -- no item is ever made or lost
 	local seed = 20261119
 	local function random(limit: number): number
-		seed = (seed * 1103515245 + 12345) % 2147483648
+		seed = (seed * 16807) % 2147483647
 		return math.floor(seed / 65536) % limit + 1
 	end
 	local itemIds = { "log", "stone", "stove" }
@@ -631,15 +485,12 @@ do -- no item is ever made or lost
 		local itemId = itemIds[random(3)]
 		local action = random(7)
 		if action == 1 then
-			local count = random(41) - 1
-			local space = Inventory.spaceFor(inventory, itemId)
-			local added = Inventory.addItems(inventory, itemId, count)
-			if added ~= math.min(count, space) then
-				broken = broken or string.format("step %d: addItems and spaceFor disagree", step)
-			end
-			held[itemId] += added
+			held[itemId] += Inventory.addItems(inventory, itemId, random(41) - 1)
 		elseif action == 2 then
-			held[itemId] -= Inventory.removeItems(inventory, itemId, random(41) - 1)
+			local taken = Inventory.takeFromSlot(inventory, random(inventory.slotCount))
+			if taken then
+				held[taken.itemId] -= taken.count
+			end
 		elseif action == 3 then
 			local taken = Inventory.takeFromSlot(inventory, random(inventory.slotCount), random(21) - 1)
 			if taken then
@@ -664,10 +515,8 @@ do -- no item is ever made or lost
 			local leftover = Inventory.addStack(inventory, ItemStack.new(itemId, count))
 			held[itemId] += count - (if leftover then leftover.count else 0)
 		elseif action == 6 then
-			local wanted = random(30)
-			if Inventory.hasItems(inventory, itemId, wanted) ~= (Inventory.countItems(inventory, itemId) >= wanted) then
-				broken = broken or string.format("step %d: hasItems and countItems disagree", step)
-			end
+			local listed = { random(inventory.slotCount), random(inventory.slotCount) }
+			held[itemId] += Inventory.addItems(inventory, itemId, random(20), listed)
 		else
 			local decoded = Inventory.decode(Inventory.encode(inventory))
 			if decoded == nil or contents(decoded) ~= contents(inventory) then

@@ -24,7 +24,6 @@ end
 do -- an empty registry
 	check(RecipeRegistry.find("stove", "fish") == nil, "find: nil before any recipe is registered")
 	check(not RecipeRegistry.isStation("stove"), "isStation: a stove is not a station until it has a recipe")
-	check(#RecipeRegistry.inputsOf("stove") == 0, "inputsOf: nothing for an item with no recipes")
 end
 
 do -- register, then look up
@@ -64,15 +63,6 @@ do -- register, then look up
 	check(
 		RecipeRegistry.find("anvil", "fish") == nil and RecipeRegistry.find("stove", "anvil") == nil,
 		"find: nil for ids that do not exist"
-	)
-	local inputs = RecipeRegistry.inputsOf("stove")
-	check(
-		#inputs == 2 and inputs[1] == "apple" and inputs[2] == "fish",
-		"inputsOf: what the station works on, in alphabetical order"
-	)
-	check(
-		#RecipeRegistry.inputsOf("kiln") == 1 and #RecipeRegistry.inputsOf("crate") == 0,
-		"inputsOf: for each station its own"
 	)
 end
 
@@ -115,16 +105,16 @@ do -- what register refuses
 		'station "log" with input "apple": must be placeable with 3 slots',
 		{ station = "log", input = "apple", output = "fish", seconds = 1 }
 	)
-	for _, bad in { 0, -2 } do
+	for _, bad in { 0, -2, math.huge } do
 		refuses(
 			"seconds = " .. bad,
-			'station "kiln" with input "apple": seconds must be above 0, not ' .. bad,
+			'station "kiln" with input "apple": seconds must be above 0 and finite, not ' .. bad,
 			{ station = "kiln", input = "apple", output = "fish", seconds = bad }
 		)
 	end
 	refuses(
 		"seconds that is not a number",
-		'station "kiln" with input "apple": seconds must be above 0, not nan',
+		'station "kiln" with input "apple": seconds must be above 0 and finite, not nan',
 		{ station = "kiln", input = "apple", output = "fish", seconds = 0 / 0 }
 	)
 	refuses(

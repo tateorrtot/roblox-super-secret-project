@@ -32,9 +32,8 @@ end
 check(burns, "at least one item burns, so that a station can be lit")
 
 for _, recipe in RecipeDefinitions do
-	local rules = Station.slotRules(recipe.station)
 	check(
-		rules[Station.INPUT_SLOT][recipe.input] == true,
+		Station.accepts(recipe.station, Station.INPUT_SLOT, recipe.input),
 		'the station "' .. recipe.station .. '" takes "' .. recipe.input .. '" in its input slot'
 	)
 end

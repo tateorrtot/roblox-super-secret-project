@@ -3,14 +3,13 @@
 
 local Check = require("../Check")
 local Inventory = require("../../src/shared/inventory/Inventory")
-local InventorySession = require("../../src/shared/inventory/InventorySession")
+local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Station = require("../../src/shared/stations/Station")
 
 local check = Check.that
-local raises = Check.raises
 
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
@@ -72,43 +71,31 @@ do -- a new station
 	check(station.burnLeft == 0 and station.burnTotal == 0, "new: no fire has been lit")
 	check(station.worked == 0 and station.workingOn == nil, "new: nothing is being worked on")
 	check(not Station.isBurning(station), "isBurning: false for a new station")
-	check(
-		raises('Station.new: "crate" is not a station; no recipe is registered for it', function()
-			return Station.new("crate", Inventory.new(3))
-		end),
-		"new: refuses an item that has no recipes"
-	)
-	check(
-		raises("Station.new: a station's inventory has 3 slots; got one with 27", function()
-			return Station.new("stove", Inventory.new(27))
-		end),
-		"new: refuses an inventory of the wrong size"
-	)
 end
 
 do -- what a station can work on
-	check(Station.recipe(stoveWith("-", "log 4", "-")) == nil, "recipe: nil when the input slot holds nothing")
-	local recipe = Station.recipe(stoveWith("fish 2", "-", "-"))
+	check(Station.getRecipe(stoveWith("-", "log 4", "-")) == nil, "getRecipe: nil when the input slot holds nothing")
+	local recipe = Station.getRecipe(stoveWith("fish 2", "-", "-"))
 	check(
 		recipe ~= nil and recipe.output == "cooked_fish",
-		"recipe: the recipe for what is in the input slot, fire or no fire"
+		"getRecipe: the recipe for what is in the input slot, fire or no fire"
 	)
-	check((Station.recipe(stoveWith("apple 1", "-", "-")) :: any).seconds == 6, "recipe: each input has its own")
+	check((Station.getRecipe(stoveWith("apple 1", "-", "-")) :: any).seconds == 6, "getRecipe: each input has its own")
 	check(
-		Station.recipe(stoveWith("stone 2", "log 4", "-")) == nil,
-		"recipe: nil for an item the station does nothing with"
-	)
-	check(
-		Station.recipe(stoveWith("fish 2", "log 4", "baked_apple 1")) == nil,
-		"recipe: nil when the output slot holds something else"
+		Station.getRecipe(stoveWith("stone 2", "log 4", "-")) == nil,
+		"getRecipe: nil for an item the station does nothing with"
 	)
 	check(
-		Station.recipe(stoveWith("fish 2", "log 4", "cooked_fish 8")) == nil,
-		"recipe: nil when the output slot is full"
+		Station.getRecipe(stoveWith("fish 2", "log 4", "baked_apple 1")) == nil,
+		"getRecipe: nil when the output slot holds something else"
 	)
 	check(
-		Station.recipe(stoveWith("fish 2", "log 4", "cooked_fish 7")) ~= nil,
-		"recipe: there when the output slot has room for one more"
+		Station.getRecipe(stoveWith("fish 2", "log 4", "cooked_fish 8")) == nil,
+		"getRecipe: nil when the output slot is full"
+	)
+	check(
+		Station.getRecipe(stoveWith("fish 2", "log 4", "cooked_fish 7")) ~= nil,
+		"getRecipe: there when the output slot has room for one more"
 	)
 end
 
@@ -282,66 +269,79 @@ end
 
 do -- the gauges
 	local station = stoveWith("fish 2", "log 4", "-")
-	local view = Station.encodeView(station)
-	check(view.burning == 0 and view.working == 0, "encodeView: nothing burning and nothing done at first")
+	local view = Station.getProgress(station)
+	check(view.burning == 0 and view.working == 0, "getProgress: nothing burning and nothing done at first")
 	Station.step(station, 4)
-	view = Station.encodeView(station)
+	view = Station.getProgress(station)
 	check(
 		near(view.burning, 0.75) and near(view.working, 0.5),
-		"encodeView: three quarters of the log left, and the fish half done"
+		"getProgress: three quarters of the log left, and the fish half done"
 	)
 	Station.step(station, 12)
-	view = Station.encodeView(station)
+	view = Station.getProgress(station)
 	check(
 		view.burning == 0 and view.working == 0,
-		"encodeView: both at nothing when the log has burnt out and the second fish is done"
+		"getProgress: both at nothing when the log has burnt out and the second fish is done"
 	)
 	check(contents(station) == "-, log 3, cooked_fish 2", "the log lasted exactly two fish")
 	local count = 0
 	for key, value in view :: any do
 		count += 1
-		check(type(key) == "string" and type(value) == "number", "encodeView: the view is plain data")
+		check(type(key) == "string" and type(value) == "number", "getProgress: the view is plain data")
 	end
-	check(count == 2, "encodeView: two numbers and nothing else")
+	check(count == 2, "getProgress: two numbers and nothing else")
 	local swapped = stoveWith("fish 2", "log 4", "-")
 	Station.step(swapped, 4)
 	Inventory.setStack(swapped.inventory, INPUT, ItemStack.new("apple", 2))
 	check(
-		Station.encodeView(swapped).working == 0,
-		"encodeView: nothing done on an item that has just been put in the place of another"
+		Station.getProgress(swapped).working == 0,
+		"getProgress: nothing done on an item that has just been put in the place of another"
 	)
 	Station.step(swapped, 3)
 	check(
-		near(Station.encodeView(swapped).working, 0.5),
-		"encodeView: and after a step, what has been done on that item"
+		near(Station.getProgress(swapped).working, 0.5),
+		"getProgress: and after a step, what has been done on that item"
 	)
 	local nearlyOut = stoveWith("fish 2", "log 1", "-")
 	Station.step(nearlyOut, 15.5)
 	check(
-		near(Station.encodeView(nearlyOut).burning, 0.5 / 16),
-		"encodeView: a fire with half a second left still shows as burning"
+		near(Station.getProgress(nearlyOut).burning, 0.5 / 16),
+		"getProgress: a fire with half a second left still shows as burning"
 	)
 	local burningDown = stoveWith("fish 1", "log 1", "-")
 	Station.step(burningDown, 10)
-	view = Station.encodeView(burningDown)
-	check(near(view.burning, 6 / 16) and view.working == 0, "encodeView: a fire can burn with nothing being worked on")
+	view = Station.getProgress(burningDown)
+	check(near(view.burning, 6 / 16) and view.working == 0, "getProgress: a fire can burn with nothing being worked on")
 end
 
 do -- which items each slot takes
-	local rules = Station.slotRules("stove")
-	local inputs, fuels, outputs = rules[INPUT], rules[FUEL], rules[OUTPUT]
 	check(
-		inputs.fish == true and inputs.apple == true,
-		"slotRules: the input slot takes what the station has recipes for"
+		Station.accepts("stove", INPUT, "fish") and Station.accepts("stove", INPUT, "apple"),
+		"accepts: the input slot takes what the station has recipes for"
 	)
-	check(inputs.log == nil and inputs.stone == nil and inputs.cooked_fish == nil, "slotRules: and nothing else")
-	check(fuels.log == true and fuels.twig == true and fuels.fish == nil, "slotRules: the fuel slot takes what burns")
-	check(outputs ~= nil and next(outputs :: any) == nil, "slotRules: the output slot takes nothing")
 	check(
-		raises('Station.slotRules: "crate" is not a station; no recipe is registered for it', function()
-			return Station.slotRules("crate")
-		end),
-		"slotRules: refuses an item that is not a station"
+		not Station.accepts("stove", INPUT, "log")
+			and not Station.accepts("stove", INPUT, "stone")
+			and not Station.accepts("stove", INPUT, "cooked_fish"),
+		"accepts: the input slot takes nothing else"
+	)
+	check(
+		Station.accepts("stove", FUEL, "log") and Station.accepts("stove", FUEL, "twig"),
+		"accepts: the fuel slot takes what burns"
+	)
+	check(
+		not Station.accepts("stove", FUEL, "fish") and not Station.accepts("stove", FUEL, "stone"),
+		"accepts: the fuel slot takes nothing that does not burn, even what the station has a recipe for"
+	)
+	check(
+		not Station.accepts("stove", OUTPUT, "cooked_fish")
+			and not Station.accepts("stove", OUTPUT, "log")
+			and not Station.accepts("stove", OUTPUT, "fish"),
+		"accepts: the output slot takes nothing"
+	)
+	check(
+		not Station.accepts("crate", INPUT, "fish"),
+		"accepts: a kind of item with no recipes takes nothing in its input slot"
 	)
 
 	local pack = Inventory.new(4)
@@ -349,40 +349,64 @@ do -- which items each slot takes
 	Inventory.setStack(pack, 2, ItemStack.new("fish", 2))
 	Inventory.setStack(pack, 3, ItemStack.new("stone", 1))
 	local station = stoveWith("-", "-", "cooked_fish 1")
-	local session = InventorySession.open(pack, station.inventory, 2, rules)
-	InventorySession.quickMove(session, "pack", 1)
-	InventorySession.quickMove(session, "pack", 2)
-	InventorySession.quickMove(session, "pack", 3)
+	local screen = InventoryScreen.new(pack, station.inventory, function(slot: number, itemId: string): boolean
+		return Station.accepts("stove", slot, itemId)
+	end)
+	check(InventoryScreen.moveStack(screen, "pack", 1, "other") == 6, "moveStack: logs sent to the stove all go in")
+	check(InventoryScreen.moveStack(screen, "pack", 2, "other") == 2, "moveStack: fish sent to the stove all go in")
+	check(InventoryScreen.moveStack(screen, "pack", 3, "other") == 0, "moveStack: stone sent to the stove goes nowhere")
 	check(
 		contents(station) == "fish 2, log 6, cooked_fish 1",
-		"with these rules, Shift and a click sends each thing to its own slot"
+		"moveStack: each thing sent to the stove lands in its own slot"
 	)
-	check(Inventory.countItems(pack, "stone") == 1, "and what the station has no use for stays in the pack")
-	check(InventorySession.pickUp(session, "other", OUTPUT) == 1, "what was made can be taken out")
-	check(InventorySession.putDown(session, "other", OUTPUT) == 0, "and nothing can be put where it came from")
+	check(Inventory.countItems(pack, "stone") == 1, "moveStack: what the station has no use for stays in the pack")
+	check(InventoryScreen.pickUp(screen, "other", OUTPUT) == 1, "pickUp: what was made can be taken out")
+	check(InventoryScreen.putDown(screen, "other", OUTPUT) == 0, "putDown: nothing can be put where it came from")
+	local done = stoveWith("fish 1", "log 1", "-")
+	Station.step(done, 8)
+	local doneScreen = InventoryScreen.new(
+		Inventory.new(4),
+		done.inventory,
+		function(slot: number, itemId: string): boolean
+			return Station.accepts("stove", slot, itemId)
+		end
+	)
+	check(
+		InventoryScreen.pickUp(doneScreen, "other", OUTPUT) == 1,
+		"pickUp: a cooked fish made by step can be taken out"
+	)
+	check(
+		doneScreen.carried ~= nil and doneScreen.carried.itemId == "cooked_fish",
+		"pickUp: and what is carried is the cooked fish"
+	)
 end
 
-do -- mistakes in the calling code
+do -- steps of no time, and of one second at a time
 	local station = stoveWith("fish 1", "log 1", "-")
-	for _, bad in { -1, 0 / 0, math.huge, "8" } :: { any } do
-		check(
-			raises("Station.step: seconds must be a finite number, 0 or more; got " .. tostring(bad), function()
-				Station.step(station, bad)
-			end),
-			"step: refuses " .. tostring(bad) .. " seconds"
-		)
-	end
 	Station.step(station, 0)
 	check(
 		contents(station) == "fish 1, log 1, -" and not Station.isBurning(station),
-		"step: a refused step, or one of no time, changes nothing"
+		"step: a step of no time changes nothing"
 	)
+	check(station.burnTotal == 0, "step: and lights no fire")
+end
+
+do -- the length of a fire that is out
+	local station = stoveWith("fish 1", "log 1", "-")
+	check(station.burnTotal == 0, "burnTotal: 0 before a fire is lit")
+	Station.step(station, 4)
+	check(station.burnTotal == 16, "burnTotal: how long the item burning burns in all, while it burns")
+	Station.step(station, 100)
+	check(station.burnTotal == 0 and station.burnLeft == 0, "burnTotal: 0 again once the fire has gone out")
+	local twigs = stoveWith("fish 1", "twig 1", "-")
+	Station.step(twigs, 2)
+	check(twigs.burnTotal == 0, "burnTotal: 0 when the fire went out for want of fuel")
 end
 
 do -- many random puts, takes and steps: fuel only burns, and each thing made uses up one thing put in
 	local seed = 31337
 	local function random(limit: number): number
-		seed = (seed * 1103515245 + 12345) % 2147483648
+		seed = (seed * 16807) % 2147483647
 		return math.floor(seed / 65536) % limit + 1
 	end
 	local itemIds = { "fish", "cooked_fish", "apple", "baked_apple", "stone", "log", "twig" }

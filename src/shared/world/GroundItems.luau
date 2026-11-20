@@ -29,11 +29,13 @@ export type GroundItem = {
 	read droppedAt: number,
 }
 
+--- Every ground item in one running game.
 export type GroundItems = {
 	--- The id the next ground item will get.
 	nextId: number,
-	--- Every ground item, by id. An id with no entry is not on the ground. The ids have gaps, so
-	--- loop with `for id, groundItem in groundItems.byId`, not with `#` or `ipairs`.
+	--- Every ground item, by id. An id with no entry is not on the ground.
+	--- Note: ids are not consecutive, because a ground item that is picked up or expires leaves
+	--- its id unused. `#byId` is not the number of ground items.
 	byId: { [number]: GroundItem },
 }
 
@@ -49,7 +51,7 @@ GroundItems.PICKUP_RADIUS = 4
 --- How near a stack must be dropped to a ground item of the same item to join it, in studs.
 GroundItems.MERGE_RADIUS = 1.5
 
-local function idsWithin(groundItems: GroundItems, position: Position, radius: number): { number }
+local function idsNearestFirst(groundItems: GroundItems, position: Position, radius: number): { number }
 	local distances: { [number]: number } = {}
 	local ids: { number } = {}
 	for id, groundItem in groundItems.byId do
@@ -76,8 +78,10 @@ end
 --- stays where it lies and counts as dropped at `now`. With several such ground items it joins the
 --- nearest, and of two equally near, the one with the lower id. Otherwise a new ground item is
 --- made at `position`.
+--- Note: `drop` does not take the stack from anywhere. A stack that is also left where it came
+--- from exists twice.
 function GroundItems.drop(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
-	for _, id in idsWithin(groundItems, position, GroundItems.MERGE_RADIUS) do
+	for _, id in idsNearestFirst(groundItems, position, GroundItems.MERGE_RADIUS) do
 		local joined = groundItems.byId[id]
 		if ItemStack.isSameItem(joined.stack, stack) and ItemStack.spaceLeft(joined.stack) >= stack.count then
 			groundItems.byId[id] = table.freeze({
@@ -118,12 +122,12 @@ end
 --- Moves the ground items within `PICKUP_RADIUS` of `position` into `inventory`, as far as they
 --- fit, and returns how many items moved. A ground item dropped less than `PICKUP_DELAY` seconds
 --- before `now` is left alone. The nearest is picked up first, and of two equally near, the one
---- with the lower id. Items go in as `Inventory.addItems` puts them. When only part of a ground
---- item fits, the rest stays on the ground under the same id, dropped at the same time. Returns 0
---- if nothing is picked up.
+--- with the lower id. In the inventory, stacks of the same item are topped up first and then
+--- slots that hold nothing are filled, lowest slot first. When only part of a ground item fits, the
+--- rest stays on the ground under the same id, dropped at the same time.
 function GroundItems.pickUpNear(groundItems: GroundItems, position: Position, inventory: Inventory, now: number): number
 	local moved = 0
-	for _, id in idsWithin(groundItems, position, GroundItems.PICKUP_RADIUS) do
+	for _, id in idsNearestFirst(groundItems, position, GroundItems.PICKUP_RADIUS) do
 		if now - groundItems.byId[id].droppedAt >= GroundItems.PICKUP_DELAY then
 			moved += moveIntoInventory(groundItems, id, inventory)
 		end

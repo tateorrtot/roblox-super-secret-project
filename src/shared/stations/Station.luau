@@ -1,43 +1,10 @@
 --!strict
---[=[
-	A placed item that works on what is put into it, as a Minecraft furnace
-	does: a stove with a fish and a log in it turns out a cooked fish.
-
-	A station has three slots. `Station.INPUT_SLOT` holds what is to be worked
-	on, `Station.FUEL_SLOT` holds what will burn, and `Station.OUTPUT_SLOT` is
-	where what has been made collects. What a station makes is decided by the
-	recipes registered for its item in RecipeRegistry, and how long an item
-	burns by that item's `burnSeconds`.
-
-	[method step] moves a station on by some seconds:
-	- It works only while its fire burns. When the fire is out, it lights
-	  again by using up one item of fuel, but only if there is something it
-	  can work on. A fire is never lit for nothing.
-	- Once lit, a fire burns its fuel out whether or not there is work left.
-	- While the fire burns, the item in the input slot is worked on. When it
-	  has been worked on for as long as its recipe says, one of it becomes one
-	  of the recipe's output, in the output slot.
-	- Nothing can be worked on if the input slot holds nothing, if the station
-	  has no recipe for what it holds, or if the output slot has no room for
-	  what would be made. Work already done on an item is lost if the fire
-	  goes out for want of fuel, or if a step finds a different item in the
-	  input slot, or none, or no room in the output slot.
-
-	A station holds the inventory it is given, which is the placed item's own.
-	Players put things in and take them out through an InventorySession opened
-	with [method slotRules].
-
-	This is the rules only. It draws nothing.
-
-	```lua
-	local station = Station.new("stove", stoveInventory) -- a fish in slot 1, a log in slot 2
-	Station.step(station, 8)
-	Inventory.getStack(stoveInventory, Station.OUTPUT_SLOT) --> 1 cooked fish
-	Station.isBurning(station) --> true: the log burns for 8 seconds more
-	```
-]=]
+--- A placed item that turns one item into another while its fire burns: a stove.
+---
+--- A station has three slots. `INPUT_SLOT` holds what is to be worked on, `FUEL_SLOT` holds fuel,
+--- and what is made collects in `OUTPUT_SLOT`. `step` burns the fire and does the work. The fire
+--- is lit only when there is something to work on, and once lit it burns its fuel out.
 local Inventory = require("../inventory/Inventory")
-local InventorySession = require("../inventory/InventorySession")
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemStack = require("../items/ItemStack")
 local RecipeRegistry = require("./RecipeRegistry")
@@ -46,24 +13,23 @@ local Station = {}
 
 type Inventory = Inventory.Inventory
 
---- `read` means code outside this module cannot assign the field. [method step] changes the last three.
 export type Station = {
 	--- The id of the item this station is, such as `"stove"`. Its recipes are the ones registered for that item.
 	read itemId: string,
 	--- Its three slots.
 	read inventory: Inventory,
 	--- How many seconds longer the fuel now burning will burn. 0 when the fire is out.
-	read burnLeft: number,
-	--- How many seconds the item of fuel now burning burns in all. 0 until a fire has been lit.
-	read burnTotal: number,
+	burnLeft: number,
+	--- How many seconds the item of fuel now burning burns in all. 0 when the fire is out.
+	burnTotal: number,
 	--- How many seconds the item in the input slot has been worked on. 0 when nothing is being worked on.
-	read worked: number,
-	--- The id of the item that work was done on, or `nil` when nothing is being worked on.
-	read workingOn: string?,
+	worked: number,
+	--- The id of the item that work is being done on. `nil` when nothing is being worked on.
+	workingOn: string?,
 }
 
---- What a player's machine is told about a station, to draw its two gauges. Plain data.
-export type StationView = {
+--- How far a station's fire and work have got, as plain data.
+export type Progress = {
 	--- How much of the fuel now burning is left, from 1 just lit to 0 burnt out.
 	burning: number,
 	--- How far the item in the input slot is from done, from 0 not begun to 1 done.
@@ -79,167 +45,107 @@ Station.FUEL_SLOT = 2
 --- The slot where what has been made collects.
 Station.OUTPUT_SLOT = 3
 
--- Two times closer together than this, in seconds, are taken to be the same time.
 local SAME_TIME = 1e-9
 
---[=[
-	Returns a new station of the kind `itemId` over `inventory`, with no fire
-	and nothing worked on.
-
-	Raises an error if no recipe is registered for `itemId`, or if `inventory`
-	does not have exactly three slots.
-]=]
+--- Returns a new station of the kind `itemId` over `inventory`, with no fire and nothing worked on.
 function Station.new(itemId: string, inventory: Inventory): Station
-	if not RecipeRegistry.isStation(itemId) then
-		error(string.format('Station.new: "%s" is not a station; no recipe is registered for it', tostring(itemId)), 2)
-	end
-	if inventory.slotCount ~= RecipeRegistry.STATION_SLOTS then
-		error(
-			string.format(
-				"Station.new: a station's inventory has %d slots; got one with %d",
-				RecipeRegistry.STATION_SLOTS,
-				inventory.slotCount
-			),
-			2
-		)
-	end
 	return { itemId = itemId, inventory = inventory, burnLeft = 0, burnTotal = 0, worked = 0 }
 end
 
---[=[
-	Returns `true` if the station's fire is burning.
-]=]
+--- Returns `true` if the station's fire is burning.
 function Station.isBurning(station: Station): boolean
 	return station.burnLeft > 0
 end
 
---[=[
-	Returns the recipe the station can work on now: the one for the item in
-	its input slot, if the output slot has room for what that makes. Returns
-	`nil` if the input slot holds nothing, if the station has no recipe for
-	what it holds, or if the output slot holds something else or is full.
-
-	Whether the fire is burning makes no difference to this.
-]=]
-function Station.recipe(station: Station): RecipeRegistry.Recipe?
-	local input = Inventory.getStack(station.inventory, Station.INPUT_SLOT)
-	if input == nil then
-		return nil
+--- Returns `true` if a slot of a station of the kind `itemId` accepts an item. The input slot
+--- accepts what that station has a recipe for, the fuel slot accepts what burns, and the output
+--- slot accepts nothing.
+function Station.accepts(itemId: string, slot: number, putItemId: string): boolean
+	if slot == Station.INPUT_SLOT then
+		return RecipeRegistry.find(itemId, putItemId) ~= nil
 	end
-	local recipe = RecipeRegistry.find(station.itemId, input.itemId)
-	if recipe == nil then
-		return nil
-	end
-	local output = Inventory.getStack(station.inventory, Station.OUTPUT_SLOT)
-	if output ~= nil and (output.itemId ~= recipe.output or ItemStack.isFull(output)) then
-		return nil
-	end
-	return recipe
+	return slot == Station.FUEL_SLOT and ItemRegistry.get(putItemId).burnSeconds ~= nil
 end
 
---[=[
-	Moves the station on by `seconds`: its fire burns, its fuel is used, and
-	what is in its input slot is worked on, as the top of this file describes.
-
-	One long step ends as many short steps of the same total would. A step of
-	0 does nothing.
-
-	Raises an error if `seconds` is not a finite number of 0 or more.
-]=]
-function Station.step(station: Station, seconds: number)
-	if type(seconds) ~= "number" or not (seconds >= 0) or seconds == math.huge then
-		error(string.format("Station.step: seconds must be a finite number, 0 or more; got %s", tostring(seconds)), 2)
+--- Returns the recipe for the item in the input slot. Returns `nil` if that slot holds nothing,
+--- if the station has no recipe for what it holds, or if the output slot has no room for what the
+--- recipe makes.
+function Station.getRecipe(station: Station): RecipeRegistry.Recipe?
+	local input = Inventory.getStack(station.inventory, Station.INPUT_SLOT)
+	local recipe = if input then RecipeRegistry.find(station.itemId, input.itemId) else nil
+	local output = Inventory.getStack(station.inventory, Station.OUTPUT_SLOT)
+	if recipe == nil or output == nil then
+		return recipe
 	end
-	local writable = station :: any
-	local inventory = station.inventory
+	return if output.itemId == recipe.output and not ItemStack.isFull(output) then recipe else nil
+end
+
+local function startWorkOn(station: Station, itemId: string?)
+	if itemId ~= station.workingOn then
+		station.workingOn = itemId
+		station.worked = 0
+	end
+end
+
+local function light(station: Station): boolean
+	local fuel = Inventory.getStack(station.inventory, Station.FUEL_SLOT)
+	local burnSeconds = if fuel then ItemRegistry.get(fuel.itemId).burnSeconds else nil
+	if burnSeconds == nil then
+		return false
+	end
+	Inventory.takeFromSlot(station.inventory, Station.FUEL_SLOT, 1)
+	station.burnLeft = burnSeconds
+	station.burnTotal = burnSeconds
+	return true
+end
+
+local function burn(station: Station, seconds: number)
+	station.burnLeft -= seconds
+	if station.burnLeft < SAME_TIME then
+		station.burnLeft = 0
+		station.burnTotal = 0
+	end
+end
+
+local function work(station: Station, recipe: RecipeRegistry.Recipe, seconds: number)
+	station.worked += seconds
+	if station.worked >= recipe.seconds - SAME_TIME then
+		Inventory.takeFromSlot(station.inventory, Station.INPUT_SLOT, 1)
+		Inventory.putInSlot(station.inventory, Station.OUTPUT_SLOT, ItemStack.new(recipe.output, 1))
+		station.worked = 0
+	end
+end
+
+--- Burns the fire and works for `seconds`. While there is a recipe to work on (see `getRecipe`),
+--- a fire that is out is lit with one item from the fuel slot, and the item in the input slot is
+--- worked on. Each time it has been worked on for its recipe's seconds, one of it becomes one of
+--- the recipe's output in the output slot. A lit fire burns its fuel out even with nothing to work
+--- on. Work done on an item is lost if the fire goes out for want of fuel, if the item in the
+--- input slot changes, or if the output slot has no room.
+function Station.step(station: Station, seconds: number)
 	local left = seconds
 	while left > 0 do
-		local recipe = Station.recipe(station)
-		local workingOn = if recipe ~= nil then recipe.input else nil
-		if workingOn ~= station.workingOn then
-			-- A different item is in the input slot, or nothing that can be worked on: the work done before is lost.
-			writable.workingOn = workingOn
-			writable.worked = 0
+		local recipe = Station.getRecipe(station)
+		startWorkOn(station, if recipe then recipe.input else nil)
+		if not Station.isBurning(station) and not (recipe ~= nil and light(station)) then
+			startWorkOn(station, nil)
+			return
 		end
-		if station.burnLeft <= 0 then
-			-- The fire is out. It is lit again only if there is something to work on and something to burn.
-			local fuel = Inventory.getStack(inventory, Station.FUEL_SLOT)
-			local burnSeconds = if fuel ~= nil then ItemRegistry.get(fuel.itemId).burnSeconds else nil
-			if recipe == nil or burnSeconds == nil then
-				writable.worked = 0
-				writable.workingOn = nil
-				return
-			end
-			Inventory.takeFromSlot(inventory, Station.FUEL_SLOT, 1)
-			writable.burnLeft = burnSeconds
-			writable.burnTotal = burnSeconds
-		end
-
-		-- The fire burns on until it goes out, the item is done, or the time is up, whichever comes first.
-		local advance = math.min(left, station.burnLeft)
-		if recipe ~= nil then
-			advance = math.min(advance, recipe.seconds - station.worked)
-		end
+		local advance = math.min(left, station.burnLeft, if recipe then recipe.seconds - station.worked else left)
 		left -= advance
-		-- A fire with next to no time left is out, so that many short steps end as one long one does.
-		local burnLeft = station.burnLeft - advance
-		writable.burnLeft = if burnLeft < SAME_TIME then 0 else burnLeft
+		burn(station, advance)
 		if recipe ~= nil then
-			writable.worked = station.worked + advance
-			if station.worked >= recipe.seconds - SAME_TIME then
-				Inventory.takeFromSlot(inventory, Station.INPUT_SLOT, 1)
-				Inventory.putInSlot(inventory, Station.OUTPUT_SLOT, ItemStack.new(recipe.output, 1))
-				writable.worked = 0
-			end
+			work(station, recipe, advance)
 		end
 	end
 end
 
---[=[
-	Returns which items each slot of a station of the kind `itemId` takes,
-	for `InventorySession.open`: the input slot takes the items that station
-	has recipes for, the fuel slot takes every item that burns, and the
-	output slot takes nothing, since only the station puts things there.
-
-	Raises an error if no recipe is registered for `itemId`.
-]=]
-function Station.slotRules(itemId: string): InventorySession.SlotRules
-	if not RecipeRegistry.isStation(itemId) then
-		error(
-			string.format('Station.slotRules: "%s" is not a station; no recipe is registered for it', tostring(itemId)),
-			2
-		)
-	end
-	local inputs: { [string]: boolean } = {}
-	for _, input in RecipeRegistry.inputsOf(itemId) do
-		inputs[input] = true
-	end
-	local fuels: { [string]: boolean } = {}
-	for _, definition in ItemRegistry.all() do
-		if definition.burnSeconds ~= nil then
-			fuels[definition.id] = true
-		end
-	end
-	return {
-		[Station.INPUT_SLOT] = inputs,
-		[Station.FUEL_SLOT] = fuels,
-		[Station.OUTPUT_SLOT] = {},
-	}
-end
-
---[=[
-	Returns what to tell a player's machine about the station, as plain data:
-	how much of the burning fuel is left, and how far the work on the item in
-	the input slot has got, each as a number from 0 to 1.
-
-	If the item in the input slot has been changed since the last step, the
-	work done was on another item, and `working` is 0.
-]=]
-function Station.encodeView(station: Station): StationView
-	local recipe = Station.recipe(station)
+--- Returns how far the fire and the work have got, each as a number from 0 to 1.
+function Station.getProgress(station: Station): Progress
+	local recipe = Station.getRecipe(station)
 	local isWorkedOn = recipe ~= nil and recipe.input == station.workingOn
 	return {
-		burning = if station.burnLeft > 0 then station.burnLeft / station.burnTotal else 0,
+		burning = if Station.isBurning(station) then station.burnLeft / station.burnTotal else 0,
 		working = if recipe ~= nil and isWorkedOn then station.worked / recipe.seconds else 0,
 	}
 end
