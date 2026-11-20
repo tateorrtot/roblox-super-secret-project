@@ -52,6 +52,7 @@ local placeholder = PlaceholderWorld.build()
 local plotParts = PlotParts.new(placeholder.slab, placeholder.plot)
 local groundItemParts = GroundItemParts.new(Workspace)
 local world = World.new(placeholder.plot, plotParts.corner, os.clock())
+PlaceholderWorld.placeStartingObjects(world)
 
 --- What each player's machine was last told, as text, to tell whether it has changed since.
 local lastSent: { [Player]: string } = {}

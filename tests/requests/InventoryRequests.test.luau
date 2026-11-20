@@ -12,6 +12,7 @@ local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
+local Station = require("../../src/shared/stations/Station")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -67,12 +68,52 @@ local function carriedBy(state: PlayerState.PlayerState): ItemStack.ItemStack?
 	return screenOf(state).carriedStack
 end
 
--- Places the item `itemId` on tile 6, 6, opens it on the player's screen beside their pack, and
--- returns what is inside it.
+-- The inventory that a placed object was given, or the inventory of the station it was made. Nil
+-- if it was given neither.
+local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
+	local station = world.stations[placedObjectId]
+	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+end
+
+-- The inventory inside a placed object that is known to have one.
+local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
+	return findInside(world, placedObjectId) :: Inventory.Inventory
+end
+
+-- Stands an object named for the item `itemId` on a tile of the world's plot. One named "oven" is
+-- made a station, and any other is given an inventory of 3 slots.
+local function place(world: World.World, itemId: string, x: number, z: number): number
+	local placedObjectId = Plot.placeObject(world.plot, itemId, x, z)
+	if itemId == "oven" then
+		World.addStation(world, placedObjectId, Station.new("oven", Inventory.new(3)))
+	else
+		World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(3))
+	end
+	return placedObjectId
+end
+
+-- Opens a placed object on a player's screen, beside their pack. The slots of one that is a station
+-- take only what a station's slots take.
+local function open(world: World.World, state: PlayerState.PlayerState, placedObjectId: number)
+	local ovenSlotAcceptsItem = function(slot: number, itemId: string): boolean
+		return Station.slotAcceptsItem("oven", slot, itemId)
+	end
+	local isStation = world.stations[placedObjectId] ~= nil
+	World.openPlacedObjectScreen(
+		world,
+		state,
+		placedObjectId,
+		insideOf(world, placedObjectId),
+		if isStation then ovenSlotAcceptsItem else nil
+	)
+end
+
+-- Stands an object named for the item `itemId` on tile 6, 6, opens it on the player's screen beside
+-- their pack, and returns what is inside it.
 local function openPlaced(world: World.World, state: PlayerState.PlayerState, itemId: string): Inventory.Inventory
-	local placedObjectId = Plot.placeObject(world.plot, itemId, 6, 6) :: number
-	World.openPlacedObjectScreen(world, state, placedObjectId)
-	return world.plot.placedObjectsById[placedObjectId].inventory :: Inventory.Inventory
+	local placedObjectId = place(world, itemId, 6, 6)
+	open(world, state, placedObjectId)
+	return insideOf(world, placedObjectId)
 end
 
 -- How many of one item lie on the ground, in all.
@@ -97,13 +138,10 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedObject in world.plot.placedObjectsById do
-		if placedObject.itemId == itemId then
-			count += 1
-		end
-		if placedObject.inventory ~= nil then
-			count += Inventory.countItems(placedObject.inventory, itemId)
-		end
+	for placedObjectId, placedObject in world.plot.placedObjectsById do
+		local inside = findInside(world, placedObjectId)
+		count += if placedObject.itemId == itemId then 1 else 0
+		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
 	end
 	return count
 end
@@ -1130,9 +1168,9 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 	for _ = 1, 40 do
 		local world, state = newWorld()
 		World.setCharacterPosition(world, 1, at(6, 0, 0))
-		local crateId = Plot.placeObject(world.plot, "crate", 6, 6) :: number
-		local ovenId = Plot.placeObject(world.plot, "oven", 6, 5) :: number
-		local crate = world.plot.placedObjectsById[crateId].inventory :: Inventory.Inventory
+		local crateId = place(world, "crate", 6, 6)
+		local ovenId = place(world, "oven", 6, 5)
+		local crate = insideOf(world, crateId)
 		for _ = 1, 10 do
 			local itemId = itemIds[random(#itemIds)]
 			local target = if random(3) == 1 then crate else state.pack
@@ -1145,7 +1183,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		for _ = 1, 300 do
 			-- Now and then the world itself opens a screen for the player, as using a placed object would.
 			if state.screen == nil and random(12) == 1 then
-				World.openPlacedObjectScreen(world, state, if random(2) == 1 then crateId else ovenId)
+				open(world, state, if random(2) == 1 then crateId else ovenId)
 			end
 			local name = names[random(#names)]
 			local ok, result =
@@ -1159,9 +1197,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 					allConserved = false
 				end
 			end
-			for _, inventory in
-				{ state.pack, crate, world.plot.placedObjectsById[ovenId].inventory :: Inventory.Inventory }
-			do
+			for _, inventory in { state.pack, crate, insideOf(world, ovenId) } do
 				for slot, stack in inventory.slots do
 					if ItemStack.validate(stack) ~= nil or not Inventory.hasSlot(inventory, slot) then
 						allValid = false

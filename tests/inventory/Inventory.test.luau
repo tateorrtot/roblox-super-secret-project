@@ -277,6 +277,31 @@ do -- takeFromSlot
 	)
 end
 
+do -- takeEveryStack
+	local pack = inventoryOf("-, stone 7, -, log 16, log 3")
+	local second = Inventory.getStack(pack, 2)
+	local stacks = Inventory.takeEveryStack(pack)
+	check(#stacks == 3, "takeEveryStack: returns one stack for each slot that held something")
+	check(
+		is(stacks[1], "stone", 7) and is(stacks[2], "log", 16) and is(stacks[3], "log", 3),
+		"takeEveryStack: the stack from the lowest slot first, and two stacks of one item are not merged"
+	)
+	check(stacks[1] == second, "takeEveryStack: the stacks returned are the ones the slots held")
+	check(
+		Inventory.isEmpty(pack) and entryCount(pack) == 0 and contents(pack) == "-, -, -, -, -",
+		"takeEveryStack: every slot then holds nothing"
+	)
+	check(pack.slotCount == 5, "takeEveryStack: and the inventory still has its slots")
+	local again = Inventory.takeEveryStack(pack)
+	check(#again == 0, "takeEveryStack: an inventory that holds nothing gives a list of nothing")
+	check(again ~= stacks, "takeEveryStack: each call returns a list of its own")
+	Inventory.setStack(pack, 5, ItemStack.new("stove", 1))
+	check(
+		is(Inventory.takeEveryStack(pack)[1], "stove", 1) and Inventory.isEmpty(pack),
+		"takeEveryStack: the last slot is taken too"
+	)
+end
+
 do -- putInSlot
 	local pack = inventoryOf("-, log 12, stone 1")
 	check(

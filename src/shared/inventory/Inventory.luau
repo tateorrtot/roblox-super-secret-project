@@ -1,11 +1,11 @@
 --!strict
---- Slots that hold stacks of items: a player's pack, the inside of a crate.
+--- Slots that hold stacks of items, such as a player's pack.
 ---
 --- An inventory has a fixed number of slots, numbered from 1. Each slot holds one ItemStack or
 --- nothing. `getStack`, `setStack`, `takeFromSlot` and `putInSlot` work on one slot. `addItems` and
---- `addStack` put items wherever they fit. `addItems` makes the items it adds, and `setStack`
---- discards what the slot held. The other functions move stacks between the inventory and the
---- caller, so no item is made or lost.
+--- `addStack` put items wherever they fit, and `takeEveryStack` empties the inventory. `addItems`
+--- makes the items it adds, and `setStack` discards what the slot held. The other functions move
+--- stacks between the inventory and the caller, so no item is made or lost.
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemStack = require("../items/ItemStack")
 
@@ -148,6 +148,20 @@ function Inventory.addStack(inventory: Inventory, stack: ItemStack, intoSlots: {
 		return nil
 	end
 	return ItemStack.new(stack.itemId, stack.count - added)
+end
+
+--- Takes every stack out of the inventory and returns them as a new list, the stack from the
+--- lowest slot first. Every slot then holds nothing.
+function Inventory.takeEveryStack(inventory: Inventory): { ItemStack }
+	local stacks = {}
+	for slot = 1, inventory.slotCount do
+		local stack = inventory.slots[slot]
+		if stack ~= nil then
+			table.insert(stacks, stack)
+		end
+	end
+	table.clear(inventory.slots)
+	return stacks
 end
 
 --- Returns how many of an item the inventory holds, over all its slots.

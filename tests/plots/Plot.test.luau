@@ -2,7 +2,6 @@
 -- Tests for Plot. Run from the repository root: lune run tests/plots/Plot.test.luau
 
 local Check = require("../Check")
-local Inventory = require("../../src/shared/inventory/Inventory")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local Plot = require("../../src/shared/plots/Plot")
 local Signal = require("../../src/shared/Signal")
@@ -12,7 +11,6 @@ local check = Check.that
 ItemRegistry.register({ id = "apple", stackSize = 16 })
 ItemRegistry.register({ id = "stove", stackSize = 1, placeable = true })
 ItemRegistry.register({ id = "crate", stackSize = 1, placeable = true, slotCount = 27 })
-ItemRegistry.register({ id = "pouch", stackSize = 1, placeable = true, slotCount = 2 })
 
 -- How many placed objects a plot has.
 local function placedCount(plot: Plot.Plot): number
@@ -64,7 +62,6 @@ do -- placing
 	check(stove == 1 and plot.nextId == 2, "placeObject: the first placed object is 1, and the next will be 2")
 	local placed = plot.placedObjectsById[1]
 	check(placed.itemId == "stove" and placed.x == 2 and placed.z == 3, "placeObject: it is that item on that tile")
-	check(placed.inventory == nil, "placeObject: an item with no slotCount has no inventory")
 	check(table.isfrozen(placed), "placeObject: a placed object's record never changes")
 
 	check(not Plot.canPlaceObject(plot, "crate", 2, 3), "canPlaceObject: not on a tile that is taken")
@@ -88,21 +85,8 @@ do -- placing
 
 	local crate = Plot.placeObject(plot, "crate", 1, 1)
 	check(crate == 2, "placeObject: ids count up")
-	local inside = plot.placedObjectsById[2].inventory
 	check(
-		inside ~= nil and inside.slotCount == 27 and Inventory.isEmpty(inside),
-		"placeObject: a crate has 27 slots, holding nothing"
-	)
-	local pouch = Plot.placeObject(plot, "pouch", 4, 4)
-	local pouchInside = plot.placedObjectsById[pouch :: number].inventory
-	check(pouchInside ~= nil and pouchInside.slotCount == 2, "placeObject: the inventory has the slotCount of its item")
-	local second = Plot.placeObject(plot, "crate", 1, 2)
-	check(
-		plot.placedObjectsById[second :: number].inventory ~= inside,
-		"placeObject: each placed crate has an inventory of its own"
-	)
-	check(
-		Plot.placeObject(plot, "stove", 4, 1) == 5 and Plot.placeObject(plot, "stove", 1, 4) == 6,
+		Plot.placeObject(plot, "stove", 4, 1) == 3 and Plot.placeObject(plot, "stove", 1, 4) == 4,
 		"placeObject: the corner tiles can be used"
 	)
 end
@@ -111,16 +95,13 @@ do -- removing
 	local plot = Plot.new(4, 4)
 	local crate = Plot.placeObject(plot, "crate", 3, 3) :: number
 	local stove = Plot.placeObject(plot, "stove", 1, 1) :: number
-	local inside = plot.placedObjectsById[crate].inventory :: Inventory.Inventory
-	Inventory.addItems(inside, "apple", 20)
 
 	local removed = Plot.removePlacedObject(plot, crate)
 	check(
 		removed ~= nil and removed.itemId == "crate" and removed.x == 3 and removed.z == 3,
 		"removePlacedObject: returns the placed object"
 	)
-	check(removed ~= nil and removed.inventory == inside, "removePlacedObject: with its inventory")
-	check(Inventory.countItems(inside, "apple") == 20, "removePlacedObject: and what was in it")
+	check(removed ~= nil and table.isfrozen(removed), "removePlacedObject: and it is the record that stood there")
 	check(
 		plot.placedObjectsById[crate] == nil and placedCount(plot) == 1,
 		"removePlacedObject: it is no longer on the plot"
@@ -210,10 +191,7 @@ do -- the two signals
 		#heard == 2 and heard[2] == `removed {crate} crate true`,
 		"removePlacedObject: fires placedObjectRemoved with the id and the placed object, once it is off the plot"
 	)
-	check(
-		removed ~= nil and removed.inventory ~= nil,
-		"removePlacedObject: the placed object still has its inventory inside it"
-	)
+	check(removed ~= nil, "removePlacedObject: and returns the placed object that the signal was fired with")
 	Plot.removePlacedObject(plot, crate)
 	Plot.removePlacedObject(plot, 99)
 	check(#heard == 2, "removePlacedObject: fires nothing for an id that no placed object has")

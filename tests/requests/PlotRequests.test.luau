@@ -12,6 +12,7 @@ local Plot = require("../../src/shared/plots/Plot")
 local PlotRequests = require("../../src/shared/requests/PlotRequests")
 local Position = require("../../src/shared/Position")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
+local Station = require("../../src/shared/stations/Station")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
@@ -54,6 +55,32 @@ local function onGround(world: World.World, itemId: string): number
 	return count
 end
 
+-- The inventory that a placed object was given, or the inventory of the station it was made. Nil
+-- if it was given neither.
+local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
+	local station = world.stations[placedObjectId]
+	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+end
+
+-- The inventory inside a placed object that is known to have one.
+local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
+	return findInside(world, placedObjectId) :: Inventory.Inventory
+end
+
+-- Stands an oven on a tile of the world's plot, as placing one does: it is a station.
+local function placeOven(world: World.World, x: number, z: number): number
+	local placedObjectId = Plot.placeObject(world.plot, "oven", x, z)
+	World.addStation(world, placedObjectId, Station.new("oven", Inventory.new(3)))
+	return placedObjectId
+end
+
+-- Stands a crate on a tile of the world's plot, as placing one does: it has an inventory of 27 slots.
+local function placeCrate(world: World.World, x: number, z: number): number
+	local placedObjectId = Plot.placeObject(world.plot, "crate", x, z)
+	World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(27))
+	return placedObjectId
+end
+
 -- How many of one item the world holds in all: in packs, carried, standing on the plot, inside what
 -- stands on the plot, and on the ground.
 local function inWorld(world: World.World, itemId: string): number
@@ -65,13 +92,10 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedObject in world.plot.placedObjectsById do
-		if placedObject.itemId == itemId then
-			count += 1
-		end
-		if placedObject.inventory ~= nil then
-			count += Inventory.countItems(placedObject.inventory, itemId)
-		end
+	for placedObjectId, placedObject in world.plot.placedObjectsById do
+		local inside = findInside(world, placedObjectId)
+		count += if placedObject.itemId == itemId then 1 else 0
+		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
 	end
 	return count
 end
@@ -81,11 +105,10 @@ end
 -- and a post on tile 5, 5 (its middle is 18, 18). Player 1 stands at 6, 0, 0 with 12 logs, a crate and
 -- an oven in their first three hotbar slots, and drops land 6 studs further along x.
 local function newWorld(): (World.World, PlayerState.PlayerState, number, number)
-	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
-	Inventory.addItems(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
-	local postId = Plot.placeObject(plot, "post", 5, 5) :: number
-	local world = World.new(plot, at(0, 0, 0), 100)
+	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
+	local crateId = placeCrate(world, 2, 2)
+	Inventory.addItems(insideOf(world, crateId), "fish", 5)
+	local postId = Plot.placeObject(world.plot, "post", 5, 5)
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 2, ItemStack.new("crate", 1))
@@ -107,7 +130,7 @@ do -- placeSelectedItem
 	check(Inventory.getStack(state.pack, 2) == nil, "placeSelectedItem: and has left the hand")
 	check(inWorld(world, "crate") == 2, "placeSelectedItem: and no crate was made or lost")
 	check(
-		placed.inventory ~= nil and Inventory.isEmpty(placed.inventory),
+		findInside(world, placedObjectId) ~= nil and Inventory.isEmpty(insideOf(world, placedObjectId)),
 		"placeSelectedItem: a crate placed has an inventory that holds nothing"
 	)
 
@@ -154,7 +177,7 @@ do -- placeSelectedItem
 	check(inWorld(world, "post") == 4, "placeSelectedItem: and the rest of the stack is still in hand")
 	local postId = world.plot.nextId - 1
 	check(
-		world.plot.placedObjectsById[postId].itemId == "post" and world.plot.placedObjectsById[postId].inventory == nil,
+		world.plot.placedObjectsById[postId].itemId == "post" and findInside(world, postId) == nil,
 		"placeSelectedItem: an item with no slots is placed with no inventory"
 	)
 
@@ -204,9 +227,7 @@ do -- usePlacedObject
 	send("usePlacedObject", world, state, crateId)
 	local screen = state.screen
 	check(
-		screen ~= nil
-			and screen.otherInventory == world.plot.placedObjectsById[crateId].inventory
-			and screen.pack == state.pack,
+		screen ~= nil and screen.otherInventory == insideOf(world, crateId) and screen.pack == state.pack,
 		"usePlacedObject: opens the crate's inventory on the player's screen, beside their pack"
 	)
 	check(World.getOpenedPlacedObjectId(world, state) == crateId, "usePlacedObject: and the player has that crate open")
@@ -227,8 +248,7 @@ do -- usePlacedObject
 	World.setCharacterPosition(world, 1, at(18, 0, 10))
 	send("usePlacedObject", world, state, postId)
 	check(
-		(state.screen :: InventoryScreen.InventoryScreen).otherInventory
-				== world.plot.placedObjectsById[crateId].inventory
+		(state.screen :: InventoryScreen.InventoryScreen).otherInventory == insideOf(world, crateId)
 			and World.getOpenedPlacedObjectId(world, state) == crateId,
 		"usePlacedObject: ignored for a placed object that holds nothing, even in reach, and what was open stays open"
 	)
@@ -255,11 +275,11 @@ do -- usePlacedObject
 	check(state.screen == nil, "usePlacedObject: not by a player with no character")
 
 	local ovenWorld, withOven = newWorld()
-	local ovenId = Plot.placeObject(ovenWorld.plot, "oven", 3, 1) :: number
+	local ovenId = placeOven(ovenWorld, 3, 1)
 	send("usePlacedObject", ovenWorld, withOven, ovenId)
 	local ovenScreen = withOven.screen
 	check(
-		ovenScreen ~= nil and ovenScreen.otherInventory == ovenWorld.plot.placedObjectsById[ovenId].inventory,
+		ovenScreen ~= nil and ovenScreen.otherInventory == insideOf(ovenWorld, ovenId),
 		"usePlacedObject: opens an oven's slots beside the pack"
 	)
 	check(
@@ -336,7 +356,7 @@ do -- hitPlacedObject
 	check(state.screen == nil, "hitPlacedObject: the player who hit it has no screen open")
 
 	local ovenWorld, withOven = newWorld()
-	local ovenId = Plot.placeObject(ovenWorld.plot, "oven", 3, 1) :: number
+	local ovenId = placeOven(ovenWorld, 3, 1)
 	send("hitPlacedObject", ovenWorld, withOven, ovenId)
 	check(
 		ovenWorld.plot.placedObjectsById[ovenId] == nil
@@ -345,13 +365,12 @@ do -- hitPlacedObject
 		"hitPlacedObject: an oven is taken off the plot and stops being a station"
 	)
 
-	local ring = Plot.new(3, 3)
-	local ringCrate = Plot.placeObject(ring, "crate", 2, 2) :: number
-	local inRingCrate = ring.placedObjectsById[ringCrate].inventory :: Inventory.Inventory
+	local ringWorld = World.new(Plot.new(3, 3), at(0, 0, 0), 0)
+	local ringCrate = placeCrate(ringWorld, 2, 2)
+	local inRingCrate = insideOf(ringWorld, ringCrate)
 	Inventory.addItems(inRingCrate, "fish", 2)
 	Inventory.addItems(inRingCrate, "apple", 3)
 	Inventory.addItems(inRingCrate, "log", 4)
-	local ringWorld = World.new(ring, at(0, 0, 0), 0)
 	local ringState = World.addPlayer(ringWorld, 1)
 	World.setCharacterPosition(ringWorld, 1, at(0, 0, 0))
 	send("hitPlacedObject", ringWorld, ringState, ringCrate)

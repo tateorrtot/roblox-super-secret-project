@@ -1,11 +1,11 @@
 --!strict
 --- A grey stand-in for the game's world.
 ---
---- `build` makes a flat plot beside the place where players appear, with a post at each corner and
---- a crate and a stove standing on it. `restockGroundItems` keeps a few stacks of items lying on
---- the plot, and `addStartingItemsToPack` gives a new player something to hold. All of it is
---- placeholder content, made by code so that the project folder alone is enough to run the game,
---- and it goes when there is a real map.
+--- `build` makes a flat plot beside the place where players appear, with a post at each corner,
+--- and `placeStartingObjects` stands a crate and a stove on it. `restockGroundItems` keeps a few
+--- stacks of items lying on the plot, and `addStartingItemsToPack` gives a new player something to
+--- hold. All of it is placeholder content, made by code so that the project folder alone is enough
+--- to run the game, and it goes when there is a real map.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -14,6 +14,7 @@ local Inventory = require(Shared.inventory.Inventory)
 local ItemRegistry = require(Shared.items.ItemRegistry)
 local ItemStack = require(Shared.items.ItemStack)
 local Plot = require(Shared.plots.Plot)
+local Station = require(Shared.stations.Station)
 local World = require(Shared.world.World)
 
 local PlaceholderWorld = {}
@@ -96,18 +97,6 @@ local function makePosts(folder: Folder, center: Vector3, side: number)
 	end
 end
 
-local function makeStockedPlot(): Plot.Plot
-	local plot = Plot.new(PlaceholderWorld.PLOT_SIZE_IN_TILES, PlaceholderWorld.PLOT_SIZE_IN_TILES)
-	local crateId = Plot.placeObject(plot, "crate", 13, 7) :: number
-	local inCrate = plot.placedObjectsById[crateId].inventory :: Inventory.Inventory
-	Inventory.addItems(inCrate, "cheese", 8)
-	Inventory.addItems(inCrate, "fish", 5)
-	Inventory.addItems(inCrate, "crystal", 40)
-	Inventory.addItems(inCrate, "crate", 1)
-	Plot.placeObject(plot, "stove", 6, 13)
-	return plot
-end
-
 --- Builds the placeholder world in the Workspace and returns it. Makes a ground and a place to
 --- appear only if the Workspace has none, so it works in an empty place and in Studio's baseplate
 --- template. The plot lies beside the place where players appear, not under it. Call it once, after
@@ -122,10 +111,24 @@ function PlaceholderWorld.build(): PlaceholderWorld
 	local center = Vector3.new(spawnPoint.X + side / 2 + PLOT_FROM_SPAWN, 0, spawnPoint.Z)
 	local slab = makeSlab(folder, center, side)
 	makePosts(folder, center, side)
-	local plot = makeStockedPlot()
+	local plot = Plot.new(PlaceholderWorld.PLOT_SIZE_IN_TILES, PlaceholderWorld.PLOT_SIZE_IN_TILES)
 
 	folder.Parent = Workspace
 	return { slab = slab, plot = plot, spawnPoint = spawnPoint }
+end
+
+--- Stands a crate and a stove on the plot of `world`, and puts a few stacks in the crate. Call it
+--- once, on the world made over the plot that `build` returned.
+function PlaceholderWorld.placeStartingObjects(world: World.World)
+	local crateId = Plot.placeObject(world.plot, "crate", 13, 7)
+	local inCrate = Inventory.new(27)
+	World.addPlacedObjectInventory(world, crateId, inCrate)
+	Inventory.addItems(inCrate, "cheese", 8)
+	Inventory.addItems(inCrate, "fish", 5)
+	Inventory.addItems(inCrate, "crystal", 40)
+	Inventory.addItems(inCrate, "crate", 1)
+	local stoveId = Plot.placeObject(world.plot, "stove", 6, 13)
+	World.addStation(world, stoveId, Station.new("stove", Inventory.new(3)))
 end
 
 --- Adds a few items to `pack`, so that a new player's hotbar is not bare.

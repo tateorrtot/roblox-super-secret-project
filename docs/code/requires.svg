@@ -11,17 +11,17 @@
 <path d="M360 176 C360 247 294 262 294 333" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M398 176 C398 248 406 264 406 336 L406 408 C406 435 432 442 432 469" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M432 576 C432 603 370 610 370 637" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M267 1064 C267 1091 326 1098 326 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M80 864 C80 914 155 926 155 976 L155 1064 C155 1091 171 1098 171 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M126 864 C126 913 228 924 228 973" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M460 864 C460 914 379 926 379 976 L379 1064 C379 1091 202 1098 202 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M418 864 C418 913 306 924 306 973" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M171 1064 C171 1091 185 1098 185 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M182 864 C182 914 283 926 283 976 L283 1064 C283 1091 332 1098 332 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M136 864 C136 913 145 924 145 973" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M400 1032 C400 1074 363 1083 363 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M358 1032 C358 1074 230 1083 230 1125" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M106 576 C106 603 308 610 308 637" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M190 696 C190 745 80 756 80 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M275 912 C275 939 267 946 267 973" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M308 744 C308 771 126 778 126 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M370 744 C370 771 439 778 439 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M339 744 C339 771 275 778 275 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M190 696 C190 745 136 756 136 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M331 912 C331 939 197 946 197 973" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M308 744 C308 771 182 778 182 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M370 744 C370 773 439 779 439 808 L439 912 C439 939 379 946 379 973" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M339 744 C339 771 331 778 331 805" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <rect x="122" y="336" width="105" height="72" rx="5" fill="#e1f5ee" stroke="#1d9e75"/>
 <text x="136" y="356" font-size="14" font-weight="600" fill="#2c2c2a">client</text>
 <text x="136" y="380" font-size="12" fill="#5f5e5a">Remotes</text>
@@ -52,28 +52,28 @@
 <text x="376" y="532" font-size="12" fill="#5f5e5a">GroundItemParts</text>
 <text x="376" y="548" font-size="12" fill="#5f5e5a">PlaceholderWorld</text>
 <text x="376" y="564" font-size="12" fill="#5f5e5a">PlotParts</text>
-<rect x="141" y="1128" width="91" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="155" y="1148" font-size="14" font-weight="600" fill="#2c2c2a">shared</text>
-<text x="155" y="1172" font-size="12" fill="#5f5e5a">Direction</text>
-<text x="155" y="1188" font-size="12" fill="#5f5e5a">Position</text>
-<text x="155" y="1204" font-size="12" fill="#5f5e5a">Signal</text>
-<rect x="189" y="976" width="156" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="203" y="996" font-size="14" font-weight="600" fill="#2c2c2a">shared/inventory</text>
-<text x="203" y="1020" font-size="12" fill="#5f5e5a">Hotbar</text>
-<text x="203" y="1036" font-size="12" fill="#5f5e5a">Inventory</text>
-<text x="203" y="1052" font-size="12" fill="#5f5e5a">InventoryScreen</text>
-<rect x="260" y="1128" width="133" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="274" y="1148" font-size="14" font-weight="600" fill="#2c2c2a">shared/items</text>
-<text x="274" y="1172" font-size="12" fill="#5f5e5a">ItemDefinitions</text>
-<text x="274" y="1188" font-size="12" fill="#5f5e5a">ItemLooks</text>
-<text x="274" y="1204" font-size="12" fill="#5f5e5a">ItemRegistry</text>
-<text x="274" y="1220" font-size="12" fill="#5f5e5a">ItemStack</text>
-<rect x="33" y="808" width="140" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="47" y="828" font-size="14" font-weight="600" fill="#2c2c2a">shared/players</text>
-<text x="47" y="852" font-size="12" fill="#5f5e5a">PlayerState</text>
-<rect x="377" y="808" width="124" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="391" y="828" font-size="14" font-weight="600" fill="#2c2c2a">shared/plots</text>
-<text x="391" y="852" font-size="12" fill="#5f5e5a">Plot</text>
+<rect x="302" y="1128" width="91" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="316" y="1148" font-size="14" font-weight="600" fill="#2c2c2a">shared</text>
+<text x="316" y="1172" font-size="12" fill="#5f5e5a">Direction</text>
+<text x="316" y="1188" font-size="12" fill="#5f5e5a">Position</text>
+<text x="316" y="1204" font-size="12" fill="#5f5e5a">Signal</text>
+<rect x="93" y="976" width="156" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="107" y="996" font-size="14" font-weight="600" fill="#2c2c2a">shared/inventory</text>
+<text x="107" y="1020" font-size="12" fill="#5f5e5a">Hotbar</text>
+<text x="107" y="1036" font-size="12" fill="#5f5e5a">Inventory</text>
+<text x="107" y="1052" font-size="12" fill="#5f5e5a">InventoryScreen</text>
+<rect x="141" y="1128" width="133" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="155" y="1148" font-size="14" font-weight="600" fill="#2c2c2a">shared/items</text>
+<text x="155" y="1172" font-size="12" fill="#5f5e5a">ItemDefinitions</text>
+<text x="155" y="1188" font-size="12" fill="#5f5e5a">ItemLooks</text>
+<text x="155" y="1204" font-size="12" fill="#5f5e5a">ItemRegistry</text>
+<text x="155" y="1220" font-size="12" fill="#5f5e5a">ItemStack</text>
+<rect x="89" y="808" width="140" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="103" y="828" font-size="14" font-weight="600" fill="#2c2c2a">shared/players</text>
+<text x="103" y="852" font-size="12" fill="#5f5e5a">PlayerState</text>
+<rect x="317" y="976" width="124" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="331" y="996" font-size="14" font-weight="600" fill="#2c2c2a">shared/plots</text>
+<text x="331" y="1020" font-size="12" fill="#5f5e5a">Plot</text>
 <rect x="32" y="472" width="148" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
 <text x="46" y="492" font-size="14" font-weight="600" fill="#2c2c2a">shared/requests</text>
 <text x="46" y="516" font-size="12" fill="#5f5e5a">InventoryRequests</text>
@@ -83,12 +83,12 @@
 <rect x="132" y="640" width="116" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
 <text x="146" y="660" font-size="14" font-weight="600" fill="#2c2c2a">shared/save</text>
 <text x="146" y="684" font-size="12" fill="#5f5e5a">SaveData</text>
-<rect x="201" y="808" width="148" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="215" y="828" font-size="14" font-weight="600" fill="#2c2c2a">shared/stations</text>
-<text x="215" y="852" font-size="12" fill="#5f5e5a">RecipeDefinitions</text>
-<text x="215" y="868" font-size="12" fill="#5f5e5a">RecipeRegistry</text>
-<text x="215" y="884" font-size="12" fill="#5f5e5a">Station</text>
-<text x="215" y="900" font-size="12" fill="#5f5e5a">StationProgress</text>
+<rect x="257" y="808" width="148" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="271" y="828" font-size="14" font-weight="600" fill="#2c2c2a">shared/stations</text>
+<text x="271" y="852" font-size="12" fill="#5f5e5a">RecipeDefinitions</text>
+<text x="271" y="868" font-size="12" fill="#5f5e5a">RecipeRegistry</text>
+<text x="271" y="884" font-size="12" fill="#5f5e5a">Station</text>
+<text x="271" y="900" font-size="12" fill="#5f5e5a">StationProgress</text>
 <rect x="276" y="640" width="126" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
 <text x="290" y="660" font-size="14" font-weight="600" fill="#2c2c2a">shared/world</text>
 <text x="290" y="684" font-size="12" fill="#5f5e5a">GroundItems</text>

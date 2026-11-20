@@ -42,6 +42,18 @@ local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): b
 	return stack ~= nil and stack.itemId == itemId and stack.count == count
 end
 
+-- The inventory that a placed object was given, or the inventory of the station it was made. Nil
+-- if it was given neither.
+local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
+	local station = world.stations[placedObjectId]
+	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+end
+
+-- The inventory inside a placed object that is known to have one.
+local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
+	return findInside(world, placedObjectId) :: Inventory.Inventory
+end
+
 -- How many of one item the world holds in all: in packs, carried, standing on the plot, inside what
 -- stands on the plot, and on the ground.
 local function inWorld(world: World.World, itemId: string): number
@@ -58,13 +70,10 @@ local function inWorld(world: World.World, itemId: string): number
 			count += screen.carriedStack.count
 		end
 	end
-	for _, placedObject in world.plot.placedObjectsById do
-		if placedObject.itemId == itemId then
-			count += 1
-		end
-		if placedObject.inventory ~= nil then
-			count += Inventory.countItems(placedObject.inventory, itemId)
-		end
+	for placedObjectId, placedObject in world.plot.placedObjectsById do
+		local inside = findInside(world, placedObjectId)
+		count += if placedObject.itemId == itemId then 1 else 0
+		count += if inside ~= nil then Inventory.countItems(inside, itemId) else 0
 	end
 	return count
 end
@@ -74,10 +83,10 @@ end
 -- Players 1 and 2 stand at 6, 0, 0 and at 10, 0, 10, and each has 12 logs in slot 1, 5 fish in slot 2 and
 -- a crate in slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.PlayerState, number)
-	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
-	Inventory.addItems(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
-	local world = World.new(plot, at(0, 0, 0), 100)
+	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
+	local crateId = Plot.placeObject(world.plot, "crate", 2, 2)
+	World.addPlacedObjectInventory(world, crateId, Inventory.new(27))
+	Inventory.addItems(insideOf(world, crateId), "fish", 5)
 	local players = {}
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10) } do
 		local state = World.addPlayer(world, playerId)

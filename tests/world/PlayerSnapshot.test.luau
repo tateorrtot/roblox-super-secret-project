@@ -68,14 +68,32 @@ local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): b
 	return stack ~= nil and stack.itemId == itemId and stack.count == count
 end
 
+-- The inventory that a placed object was given, or the inventory of the station it was made. Nil
+-- if it was given neither.
+local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
+	local station = world.stations[placedObjectId]
+	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+end
+
+-- The inventory inside a placed object that is known to have one.
+local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
+	return findInside(world, placedObjectId) :: Inventory.Inventory
+end
+
+-- Opens a player's screen on the inventory inside a placed object, with no rule for its slots.
+local function openOn(world: World.World, state: PlayerState.PlayerState, placedObjectId: number)
+	World.openPlacedObjectScreen(world, state, placedObjectId, insideOf(world, placedObjectId))
+end
+
 -- A world with a crate holding 5 fish on tile 2, 2 and an oven on tile 4, 2. Player 1 stands near them
 -- with 12 logs and 4 apples in their pack.
 local function newWorld(): (World.World, number, number)
-	local plot = Plot.new(6, 6)
-	local crateId = Plot.placeObject(plot, "crate", 2, 2) :: number
-	Inventory.setStack(plot.placedObjectsById[crateId].inventory :: Inventory.Inventory, 1, ItemStack.new("fish", 5))
-	local ovenId = Plot.placeObject(plot, "oven", 4, 2) :: number
-	local world = World.new(plot, at(0, 0, 0), 0)
+	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 0)
+	local crateId = Plot.placeObject(world.plot, "crate", 2, 2)
+	World.addPlacedObjectInventory(world, crateId, Inventory.new(27))
+	Inventory.setStack(insideOf(world, crateId), 1, ItemStack.new("fish", 5))
+	local ovenId = Plot.placeObject(world.plot, "oven", 4, 2)
+	World.addStation(world, ovenId, Station.new("oven", Inventory.new(3)))
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 7, ItemStack.new("apple", 4))
@@ -188,7 +206,7 @@ end
 do -- a crate open
 	local world, crateId = newWorld()
 	local state = world.players[1]
-	World.openPlacedObjectScreen(world, state, crateId)
+	openOn(world, state, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
 	check(screen ~= nil and screen.otherInventoryItemId == "crate", "encode: says what kind of placed object is open")
@@ -248,10 +266,10 @@ end
 do -- an oven open
 	local world, _, ovenId = newWorld()
 	local state = world.players[1]
-	local inside = world.plot.placedObjectsById[ovenId].inventory :: Inventory.Inventory
+	local inside = insideOf(world, ovenId)
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	World.openPlacedObjectScreen(world, state, ovenId)
+	openOn(world, state, ovenId)
 
 	local idle = PlayerSnapshot.encode(world, 1)
 	check(
@@ -336,10 +354,10 @@ do -- a player watching a lit oven is told again only when something happens
 	end
 
 	local world, _, ovenId = newWorld()
-	local inside = world.plot.placedObjectsById[ovenId].inventory :: Inventory.Inventory
+	local inside = insideOf(world, ovenId)
 	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	World.openPlacedObjectScreen(world, world.players[1], ovenId)
+	openOn(world, world.players[1], ovenId)
 
 	local told = describe(PlayerSnapshot.encode(world, 1))
 	World.advanceTo(world, 0.1)
@@ -367,7 +385,7 @@ end
 
 do -- the placed object is not on the plot any more
 	local world, crateId = newWorld()
-	World.openPlacedObjectScreen(world, world.players[1], crateId)
+	openOn(world, world.players[1], crateId)
 	Plot.removePlacedObject(world.plot, crateId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(
@@ -431,7 +449,7 @@ do -- whatever the world holds, a view decodes to the same
 	for _ = 1, 300 do
 		local kind = random(4)
 		if kind == 1 then
-			World.openPlacedObjectScreen(world, state, ids[random(#ids)])
+			openOn(world, state, ids[random(#ids)])
 		elseif kind == 2 then
 			World.closeScreen(world, state)
 		elseif kind == 3 then
