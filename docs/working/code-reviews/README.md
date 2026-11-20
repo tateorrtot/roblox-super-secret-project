@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code seven times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code eight times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 The number in a file's name counts the reviews of 2026-11-20, so it is one less than the review's place in this list.
 
@@ -14,16 +14,24 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 | 6 | `2026-11-20-5-events-and-glue.md` | "setCharacter what?" A thing that is removed should say so, and the pieces that care do the rest. A big glue service is fine. One exception to a name's promise, "here and HERE ONLY", which was lifted the same day |
 | 7 | `2026-11-20-6-check-then-act.md` | "verbNounAndNoun": a name with `And` is two functions. "Check before you call the method like can_jump THEN jump." "Doesnt roblox have events?" A station is a black box: "contain the spaghettii" |
 
-Their message after the seventh was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
+| 8 | `2026-11-20-7-the-item-decides.md` | "Shouldnt it be the item itself that determines what happens when it breaks?" Composition, not inheritance. "You cant just... invent nouns out of nowhere". Roblox's word, or Godot's. "Did you fix what they found?" |
+
+Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
 ## What to check before showing them code
-These are Claude's readings of the seven reviews. The quotes are in the files.
+These are Claude's readings of the eight reviews. The quotes are in the files.
 
 - **Read each class alone,** as `python tools/bare_names.py <Module>` prints it: its name and its members' names, and nothing else. Each name must say what it is, or what it acts on and where. If you would have to ask "... what?", so will they. A guess is a failure.
 - **A class is a noun.** If no noun works, the class is wrong.
 - **A name is a promise.** A function does the thing its name says: all of it, nothing else, and every time it is called. If it also sets, stores or works out something for another concern, that is the tangle they called spaghetti. If it looks first and quietly does nothing, the check belongs in a function of its own, `can...`, called first.
 - **A setter names the thing it sets:** `set` and the property. "setCharacter what?"
 - **`And` in a name is two functions.** A long name is a flag, and not always wrong.
+- **Every word in a name is a real thing in the code, or a plain word nobody could doubt.** No invented noun, and no invented adjective: "what are due items. did you just invent that."
+- **A noun that can be read two ways is a failed name.** "Plot Controls? ... controling a plot?"
+- **Roblox's word first, then Godot's, never one of ours.** And when explaining by Godot, say which word is whose.
+- **The item decides what happens to it.** No function does the same to every item whatever it is. A question that offers two answers for all items is the wrong question.
+- **Use their words for the game:** "interact" and "break", not Claude's "use", "hit" or "knocked off the plot".
+- **A reader's doubt is fixed, or listed with the reason it stands.** A report says what was left: "Did you fix what they found?"
 - **Say what Roblox has before proposing ours.** "This is a roblox game first."
 - **A general name on one example is a promise the code cannot keep.** Each kind of thing keeps its workings to itself.
 - **When a cold reader doubts a name, change it.** Two readers doubted `setCharacter`, Claude kept it, and the user asked the readers' question word for word.
@@ -40,4 +48,4 @@ These are Claude's readings of the seven reviews. The quotes are in the files.
 - **Measure before showing:** `python tools/metrics.py --functions`, `python tools/unused.py`, and a names test on a fresh reader (`docs/code/names.md` says how).
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
-Each of the seven reviews found something the checks before it had passed. Expect an eighth.
+Each of the eight reviews found something the checks before it had passed. Expect a ninth.

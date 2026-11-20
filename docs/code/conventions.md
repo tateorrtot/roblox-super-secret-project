@@ -26,6 +26,14 @@ The user's rule, 2026-11-20: "if you say "jump" dont have a check inside that me
 - A function that is asked to remove a thing that is not there has nothing to do, and that is not a check: `removeCharacter`, `closeScreen`.
 - **A rule of the game is not a check.** `GroundItems.moveNearbyStacksToInventory` leaves alone a ground item that is too new to pick up, and `GroundItems.mergeItems` looks only at the ground items whose turn it is. Each says so in its comment.
 
+## What an item does
+The user's rule, 2026-11-20: "Shouldnt it be the item itself that determines what happens when it breaks? For example obsidian in minecraft doesnt drop its item unless you got a diamond pickaxe or netherite pickaxe. its the strategy pattern basically." And: "it sounds like youre favoring inheritance over composition - thats bad! you end up with functions like "throwPlacedItemAndContents"."
+- **The item decides.** What interacting with a kind of item does, and what breaking it leaves, are that kind's own to say. The rest of the game knows that it happened, and nothing of what follows.
+- **The game makes no promise for every item.** A function that does the same to every placed item, whatever it is, is a contract nobody asked for. A crate spills. A sack keeps what is in it. A cage lets a creature out.
+- **A kind of item is put together from parts,** and each part brings its own behaviour: one that places, one that holds stacks, one that casts a spell. It is not one fixed set of behaviours switched on by flags in its definition.
+- **A function does not know two things that have nothing to do with each other unless a kind of item says so:** a placed item and "contents".
+- **The code does not follow this yet.** What it promises for every item today is listed in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`. The shape that would follow it is shared machinery, and is shown to the user before any of it is written (`docs/status/next.md`). New code makes no new promise of the kind.
+
 ## Failure
 - **What can happen in play is a return value.** No room, nothing there.
 - **What comes from outside is checked once, where it comes in:**
@@ -54,11 +62,11 @@ Comments are written as Godot's class reference is. Read `doc/classes/Timer.xml`
 - **The server sends when something happens, not as time passes.** A thing that moves with time alone, such as a stove's gauges, is sent as the times that decide it, and drawn on the player's machine from its own clock (`StationProgress`). Before adding anything to what a player is told, ask whether it changes while nothing happens. This is Claude's rule, from a stove that had the server sending a player's whole pack ten times a second.
 - **Deleting one directory of the rules must not break the one beside it.** `players`, `plots` and `stations` know nothing of one another. `python tools/delete_directory_test.py` shows what breaks when each directory goes. This is the user's test, 2026-11-20.
 - **One rule tells another with a signal.** A thing that changes says so by firing a `Signal` it holds, as a plot fires `placedItemAdded`, and each piece that cares connects to it. The function that makes the change does not know who listens. The user asked for this of removing a placed item: "the placedItem itself should signal / event "hey im getting deleted!" and that end up cascading into the items splling and the inventory closing elsewhere."
-- **Roblox's own events are for where the engine speaks to us:** input, a player joining, a message from the other machine. The user asked why we would have two systems. A `BindableEvent` is an Instance, copies the tables passed through it, and runs its listeners later and in no promised order, so it cannot carry the rules' own values or keep their order (`docs/research/19-roblox-events.md`). The user, having heard that: "Okay I stand corrected. Signals are good."
+- **Roblox's own events are for where the engine speaks to us:** input, a player joining, a message from the other machine. The user asked why we would have two systems. A `BindableEvent` is an Instance, copies the tables passed through it, and runs what is connected to it later and in no promised order, so it cannot carry the rules' own values or keep their order (`docs/research/19-roblox-events.md`). The user, having heard that: "Okay I stand corrected. Signals are good."
 - **Break it up.** When a piece does more than one thing, split it: a directory, a file, a function, a block. Decide which layer each part belongs on, and build the higher on the lower.
 - **On the Roblox side** (`src/server`, `src/client`):
   - A piece that draws is named for what it draws, ending in `Gui` on a player's machine (`SlotGui`, `HotbarGui`) and `Parts` on the server (`GroundItemParts`). It is told what to show, reports clicks through callbacks it was given, and never changes the game's state.
-  - A piece that turns input into requests is named for the controls it is (`InventoryControls`). `UseAndHit` is one too, and is owed a name without `And` in it.
+  - A piece that turns input into requests has no settled name yet. The two there are, `InventoryControls` and `UseAndHit`, both failed the user's reading: "controling a plot? ... isnt that the plots job?" Roblox's own scripts call such a module by what it reads, as `CameraInput`.
   - `Main.server.luau` and `Main.client.luau` are the only scripts that run by themselves, and they join the pieces.
   - A piece that will be deleted when the real thing exists has `Placeholder` in its name (`PlaceholderWorld`). A piece that stays, and only draws stand-in shapes for now, does not (`GroundItemParts`, `PlotParts`): its comment says that the shapes are placeholders.
 

@@ -38,7 +38,8 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
 - **A crate knocked off the plot spills what was in it,** as a Minecraft chest does. Claude's restatement in `docs/game/consistency-rule.md` says a crate keeps its contents; that needs an item that carries an inventory, which does not exist yet.
 - The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the player's machine yet; the plan the user approved is in `next.md`.
 - **Signals, 2026-11-20.** The user said to build them; the shape is Claude's.
-  - `Signal` is plain Luau with three functions: `new`, `connect` and `fire`. Listeners run at once, inside `fire`, in the order they were connected, and a listener that fails stops the rest. There is no way to disconnect one yet, because nothing needs it.
+  - `fire` is kept, as Roblox's word for it (`BindableEvent:Fire`). Two helpers argued for Godot's `emit`, because `Signal` is not a Roblox event. The user asked which convention it follows, and can overrule.
+  - `Signal` is plain Luau with three functions: `new`, `connect` and `fire`. Callbacks run at once, inside `fire`, in the order they were connected, and a callback that fails stops the rest. There is no way to disconnect one yet, because nothing needs it.
   - A plot holds two, `placedItemAdded` and `placedItemRemoved`, and fires them from `placeItem` and `removePlacedItem`. The world connects to both when it is made. `World.placeItem` and `World.takePlacedItemOffPlot` are gone.
 - **Check, then act, 2026-11-20.** The rule is the user's; these details are Claude's.
   - An action that cannot be carried out fails loudly where going on would spoil the data: `Plot.placeItem` on a taken tile, and opening a screen for a player who cannot have one. The two swaps of `InventoryScreen` always swap, and their `can...` functions say whether the slot's rule allows it.

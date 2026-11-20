@@ -13,7 +13,8 @@ As of the end of 2026-11-20. This file holds only what is true now. What is over
 | **Approved, not built** | Prediction on the player's machine (`next.md`) |
 
 ## With the user
-- **They have reviewed the code seven times,** six of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **They have reviewed the code eight times,** seven of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **The eighth found a fault in the shape, not in a name:** the game decides what every item does, where the item should. "Shouldnt it be the item itself that determines what happens when it breaks?" An audit the same day found twelve such promises with one root, and about sixty names with a word that should not be there (`docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`). Nothing is rebuilt yet: the shape is shown to them first.
 - **Everything they asked of the code in those reviews is done,** except prediction on the player's machine, which is next, and what they said to leave: `World` stays one big piece of glue, and `Station` stays a furnace until a second process shows what the kinds share. The stories are in `history/`.
 - **Their last message of 2026-11-20 was answers, not a review.** Done from it that day:
   - seven functions brought to check, then act (`docs/code/conventions.md`);
@@ -62,7 +63,8 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 - **The hotbar's highlight, every click in the inventory, and a throw each wait for the server.** In Studio that is a frame or two. On a real server it is the player's ping, and nobody has measured it. Prediction on the player's machine is the fix, and is next.
 - **The play test is spoiled by someone using the PC.** It drives Studio with the mouse and the keyboard for about four minutes, and Studio losing focus lets go of held keys.
 - **A thrown block that clips the edge of a step as it falls can tumble about 20 studs,** where on flat ground it stops after 7.6. Roblox's physics does that with a cube; nothing of ours is involved. Seen from the spawn pad on 2026-11-20 (`docs/code/checks.md`).
-- **`throwPlacedItemAndContents` has `And` in its name,** and the class `UseAndHit` does too. Both wait for the user's word (`asked-of-the-user.md`).
+- **The game decides what every item does.** A hit takes any placed item off the plot and drops it with every stack inside it; using one opens its inventory; a click on a tile with a placeable item in hand places it. An item cannot say otherwise: it is a row of flags that the rest of the code reads. The user's eighth review, and the first thing in `next.md`.
+- **About sixty names have a word that should not be there:** an invented one, an `And`, `Or` or `If`, a noun that reads two ways, or one word for several ideas. Most are in the Roblox-side scripts and in private helpers. `throwPlacedItemAndContents` and `UseAndHit` are the two the user has met.
 - **`World` still names stations,** and `Station` is a furnace under a general name (`docs/game/placed-items.md`). The user said to leave both for now.
 - **A ground item pushed out of a tile is not checked where it lands.** One that lay across a corner of the tile can land partly inside a placed item on the tile diagonally across that corner.
 - **A block placed where a thrown item is flying can miss it.** The world knows where each ground item was at the last tenth of a second.

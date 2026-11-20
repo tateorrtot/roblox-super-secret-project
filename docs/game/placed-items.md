@@ -13,6 +13,13 @@ How the user pictures a thing in the game, and how far the code is from it. Thei
 
 > We cant really predict what its going to be or "genericize" a lot of the time if that makes sense. I.e. its gonna be spaghettii but we gotta contain the spaghettii.
 
+And on the same day, after Claude asked whether "a crate" should spill or keep what is in it:
+> Shouldnt it be the item itself that determines what happens when it breaks? For example obsidian in minecraft doesnt drop its item unless you got a diamond pickaxe or netherite pickaxe. its the strategy pattern basically.
+
+> a wand and a log are both just plain inventory items ... if you interact with a log over a valid plot spot it places. if you do the same with a wand it might cast a spell. see how that works? it sounds like youre favoring inheritance over composition - thats bad!
+
+> Its per placed item (or whatever were calling it). ... What if we have a sack like from the mod supplementaries? You break it and the items stay inside like a shulker box. ... What if we break it and the items transform. What if we break it and theres not items in there. What if we break it and its like a cage thats containing an entity so now the entity should actually pop out say a bunny rabbit.
+
 How they picture the furnace's screen: a background, three slots laid out as fuel, what is worked on and what comes out, and other parts drawn over them, such as a fuel bar and an arrow that shows how far the work has got.
 
 ## What follows
@@ -20,6 +27,8 @@ How they picture the furnace's screen: a background, three slots laid out as fue
 - **What a placed thing does is its own business.** The game knows that it is there and that using it may open a screen. What is behind the screen is that thing's to say.
 - **A thing held in the hand can open a screen too,** or show something with no screen at all.
 - **Nothing is made general ahead of the things that need it.** The mess a kind of thing needs stays inside that kind.
+- **The item decides what interacting with it does, and what breaking it leaves.** The game knows only that it was interacted with or broken. A kind is put together from parts, each with its own behaviour.
+- **A crate that is broken spills what is in it.** That is the crate's own doing, and says nothing of a sack or a cage.
 
 ## The processes they want next
 > Something simple like the furnace - two inputs and an output in a single block - something very different - like a basin from create where items can be put in its inventory and depending on other things like a "mixer" or a "press" above will enact processes on the basin and change its contents - and something that is very different - like a fan processor from the create mod where if say put water infront and an item on certain specified inventories like belts or "depots" that it can reach (unobstructed) will wash the items. Change the water out for lava and now it smelts. Or even just put the loose item out infront no inventory. For something like a press in create it works on loose items too with no basin.
@@ -32,5 +41,7 @@ Three kinds, then: a block that works on what is inside it; a block that is work
 - **`World` knows stations by name.** It keeps a list of them and moves each on in time.
 - **A crate is not a station.** It is a placed item with an inventory, and the same screen draws it as a plain grid.
 - **A held item cannot open a screen.**
+- **A break is the same for every placed item:** it comes off the plot and drops itself and every stack inside it. `PlotRequests.hitPlacedItem` and `World.throwPlacedItemAndContents` say so for all of them.
+- **A click on a tile with a placeable item in hand always places it.** The player's machine decides that, before the server hears of it.
 
 None of the three processes above fits `Station`. The second one to be built will show what the kinds really share, and that is the time to give each kind a place of its own. Until then `Station` should be read as "the furnace".

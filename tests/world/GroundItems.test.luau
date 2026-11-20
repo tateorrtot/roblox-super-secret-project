@@ -73,7 +73,7 @@ do -- the rules as numbers
 		math.abs(REACH - 3.2) < 1e-9,
 		"two ground items of one kind merge when the gap between their sides is less than 2 studs: 3.2 between their positions"
 	)
-	check(CHECK == 2, "a ground item that lies still is looked at again, for merging, every two seconds")
+	check(CHECK == 2, "a ground item that lies still is checked again, for merging, every two seconds")
 end
 
 do -- nothing on the ground
@@ -187,7 +187,7 @@ end
 
 do -- merging: the bigger stack takes in the smaller
 	-- Each pair is spawned apart and merged once. After that only a ground item that is given a new
-	-- position is looked at, so the tests choose which of the two it is.
+	-- position is checked, so the tests choose which of the two it is.
 	local ground = GroundItems.new()
 	local lying = GroundItems.spawnStack(ground, ItemStack.new("log", 5), at(10, 0, 0), { x = 1, y = 2, z = 3 }, 100)
 	local coming = GroundItems.spawnStack(ground, ItemStack.new("log", 3), at(50, 0, 0), { x = 4, y = 5, z = 6 }, 130)
@@ -236,7 +236,7 @@ do -- merging: the bigger stack takes in the smaller
 	GroundItems.mergeItems(equal, 0)
 	check(
 		equal.itemsById[goes] == nil and holds(equal, stays, "log", 8) and equal.itemsById[stays].position.x == 10,
-		"mergeItems: of two stacks of the same size, the one being looked at is taken in by the other"
+		"mergeItems: of two stacks of the same size, the one being checked is taken in by the other"
 	)
 	local equalToo = GroundItems.new()
 	local mover = dropAt(equalToo, ItemStack.new("log", 4), at(50, 0, 0), 0)
@@ -279,10 +279,10 @@ do -- merging: only stacks of the same item that fit in one stack
 	)
 end
 
-do -- merging: the one being looked at is tried with each one in reach, the nearest first
+do -- merging: the one being checked is tried with each one in reach, the nearest first
 	-- Two ground items lie too far apart to merge with each other, the nearer 2 studs one way and
 	-- the farther 3 studs the other way from where a third is then spawned. Only the third is
-	-- looked at. Returns the ground items, and the ids of the nearer, the farther and the third.
+	-- checked. Returns the ground items, and the ids of the nearer, the farther and the third.
 	local function newThree(
 		nearerCount: number,
 		fartherCount: number,
@@ -345,7 +345,7 @@ do -- merging: the one being looked at is tried with each one in reach, the near
 	check(allLowest, "mergeItems: of two equally near, the one with the lower id is tried first")
 end
 
-do -- merging: which ground items are looked at
+do -- merging: which ground items are checked
 	-- A full stack and a part stack lie side by side. Six of the full one are then picked up, which
 	-- leaves room for the part stack and gives neither a new position.
 	local ground = GroundItems.new()
@@ -361,15 +361,15 @@ do -- merging: which ground items are looked at
 	GroundItems.mergeItems(ground, 1.99)
 	check(
 		groundItemCount(ground) == 2,
-		"mergeItems: a ground item that has lain still is not looked at again before its two seconds are up"
+		"mergeItems: a ground item that has lain still is not checked again before its two seconds are up"
 	)
 	GroundItems.mergeItems(ground, 2)
 	check(
 		ground.itemsById[part] == nil and holds(ground, full, "log", 13),
-		"mergeItems: a ground item is looked at again once it has been in the world for two seconds"
+		"mergeItems: a ground item is checked again once it has been in the world for two seconds"
 	)
 
-	-- The two seconds are counted from when each was spawned: the full stack is looked at again at
+	-- The two seconds are counted from when each was spawned: the full stack is checked again at
 	-- the times 2 and 4, and the part stack at the times 3 and 5.
 	local phased = GroundItems.new()
 	local phasedFull = dropAt(phased, ItemStack.new("log", 16), at(0, 0, 0), 0)
@@ -381,7 +381,7 @@ do -- merging: which ground items are looked at
 	GroundItems.mergeItems(phased, 2.99)
 	check(
 		holds(phased, phasedFull, "log", 10) and holds(phased, phasedPart, "log", 3),
-		"mergeItems: a ground item is not looked at again between one of its two seconds and the next"
+		"mergeItems: a ground item is not checked again between one of its two seconds and the next"
 	)
 	GroundItems.mergeItems(phased, 3)
 	check(
@@ -401,15 +401,15 @@ do -- merging: which ground items are looked at
 	GroundItems.mergeItems(quarter, 2.125)
 	check(
 		holds(quarter, quarterFull, "log", 10) and holds(quarter, quarterPart, "log", 3),
-		"mergeItems: a ground item spawned at a quarter past is not looked at again an eighth of a second early"
+		"mergeItems: a ground item spawned at a quarter past is not checked again an eighth of a second early"
 	)
 	GroundItems.mergeItems(quarter, 2.25)
 	check(
 		groundItemCount(quarter) == 1 and itemsOnGround(quarter, "log") == 13,
-		"mergeItems: and is looked at again two seconds after it was spawned, to the moment"
+		"mergeItems: and is checked again two seconds after it was spawned, to the moment"
 	)
 
-	-- A time no later than the last one looks at nothing that lies still.
+	-- A time no later than the last one checks nothing that lies still.
 	local back = GroundItems.new()
 	local backFull = dropAt(back, ItemStack.new("log", 16), at(0, 0, 0), 0)
 	local backPart = dropAt(back, ItemStack.new("log", 3), at(1, 0, 0), 0)
@@ -420,26 +420,26 @@ do -- merging: which ground items are looked at
 	GroundItems.mergeItems(back, 9)
 	check(
 		holds(back, backFull, "log", 10) and holds(back, backPart, "log", 3),
-		"mergeItems: given the same time again, it looks at no ground item that lies still"
+		"mergeItems: given the same time again, it checks no ground item that lies still"
 	)
 	GroundItems.mergeItems(back, 4)
 	check(
 		holds(back, backFull, "log", 10) and holds(back, backPart, "log", 3),
-		"mergeItems: given an earlier time, it looks at no ground item that lies still"
+		"mergeItems: given an earlier time, it checks no ground item that lies still"
 	)
 	local backSpawned = dropAt(back, ItemStack.new("log", 2), at(1, 0, 0), 4)
 	GroundItems.mergeItems(back, 3)
 	check(
 		back.itemsById[backSpawned] == nil and holds(back, backPart, "log", 5),
-		"mergeItems: given an earlier time, it still looks at one that was spawned since"
+		"mergeItems: given an earlier time, it still checks one that was spawned since"
 	)
 	GroundItems.mergeItems(back, 5)
 	check(
 		groundItemCount(back) == 1 and itemsOnGround(back, "log") == 15,
-		"mergeItems: and when time goes on again, the ones that lie still are looked at as before"
+		"mergeItems: and when time goes on again, the ones that lie still are checked as before"
 	)
 
-	-- One that was spawned since the last run is looked at whatever the time. The one it lies
+	-- One that was spawned since the last run is checked whatever the time. The one it lies
 	-- beside is not, and is merged with all the same.
 	local fresh = GroundItems.new()
 	local lyingStill = dropAt(fresh, ItemStack.new("log", 5), at(0, 0, 0), 0)
@@ -448,17 +448,17 @@ do -- merging: which ground items are looked at
 	GroundItems.mergeItems(fresh, 0.5)
 	check(
 		fresh.itemsById[spawned] == nil and holds(fresh, lyingStill, "log", 8),
-		"mergeItems: a ground item that was spawned since the last run is looked at, whatever the time"
+		"mergeItems: a ground item that was spawned since the last run is checked, whatever the time"
 	)
 
-	-- Of the ground items that are looked at, the one with the lower id is looked at first.
+	-- Of the ground items that are checked, the one with the lower id is checked first.
 	local pair = GroundItems.new()
 	local first = dropAt(pair, ItemStack.new("log", 3), at(0, 0, 0), 0)
 	local second = dropAt(pair, ItemStack.new("log", 3), at(0, 0, 0), 0)
 	GroundItems.mergeItems(pair, 0)
 	check(
 		pair.itemsById[first] == nil and holds(pair, second, "log", 6),
-		"mergeItems: of two stacks of the same size that are both looked at, the one with the lower id goes"
+		"mergeItems: of two stacks of the same size that are both checked, the one with the lower id goes"
 	)
 	local unequal = GroundItems.new()
 	local five = dropAt(unequal, ItemStack.new("log", 5), at(0, 0, 0), 0)
@@ -484,7 +484,7 @@ do -- merging: which ground items are looked at
 	GroundItems.mergeItems(many, LIFETIME)
 	check(
 		groundItemCount(many) == 2 and holds(many, 102, "log", 16) and holds(many, 118, "log", 14),
-		"mergeItems: the ground items are looked at in the order of their ids, lowest first"
+		"mergeItems: the ground items are checked in the order of their ids, lowest first"
 	)
 
 	local gone = GroundItems.new()

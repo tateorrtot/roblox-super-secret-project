@@ -4,8 +4,11 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 
 ## About the code
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
-- **What a crate does when it is knocked off the plot.** Today the crate becomes an item on the ground and each stack inside it becomes one too, as a Minecraft chest spills. The other way is that the crate keeps what is in it, as one item, which needs an item that can carry an inventory. `World.throwPlacedItemAndContents` is the function that spills; if spilling stays, whether to split it in two, since it has `And` in its name. Explained to them on 2026-11-20, after they asked "Its just an item - no?"
-- **Whether to rename the class `UseAndHit`,** which has `And` in its name. Claude would call it `PlotControls`, beside `InventoryControls`.
+- **Whether the shape in which the item decides is the one they want, and whether it comes before prediction.** Shown to them on 2026-11-20 after their eighth review (`next.md`).
+- **`PlacedItem`, or `Block`.** They asked whether "placed item" is the best name. `Block` is their own word and Minecraft's, and is shorter. It also promises a cube on a grid, and they have said that walls will not keep to the grid.
+- **A name for the piece now called `UseAndHit`,** and for `InventoryControls`. They turned down `PlotControls`. Roblox's own scripts name such a module for what it reads, as `CameraInput`, which would give `WorldInput` and `InventoryInput`.
+- **Whether `fire` stays.** It is Roblox's word; Godot's is `emit`. Claude kept it under their rule and told them so.
+- **Which of the words that are neither Roblox's nor Godot's they want changed:** `put` and `take`, `advance` and `advanceTo`, `validate`, `pack` where Roblox says `Backpack`, and `spawn`, which in Roblox means something else. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
 - **Whether they would rather read the code in the method form** (`pack:addItems("log", 5)`) than as plain functions (`Inventory.addItems(pack, "log", 5)`).
 - **Whether screens and models are made in Studio,** as scenes are in Godot, or stay in code.
 

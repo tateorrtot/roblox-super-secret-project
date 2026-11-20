@@ -411,7 +411,7 @@ do -- time passing: ground items merge
 		"advanceTo: one that does not fit with its own kind stays a ground item of its own"
 	)
 
-	-- Ground items that lie still are looked at again when they have been in the world for another
+	-- Ground items that lie still are checked again when they have been in the world for another
 	-- `GroundItems.MERGE_CHECK_SECONDS`. A full stack, spawned at the time 100, and a part stack lie
 	-- side by side. Player 2 has room for six apples, comes to stand on the full stack and picks six
 	-- of it up, which moves neither ground item.
@@ -433,12 +433,12 @@ do -- time passing: ground items merge
 	World.advanceTo(still, 101.99)
 	check(
 		#groundStacks(still, "apple") == 2,
-		"advanceTo: ground items that lie still are not looked at again until two seconds after they were spawned"
+		"advanceTo: ground items that lie still are not checked again until two seconds after they were spawned"
 	)
 	World.advanceTo(still, 102)
 	check(
 		still.groundItems.itemsById[part] == nil and is(still.groundItems.itemsById[full].stack, "apple", 13),
-		"advanceTo: a ground item that has lain for two seconds is looked at again, and takes in one beside it that now fits"
+		"advanceTo: a ground item that has lain for two seconds is checked again, and takes in one beside it that now fits"
 	)
 
 	-- Merging comes before picking up. Player 1 stands at 6, 0, 0.

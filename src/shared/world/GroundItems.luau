@@ -80,8 +80,8 @@ GroundItems.ITEM_WIDTH = 1.2
 --- height, so that neither lies wholly above the other.
 GroundItems.MERGE_REACH = 2 + GroundItems.ITEM_WIDTH
 
---- How long a ground item that is not given a new position lies before `mergeItems` looks at it
---- again, in seconds.
+--- How long a ground item that is not given a new position lies between one merge check by
+--- `mergeItems` and the next, in seconds.
 GroundItems.MERGE_CHECK_SECONDS = 2
 
 local function isInMergeReach(from: Position, to: Position): boolean
@@ -189,42 +189,43 @@ local function mergeItemWithNearbyItems(groundItems: GroundItems, id: number)
 	end
 end
 
-local function isDueForMerge(groundItems: GroundItems, id: number, since: number, now: number): boolean
+local function needsMergeCheck(groundItems: GroundItems, id: number, since: number, now: number): boolean
 	local spawnTime = groundItems.itemsById[id].spawnTime
 	local checksBySince = math.floor((since - spawnTime) / GroundItems.MERGE_CHECK_SECONDS)
 	local checksByNow = math.floor((now - spawnTime) / GroundItems.MERGE_CHECK_SECONDS)
 	return groundItems.idsMovedSinceMerge[id] == true or checksByNow > checksBySince
 end
 
---- Merges ground items of the same item that are within `MERGE_REACH` of each other. Not every
---- ground item is looked at each time: `now` is the time, and decides which are.
+--- Merges ground items of the same item that are within `MERGE_REACH` of each other, by giving
+--- some of the ground items a merge check. Not every ground item gets one each time: `now` is the
+--- time, and decides which do.
 ---
---- A ground item is looked at if it was spawned or given a new position since `mergeItems` last
---- ran, or if it has since been in the world for another whole `MERGE_CHECK_SECONDS`, counted
---- from its `spawnTime`. They are looked at one by one, the lowest id first.
+--- A ground item gets a merge check if it was spawned or given a new position since `mergeItems`
+--- last ran, or if it has since been in the world for another whole `MERGE_CHECK_SECONDS`,
+--- counted from its `spawnTime`. They are checked one by one, the lowest id first.
 ---
---- The one being looked at is tried with each ground item of the same item in reach of it, the
---- nearest first, and of two equally near, the lower id first. The other need not be one that is
---- looked at. Two merge only if both stacks fit in one stack. The one with the bigger stack then
---- holds both, stays where it is, keeps the velocity it was spawned with, and counts as spawned at
---- the later of the two items' times. The other is gone, and its id with it. If the two stacks
---- are the same size, the one being looked at is the one that goes. One that took the other in is
---- tried with the next nearest, and so on until it is gone or there are no more.
+--- In a merge check the ground item is tried with each ground item of the same item in reach of
+--- it, the nearest first, and of two equally near, the lower id first. The other need not be one
+--- that is being checked. Two merge only if both stacks fit in one stack. The one with the bigger
+--- stack then holds both, stays where it is, keeps the velocity it was spawned with, and counts as
+--- spawned at the later of the two items' times. The other is gone, and its id with it. If the
+--- two stacks are the same size, the one being checked is the one that goes. One that took the
+--- other in is tried with the next nearest, and so on until it is gone or there are no more.
 ---
 --- If `now` is no later than the time `mergeItems` was last given, only the ground items spawned
---- or given a new position since then are looked at.
+--- or given a new position since then get a merge check.
 function GroundItems.mergeItems(groundItems: GroundItems, now: number)
 	local since = groundItems.lastMergeTime or now
-	local due = {}
+	local idsToCheck = {}
 	for id in groundItems.itemsById do
-		if isDueForMerge(groundItems, id, since, now) then
-			table.insert(due, id)
+		if needsMergeCheck(groundItems, id, since, now) then
+			table.insert(idsToCheck, id)
 		end
 	end
-	table.sort(due)
+	table.sort(idsToCheck)
 	table.clear(groundItems.idsMovedSinceMerge)
 	groundItems.lastMergeTime = now
-	for _, id in due do
+	for _, id in idsToCheck do
 		if groundItems.itemsById[id] ~= nil then
 			mergeItemWithNearbyItems(groundItems, id)
 		end

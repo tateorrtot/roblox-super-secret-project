@@ -2,6 +2,19 @@
 
 The work that is approved or owed, in the order Claude means to do it. What is only a question is in `asked-of-the-user.md`. How the work is done is in `docs/working/with-the-user.md`.
 
+## First, if the user agrees: the item decides
+The user's eighth review, 2026-11-20: "Shouldnt it be the item itself that determines what happens when it breaks? ... its the strategy pattern basically." The audit of that day found twelve promises the game makes for every item, all from one root (`docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`). Claude's advice is to mend this before prediction, because it changes the requests that prediction numbers and replays. It has been shown to the user, and none of it is started.
+
+- **The shape.** A kind of item is put together from parts. Each part is a small module that says what happens at the moments it cares about. The game knows the moments, and nothing of what follows: the item was interacted with in the hand, it was interacted with where it stands, it was broken, time passed.
+- **What Roblox has for it.** A `Tool` hears its own `Activated`, and a tag in `CollectionService` gives every Instance that wears it a behaviour. Both hang the behaviour on an Instance. Ours hangs on a plain Luau value, so that the rules still run and are tested without Roblox. Minecraft does it with a table of drops for each block, and RimWorld with comps in a definition.
+- **In the user's words:** `interact` and `break`.
+- **One moment at a time, each shown before it is written:**
+  1. Break. What breaking leaves is the item's own: a crate spills its stacks. `World.throwPlacedItemAndContents` goes.
+  2. Interacting with a placed item. What opens, if anything, is the item's own.
+  3. Interacting with an item in the hand. A log places itself. The flag `placeable` and the three fixed requests go.
+  4. What a placed item holds, and what it does as time passes. The `inventory` field of every placed item, and `Station` inside `World`, go. This is the step the user said to leave until a second kind of process is wanted.
+- **The names that readers doubted in this code are mended as it is rewritten:** a tile's `x` and `z` beside a position's, `Plot.width` and `depth`, `itemId` on a placed item, `World.REACH`.
+
 ## 1. Prediction on the player's machine
 The user chose it on 2026-11-20, as our own and not Roblox's Server Authority (`docs/research/18-client-first.md`), asked that it sit on top as pieces of its own, and said yes to this plan: "Ah prediction sounds great the way you architected it! ... As long as its following the rest of the codebases standards good."
 
@@ -24,6 +37,7 @@ Each starts with one precise question to them, and is built as small pieces. The
 - **Helpers:** people who can do what a player can, with a different brain.
 
 ## 4. Small things owed to the rules
+- **A pass over the names the audit of 2026-11-20 found,** in what the steps above do not rewrite: `Main.server`, `Main.client`, `PlaceholderWorld` and the private helpers. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
 - `StationProgress` should check the fire before it says a station is working. A few lines, with the next change to stations.
 - A mutation run over every piece at once stalls on `Station`: some of the bugs it plants make a loop run until the tool's 60-second limit, one after another. Each piece changed on 2026-11-20 was run by itself. `tools/mutate.py` wants a shorter limit, or a way to give one.
 - What the audits left is listed in `now.md`. None of it is urgent. The screen's drawing code is best left until the user decides whether screens are made in Studio.

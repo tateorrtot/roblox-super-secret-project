@@ -15,7 +15,7 @@ The game
   Where and which way
     Position, Direction   a point in the world; a way in the world          built
   How one rule tells another
-    Signal            a list of listeners that a thing calls when it changes   built
+    Signal            the callbacks that a thing calls when it changes   built
   Players
     PlayerState       one player: pack, hotbar, the screen they have open, where their character is   built
   Plots and building

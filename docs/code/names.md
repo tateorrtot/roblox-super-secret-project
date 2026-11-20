@@ -12,14 +12,17 @@ How things in the code are named. The user reads an outline of bare names, with 
 - Arguments come in the order the name gives them: the thing first, then where, then how much.
 - No name stops at an adjective. `placedItem`, not `placed`. `carriedStack`, not `carried`.
 - The game's own verbs follow the same rule. `pickUp`, `putDown`, `drop`, `throw`, `spawn`, `swap`, `use` and `hit` are welcome, and each still names what it acts on: `pickUpFromSlot`, `dropFromSlot`, `throwStackFromCharacter`, `spawnStack`, `swapSlots`, `usePlacedItem`. No verb is excused for being familiar.
+- **`use` and `hit` are Claude's words for the game's two actions. The user says `interact` and `break`.** The names change to theirs when that code is next rewritten.
 
 **Every function starts with a verb.** The exception is a yes-or-no question, which is named as the statement that would be true: `isFull`, `hasSlot`, `canReachTile`, `slotAcceptsItem`. A function that only reads starts with `get`, `count` or `find`.
 
 **A name is a promise, and the function keeps it.** `drop` leaves the stack on the ground. A function that only takes the stack out is `take`. If what a function does cannot be said plainly in a sentence built from its name, it is the wrong shape: split it or rename it.
 - **A setter names the thing it sets:** `set` and the property. The user, of `setCharacter`: "setCharacter what?" It is `setCharacterPosition`.
-- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." Two names still have it and wait for their word: the function `throwPlacedItemAndContents` and the class `UseAndHit`.
+- **`And` in a name is a flag.** A function named for two things is doing the work of two functions: split it. The user, of `setCharacterPositionAndFacing`: "Its weird to have "And" in a function that signals to me hey this method is doing the role of two methods." Two names still have it. The function `throwPlacedItemAndContents` goes when a placed item says for itself what breaking it leaves (`conventions.md`, "What an item does"). The class `UseAndHit` wants a name the user can read; they turned down `PlotControls`.
 - **A long name is a flag too, and not always wrong.** `pushGroundItemsOutOfTile` stands: the user called it "one of these times a mouthful may be okay".
-- **A word names a real thing in the code, or it is not used.** The user, of a `Transform` that did not exist: "is transform a defined solid thing? like a class? if not dont do transform".
+- **A word names a real thing in the code, or it is not used.** The user, of a `Transform` that did not exist: "is transform a defined solid thing? like a class? if not dont do transform". An adjective counts too. Of `mergeDueItems`, which Claude offered the same day: "what are due items. did you just invent that. ... But a "DueItem". is that a class? What is that?" Every word in a name is a type, a field or a constant of the code, a word from the two tables below, or a plain word nobody could doubt, such as `nearest` or `empty`.
+- **Roblox's word first, then Godot's, and never one of ours.** Where Roblox has a word for a thing, the code uses it and keeps to it: `connect` and `fire` for a signal, as `RBXScriptSignal:Connect` and `BindableEvent:Fire` have them. Where Roblox has none, Godot's. The user, 2026-11-20: "If youre following roblox conventions stick to it. If youre following invented conventions - go with godots". Whether calls are written `Module.verb(thing)` or as methods is a separate question, and waits for them.
+- **A noun that can be read two ways is a failed name.** Claude offered `PlotControls` for the piece that hears clicks in the world, meaning the controls a player has. The user: "controling a plot? Im confused? Theres a class / object somewhere whose job it is to control a plot? isnt that the plots job?"
 - **There is no exception.** The user allowed one on 2026-11-20, for two functions of `World` that also merged ground items, and it was lifted the same day when the merge moved to `World.advanceTo`.
 
 ## One name for each idea
@@ -45,7 +48,8 @@ How things in the code are named. The user reads an outline of bare names, with 
 ## One meaning for each verb
 | Verb | Means | Returns |
 |---|---|---|
-| `new`, `open` | Makes one | It |
+| `new` | Makes one | It |
+| `open`, `close` | Opens or closes a screen for a player | Nothing |
 | `get` | Reads what is there | It, or `nil` when nothing is there |
 | `set` | Replaces; `nil` removes | Nothing |
 | `add` | Puts in wherever it fits | Given a count, how many went in; given a stack, the stack that did not fit |
@@ -57,8 +61,8 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `merge` | Makes things of one kind into one | Given two stacks, the stack that holds both, and then what did not fit. Given every ground item, nothing |
 | `count` | Counts | A number |
 | `has`, `is`, `can` | Asks, and changes nothing. `can` with an action's name asks whether that action could be carried out now: `canPlaceItem` before `placeItem` | `true` or `false` |
-| `connect` | Adds a listener to a signal | Nothing |
-| `fire` | Calls every listener of a signal, at once and in the order they were connected | Nothing |
+| `connect` | Connects a callback to a signal | Nothing |
+| `fire` | Calls every callback connected to a signal, at once and in the order they were connected | Nothing |
 | `find` | Looks for one that may not be there | It, or `nil` |
 | `advance` | Moves a thing on in time: `advance` by so many seconds, `advanceTo` a time | Nothing |
 | `update` | Makes a drawing piece match what it is given | Nothing |

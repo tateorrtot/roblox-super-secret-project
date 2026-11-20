@@ -359,9 +359,9 @@ end
 
 --- Moves the world on to the time `now`, in this order:
 --- - Ground items of the same item that lie close together merge. Each one that was spawned or
----   given a new position since the world was last moved on is looked at, and each one that has
----   been in the world for another `GroundItems.MERGE_CHECK_SECONDS`. Of two whose stacks fit in
----   one stack, the bigger takes in the smaller, and stays where it is.
+---   given a new position since the world was last moved on gets a merge check, and so does each
+---   one that has been in the world for another `GroundItems.MERGE_CHECK_SECONDS`. Of two whose
+---   stacks fit in one stack, the bigger takes in the smaller, and stays where it is.
 --- - Each player with a character, the one with the lowest id first, picks up the ground items
 ---   near them. If their screen is open on a placed item that they stand more than
 ---   `SCREEN_CLOSES_BEYOND` from, it is then closed, as `closeScreen` does.
