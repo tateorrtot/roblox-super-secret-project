@@ -24,7 +24,7 @@ for index, recipe in RecipeDefinitions do
 end
 
 local burns = false
-for _, definition in ItemRegistry.all() do
+for _, definition in ItemRegistry.getAll() do
 	if definition.burnSeconds ~= nil then
 		burns = true
 	end
@@ -33,7 +33,7 @@ check(burns, "at least one item burns, so that a station can be lit")
 
 for _, recipe in RecipeDefinitions do
 	check(
-		Station.accepts(recipe.station, Station.INPUT_SLOT, recipe.input),
+		Station.slotAcceptsItem(recipe.station, Station.INPUT_SLOT, recipe.input),
 		'the station "' .. recipe.station .. '" takes "' .. recipe.input .. '" in its input slot'
 	)
 end

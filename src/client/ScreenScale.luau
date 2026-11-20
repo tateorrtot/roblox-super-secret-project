@@ -1,9 +1,9 @@
 --!strict
 --- Keeps the game's own screens the right size for the window they are in.
 ---
---- The screens are laid out in pixels for a window 900 wide and 620 tall. `apply` makes a screen
+--- The screens are laid out in pixels for a window 900 wide and 620 tall. `applyTo` makes a screen
 --- shrink in a smaller window and grow a little in a larger one, and keeps it fitted when the
---- window changes size. `current` returns the factor that is used.
+--- window changes size. `getFactor` returns the factor that is used.
 local Workspace = game:GetService("Workspace")
 
 local ScreenScale = {}
@@ -16,7 +16,7 @@ local LARGEST = 1.3
 --- Returns the factor the screens are scaled by in this window now: 1 draws them at their laid-out
 --- size, and 0.5 at half of it. The factor is never below 0.45 or above 1.3, and is 1 while there
 --- is no camera.
-function ScreenScale.current(): number
+function ScreenScale.getFactor(): number
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return 1
@@ -29,7 +29,7 @@ local uiScales: { UIScale } = {}
 local viewportChanged: RBXScriptConnection? = nil
 
 local function refresh()
-	local scale = ScreenScale.current()
+	local scale = ScreenScale.getFactor()
 	for _, uiScale in uiScales do
 		uiScale.Scale = scale
 	end
@@ -52,9 +52,9 @@ followCamera()
 
 --- Scales `guiObject`, and everything inside it, to fit this window, and keeps it fitted when the
 --- window changes size. Returns the `UIScale` that does it, which is now a child of `guiObject`.
-function ScreenScale.apply(guiObject: GuiObject): UIScale
+function ScreenScale.applyTo(guiObject: GuiObject): UIScale
 	local uiScale = Instance.new("UIScale")
-	uiScale.Scale = ScreenScale.current()
+	uiScale.Scale = ScreenScale.getFactor()
 	uiScale.Parent = guiObject
 	table.insert(uiScales, uiScale)
 	return uiScale

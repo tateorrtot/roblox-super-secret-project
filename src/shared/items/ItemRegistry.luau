@@ -74,7 +74,7 @@ function ItemRegistry.has(id: string): boolean
 end
 
 --- Returns a new list of the definition of every registered item, ordered by id.
-function ItemRegistry.all(): { ItemDefinition }
+function ItemRegistry.getAll(): { ItemDefinition }
 	local all: { ItemDefinition } = {}
 	for _, definition in definitions do
 		table.insert(all, definition)

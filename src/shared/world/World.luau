@@ -2,7 +2,7 @@
 --- Everything in one running copy of the game: the plot, the stacks on the ground, and the players.
 ---
 --- The server keeps one world. It adds and removes players, says where each one stands with
---- `setPlayerPosition`, and moves time on with `step`. The other functions are what can be done
+--- `setPlayerPosition`, and moves time on with `advanceTo`. The other functions are what can be done
 --- in the world: dropping a stack, opening a placed item, closing a player's screen, placing an
 --- item on the plot and taking it off again.
 local GroundItems = require("./GroundItems")
@@ -34,7 +34,7 @@ export type World = {
 	--- The station that each placed item which is one works as, by the placed item's id. A
 	--- placed item that is not a station has no entry.
 	read stations: { [number]: Station.Station },
-	--- The time `step` was last given, in seconds.
+	--- The time `advanceTo` was last given, in seconds.
 	now: number,
 }
 
@@ -48,13 +48,13 @@ World.REACH = 16
 World.SCREEN_CLOSES_BEYOND = World.REACH + 4
 
 --- A player standing this near the middle of a tile, in studs along the ground, stands on it.
-World.STANDS_ON_WITHIN = Plot.TILE_SIZE * 0.75
+World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
 
 local SPILL_DISTANCE = 1.7
 local SPILL_ANGLE = 2.4
 
 local function tileCenter(world: World, x: number, z: number): Position
-	return Plot.tileCenter(world.plotCorner, x, z)
+	return Plot.getTileCenter(world.plotCorner, x, z)
 end
 
 local function sortedPlayerIds(world: World): { number }
@@ -84,50 +84,51 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 		stations = {},
 		now = now,
 	}
-	for placedId, placedItem in plot.placedById do
-		world.stations[placedId] = newStationFor(placedItem)
+	for placedItemId, placedItem in plot.placedItemsById do
+		world.stations[placedItemId] = newStationFor(placedItem)
 	end
 	return world
 end
 
 --- Puts a stack on the ground at a position.
 function World.dropStack(world: World, stack: ItemStack, position: Position)
-	GroundItems.drop(world.groundItems, stack, position, world.now)
+	GroundItems.dropStack(world.groundItems, stack, position, world.now)
 end
 
 --- Closes a player's inventory screen. The stack they were carrying goes back into their pack,
 --- and what does not fit lands on the ground at their `dropPosition`. Does nothing if they have no
 --- screen open.
-function World.closeScreen(world: World, state: PlayerState)
-	local screen = state.screen
+function World.closeScreen(world: World, player: PlayerState)
+	local screen = player.screen
 	if screen == nil then
 		return
 	end
-	local carried = InventoryScreen.takeCarried(screen)
-	local leftover = if carried then Inventory.addStack(state.pack, carried) else nil
+	local carried = InventoryScreen.takeCarriedStack(screen)
+	local leftover = if carried then Inventory.addStack(player.pack, carried) else nil
 	if leftover ~= nil then
-		World.dropStack(world, leftover, state.dropPosition)
+		World.dropStack(world, leftover, player.dropPosition)
 	end
-	state.screen = nil
-	state.openedPlacedId = nil
+	player.screen = nil
+	player.openedPlacedItemId = nil
 end
 
 --- Opens the inventory of a placed item on a player's screen, beside their pack, and returns
 --- `true`. Any screen they had open is closed first, as `closeScreen` does. Returns `false`,
 --- changing nothing, if no placed item has that id or it has no inventory.
-function World.openPlaced(world: World, state: PlayerState, placedId: number): boolean
-	local placedItem = world.plot.placedById[placedId]
+function World.openPlacedItem(world: World, player: PlayerState, placedItemId: number): boolean
+	local placedItem = world.plot.placedItemsById[placedItemId]
 	local inventory = if placedItem then placedItem.inventory else nil
 	if placedItem == nil or inventory == nil then
 		return false
 	end
-	World.closeScreen(world, state)
+	World.closeScreen(world, player)
 	local itemId = placedItem.itemId
 	local stationAccepts = function(slot: number, putItemId: string): boolean
-		return Station.accepts(itemId, slot, putItemId)
+		return Station.slotAcceptsItem(itemId, slot, putItemId)
 	end
-	state.screen = InventoryScreen.new(state.pack, inventory, if world.stations[placedId] then stationAccepts else nil)
-	state.openedPlacedId = placedId
+	player.screen =
+		InventoryScreen.new(player.pack, inventory, if world.stations[placedItemId] then stationAccepts else nil)
+	player.openedPlacedItemId = placedItemId
 	return true
 end
 
@@ -136,21 +137,21 @@ end
 --- `pack`, or a pack that holds nothing if none is given. Fails if a player already has that id.
 function World.addPlayer(world: World, playerId: number, dropPosition: Position, pack: Inventory?): PlayerState
 	assert(world.players[playerId] == nil, `player {playerId} is already in the world`)
-	local state = PlayerState.new(dropPosition, pack)
-	world.players[playerId] = state
-	return state
+	local player = PlayerState.new(dropPosition, pack)
+	world.players[playerId] = player
+	return player
 end
 
 --- Takes a player out of the world and returns them, or `nil` if no player has that id. Their
 --- inventory screen is closed first, as `closeScreen` does.
 function World.removePlayer(world: World, playerId: number): PlayerState?
-	local state = world.players[playerId]
-	if state == nil then
+	local player = world.players[playerId]
+	if player == nil then
 		return nil
 	end
-	World.closeScreen(world, state)
+	World.closeScreen(world, player)
 	world.players[playerId] = nil
-	return state
+	return player
 end
 
 --- Sets where a player's character stands to `position`, a point on the ground, or to `nil` if
@@ -158,27 +159,27 @@ end
 --- at `dropPosition`, or at `position` if `dropPosition` is left out. With no `position`, where
 --- their drops land stays as it was. Fails if no player has that id.
 function World.setPlayerPosition(world: World, playerId: number, position: Position?, dropPosition: Position?)
-	local state = assert(world.players[playerId], `no player has the id {playerId}`)
-	state.position = position
+	local player = assert(world.players[playerId], `no player has the id {playerId}`)
+	player.position = position
 	if position ~= nil then
-		state.dropPosition = dropPosition or position
+		player.dropPosition = dropPosition or position
 	end
 end
 
 --- Returns `true` if a player's character stands within `World.REACH` of the middle of a tile,
 --- in studs along the ground. A player with no character reaches nothing.
-function World.canReachTile(world: World, state: PlayerState, x: number, z: number): boolean
-	local position = state.position
-	return position ~= nil and Position.groundDistance(position, tileCenter(world, x, z)) <= World.REACH
+function World.canReachTile(world: World, player: PlayerState, x: number, z: number): boolean
+	local position = player.position
+	return position ~= nil and Position.getGroundDistance(position, tileCenter(world, x, z)) <= World.REACH
 end
 
---- Returns `true` if any player's character stands on a tile: within `STANDS_ON_WITHIN` of its
+--- Returns `true` if any player's character stands on a tile: within `TILE_STOOD_ON_WITHIN` of its
 --- middle.
-function World.isStoodOn(world: World, x: number, z: number): boolean
+function World.isTileStoodOn(world: World, x: number, z: number): boolean
 	local center = tileCenter(world, x, z)
-	for _, state in world.players do
-		local position = state.position
-		if position ~= nil and Position.groundDistance(position, center) <= World.STANDS_ON_WITHIN then
+	for _, player in world.players do
+		local position = player.position
+		if position ~= nil and Position.getGroundDistance(position, center) <= World.TILE_STOOD_ON_WITHIN then
 			return true
 		end
 	end
@@ -190,21 +191,21 @@ end
 --- stands on it, or if the item is not one that can be placed. The item is not taken from
 --- anywhere. An item that is a station starts as a station with no fire.
 function World.placeItem(world: World, itemId: string, x: number, z: number): number?
-	if World.isStoodOn(world, x, z) then
+	if World.isTileStoodOn(world, x, z) then
 		return nil
 	end
-	local placedId = Plot.place(world.plot, itemId, x, z)
-	if placedId ~= nil then
-		world.stations[placedId] = newStationFor(world.plot.placedById[placedId])
+	local placedItemId = Plot.placeItem(world.plot, itemId, x, z)
+	if placedItemId ~= nil then
+		world.stations[placedItemId] = newStationFor(world.plot.placedItemsById[placedItemId])
 	end
-	return placedId
+	return placedItemId
 end
 
-local function closeScreensOn(world: World, placedId: number)
+local function closeScreensOn(world: World, placedItemId: number)
 	for _, playerId in sortedPlayerIds(world) do
-		local state = world.players[playerId]
-		if state.openedPlacedId == placedId then
-			World.closeScreen(world, state)
+		local player = world.players[playerId]
+		if player.openedPlacedItemId == placedItemId then
+			World.closeScreen(world, player)
 		end
 	end
 end
@@ -227,14 +228,14 @@ end
 --- does. The item then lies on its tile as a ground item, and each stack that was inside it lies
 --- on the ground in a ring around it. If it was a station its fire goes out, and the fuel that was
 --- burning is lost. Does nothing if no placed item has that id.
-function World.removePlaced(world: World, placedId: number)
-	local placedItem = world.plot.placedById[placedId]
+function World.removePlacedItem(world: World, placedItemId: number)
+	local placedItem = world.plot.placedItemsById[placedItemId]
 	if placedItem == nil then
 		return
 	end
-	closeScreensOn(world, placedId)
-	Plot.remove(world.plot, placedId)
-	world.stations[placedId] = nil
+	closeScreensOn(world, placedItemId)
+	Plot.removePlacedItem(world.plot, placedItemId)
+	world.stations[placedItemId] = nil
 	local center = tileCenter(world, placedItem.x, placedItem.z)
 	World.dropStack(world, ItemStack.new(placedItem.itemId, 1), center)
 	if placedItem.inventory ~= nil then
@@ -242,48 +243,47 @@ function World.removePlaced(world: World, placedId: number)
 	end
 end
 
-local function pickUpNear(world: World, state: PlayerState)
-	local position = state.position
+local function pickUpNear(world: World, player: PlayerState)
+	local position = player.position
 	if position ~= nil then
-		GroundItems.pickUpNear(world.groundItems, position, state.pack, world.now)
+		GroundItems.pickUpStacksNear(world.groundItems, position, player.pack, world.now)
 	end
 end
 
-local function closeIfOutOfReach(world: World, state: PlayerState)
-	local placedId = state.openedPlacedId
-	if placedId == nil then
+local function closeIfOutOfReach(world: World, player: PlayerState)
+	local placedItemId = player.openedPlacedItemId
+	if placedItemId == nil then
 		return
 	end
-	local placedItem = world.plot.placedById[placedId]
-	local position = state.position
+	local placedItem = world.plot.placedItemsById[placedItemId]
+	local position = player.position
 	local isInReach = placedItem ~= nil
 		and position ~= nil
-		and Position.groundDistance(position, tileCenter(world, placedItem.x, placedItem.z))
+		and Position.getGroundDistance(position, tileCenter(world, placedItem.x, placedItem.z))
 			<= World.SCREEN_CLOSES_BEYOND
 	if not isInReach then
-		World.closeScreen(world, state)
+		World.closeScreen(world, player)
 	end
 end
 
 --- Moves the world on to the time `now`. Each player with a character picks up the ground items
 --- near them, the player with the lowest id first. A player whose screen is open on a placed item
---- has it closed, as `closeScreen` does, if they stand more than `CLOSES_BEYOND` from it, if they
---- have no character, or if it is no longer on the plot. Every station burns and works for the
---- time that has passed. Ground items that have lain too long are removed. If `now` is earlier
---- than the time `step` was last given, no time passes for the stations. If `now` is earlier
---- than the time `step` was last given, no time passes for the stations.
-function World.step(world: World, now: number)
+--- has it closed, as `closeScreen` does, if they stand more than `SCREEN_CLOSES_BEYOND` from it,
+--- if they have no character, or if it is no longer on the plot. Every station burns and works
+--- for the time that has passed. Ground items that have lain too long are removed. If `now` is
+--- earlier than the time `advanceTo` was last given, no time passes for the stations.
+function World.advanceTo(world: World, now: number)
 	local elapsed = math.max(now - world.now, 0)
 	world.now = now
 	for _, playerId in sortedPlayerIds(world) do
-		local state = world.players[playerId]
-		pickUpNear(world, state)
-		closeIfOutOfReach(world, state)
+		local player = world.players[playerId]
+		pickUpNear(world, player)
+		closeIfOutOfReach(world, player)
 	end
 	for _, station in world.stations do
-		Station.step(station, elapsed)
+		Station.advance(station, elapsed)
 	end
-	GroundItems.expire(world.groundItems, now)
+	GroundItems.removeExpiredStacks(world.groundItems, now)
 end
 
 return World

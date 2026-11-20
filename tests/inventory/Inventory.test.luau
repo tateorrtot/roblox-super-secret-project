@@ -547,7 +547,7 @@ do -- no item is ever made or lost
 					or slot < 1
 					or slot > each.slotCount
 					or stack.count < 1
-					or ItemStack.spaceLeft(stack) < 0
+					or ItemStack.getSpaceLeft(stack) < 0
 				then
 					broken = broken or string.format("step %d: slot %d holds a stack that could not exist", step, slot)
 				end

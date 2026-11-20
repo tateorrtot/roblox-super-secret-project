@@ -89,7 +89,7 @@ local placeholder = workspace:FindFirstChild("PlaceholderWorld")
 local placedFolder = placeholder and placeholder:FindFirstChild("PlacedItems")
 if placedFolder then
 	for _, part in placedFolder:GetChildren() do
-		local id = part:GetAttribute("placedId")
+		local id = part:GetAttribute("placedItemId")
 		if id ~= nil then
 			table.insert(world.placed, { item = part.Name, id = id, x = part.Position.X, y = part.Position.Y, z = part.Position.Z, burning = part:GetAttribute("burning") })
 		end
@@ -120,7 +120,7 @@ local inset = game:GetService("GuiService"):GetGuiInset()
 local size = workspace.CurrentCamera.ViewportSize
 for y = math.floor(size.Y * 0.45), math.floor(size.Y * 0.75), 20 do
 	for x = math.floor(size.X * 0.15), math.floor(size.X * 0.85), 20 do
-		local pointed = PlotPointer.at(Vector2.new(x, y))
+		local pointed = PlotPointer.getTargetAt(Vector2.new(x, y))
 		if pointed ~= nil and pointed.kind == "tile" then
 			local away = pointed.center - root.Position
 			local distance = Vector3.new(away.X, 0, away.Z).Magnitude
@@ -503,12 +503,12 @@ class Playtest:
         check(on_screen and away > 16.5, 'the crate is in view from out of reach', {'studs away': away, 'at': point})
         self.click(point)
         check(not self.view()['open'], 'a click on it from there opens nothing')
-        self.studio.luau(ASK_OUTRIGHT % ('usePlaced', crate['id']), 'Client')
-        self.studio.luau(ASK_OUTRIGHT % ('hitPlaced', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('usePlacedItem', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('hitPlacedItem', crate['id']), 'Client')
         check(not self.view()['open'] and any(entry['id'] == crate['id'] for entry in self.world()['placed']),
               'and nor does asking the server outright to use it and to hit it, as a tampered machine might')
         self.walk_to(crate['x'] - 7, crate['z'] + 5)
-        self.studio.luau(ASK_OUTRIGHT % ('usePlaced', crate['id']), 'Client')
+        self.studio.luau(ASK_OUTRIGHT % ('usePlacedItem', crate['id']), 'Client')
         view = self.view()
         check(view['open'] and view['title'] == 'Crate', 'the same request from within reach opens it',
               {'studs away': self.distance_to(crate), 'title': view['title']})

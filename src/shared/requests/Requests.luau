@@ -10,7 +10,7 @@ local World = require("../world/World")
 
 local Requests = {}
 
-type Request = (world: World.World, state: PlayerState.PlayerState, ...any) -> ()
+type Request = (world: World.World, player: PlayerState.PlayerState, ...any) -> ()
 
 local requests = table.clone(InventoryRequests :: { [string]: Request })
 for name, request in PlotRequests :: { [string]: Request } do
@@ -31,10 +31,10 @@ Requests.NAMES = table.freeze(names)
 --- machine sent after the name. `name` and what follows it may be any values at all. Does nothing
 --- if no request has that name or no player has that id.
 function Requests.carryOut(world: World.World, playerId: number, name: unknown, ...: unknown)
-	local state = world.players[playerId]
+	local player = world.players[playerId]
 	local request = if type(name) == "string" then requests[name] else nil
-	if state ~= nil and request ~= nil then
-		request(world, state, ...)
+	if player ~= nil and request ~= nil then
+		request(world, player, ...)
 	end
 end
 

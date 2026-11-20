@@ -1,7 +1,7 @@
 --!strict
 --- Works out what a point on the screen is over: an item placed on a plot, or a tile of a plot that nothing stands on.
 ---
---- `at` looks through the camera at a point and reads what it hits. A block with the attribute `placedId`
+--- `getTargetAt` looks through the camera at a point and reads what it hits. A block with the attribute `placedItemId`
 --- is a placed item. The top of a slab tagged `Plot`, which has the attributes `cornerX`, `cornerY`, `cornerZ`,
 --- `width` and `depth`, is a grid of tiles.
 local CollectionService = game:GetService("CollectionService")
@@ -16,11 +16,11 @@ local PlotPointer = {}
 
 --- What a point on the screen is over. `center` is the middle of the bare tile, or the middle of the
 --- placed item's block.
-export type Pointed =
-	{ kind: "placedItem", id: number, part: BasePart, center: Vector3 }
+export type Target =
+	{ kind: "placedItem", placedItemId: number, part: BasePart, center: Vector3 }
 	| { kind: "tile", x: number, z: number, center: Vector3 }
 
---- How far from the camera a thing may be and still be pointed at, in studs.
+--- How far from the camera a thing may be and still be a target, in studs.
 local FARTHEST = 500
 
 --- The surface is flat enough to be a plot's top when its upward direction is above this.
@@ -35,20 +35,20 @@ local function raycastThroughPoint(camera: Camera, viewportPoint: Vector2): Rayc
 	return Workspace:Raycast(ray.Origin, ray.Direction * FARTHEST, params)
 end
 
-local function pointedTile(hit: RaycastResult): Pointed?
+local function tileTarget(hit: RaycastResult): Target?
 	local part = hit.Instance
 	local corner = {
 		x = part:GetAttribute("cornerX") :: number,
 		y = part:GetAttribute("cornerY") :: number,
 		z = part:GetAttribute("cornerZ") :: number,
 	}
-	local x, z = Plot.tileAt(corner, { x = hit.Position.X, y = hit.Position.Y, z = hit.Position.Z })
+	local x, z = Plot.getTileAt(corner, { x = hit.Position.X, y = hit.Position.Y, z = hit.Position.Z })
 	local width = part:GetAttribute("width") :: number
 	local depth = part:GetAttribute("depth") :: number
 	if x < 1 or x > width or z < 1 or z > depth then
 		return nil
 	end
-	local center = Plot.tileCenter(corner, x, z)
+	local center = Plot.getTileCenter(corner, x, z)
 	return { kind = "tile", x = x, z = z, center = Vector3.new(center.x, center.y, center.z) }
 end
 
@@ -58,7 +58,7 @@ end
 ---
 --- Note: `viewportPoint` is in pixels from the top left of the whole window, which includes the strip
 --- along the top of the screen.
-function PlotPointer.at(viewportPoint: Vector2): Pointed?
+function PlotPointer.getTargetAt(viewportPoint: Vector2): Target?
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil
@@ -68,12 +68,12 @@ function PlotPointer.at(viewportPoint: Vector2): Pointed?
 		return nil
 	end
 	local part = hit.Instance
-	local placedId = part:GetAttribute("placedId")
-	if type(placedId) == "number" then
-		return { kind = "placedItem", id = placedId, part = part, center = part.Position }
+	local placedItemId = part:GetAttribute("placedItemId")
+	if type(placedItemId) == "number" then
+		return { kind = "placedItem", placedItemId = placedItemId, part = part, center = part.Position }
 	end
 	if hit.Normal.Y > FLAT and CollectionService:HasTag(part, "Plot") then
-		return pointedTile(hit)
+		return tileTarget(hit)
 	end
 	return nil
 end

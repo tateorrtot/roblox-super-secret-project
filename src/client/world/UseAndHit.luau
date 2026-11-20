@@ -26,11 +26,11 @@ export type Callbacks = {
 	--- Returns the id of the item in the player's hand if it can be placed, or `nil`.
 	getPlaceableInHand: () -> string?,
 	--- Called with a placed item's id when the player uses it.
-	onPlacedUsed: (placedId: number) -> (),
+	onPlacedItemUsed: (placedItemId: number) -> (),
 	--- Called with a tile when the player uses it while an item that can be placed is in hand.
 	onTileUsed: (x: number, z: number) -> (),
 	--- Called with a placed item's id when the player hits it.
-	onPlacedHit: (placedId: number) -> (),
+	onPlacedItemHit: (placedItemId: number) -> (),
 }
 
 --- A right click is a Hit only if the button comes up within this many seconds.
@@ -40,15 +40,15 @@ local HIT_WITHIN_SECONDS = 0.35
 --- when the button went down and when it came up is below this.
 local SAME_DIRECTION = 0.9995
 
-local function pointedInReach(viewportPoint: Vector2): PlotPointer.Pointed?
-	local pointed = PlotPointer.at(viewportPoint)
+local function targetInReach(viewportPoint: Vector2): PlotPointer.Target?
+	local target = PlotPointer.getTargetAt(viewportPoint)
 	local character = Players.LocalPlayer.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-	if pointed == nil or root == nil or not root:IsA("BasePart") then
+	if target == nil or root == nil or not root:IsA("BasePart") then
 		return nil
 	end
-	local away = pointed.center - root.Position
-	return if Vector3.new(away.X, 0, away.Z).Magnitude <= World.REACH then pointed else nil
+	local away = target.center - root.Position
+	return if Vector3.new(away.X, 0, away.Z).Magnitude <= World.REACH then target else nil
 end
 
 local function makeOutline(): SelectionBox
@@ -73,33 +73,33 @@ function UseAndHit.start(callbacks: Callbacks)
 	local rightPressedAt: number? = nil
 	local lookWhenPressed = Vector3.zero
 
-	local function pointedAt(viewportPoint: Vector2): PlotPointer.Pointed?
-		return if callbacks.isBlocked() then nil else pointedInReach(viewportPoint)
+	local function targetAt(viewportPoint: Vector2): PlotPointer.Target?
+		return if callbacks.isBlocked() then nil else targetInReach(viewportPoint)
 	end
 
-	local function use(pointed: PlotPointer.Pointed?)
-		if pointed ~= nil and pointed.kind == "placedItem" then
-			callbacks.onPlacedUsed(pointed.id)
-		elseif pointed ~= nil and pointed.kind == "tile" and callbacks.getPlaceableInHand() ~= nil then
-			callbacks.onTileUsed(pointed.x, pointed.z)
+	local function use(target: PlotPointer.Target?)
+		if target ~= nil and target.kind == "placedItem" then
+			callbacks.onPlacedItemUsed(target.placedItemId)
+		elseif target ~= nil and target.kind == "tile" and callbacks.getPlaceableInHand() ~= nil then
+			callbacks.onTileUsed(target.x, target.z)
 		end
 	end
 
-	local function hit(pointed: PlotPointer.Pointed?)
-		if pointed ~= nil and pointed.kind == "placedItem" then
-			callbacks.onPlacedHit(pointed.id)
+	local function hit(target: PlotPointer.Target?)
+		if target ~= nil and target.kind == "placedItem" then
+			callbacks.onPlacedItemHit(target.placedItemId)
 		end
 	end
 
 	RunService.RenderStepped:Connect(function()
-		local pointed = if UserInputService.MouseEnabled then pointedAt(UserInputService:GetMouseLocation()) else nil
+		local target = if UserInputService.MouseEnabled then targetAt(UserInputService:GetMouseLocation()) else nil
 		local itemId = callbacks.getPlaceableInHand()
-		if pointed ~= nil and pointed.kind == "tile" and itemId ~= nil then
-			PlacementGhost.show(ghost, itemId, pointed.center)
+		if target ~= nil and target.kind == "tile" and itemId ~= nil then
+			PlacementGhost.show(ghost, itemId, target.center)
 		else
 			PlacementGhost.hide(ghost)
 		end
-		outline.Adornee = if pointed ~= nil and pointed.kind == "placedItem" then pointed.part else nil
+		outline.Adornee = if target ~= nil and target.kind == "placedItem" then target.part else nil
 	end)
 
 	UserInputService.InputBegan:Connect(function(input: InputObject, handledElsewhere: boolean)
@@ -107,7 +107,7 @@ function UseAndHit.start(callbacks: Callbacks)
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			use(pointedAt(UserInputService:GetMouseLocation()))
+			use(targetAt(UserInputService:GetMouseLocation()))
 		elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
 			rightPressedAt = os.clock()
 			lookWhenPressed = lookDirection()
@@ -122,7 +122,7 @@ function UseAndHit.start(callbacks: Callbacks)
 		rightPressedAt = nil
 		local turned = lookDirection():Dot(lookWhenPressed) < SAME_DIRECTION
 		if os.clock() - pressedAt < HIT_WITHIN_SECONDS and not turned then
-			hit(pointedAt(UserInputService:GetMouseLocation()))
+			hit(targetAt(UserInputService:GetMouseLocation()))
 		end
 	end)
 
@@ -130,7 +130,7 @@ function UseAndHit.start(callbacks: Callbacks)
 	-- PlotPointer measures from the top of the window, so the strip's height is added back.
 	UserInputService.TouchTapInWorld:Connect(function(position: Vector2, handledElsewhere: boolean)
 		if not handledElsewhere then
-			use(pointedAt(position + GuiService:GetGuiInset()))
+			use(targetAt(position + GuiService:GetGuiInset()))
 		end
 	end)
 end

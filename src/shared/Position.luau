@@ -2,7 +2,7 @@
 --- A point in the world, in studs.
 ---
 --- A position is a table with numbers under `x`, `y` and `z`, where `y` is height. Any such table
---- is a position. `distance` and `groundDistance` measure between two of them.
+--- is a position. `getDistance` and `getGroundDistance` measure between two of them.
 local Position = {}
 
 --- A point in the world: `x` and `z` run along the ground and `y` is height, all in studs.
@@ -14,13 +14,13 @@ function Position.new(x: number, y: number, z: number): Position
 end
 
 --- Returns the straight-line distance between `a` and `b`, in studs, counting height.
-function Position.distance(a: Position, b: Position): number
+function Position.getDistance(a: Position, b: Position): number
 	return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 end
 
---- Returns the distance between `a` and `b` along the ground, in studs. This is `distance` with
+--- Returns the distance between `a` and `b` along the ground, in studs. This is `getDistance` with
 --- height left out, so it is 0 for two positions directly above one another.
-function Position.groundDistance(a: Position, b: Position): number
+function Position.getGroundDistance(a: Position, b: Position): number
 	return math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
 end
 

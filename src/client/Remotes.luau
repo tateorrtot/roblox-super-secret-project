@@ -8,7 +8,7 @@ local Remotes = {}
 
 --- Waits until the server has made the RemoteEvents, one for each name in Messages, and returns
 --- them by name. Reading a name that no message has fails.
-function Remotes.find(): { [string]: RemoteEvent }
+function Remotes.waitForAll(): { [string]: RemoteEvent }
 	local folder = ReplicatedStorage:WaitForChild("Remotes")
 	local remotes: { [string]: RemoteEvent } = {}
 	for _, names in { Messages.toServer, Messages.toClient } do

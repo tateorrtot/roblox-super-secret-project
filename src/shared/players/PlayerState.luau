@@ -1,6 +1,6 @@
 --!strict
---- One player: the pack they carry, their hotbar, the inventory screen they have open, and where
---- they stand.
+--- One player: their pack, their hotbar, the inventory screen they have open, and where they
+--- stand.
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -9,15 +9,15 @@ local Position = require("../Position")
 local PlayerState = {}
 
 export type PlayerState = {
-	--- What the player carries.
+	--- The player's own inventory, which goes where they go.
 	read pack: Inventory.Inventory,
-	--- The first slots of the pack, and which of them is in the player's hand.
+	--- The first slots of the pack, and which of them is selected.
 	read hotbar: Hotbar.Hotbar,
 	--- The inventory screen the player has open. `nil` when none is open.
 	screen: InventoryScreen.InventoryScreen?,
 	--- The id of the placed item whose inventory `screen` shows beside the pack. `nil` when the pack
 	--- is open alone, or no screen is open.
-	openedPlacedId: number?,
+	openedPlacedItemId: number?,
 	--- The point on the ground under the player's character. `nil` while they have no living character.
 	position: Position.Position?,
 	--- The point on the ground where a stack the player drops lands.

@@ -2,8 +2,8 @@
 --- The stacks of items lying on the ground in one running game.
 ---
 --- A ground item is a stack, the position where it lies and the time it was dropped. Ground items
---- are numbered from 1 in the order they were dropped, and a number is never used twice. `drop`
---- puts a stack on the ground, `pickUpNear` moves ground items into an inventory, and `expire`
+--- are numbered from 1 in the order they were dropped, and a number is never used twice. `dropStack`
+--- puts a stack on the ground, `pickUpStacksNear` moves ground items into an inventory, and `removeExpiredStacks`
 --- removes the ones that have lain too long. Time is a number of seconds, passed in as `now`, from
 --- any clock that only goes forward. Positions and distances are in studs. Ground items are never
 --- saved.
@@ -39,13 +39,13 @@ export type GroundItems = {
 	byId: { [number]: GroundItem },
 }
 
---- How long a ground item lies before `expire` removes it, in seconds.
-GroundItems.LIFETIME = 300
+--- How long a ground item lies before `removeExpiredStacks` removes it, in seconds.
+GroundItems.LIFETIME_SECONDS = 300
 
 --- How long after it was dropped a ground item cannot be picked up, in seconds.
-GroundItems.PICKUP_DELAY = 1.5
+GroundItems.PICKUP_DELAY_SECONDS = 1.5
 
---- How near a position must be to a ground item for `pickUpNear` to pick it up, in studs.
+--- How near a position must be to a ground item for `pickUpStacksNear` to pick it up, in studs.
 GroundItems.PICKUP_RADIUS = 4
 
 --- How near a stack must be dropped to a ground item of the same item to join it, in studs.
@@ -55,7 +55,7 @@ local function idsNearestFirst(groundItems: GroundItems, position: Position, rad
 	local distances: { [number]: number } = {}
 	local ids: { number } = {}
 	for id, groundItem in groundItems.byId do
-		local distance = Position.distance(position, groundItem.position)
+		local distance = Position.getDistance(position, groundItem.position)
 		if distance <= radius then
 			distances[id] = distance
 			table.insert(ids, id)
@@ -78,12 +78,12 @@ end
 --- stays where it lies and counts as dropped at `now`. With several such ground items it joins the
 --- nearest, and of two equally near, the one with the lower id. Otherwise a new ground item is
 --- made at `position`.
---- Note: `drop` does not take the stack from anywhere. A stack that is also left where it came
+--- Note: `dropStack` does not take the stack from anywhere. A stack that is also left where it came
 --- from exists twice.
-function GroundItems.drop(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
+function GroundItems.dropStack(groundItems: GroundItems, stack: ItemStack, position: Position, now: number): number
 	for _, id in idsNearestFirst(groundItems, position, GroundItems.MERGE_RADIUS) do
 		local joined = groundItems.byId[id]
-		if ItemStack.isSameItem(joined.stack, stack) and ItemStack.spaceLeft(joined.stack) >= stack.count then
+		if ItemStack.isSameItem(joined.stack, stack) and ItemStack.getSpaceLeft(joined.stack) >= stack.count then
 			groundItems.byId[id] = table.freeze({
 				stack = (ItemStack.merge(joined.stack, stack)),
 				position = joined.position,
@@ -120,26 +120,31 @@ local function moveIntoInventory(groundItems: GroundItems, id: number, inventory
 end
 
 --- Moves the ground items within `PICKUP_RADIUS` of `position` into `inventory`, as far as they
---- fit, and returns how many items moved. A ground item dropped less than `PICKUP_DELAY` seconds
+--- fit, and returns how many items moved. A ground item dropped less than `PICKUP_DELAY_SECONDS`
 --- before `now` is left alone. The nearest is picked up first, and of two equally near, the one
 --- with the lower id. In the inventory, stacks of the same item are topped up first and then
 --- slots that hold nothing are filled, lowest slot first. When only part of a ground item fits, the
 --- rest stays on the ground under the same id, dropped at the same time.
-function GroundItems.pickUpNear(groundItems: GroundItems, position: Position, inventory: Inventory, now: number): number
+function GroundItems.pickUpStacksNear(
+	groundItems: GroundItems,
+	position: Position,
+	inventory: Inventory,
+	now: number
+): number
 	local moved = 0
 	for _, id in idsNearestFirst(groundItems, position, GroundItems.PICKUP_RADIUS) do
-		if now - groundItems.byId[id].droppedAt >= GroundItems.PICKUP_DELAY then
+		if now - groundItems.byId[id].droppedAt >= GroundItems.PICKUP_DELAY_SECONDS then
 			moved += moveIntoInventory(groundItems, id, inventory)
 		end
 	end
 	return moved
 end
 
---- Removes every ground item that was dropped `LIFETIME` seconds or more before `now`. Their items
+--- Removes every ground item that was dropped `LIFETIME_SECONDS` or more before `now`. Their items
 --- are gone.
-function GroundItems.expire(groundItems: GroundItems, now: number)
+function GroundItems.removeExpiredStacks(groundItems: GroundItems, now: number)
 	for id, groundItem in groundItems.byId do
-		if now - groundItem.droppedAt >= GroundItems.LIFETIME then
+		if now - groundItem.droppedAt >= GroundItems.LIFETIME_SECONDS then
 			groundItems.byId[id] = nil
 		end
 	end

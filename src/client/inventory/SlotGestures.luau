@@ -1,9 +1,9 @@
 --!strict
 --- Tells clicks, double clicks and drags apart on the slots of the inventory screen.
 ---
---- It is told when a mouse button goes down on a slot (`press`), when the pointer comes onto
---- another slot while the button is held (`enter`), and when the button comes up (`release`).
---- `release` returns the gesture that the press and the release made.
+--- A gesture begins when a mouse button goes down on a slot (`beginGesture`), takes in each other
+--- slot the pointer comes onto while the button is held (`dragOverSlot`), and ends when the button
+--- comes up (`endGesture`), which returns the gesture that was made.
 local SlotGestures = {}
 
 export type Button = "left" | "right"
@@ -25,8 +25,9 @@ export type Gesture = {
 }
 
 export type SlotGestures = {
-	--- The press in progress: the button that is down, and the slots crossed so far.
-	pressed: { button: Button, slots: { Slot } }?,
+	--- The gesture in progress: the button that is down, and the slots crossed so far. `nil` when
+	--- no button is down.
+	inProgress: { button: Button, slots: { Slot } }?,
 	--- The last left click that could be the first half of a double click.
 	lastLeftClick: { slot: Slot, at: number }?,
 }
@@ -38,64 +39,63 @@ local function isSameSlot(a: Slot, b: Slot?): boolean
 	return b ~= nil and a.side == b.side and a.slot == b.slot
 end
 
---- Returns a new SlotGestures with no press in progress and no click remembered.
+--- Returns a new SlotGestures with no gesture in progress and no click remembered.
 function SlotGestures.new(): SlotGestures
 	return {}
 end
 
---- Records that a mouse button went down on a slot. A press already in progress is forgotten.
-function SlotGestures.press(gestures: SlotGestures, button: Button, slot: Slot)
-	gestures.pressed = { button = button, slots = { slot } }
+--- Begins a gesture: a mouse button went down on a slot. A gesture already in progress is forgotten.
+function SlotGestures.beginGesture(gestures: SlotGestures, button: Button, slot: Slot)
+	gestures.inProgress = { button = button, slots = { slot } }
 end
 
---- Records that the pointer came onto a slot while a button is held. Does nothing if no press
---- is in progress, or if the pointer has crossed that slot already.
-function SlotGestures.enter(gestures: SlotGestures, slot: Slot)
-	local pressed = gestures.pressed
-	if pressed == nil then
+--- Adds a slot to the gesture in progress: the pointer came onto it while the button is held.
+--- Does nothing if no gesture is in progress, or if the pointer has crossed that slot already.
+function SlotGestures.dragOverSlot(gestures: SlotGestures, slot: Slot)
+	local inProgress = gestures.inProgress
+	if inProgress == nil then
 		return
 	end
-	for _, crossed in pressed.slots do
+	for _, crossed in inProgress.slots do
 		if isSameSlot(crossed, slot) then
 			return
 		end
 	end
-	table.insert(pressed.slots, slot)
+	table.insert(inProgress.slots, slot)
 end
 
---- Returns the slots crossed by the press in progress, in order, if it has crossed two or more.
+--- Returns the slots crossed by the gesture in progress, in order, if it has crossed two or more.
 --- Returns an empty list otherwise.
 function SlotGestures.getDraggedSlots(gestures: SlotGestures): { Slot }
-	local pressed = gestures.pressed
-	if pressed == nil or #pressed.slots < 2 then
+	local inProgress = gestures.inProgress
+	if inProgress == nil or #inProgress.slots < 2 then
 		return {}
 	end
-	return table.clone(pressed.slots)
+	return table.clone(inProgress.slots)
 end
 
---- Records that a mouse button came up at the time `now`, in seconds, over the slot `over` or
---- over no slot, and returns the gesture this completes. Returns `nil` if that button was not
---- pressed on a slot, or if it was pressed on one slot and came up somewhere else without
---- crossing another. A click with Shift held, a right click and a drag are never half of a
---- double click.
-function SlotGestures.release(
+--- Ends the gesture in progress and returns it: a mouse button came up at the time `now`, in
+--- seconds, over the slot `over` or over no slot. Returns `nil` if no gesture was begun with that
+--- button, or if it began on one slot and the button came up somewhere else without crossing
+--- another. A click with Shift held, a right click and a drag are never half of a double click.
+function SlotGestures.endGesture(
 	gestures: SlotGestures,
 	button: Button,
 	over: Slot?,
 	shiftHeld: boolean,
 	now: number
 ): Gesture?
-	local pressed = gestures.pressed
-	if pressed == nil or pressed.button ~= button then
+	local inProgress = gestures.inProgress
+	if inProgress == nil or inProgress.button ~= button then
 		return nil
 	end
-	gestures.pressed = nil
+	gestures.inProgress = nil
 	local last = gestures.lastLeftClick
 	gestures.lastLeftClick = nil
-	if #pressed.slots >= 2 then
-		return { kind = "drag", button = button, shiftHeld = shiftHeld, slots = pressed.slots, releasedOn = over }
+	if #inProgress.slots >= 2 then
+		return { kind = "drag", button = button, shiftHeld = shiftHeld, slots = inProgress.slots, releasedOn = over }
 	end
-	local slot = pressed.slots[1]
+	local slot = inProgress.slots[1]
 	if not isSameSlot(slot, over) then
 		return nil
 	end
@@ -108,9 +108,9 @@ function SlotGestures.release(
 	return { kind = "click", button = button, shiftHeld = shiftHeld, slots = { slot }, releasedOn = over }
 end
 
---- Forgets the press in progress and the last click.
+--- Forgets the gesture in progress and the last click.
 function SlotGestures.reset(gestures: SlotGestures)
-	gestures.pressed = nil
+	gestures.inProgress = nil
 	gestures.lastLeftClick = nil
 end
 

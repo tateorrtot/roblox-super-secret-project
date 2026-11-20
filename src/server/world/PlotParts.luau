@@ -5,8 +5,8 @@
 --- standing on the plot, in the colour of its item and with its name above it. `update` makes the
 --- blocks match what is placed: a new block for each newly placed item and none for one that was
 --- removed. The slab is tagged `Plot` and has the attributes `width` and `depth` in tiles and
---- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.tileAt` wants it. Each block has
---- the attribute `placedId`, the id of its placed item, and a station's block has the attribute
+--- `cornerX`, `cornerY` and `cornerZ`, the plot's corner as `Plot.getTileAt` wants it. Each block has
+--- the attribute `placedItemId`, the id of its placed item, and a station's block has the attribute
 --- `burning`. The blocks are placeholders until items have models, and the plot must lie square to
 --- the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
@@ -61,7 +61,7 @@ local function makePart(itemId: string, id: number, center: Plot.Position): Part
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
-	part:SetAttribute("placedId", id)
+	part:SetAttribute("placedItemId", id)
 
 	makeLabel(part, look.name, side)
 	return part
@@ -147,9 +147,9 @@ local function showFire(part: Part, burning: boolean)
 end
 
 local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
-	for id, placedItem in plot.placedById do
+	for id, placedItem in plot.placedItemsById do
 		if plotParts.partsById[id] == nil then
-			local center = Plot.tileCenter(plotParts.corner, placedItem.x, placedItem.z)
+			local center = Plot.getTileCenter(plotParts.corner, placedItem.x, placedItem.z)
 			local part = makePart(placedItem.itemId, id, center)
 			plotParts.partsById[id] = part
 			part.Parent = plotParts.folder
@@ -167,7 +167,7 @@ end
 
 local function removeStaleParts(plotParts: PlotParts, plot: Plot.Plot)
 	for id, part in plotParts.partsById do
-		if plot.placedById[id] == nil then
+		if plot.placedItemsById[id] == nil then
 			part:Destroy()
 			plotParts.partsById[id] = nil
 		end

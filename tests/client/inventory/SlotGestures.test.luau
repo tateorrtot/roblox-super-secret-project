@@ -6,9 +6,9 @@ local SlotGestures = require("../../../src/client/inventory/SlotGestures")
 
 local check = Check.that
 
-local press = SlotGestures.press
-local enter = SlotGestures.enter
-local release = SlotGestures.release
+local press = SlotGestures.beginGesture
+local enter = SlotGestures.dragOverSlot
+local release = SlotGestures.endGesture
 
 -- Names a slot of the screen.
 local function at(side: string, slot: number): SlotGestures.Slot
@@ -53,7 +53,7 @@ end
 
 do -- new
 	local gestures = SlotGestures.new()
-	check(gestures.pressed == nil, "new: no press is in progress")
+	check(gestures.inProgress == nil, "new: no gesture is in progress")
 	check(gestures.lastLeftClick == nil, "new: no click is remembered")
 	check(#SlotGestures.getDraggedSlots(gestures) == 0, "new: no slots are dragged")
 end
@@ -62,33 +62,36 @@ do -- a click
 	local gestures = SlotGestures.new()
 	press(gestures, "left", at("pack", 3))
 	local gesture = release(gestures, "left", at("pack", 3), false, 10)
-	check(gesture ~= nil and gesture.kind == "click", "release: a press and release on one slot is a click")
+	check(gesture ~= nil and gesture.kind == "click", "endGesture: a press and release on one slot is a click")
 	if gesture then
-		check(gesture.button == "left", "release: the click is of the button that went down")
-		check(gesture.shiftHeld == false, "release: the click says Shift was not held")
-		check(describe(gesture.slots) == "pack 3", "release: a click has the one slot")
+		check(gesture.button == "left", "endGesture: the click is of the button that went down")
+		check(gesture.shiftHeld == false, "endGesture: the click says Shift was not held")
+		check(describe(gesture.slots) == "pack 3", "endGesture: a click has the one slot")
 		check(
 			gesture.releasedOn ~= nil and describe({ gesture.releasedOn }) == "pack 3",
-			"release: the click says where the button came up"
+			"endGesture: the click says where the button came up"
 		)
 	end
-	check(gestures.pressed == nil, "release: the press is over")
+	check(gestures.inProgress == nil, "endGesture: the gesture is over")
 	check(
 		release(gestures, "left", at("pack", 3), false, 10.1) == nil,
-		"release: a second release with no press gives nothing"
+		"endGesture: a second release with no press gives nothing"
 	)
 
 	local right = clickOn(SlotGestures.new(), "right", at("other", 2), false, 10)
 	check(
 		right ~= nil and right.kind == "click" and right.button == "right",
-		"release: a right click is a click of the right button"
+		"endGesture: a right click is a click of the right button"
 	)
-	check(right ~= nil and describe(right.slots) == "other 2", "release: and has its slot")
+	check(right ~= nil and describe(right.slots) == "other 2", "endGesture: and has its slot")
 
 	local shifted = clickOn(SlotGestures.new(), "left", at("pack", 3), true, 10)
-	check(shifted ~= nil and shifted.kind == "click" and shifted.shiftHeld, "release: a click with Shift held says so")
+	check(
+		shifted ~= nil and shifted.kind == "click" and shifted.shiftHeld,
+		"endGesture: a click with Shift held says so"
+	)
 	local shiftedRight = clickOn(SlotGestures.new(), "right", at("pack", 3), true, 10)
-	check(shiftedRight ~= nil and shiftedRight.shiftHeld, "release: a right click with Shift held says so")
+	check(shiftedRight ~= nil and shiftedRight.shiftHeld, "endGesture: a right click with Shift held says so")
 end
 
 do -- the button that comes up is not the one that went down
@@ -96,20 +99,20 @@ do -- the button that comes up is not the one that went down
 	press(gestures, "left", at("pack", 3))
 	check(
 		release(gestures, "right", at("pack", 3), false, 10) == nil,
-		"release: the other button coming up gives nothing"
+		"endGesture: the other button coming up gives nothing"
 	)
-	check(gestures.pressed ~= nil, "release: and the press goes on")
+	check(gestures.inProgress ~= nil, "endGesture: and the gesture goes on")
 	check(
 		kindOf(release(gestures, "left", at("pack", 3), false, 10.1)) == "click",
-		"release: until its own button comes up"
+		"endGesture: until its own button comes up"
 	)
 
 	local unpressed = SlotGestures.new()
 	check(
 		release(unpressed, "left", at("pack", 3), false, 10) == nil,
-		"release: nothing was pressed, so it gives nothing"
+		"endGesture: nothing was pressed, so it gives nothing"
 	)
-	check(release(unpressed, "right", nil, false, 10) == nil, "release: nor over no slot")
+	check(release(unpressed, "right", nil, false, 10) == nil, "endGesture: nor over no slot")
 end
 
 do -- a button that comes up away from the slot it went down on
@@ -117,81 +120,81 @@ do -- a button that comes up away from the slot it went down on
 	press(gestures, "left", at("pack", 3))
 	check(
 		release(gestures, "left", at("pack", 4), false, 10) == nil,
-		"release: coming up on another slot, with none crossed, gives nothing"
+		"endGesture: coming up on another slot, with none crossed, gives nothing"
 	)
-	check(gestures.pressed == nil, "release: and the press is over")
+	check(gestures.inProgress == nil, "endGesture: and the gesture is over")
 
 	press(gestures, "left", at("pack", 3))
 	check(
 		release(gestures, "left", at("other", 3), false, 10) == nil,
-		"release: the same slot number on the other side is another slot"
+		"endGesture: the same slot number on the other side is another slot"
 	)
 
 	press(gestures, "left", at("pack", 3))
-	check(release(gestures, "left", nil, false, 10) == nil, "release: coming up over no slot gives nothing")
-	check(gestures.pressed == nil, "release: and the press is over again")
+	check(release(gestures, "left", nil, false, 10) == nil, "endGesture: coming up over no slot gives nothing")
+	check(gestures.inProgress == nil, "endGesture: and the gesture is over again")
 end
 
 do -- double clicks
 	local gestures = SlotGestures.new()
 	check(
 		kindOf(clickOn(gestures, "left", at("pack", 3), false, 10)) == "click",
-		"release: a first left click is a click"
+		"endGesture: a first left click is a click"
 	)
-	check(gestures.lastLeftClick ~= nil, "release: a plain left click is remembered")
+	check(gestures.lastLeftClick ~= nil, "endGesture: a plain left click is remembered")
 	local second = clickOn(gestures, "left", at("pack", 3), false, 10.39)
-	check(kindOf(second) == "doubleClick", "release: a second left click on the slot just in time is a double click")
+	check(kindOf(second) == "doubleClick", "endGesture: a second left click on the slot just in time is a double click")
 	if second then
 		check(
 			second.button == "left" and not second.shiftHeld,
-			"release: a double click is of the left button, with no Shift"
+			"endGesture: a double click is of the left button, with no Shift"
 		)
-		check(describe(second.slots) == "pack 3", "release: a double click has its slot")
+		check(describe(second.slots) == "pack 3", "endGesture: a double click has its slot")
 		check(
 			second.releasedOn ~= nil and describe({ second.releasedOn }) == "pack 3",
-			"release: a double click says where the button came up"
+			"endGesture: a double click says where the button came up"
 		)
 	end
 	check(
 		kindOf(clickOn(gestures, "left", at("pack", 3), false, 10.5)) == "click",
-		"release: a third quick click is a first click again"
+		"endGesture: a third quick click is a first click again"
 	)
 	check(
 		kindOf(clickOn(gestures, "left", at("pack", 3), false, 10.6)) == "doubleClick",
-		"release: and a fourth is its double"
+		"endGesture: and a fourth is its double"
 	)
 
 	local late = SlotGestures.new()
 	clickOn(late, "left", at("pack", 3), false, 0)
 	check(
 		kindOf(clickOn(late, "left", at("pack", 3), false, SlotGestures.DOUBLE_CLICK_SECONDS)) == "click",
-		"release: a second click exactly four tenths of a second later is too late"
+		"endGesture: a second click exactly four tenths of a second later is too late"
 	)
 	check(
 		kindOf(clickOn(late, "left", at("pack", 3), false, SlotGestures.DOUBLE_CLICK_SECONDS + 0.3)) == "doubleClick",
-		"release: but that late click can itself begin a double click"
+		"endGesture: but that late click can itself begin a double click"
 	)
 
 	local elsewhere = SlotGestures.new()
 	clickOn(elsewhere, "left", at("pack", 3), false, 10)
 	check(
 		kindOf(clickOn(elsewhere, "left", at("pack", 4), false, 10.1)) == "click",
-		"release: a click on another slot is not a double click"
+		"endGesture: a click on another slot is not a double click"
 	)
 	check(
 		kindOf(clickOn(elsewhere, "left", at("other", 4), false, 10.2)) == "click",
-		"release: nor is one on the same slot number of the other side"
+		"endGesture: nor is one on the same slot number of the other side"
 	)
 	check(
 		kindOf(clickOn(elsewhere, "left", at("other", 4), false, 10.3)) == "doubleClick",
-		"release: each click is measured against the one before it"
+		"endGesture: each click is measured against the one before it"
 	)
 
 	local sameNumber = SlotGestures.new()
 	clickOn(sameNumber, "left", at("other", 3), false, 10)
 	check(
 		kindOf(clickOn(sameNumber, "left", at("pack", 3), false, 10.1)) == "click",
-		"release: a click on the same slot number of the other side from the first click is not a double click"
+		"endGesture: a click on the same slot number of the other side from the first click is not a double click"
 	)
 end
 
@@ -201,30 +204,30 @@ do -- what is never half of a double click
 	clickOn(rightBetween, "right", at("pack", 3), false, 10.1)
 	check(
 		kindOf(clickOn(rightBetween, "left", at("pack", 3), false, 10.2)) == "click",
-		"release: a right click in between breaks a double click"
+		"endGesture: a right click in between breaks a double click"
 	)
 
 	local rights = SlotGestures.new()
 	clickOn(rights, "right", at("pack", 3), false, 10)
-	check(rights.lastLeftClick == nil, "release: a right click is not remembered")
+	check(rights.lastLeftClick == nil, "endGesture: a right click is not remembered")
 	check(
 		kindOf(clickOn(rights, "right", at("pack", 3), false, 10.1)) == "click",
-		"release: two right clicks are two clicks"
+		"endGesture: two right clicks are two clicks"
 	)
 
 	local shifted = SlotGestures.new()
 	check(
 		kindOf(clickOn(shifted, "left", at("pack", 3), true, 10)) == "click",
-		"release: a left click with Shift held is a click"
+		"endGesture: a left click with Shift held is a click"
 	)
-	check(shifted.lastLeftClick == nil, "release: and is not remembered")
+	check(shifted.lastLeftClick == nil, "endGesture: and is not remembered")
 	check(
 		kindOf(clickOn(shifted, "left", at("pack", 3), true, 10.1)) == "click",
-		"release: and the next one, however soon, is a click too"
+		"endGesture: and the next one, however soon, is a click too"
 	)
 	check(
 		kindOf(clickOn(shifted, "left", at("pack", 3), false, 10.2)) == "click",
-		"release: a plain click straight after them is a first click"
+		"endGesture: a plain click straight after them is a first click"
 	)
 
 	local between = SlotGestures.new()
@@ -232,7 +235,7 @@ do -- what is never half of a double click
 	clickOn(between, "left", at("pack", 3), true, 10.1)
 	check(
 		kindOf(clickOn(between, "left", at("pack", 3), false, 10.2)) == "click",
-		"release: a click with Shift held in between breaks a double click"
+		"endGesture: a click with Shift held in between breaks a double click"
 	)
 
 	local secondShifted = SlotGestures.new()
@@ -240,14 +243,14 @@ do -- what is never half of a double click
 	local shiftedSecond = clickOn(secondShifted, "left", at("pack", 3), true, 10.1)
 	check(
 		shiftedSecond ~= nil and shiftedSecond.kind == "click" and shiftedSecond.shiftHeld,
-		"release: a second click with Shift held is a click with Shift held"
+		"endGesture: a second click with Shift held is a click with Shift held"
 	)
 
 	local secondRight = SlotGestures.new()
 	clickOn(secondRight, "left", at("pack", 3), false, 10)
 	check(
 		kindOf(clickOn(secondRight, "right", at("pack", 3), false, 10.1)) == "click",
-		"release: a second click with the right button is a click"
+		"endGesture: a second click with the right button is a click"
 	)
 
 	local afterDrag = SlotGestures.new()
@@ -255,10 +258,10 @@ do -- what is never half of a double click
 	press(afterDrag, "left", at("pack", 3))
 	enter(afterDrag, at("pack", 4))
 	release(afterDrag, "left", at("pack", 4), false, 10.1)
-	check(afterDrag.lastLeftClick == nil, "release: a drag makes the click before it forgotten")
+	check(afterDrag.lastLeftClick == nil, "endGesture: a drag makes the click before it forgotten")
 	check(
 		kindOf(clickOn(afterDrag, "left", at("pack", 3), false, 10.2)) == "click",
-		"release: so a click straight after a drag is a first click"
+		"endGesture: so a click straight after a drag is a first click"
 	)
 
 	local awayAfter = SlotGestures.new()
@@ -267,7 +270,7 @@ do -- what is never half of a double click
 	release(awayAfter, "left", at("pack", 4), false, 10.1)
 	check(
 		kindOf(clickOn(awayAfter, "left", at("pack", 3), false, 10.2)) == "click",
-		"release: a press that came up elsewhere makes the click before it forgotten"
+		"endGesture: a press that came up elsewhere makes the click before it forgotten"
 	)
 end
 
@@ -282,32 +285,41 @@ do -- a drag across slots
 	)
 	enter(gestures, at("pack", 4))
 	enter(gestures, at("pack", 3))
-	check(#SlotGestures.getDraggedSlots(gestures) == 2, "enter: a slot the pointer comes back onto is not added again")
+	check(
+		#SlotGestures.getDraggedSlots(gestures) == 2,
+		"dragOverSlot: a slot the pointer comes back onto is not added again"
+	)
 	enter(gestures, at("other", 4))
 	enter(gestures, at("other", 3))
 	check(
 		describe(SlotGestures.getDraggedSlots(gestures)) == "pack 3, pack 4, other 4, other 3",
-		"enter: the same slot number on the other side is another slot"
+		"dragOverSlot: the same slot number on the other side is another slot"
 	)
 	local inProgress = SlotGestures.getDraggedSlots(gestures)
 	table.remove(inProgress)
 	check(#SlotGestures.getDraggedSlots(gestures) == 4, "getDraggedSlots: the list returned is the caller's own")
 
 	local gesture = release(gestures, "left", at("other", 3), false, 10)
-	check(gesture ~= nil and gesture.kind == "drag", "release: a press that crossed slots is a drag")
+	check(gesture ~= nil and gesture.kind == "drag", "endGesture: a press that crossed slots is a drag")
 	if gesture then
-		check(gesture.button == "left" and not gesture.shiftHeld, "release: the drag is of the button that went down")
+		check(
+			gesture.button == "left" and not gesture.shiftHeld,
+			"endGesture: the drag is of the button that went down"
+		)
 		check(
 			describe(gesture.slots) == "pack 3, pack 4, other 4, other 3",
-			"release: the drag has the slots in the order the pointer came onto them"
+			"endGesture: the drag has the slots in the order the pointer came onto them"
 		)
 		check(
 			gesture.releasedOn ~= nil and describe({ gesture.releasedOn }) == "other 3",
-			"release: the drag says where the button came up"
+			"endGesture: the drag says where the button came up"
 		)
 	end
-	check(gestures.pressed == nil and #SlotGestures.getDraggedSlots(gestures) == 0, "release: and the drag is over")
-	check(release(gestures, "left", at("other", 3), false, 10.1) == nil, "release: a second release ends nothing")
+	check(
+		gestures.inProgress == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
+		"endGesture: and the drag is over"
+	)
+	check(release(gestures, "left", at("other", 3), false, 10.1) == nil, "endGesture: a second release ends nothing")
 
 	local right = SlotGestures.new()
 	press(right, "right", at("other", 1))
@@ -315,9 +327,9 @@ do -- a drag across slots
 	local rightDrag = release(right, "right", at("other", 2), true, 10)
 	check(
 		rightDrag ~= nil and rightDrag.kind == "drag" and rightDrag.button == "right",
-		"release: a drag with the right button is a drag"
+		"endGesture: a drag with the right button is a drag"
 	)
-	check(rightDrag ~= nil and rightDrag.shiftHeld, "release: and says Shift was held when it came up")
+	check(rightDrag ~= nil and rightDrag.shiftHeld, "endGesture: and says Shift was held when it came up")
 
 	local over = SlotGestures.new()
 	press(over, "left", at("pack", 1))
@@ -325,7 +337,7 @@ do -- a drag across slots
 	local overNone = release(over, "left", nil, false, 10)
 	check(
 		overNone ~= nil and overNone.kind == "drag" and overNone.releasedOn == nil,
-		"release: a drag that comes up over no slot is a drag with no slot released on"
+		"endGesture: a drag that comes up over no slot is a drag with no slot released on"
 	)
 end
 
@@ -335,29 +347,29 @@ do -- a slot crossed twice counts once
 	enter(gestures, at("pack", 4))
 	enter(gestures, at("pack", 3))
 	local gesture = release(gestures, "left", at("pack", 3), false, 10)
-	check(gesture ~= nil and gesture.kind == "drag", "release: a drag that went away and came back is still a drag")
-	check(gesture ~= nil and describe(gesture.slots) == "pack 3, pack 4", "release: and lists each slot once")
+	check(gesture ~= nil and gesture.kind == "drag", "endGesture: a drag that went away and came back is still a drag")
+	check(gesture ~= nil and describe(gesture.slots) == "pack 3, pack 4", "endGesture: and lists each slot once")
 	check(
 		gesture ~= nil and gesture.releasedOn ~= nil and describe({ gesture.releasedOn }) == "pack 3",
-		"release: and says it came up on the slot it began on"
+		"endGesture: and says it came up on the slot it began on"
 	)
 
 	local still = SlotGestures.new()
 	press(still, "left", at("pack", 3))
 	enter(still, at("pack", 3))
-	check(#SlotGestures.getDraggedSlots(still) == 0, "enter: coming onto the slot pressed does not make a drag")
-	check(kindOf(release(still, "left", at("pack", 3), false, 10)) == "click", "release: and the press is a click")
+	check(#SlotGestures.getDraggedSlots(still) == 0, "dragOverSlot: coming onto the slot pressed does not make a drag")
+	check(kindOf(release(still, "left", at("pack", 3), false, 10)) == "click", "endGesture: and the press is a click")
 end
 
-do -- enter and presses that are not alone
+do -- dragOverSlot and presses that are not alone
 	local unpressed = SlotGestures.new()
 	enter(unpressed, at("pack", 3))
 	enter(unpressed, at("pack", 4))
 	check(
-		unpressed.pressed == nil and #SlotGestures.getDraggedSlots(unpressed) == 0,
-		"enter: does nothing when no button went down on a slot"
+		unpressed.inProgress == nil and #SlotGestures.getDraggedSlots(unpressed) == 0,
+		"dragOverSlot: does nothing when no button went down on a slot"
 	)
-	check(release(unpressed, "left", at("pack", 4), false, 10) == nil, "release: so nothing comes of it")
+	check(release(unpressed, "left", at("pack", 4), false, 10) == nil, "endGesture: so nothing comes of it")
 
 	local second = SlotGestures.new()
 	press(second, "left", at("pack", 3))
@@ -365,17 +377,17 @@ do -- enter and presses that are not alone
 	press(second, "right", at("pack", 5))
 	check(
 		#SlotGestures.getDraggedSlots(second) == 0,
-		"press: a second button going down forgets the drag the first began"
+		"beginGesture: a second button going down forgets the drag the first began"
 	)
 	check(
 		release(second, "left", at("pack", 5), false, 10) == nil,
-		"release: so the first button coming up gives nothing"
+		"endGesture: so the first button coming up gives nothing"
 	)
 	enter(second, at("pack", 6))
 	local drag = release(second, "right", at("pack", 6), false, 10.1)
 	check(
 		drag ~= nil and drag.kind == "drag" and drag.button == "right" and describe(drag.slots) == "pack 5, pack 6",
-		"release: and the second button may drag in its turn"
+		"endGesture: and the second button may drag in its turn"
 	)
 
 	local other = SlotGestures.new()
@@ -383,12 +395,12 @@ do -- enter and presses that are not alone
 	enter(other, at("pack", 4))
 	check(
 		release(other, "right", at("pack", 4), false, 10) == nil,
-		"release: the other button coming up does not end a drag"
+		"endGesture: the other button coming up does not end a drag"
 	)
 	check(#SlotGestures.getDraggedSlots(other) == 2, "getDraggedSlots: and the drag goes on")
 	check(
 		kindOf(release(other, "left", at("pack", 4), false, 10.1)) == "drag",
-		"release: until the button that began it comes up"
+		"endGesture: until the button that began it comes up"
 	)
 end
 
@@ -406,7 +418,7 @@ do -- reset
 	enter(gestures, at("pack", 4))
 	SlotGestures.reset(gestures)
 	check(
-		gestures.pressed == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
+		gestures.inProgress == nil and #SlotGestures.getDraggedSlots(gestures) == 0,
 		"reset: a press in progress is forgotten"
 	)
 	check(release(gestures, "left", at("pack", 4), false, 10.2) == nil, "reset: so its button coming up gives nothing")

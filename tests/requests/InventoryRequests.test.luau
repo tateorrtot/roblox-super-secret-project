@@ -62,15 +62,15 @@ local function screenOf(state: PlayerState.PlayerState): InventoryScreen.Invento
 end
 
 local function carriedBy(state: PlayerState.PlayerState): ItemStack.ItemStack?
-	return screenOf(state).carried
+	return screenOf(state).carriedStack
 end
 
 -- Places the item `itemId` on tile 6, 6, opens it on the player's screen beside their pack, and
 -- returns what is inside it.
 local function openPlaced(world: World.World, state: PlayerState.PlayerState, itemId: string): Inventory.Inventory
-	local placedId = World.placeItem(world, itemId, 6, 6) :: number
-	World.openPlaced(world, state, placedId)
-	return world.plot.placedById[placedId].inventory :: Inventory.Inventory
+	local placedItemId = World.placeItem(world, itemId, 6, 6) :: number
+	World.openPlacedItem(world, state, placedItemId)
+	return world.plot.placedItemsById[placedItemId].inventory :: Inventory.Inventory
 end
 
 -- How many of one item lie on the ground, in all.
@@ -91,11 +91,11 @@ local function inWorld(world: World.World, itemId: string): number
 	for _, state in world.players do
 		count += Inventory.countItems(state.pack, itemId)
 		local screen = state.screen
-		if screen ~= nil and screen.carried ~= nil and screen.carried.itemId == itemId then
-			count += screen.carried.count
+		if screen ~= nil and screen.carriedStack ~= nil and screen.carriedStack.itemId == itemId then
+			count += screen.carriedStack.count
 		end
 	end
-	for _, placedItem in world.plot.placedById do
+	for _, placedItem in world.plot.placedItemsById do
 		if placedItem.itemId == itemId then
 			count += 1
 		end
@@ -111,7 +111,7 @@ do -- openPack
 	send("openPack", world, state)
 	local screen = screenOf(state)
 	check(screen.pack == state.pack, "openPack: opens a screen on the player's pack")
-	check(screen.other == nil and screen.carried == nil, "openPack: with no other inventory and nothing carried")
+	check(screen.other == nil and screen.carriedStack == nil, "openPack: with no other inventory and nothing carried")
 	send("openPack", world, state)
 	check(state.screen == screen, "openPack: does nothing when a screen is already open")
 
@@ -131,7 +131,7 @@ do -- closeScreen
 	check(state.screen == nil, "closeScreen: closes the screen")
 
 	send("openPack", world, state)
-	send("pickUp", world, state, "pack", 1)
+	send("pickUpFromSlot", world, state, "pack", 1)
 	send("closeScreen", world, state)
 	check(
 		Inventory.countItems(state.pack, "log") == 16 and state.screen == nil,
@@ -141,7 +141,7 @@ do -- closeScreen
 
 	local fullWorld, full = newWorld()
 	send("openPack", fullWorld, full)
-	send("pickUp", fullWorld, full, "pack", 1)
+	send("pickUpFromSlot", fullWorld, full, "pack", 1)
 	for slot = 1, PlayerState.PACK_SLOTS do
 		Inventory.setStack(full.pack, slot, ItemStack.new("stove", 1))
 	end
@@ -161,241 +161,247 @@ do -- closeScreen
 	openPlaced(placedWorld, placedState, "crate")
 	send("closeScreen", placedWorld, placedState)
 	check(
-		placedState.screen == nil and placedState.openedPlacedId == nil,
+		placedState.screen == nil and placedState.openedPlacedItemId == nil,
 		"closeScreen: a player who had a crate open has nothing open any more"
 	)
 end
 
-do -- pickUp
+do -- pickUpFromSlot
 	local world, state = newWorld()
-	send("pickUp", world, state, "pack", 1, 5)
-	check(is(inSlot(state, 1), "log", 12) and state.screen == nil, "pickUp: does nothing when no screen is open")
+	send("pickUpFromSlot", world, state, "pack", 1, 5)
+	check(
+		is(inSlot(state, 1), "log", 12) and state.screen == nil,
+		"pickUpFromSlot: does nothing when no screen is open"
+	)
 
 	send("openPack", world, state)
-	send("pickUp", world, state, "pack", 1, 5)
+	send("pickUpFromSlot", world, state, "pack", 1, 5)
 	check(
 		is(carriedBy(state), "log", 5) and is(inSlot(state, 1), "log", 7),
-		"pickUp: moves that many items from the slot onto the carried stack"
+		"pickUpFromSlot: moves that many items from the slot onto the carried stack"
 	)
-	send("pickUp", world, state, "pack", 10, nil)
+	send("pickUpFromSlot", world, state, "pack", 10, nil)
 	check(
 		is(carriedBy(state), "log", 9) and inSlot(state, 10) == nil,
-		"pickUp: with no count moves everything in the slot when there is room for it"
+		"pickUpFromSlot: with no count moves everything in the slot when there is room for it"
 	)
-	send("pickUp", world, state, "pack", 1, nil)
+	send("pickUpFromSlot", world, state, "pack", 1, nil)
 	check(
 		is(carriedBy(state), "log", 16) and inSlot(state, 1) == nil,
-		"pickUp: with no count moves what the carried stack has room for, here all of what the slot held"
+		"pickUpFromSlot: with no count moves what the carried stack has room for, here all of what the slot held"
 	)
 	Inventory.setStack(state.pack, 7, ItemStack.new("log", 9))
-	send("pickUp", world, state, "pack", 7, nil)
+	send("pickUpFromSlot", world, state, "pack", 7, nil)
 	check(
 		is(carriedBy(state), "log", 16) and is(inSlot(state, 7), "log", 9),
-		"pickUp: a full carried stack takes nothing more"
+		"pickUpFromSlot: a full carried stack takes nothing more"
 	)
-	send("pickUp", world, state, "pack", 2, nil)
+	send("pickUpFromSlot", world, state, "pack", 2, nil)
 	check(
 		is(inSlot(state, 2), "fish", 5),
-		"pickUp: nothing moves from a slot that holds another item than the carried one"
+		"pickUpFromSlot: nothing moves from a slot that holds another item than the carried one"
 	)
-	send("pickUp", world, state, "pack", 3, nil)
-	check(is(carriedBy(state), "log", 16), "pickUp: nothing moves from a slot that holds nothing")
+	send("pickUpFromSlot", world, state, "pack", 3, nil)
+	check(is(carriedBy(state), "log", 16), "pickUpFromSlot: nothing moves from a slot that holds nothing")
 
 	local topWorld, top = newWorld()
 	send("openPack", topWorld, top)
-	send("pickUp", topWorld, top, "pack", 1, 10)
-	send("pickUp", topWorld, top, "pack", 10, nil)
-	send("pickUp", topWorld, top, "pack", 1, nil)
+	send("pickUpFromSlot", topWorld, top, "pack", 1, 10)
+	send("pickUpFromSlot", topWorld, top, "pack", 10, nil)
+	send("pickUpFromSlot", topWorld, top, "pack", 1, nil)
 	check(
 		is(carriedBy(top), "log", 16) and inSlot(top, 1) == nil and inSlot(top, 10) == nil,
-		"pickUp: stacks of the same item are gathered up to the stack size"
+		"pickUpFromSlot: stacks of the same item are gathered up to the stack size"
 	)
 	Inventory.setStack(top.pack, 4, ItemStack.new("log", 9))
-	send("pickUp", topWorld, top, "pack", 4, 3)
-	check(is(inSlot(top, 4), "log", 9), "pickUp: a count that does not fit moves nothing")
+	send("pickUpFromSlot", topWorld, top, "pack", 4, 3)
+	check(is(inSlot(top, 4), "log", 9), "pickUpFromSlot: a count that does not fit moves nothing")
 
 	local moreWorld, more = newWorld()
 	send("openPack", moreWorld, more)
-	send("pickUp", moreWorld, more, "pack", 2, 99)
+	send("pickUpFromSlot", moreWorld, more, "pack", 2, 99)
 	check(
 		is(carriedBy(more), "fish", 5) and inSlot(more, 2) == nil,
-		"pickUp: a count of more than the slot holds moves what it holds"
+		"pickUpFromSlot: a count of more than the slot holds moves what it holds"
 	)
 
 	local zeroWorld, zero = newWorld()
 	send("openPack", zeroWorld, zero)
-	send("pickUp", zeroWorld, zero, "pack", 1, 0)
-	check(carriedBy(zero) == nil and is(inSlot(zero, 1), "log", 12), "pickUp: a count of 0 moves nothing")
+	send("pickUpFromSlot", zeroWorld, zero, "pack", 1, 0)
+	check(carriedBy(zero) == nil and is(inSlot(zero, 1), "log", 12), "pickUpFromSlot: a count of 0 moves nothing")
 
 	for _, bad in badCounts do
-		send("pickUp", zeroWorld, zero, "pack", 1, bad)
+		send("pickUpFromSlot", zeroWorld, zero, "pack", 1, bad)
 		check(
 			carriedBy(zero) == nil and is(inSlot(zero, 1), "log", 12),
-			"pickUp: moves nothing with the count " .. tostring(bad)
+			"pickUpFromSlot: moves nothing with the count " .. tostring(bad)
 		)
 	end
 	for _, side in { "other", "Pack", "", 1, true, {} } :: { any } do
-		send("pickUp", zeroWorld, zero, side, 1, nil)
+		send("pickUpFromSlot", zeroWorld, zero, side, 1, nil)
 	end
 	for _, slot in { 0, -1, 37, 99, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
-		send("pickUp", zeroWorld, zero, "pack", slot, nil)
+		send("pickUpFromSlot", zeroWorld, zero, "pack", slot, nil)
 	end
-	send("pickUp", zeroWorld, zero)
-	send("pickUp", zeroWorld, zero, "pack")
+	send("pickUpFromSlot", zeroWorld, zero)
+	send("pickUpFromSlot", zeroWorld, zero, "pack")
 	check(
 		carriedBy(zero) == nil and inWorld(zeroWorld, "log") == 16,
-		"pickUp: moves nothing for a side that is not there, a slot that is not there, or nothing at all"
+		"pickUpFromSlot: moves nothing for a side that is not there, a slot that is not there, or nothing at all"
 	)
 
 	local crateWorld, withCrate = newWorld()
 	local crate = openPlaced(crateWorld, withCrate, "crate")
 	Inventory.setStack(crate, 2, ItemStack.new("fish", 3))
-	send("pickUp", crateWorld, withCrate, "other", 2, 2)
+	send("pickUpFromSlot", crateWorld, withCrate, "other", 2, 2)
 	check(
 		is(carriedBy(withCrate), "fish", 2) and is(Inventory.getStack(crate, 2), "fish", 1),
-		"pickUp: takes from the other inventory too"
+		"pickUpFromSlot: takes from the other inventory too"
 	)
-	send("pickUp", crateWorld, withCrate, "other", 4, nil)
-	check(is(carriedBy(withCrate), "fish", 2), "pickUp: not from a slot the other inventory lacks")
+	send("pickUpFromSlot", crateWorld, withCrate, "other", 4, nil)
+	check(is(carriedBy(withCrate), "fish", 2), "pickUpFromSlot: not from a slot the other inventory lacks")
 end
 
-do -- putDown
+do -- putDownInSlot
 	local world, state = newWorld()
-	send("putDown", world, state, "pack", 3, 1)
-	check(inSlot(state, 3) == nil, "putDown: does nothing when no screen is open")
+	send("putDownInSlot", world, state, "pack", 3, 1)
+	check(inSlot(state, 3) == nil, "putDownInSlot: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("putDown", world, state, "pack", 3, 1)
-	check(inSlot(state, 3) == nil, "putDown: does nothing when nothing is carried")
+	send("putDownInSlot", world, state, "pack", 3, 1)
+	check(inSlot(state, 3) == nil, "putDownInSlot: does nothing when nothing is carried")
 
-	send("pickUp", world, state, "pack", 1)
-	send("putDown", world, state, "pack", 3, 5)
+	send("pickUpFromSlot", world, state, "pack", 1)
+	send("putDownInSlot", world, state, "pack", 3, 5)
 	check(
 		is(inSlot(state, 3), "log", 5) and is(carriedBy(state), "log", 7),
-		"putDown: moves that many items from the carried stack into the slot"
+		"putDownInSlot: moves that many items from the carried stack into the slot"
 	)
-	send("putDown", world, state, "pack", 2, nil)
+	send("putDownInSlot", world, state, "pack", 2, nil)
 	check(
 		is(inSlot(state, 2), "fish", 5) and is(carriedBy(state), "log", 7),
-		"putDown: nothing goes into a slot that holds another item"
+		"putDownInSlot: nothing goes into a slot that holds another item"
 	)
 	Inventory.setStack(state.pack, 5, ItemStack.new("log", 12))
-	send("putDown", world, state, "pack", 5, nil)
+	send("putDownInSlot", world, state, "pack", 5, nil)
 	check(
 		is(inSlot(state, 5), "log", 16) and is(carriedBy(state), "log", 3),
-		"putDown: with no count moves only what the slot has room for"
+		"putDownInSlot: with no count moves only what the slot has room for"
 	)
-	send("putDown", world, state, "pack", 3, 99)
+	send("putDownInSlot", world, state, "pack", 3, 99)
 	check(
 		is(inSlot(state, 3), "log", 8) and carriedBy(state) == nil,
-		"putDown: a count of more than is carried moves all of what is carried"
+		"putDownInSlot: a count of more than is carried moves all of what is carried"
 	)
 
 	local zeroWorld, zero = newWorld()
 	send("openPack", zeroWorld, zero)
-	send("pickUp", zeroWorld, zero, "pack", 1)
-	send("putDown", zeroWorld, zero, "pack", 3, 0)
-	check(inSlot(zero, 3) == nil and is(carriedBy(zero), "log", 12), "putDown: a count of 0 moves nothing")
+	send("pickUpFromSlot", zeroWorld, zero, "pack", 1)
+	send("putDownInSlot", zeroWorld, zero, "pack", 3, 0)
+	check(inSlot(zero, 3) == nil and is(carriedBy(zero), "log", 12), "putDownInSlot: a count of 0 moves nothing")
 	for _, bad in badCounts do
-		send("putDown", zeroWorld, zero, "pack", 3, bad)
+		send("putDownInSlot", zeroWorld, zero, "pack", 3, bad)
 		check(
 			inSlot(zero, 3) == nil and is(carriedBy(zero), "log", 12),
-			"putDown: moves nothing with the count " .. tostring(bad)
+			"putDownInSlot: moves nothing with the count " .. tostring(bad)
 		)
 	end
 	for _, side in { "other", "Pack", "", 1, true, {} } :: { any } do
-		send("putDown", zeroWorld, zero, side, 3, nil)
+		send("putDownInSlot", zeroWorld, zero, side, 3, nil)
 	end
 	for _, slot in { 0, -1, 37, 99, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
-		send("putDown", zeroWorld, zero, "pack", slot, nil)
+		send("putDownInSlot", zeroWorld, zero, "pack", slot, nil)
 	end
-	send("putDown", zeroWorld, zero)
+	send("putDownInSlot", zeroWorld, zero)
 	check(
 		is(carriedBy(zero), "log", 12) and inWorld(zeroWorld, "log") == 16,
-		"putDown: moves nothing into a slot that is not there, or with nothing at all"
+		"putDownInSlot: moves nothing into a slot that is not there, or with nothing at all"
 	)
 
 	local ovenWorld, withOven = newWorld()
 	local oven = openPlaced(ovenWorld, withOven, "oven")
-	send("pickUp", ovenWorld, withOven, "pack", 1)
-	send("putDown", ovenWorld, withOven, "other", 1, nil)
-	send("putDown", ovenWorld, withOven, "other", 3, nil)
+	send("pickUpFromSlot", ovenWorld, withOven, "pack", 1)
+	send("putDownInSlot", ovenWorld, withOven, "other", 1, nil)
+	send("putDownInSlot", ovenWorld, withOven, "other", 3, nil)
 	check(
 		Inventory.isEmpty(oven) and is(carriedBy(withOven), "log", 12),
-		"putDown: an oven's input slot takes no logs and its output slot takes nothing"
+		"putDownInSlot: an oven's input slot takes no logs and its output slot takes nothing"
 	)
-	send("putDown", ovenWorld, withOven, "other", 2, 5)
+	send("putDownInSlot", ovenWorld, withOven, "other", 2, 5)
 	check(
 		is(Inventory.getStack(oven, 2), "log", 5) and is(carriedBy(withOven), "log", 7),
-		"putDown: an oven's fuel slot takes logs"
+		"putDownInSlot: an oven's fuel slot takes logs"
 	)
 end
 
-do -- swapCarried
+do -- swapCarriedStackWithSlot
 	local world, state = newWorld()
-	send("swapCarried", world, state, "pack", 1)
-	check(is(inSlot(state, 1), "log", 12) and state.screen == nil, "swapCarried: does nothing when no screen is open")
+	send("swapCarriedStackWithSlot", world, state, "pack", 1)
+	check(
+		is(inSlot(state, 1), "log", 12) and state.screen == nil,
+		"swapCarriedStackWithSlot: does nothing when no screen is open"
+	)
 
 	send("openPack", world, state)
-	send("swapCarried", world, state, "pack", 1)
+	send("swapCarriedStackWithSlot", world, state, "pack", 1)
 	check(
 		is(carriedBy(state), "log", 12) and inSlot(state, 1) == nil,
-		"swapCarried: with nothing carried, the slot's whole stack becomes the carried stack"
+		"swapCarriedStackWithSlot: with nothing carried, the slot's whole stack becomes the carried stack"
 	)
-	send("swapCarried", world, state, "pack", 2)
+	send("swapCarriedStackWithSlot", world, state, "pack", 2)
 	check(
 		is(inSlot(state, 2), "log", 12) and is(carriedBy(state), "fish", 5),
-		"swapCarried: exchanges the carried stack with the slot's stack"
+		"swapCarriedStackWithSlot: exchanges the carried stack with the slot's stack"
 	)
-	send("swapCarried", world, state, "pack", 10)
+	send("swapCarriedStackWithSlot", world, state, "pack", 10)
 	check(
 		is(inSlot(state, 10), "fish", 5) and is(carriedBy(state), "log", 4),
-		"swapCarried: exchanges rather than merges stacks of different items"
+		"swapCarriedStackWithSlot: exchanges rather than merges stacks of different items"
 	)
-	send("swapCarried", world, state, "pack", 2)
+	send("swapCarriedStackWithSlot", world, state, "pack", 2)
 	check(
 		is(inSlot(state, 2), "log", 4) and is(carriedBy(state), "log", 12),
-		"swapCarried: exchanges rather than merges stacks of the same item"
+		"swapCarriedStackWithSlot: exchanges rather than merges stacks of the same item"
 	)
-	send("swapCarried", world, state, "pack", 3)
+	send("swapCarriedStackWithSlot", world, state, "pack", 3)
 	check(
 		is(inSlot(state, 3), "log", 12) and carriedBy(state) == nil,
-		"swapCarried: a slot that holds nothing takes the carried stack"
+		"swapCarriedStackWithSlot: a slot that holds nothing takes the carried stack"
 	)
-	send("swapCarried", world, state, "pack", 4)
+	send("swapCarriedStackWithSlot", world, state, "pack", 4)
 	check(
 		inSlot(state, 4) == nil and carriedBy(state) == nil,
-		"swapCarried: with nothing on either side, nothing happens"
+		"swapCarriedStackWithSlot: with nothing on either side, nothing happens"
 	)
 	for _, side in { "other", "Pack", "", 1, true, {} } :: { any } do
-		send("swapCarried", world, state, side, 3)
+		send("swapCarriedStackWithSlot", world, state, side, 3)
 	end
 	for _, slot in { 0, -1, 37, 99, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
-		send("swapCarried", world, state, "pack", slot)
+		send("swapCarriedStackWithSlot", world, state, "pack", slot)
 	end
-	send("swapCarried", world, state)
+	send("swapCarriedStackWithSlot", world, state)
 	check(
 		is(inSlot(state, 3), "log", 12) and carriedBy(state) == nil,
-		"swapCarried: ignored for a side or slot that is not there, or nothing at all"
+		"swapCarriedStackWithSlot: ignored for a side or slot that is not there, or nothing at all"
 	)
 
 	local ovenWorld, withOven = newWorld()
 	local oven = openPlaced(ovenWorld, withOven, "oven")
-	send("pickUp", ovenWorld, withOven, "pack", 1)
-	send("swapCarried", ovenWorld, withOven, "other", 1)
+	send("pickUpFromSlot", ovenWorld, withOven, "pack", 1)
+	send("swapCarriedStackWithSlot", ovenWorld, withOven, "other", 1)
 	check(
 		Inventory.isEmpty(oven) and is(carriedBy(withOven), "log", 12),
-		"swapCarried: changes nothing when the slot does not accept what is carried"
+		"swapCarriedStackWithSlot: changes nothing when the slot does not accept what is carried"
 	)
-	send("swapCarried", ovenWorld, withOven, "other", 2)
+	send("swapCarriedStackWithSlot", ovenWorld, withOven, "other", 2)
 	check(
 		is(Inventory.getStack(oven, 2), "log", 12) and carriedBy(withOven) == nil,
-		"swapCarried: but does when it does"
+		"swapCarriedStackWithSlot: but does when it does"
 	)
-	send("swapCarried", ovenWorld, withOven, "other", 2)
+	send("swapCarriedStackWithSlot", ovenWorld, withOven, "other", 2)
 	check(
 		Inventory.isEmpty(oven) and is(carriedBy(withOven), "log", 12),
-		"swapCarried: and takes what a slot holds back out"
+		"swapCarriedStackWithSlot: and takes what a slot holds back out"
 	)
 end
 
@@ -470,188 +476,206 @@ do -- swapSlots
 	)
 end
 
-do -- moveStack
+do -- moveFromSlotToInventory
 	local world, state = newWorld()
-	send("moveStack", world, state, "pack", 1, "pack", 20, 22)
-	check(is(inSlot(state, 1), "log", 12), "moveStack: does nothing when no screen is open")
+	send("moveFromSlotToInventory", world, state, "pack", 1, "pack", 20, 22)
+	check(is(inSlot(state, 1), "log", 12), "moveFromSlotToInventory: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("moveStack", world, state, "pack", 1, "pack", 20, 22)
+	send("moveFromSlotToInventory", world, state, "pack", 1, "pack", 20, 22)
 	check(
 		inSlot(state, 1) == nil and is(inSlot(state, 20), "log", 12) and inSlot(state, 21) == nil,
-		"moveStack: moves the stack into the first slot of the range that holds nothing"
+		"moveFromSlotToInventory: moves the stack into the first slot of the range that holds nothing"
 	)
-	send("moveStack", world, state, "pack", 10, "pack", 18, 20)
+	send("moveFromSlotToInventory", world, state, "pack", 10, "pack", 18, 20)
 	check(
 		inSlot(state, 10) == nil and is(inSlot(state, 20), "log", 16) and inSlot(state, 18) == nil,
-		"moveStack: tops up a stack of the same item before filling a slot that holds nothing"
+		"moveFromSlotToInventory: tops up a stack of the same item before filling a slot that holds nothing"
 	)
-	send("moveStack", world, state, "pack", 2, "pack", 20, 22)
+	send("moveFromSlotToInventory", world, state, "pack", 2, "pack", 20, 22)
 	check(
 		inSlot(state, 2) == nil and is(inSlot(state, 20), "log", 16) and is(inSlot(state, 21), "fish", 5),
-		"moveStack: a different item goes past a stack of another item into a slot that holds nothing"
+		"moveFromSlotToInventory: a different item goes past a stack of another item into a slot that holds nothing"
 	)
-	send("moveStack", world, state, "pack", 4, "pack", 1, 3)
-	check(inSlot(state, 4) == nil and inSlot(state, 1) == nil, "moveStack: a slot that holds nothing moves nothing")
+	send("moveFromSlotToInventory", world, state, "pack", 4, "pack", 1, 3)
+	check(
+		inSlot(state, 4) == nil and inSlot(state, 1) == nil,
+		"moveFromSlotToInventory: a slot that holds nothing moves nothing"
+	)
 
 	local splitWorld, split = newWorld()
 	send("openPack", splitWorld, split)
 	Inventory.setStack(split.pack, 20, ItemStack.new("log", 14))
-	send("moveStack", splitWorld, split, "pack", 1, "pack", 20, 21)
+	send("moveFromSlotToInventory", splitWorld, split, "pack", 1, "pack", 20, 21)
 	check(
 		is(inSlot(split, 20), "log", 16) and is(inSlot(split, 21), "log", 10) and inSlot(split, 1) == nil,
-		"moveStack: fills one slot and puts the rest in the next"
+		"moveFromSlotToInventory: fills one slot and puts the rest in the next"
 	)
 	local shortWorld, short = newWorld()
 	send("openPack", shortWorld, short)
 	Inventory.setStack(short.pack, 20, ItemStack.new("log", 14))
-	send("moveStack", shortWorld, short, "pack", 1, "pack", 20, 20)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 20, 20)
 	check(
 		is(inSlot(short, 20), "log", 16) and is(inSlot(short, 1), "log", 10),
-		"moveStack: what does not fit stays where it was"
+		"moveFromSlotToInventory: what does not fit stays where it was"
 	)
-	send("moveStack", shortWorld, short, "pack", 1, "pack", 1, 1)
-	check(is(inSlot(short, 1), "log", 10), "moveStack: a stack is not moved into its own slot")
-	send("moveStack", shortWorld, short, "pack", 1, "pack", 5, 3)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 1, 1)
+	check(is(inSlot(short, 1), "log", 10), "moveFromSlotToInventory: a stack is not moved into its own slot")
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 5, 3)
 	check(
 		is(inSlot(short, 1), "log", 10) and inSlot(short, 4) == nil,
-		"moveStack: a range that ends before it begins holds no slots"
+		"moveFromSlotToInventory: a range that ends before it begins holds no slots"
 	)
-	send("moveStack", shortWorld, short, "pack", 1, "pack", 1, 36)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 1, 36)
 	check(
 		inSlot(short, 1) == nil and is(inSlot(short, 10), "log", 14),
-		"moveStack: a stack may go anywhere in the range except its own slot, here topping up the stack in slot 10"
+		"moveFromSlotToInventory: a stack may go anywhere in the range except its own slot, here topping up the stack in slot 10"
 	)
 
 	local crateWorld, withCrate = newWorld()
 	local crate = openPlaced(crateWorld, withCrate, "crate")
-	send("moveStack", crateWorld, withCrate, "pack", 1, "other", 1, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1, 3)
 	check(
 		inSlot(withCrate, 1) == nil and is(Inventory.getStack(crate, 1), "log", 12),
-		"moveStack: moves a stack from the pack into the other inventory"
+		"moveFromSlotToInventory: moves a stack from the pack into the other inventory"
 	)
-	send("moveStack", crateWorld, withCrate, "other", 1, "pack", 1, 9)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 1, "pack", 1, 9)
 	check(
 		is(inSlot(withCrate, 1), "log", 12) and Inventory.isEmpty(crate),
-		"moveStack: moves a stack from the other inventory into the pack"
+		"moveFromSlotToInventory: moves a stack from the other inventory into the pack"
 	)
-	send("moveStack", crateWorld, withCrate, "other", 2, "pack", 1, 9)
-	check(inWorld(crateWorld, "log") == 16, "moveStack: a slot of the other inventory that holds nothing moves nothing")
-	send("moveStack", crateWorld, withCrate, "pack", 1, "other", 2, 99)
-	send("moveStack", crateWorld, withCrate, "pack", 1, "other", 0, 3)
-	send("moveStack", crateWorld, withCrate, "pack", 1, "other", 1.5, 3)
-	send("moveStack", crateWorld, withCrate, "pack", 1, "other", 1, "3")
-	send("moveStack", crateWorld, withCrate, "pack", 1, "nowhere", 1, 3)
-	send("moveStack", crateWorld, withCrate, "pack", 99, "other", 1, 3)
-	send("moveStack", crateWorld, withCrate, "nowhere", 1, "other", 1, 3)
-	send("moveStack", crateWorld, withCrate, "pack", 1, "other", 1)
-	send("moveStack", crateWorld, withCrate, "pack", 1)
-	send("moveStack", crateWorld, withCrate)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 2, "pack", 1, 9)
+	check(
+		inWorld(crateWorld, "log") == 16,
+		"moveFromSlotToInventory: a slot of the other inventory that holds nothing moves nothing"
+	)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 2, 99)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 0, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1.5, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1, "3")
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "nowhere", 1, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 99, "other", 1, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "nowhere", 1, "other", 1, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1)
+	send("moveFromSlotToInventory", crateWorld, withCrate)
 	check(
 		is(inSlot(withCrate, 1), "log", 12) and Inventory.isEmpty(crate),
-		"moveStack: ignored when a slot or the range is not there, or when arguments are missing"
+		"moveFromSlotToInventory: ignored when a slot or the range is not there, or when arguments are missing"
 	)
 
 	local ovenWorld, withOven = newWorld()
 	local oven = openPlaced(ovenWorld, withOven, "oven")
-	send("moveStack", ovenWorld, withOven, "pack", 1, "other", 1, 1)
+	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 1, "other", 1, 1)
 	check(
 		is(inSlot(withOven, 1), "log", 12) and Inventory.isEmpty(oven),
-		"moveStack: never into a slot that does not accept the item"
+		"moveFromSlotToInventory: never into a slot that does not accept the item"
 	)
-	send("moveStack", ovenWorld, withOven, "pack", 1, "other", 1, 3)
+	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 1, "other", 1, 3)
 	check(
 		inSlot(withOven, 1) == nil and is(Inventory.getStack(oven, 2), "log", 12),
-		"moveStack: a stack of logs goes to an oven's fuel slot"
+		"moveFromSlotToInventory: a stack of logs goes to an oven's fuel slot"
 	)
-	send("moveStack", ovenWorld, withOven, "pack", 2, "other", 1, 3)
+	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 2, "other", 1, 3)
 	check(
 		inSlot(withOven, 2) == nil and is(Inventory.getStack(oven, 1), "fish", 5),
-		"moveStack: and a stack of fish to its input slot"
+		"moveFromSlotToInventory: and a stack of fish to its input slot"
 	)
 end
 
-do -- gatherCarried
+do -- fillCarriedStackFromAllSlots
 	local world, state = newWorld()
-	send("gatherCarried", world, state)
-	check(is(inSlot(state, 1), "log", 12), "gatherCarried: does nothing when no screen is open")
+	send("fillCarriedStackFromAllSlots", world, state)
+	check(is(inSlot(state, 1), "log", 12), "fillCarriedStackFromAllSlots: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("gatherCarried", world, state)
+	send("fillCarriedStackFromAllSlots", world, state)
 	check(
 		carriedBy(state) == nil and inWorld(world, "log") == 16,
-		"gatherCarried: does nothing when nothing is carried"
+		"fillCarriedStackFromAllSlots: does nothing when nothing is carried"
 	)
 
-	send("pickUp", world, state, "pack", 10)
+	send("pickUpFromSlot", world, state, "pack", 10)
 	Inventory.setStack(state.pack, 20, ItemStack.new("log", 5))
-	send("gatherCarried", world, state)
-	check(is(carriedBy(state), "log", 16), "gatherCarried: fills the carried stack with items of its kind")
+	send("fillCarriedStackFromAllSlots", world, state)
+	check(
+		is(carriedBy(state), "log", 16),
+		"fillCarriedStackFromAllSlots: fills the carried stack with items of its kind"
+	)
 	check(
 		inSlot(state, 1) == nil and is(inSlot(state, 20), "log", 5) and is(inSlot(state, 2), "fish", 5),
-		"gatherCarried: from the slots that hold them, lowest first, and from no others"
+		"fillCarriedStackFromAllSlots: from the slots that hold them, lowest first, and from no others"
 	)
 
 	local crateWorld, withCrate = newWorld()
 	local crate = openPlaced(crateWorld, withCrate, "crate")
 	Inventory.setStack(crate, 3, ItemStack.new("log", 3))
-	send("pickUp", crateWorld, withCrate, "pack", 10)
-	send("gatherCarried", crateWorld, withCrate)
+	send("pickUpFromSlot", crateWorld, withCrate, "pack", 10)
+	send("fillCarriedStackFromAllSlots", crateWorld, withCrate)
 	check(
 		is(carriedBy(withCrate), "log", 16) and Inventory.isEmpty(crate) and is(inSlot(withCrate, 1), "log", 3),
-		"gatherCarried: gathers from the other inventory too"
+		"fillCarriedStackFromAllSlots: gathers from the other inventory too"
 	)
 end
 
-do -- spreadCarried
+do -- spreadCarriedStackOverSlots
 	local function at2(side: string, slot: number): { side: string, slot: number }
 		return { side = side, slot = slot }
 	end
 	local world, state = newWorld()
-	send("spreadCarried", world, state, { at2("pack", 3), at2("pack", 4) }, nil)
-	check(inSlot(state, 3) == nil, "spreadCarried: does nothing when no screen is open")
+	send("spreadCarriedStackOverSlots", world, state, { at2("pack", 3), at2("pack", 4) }, nil)
+	check(inSlot(state, 3) == nil, "spreadCarriedStackOverSlots: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("spreadCarried", world, state, { at2("pack", 3), at2("pack", 4) }, nil)
+	send("spreadCarriedStackOverSlots", world, state, { at2("pack", 3), at2("pack", 4) }, nil)
 	check(
 		inSlot(state, 3) == nil and is(inSlot(state, 1), "log", 12),
-		"spreadCarried: does nothing when nothing is carried"
+		"spreadCarriedStackOverSlots: does nothing when nothing is carried"
 	)
 
-	send("pickUp", world, state, "pack", 1)
-	send("spreadCarried", world, state, { at2("pack", 3), at2("pack", 4), at2("pack", 5) }, nil)
+	send("pickUpFromSlot", world, state, "pack", 1)
+	send("spreadCarriedStackOverSlots", world, state, { at2("pack", 3), at2("pack", 4), at2("pack", 5) }, nil)
 	check(
 		is(inSlot(state, 3), "log", 4) and is(inSlot(state, 4), "log", 4) and is(inSlot(state, 5), "log", 4),
-		"spreadCarried: with no count each slot gets an equal share"
+		"spreadCarriedStackOverSlots: with no count each slot gets an equal share"
 	)
-	check(carriedBy(state) == nil, "spreadCarried: and nothing stays carried when the shares come out even")
+	check(
+		carriedBy(state) == nil,
+		"spreadCarriedStackOverSlots: and nothing stays carried when the shares come out even"
+	)
 
 	local eachWorld, each = newWorld()
 	send("openPack", eachWorld, each)
-	send("pickUp", eachWorld, each, "pack", 1)
-	send("spreadCarried", eachWorld, each, { at2("pack", 3), at2("pack", 4), at2("pack", 5) }, 1)
+	send("pickUpFromSlot", eachWorld, each, "pack", 1)
+	send("spreadCarriedStackOverSlots", eachWorld, each, { at2("pack", 3), at2("pack", 4), at2("pack", 5) }, 1)
 	check(
 		is(inSlot(each, 3), "log", 1) and is(inSlot(each, 4), "log", 1) and is(inSlot(each, 5), "log", 1),
-		"spreadCarried: with a count each slot gets that many"
+		"spreadCarriedStackOverSlots: with a count each slot gets that many"
 	)
-	check(is(carriedBy(each), "log", 9), "spreadCarried: and the rest stays carried")
-	send("spreadCarried", eachWorld, each, { at2("pack", 6), at2("pack", 7) }, nil)
+	check(is(carriedBy(each), "log", 9), "spreadCarriedStackOverSlots: and the rest stays carried")
+	send("spreadCarriedStackOverSlots", eachWorld, each, { at2("pack", 6), at2("pack", 7) }, nil)
 	check(
 		is(inSlot(each, 6), "log", 4) and is(inSlot(each, 7), "log", 4) and is(carriedBy(each), "log", 1),
-		"spreadCarried: a share is rounded down and the remainder stays carried"
+		"spreadCarriedStackOverSlots: a share is rounded down and the remainder stays carried"
 	)
-	send("spreadCarried", eachWorld, each, {}, nil)
-	check(is(carriedBy(each), "log", 1), "spreadCarried: a list of no slots puts nothing down")
-	send("spreadCarried", eachWorld, each, { at2("pack", 8) }, 0)
-	check(inSlot(each, 8) == nil and is(carriedBy(each), "log", 1), "spreadCarried: a count of 0 puts nothing down")
+	send("spreadCarriedStackOverSlots", eachWorld, each, {}, nil)
+	check(is(carriedBy(each), "log", 1), "spreadCarriedStackOverSlots: a list of no slots puts nothing down")
+	send("spreadCarriedStackOverSlots", eachWorld, each, { at2("pack", 8) }, 0)
+	check(
+		inSlot(each, 8) == nil and is(carriedBy(each), "log", 1),
+		"spreadCarriedStackOverSlots: a count of 0 puts nothing down"
+	)
 
 	local badWorld, bad = newWorld()
 	send("openPack", badWorld, bad)
-	send("pickUp", badWorld, bad, "pack", 1)
+	send("pickUpFromSlot", badWorld, bad, "pack", 1)
 	for _, count in badCounts do
-		send("spreadCarried", badWorld, bad, { at2("pack", 8) }, count)
+		send("spreadCarriedStackOverSlots", badWorld, bad, { at2("pack", 8) }, count)
 	end
-	check(inSlot(bad, 8) == nil, "spreadCarried: ignored with a count that is not a whole number of 0 or more")
+	check(
+		inSlot(bad, 8) == nil,
+		"spreadCarriedStackOverSlots: ignored with a count that is not a whole number of 0 or more"
+	)
 	local badLists: { any } = {
 		{ at2("pack", 8), at2("pack", 37) },
 		{ at2("pack", 8), at2("pack", 0) },
@@ -671,118 +695,124 @@ do -- spreadCarried
 		true,
 	}
 	for _, list in badLists do
-		send("spreadCarried", badWorld, bad, list, nil)
+		send("spreadCarriedStackOverSlots", badWorld, bad, list, nil)
 	end
-	send("spreadCarried", badWorld, bad, nil, nil)
-	send("spreadCarried", badWorld, bad)
+	send("spreadCarriedStackOverSlots", badWorld, bad, nil, nil)
+	send("spreadCarriedStackOverSlots", badWorld, bad)
 	check(
 		inSlot(bad, 8) == nil and inSlot(bad, 9) == nil and is(carriedBy(bad), "log", 12),
-		"spreadCarried: ignored with what is not a list of slots of the screen, even when part of it is"
+		"spreadCarriedStackOverSlots: ignored with what is not a list of slots of the screen, even when part of it is"
 	)
 
 	local tooMany = {}
 	for _ = 1, PlayerState.PACK_SLOTS + 1 do
 		table.insert(tooMany, at2("pack", 8))
 	end
-	send("spreadCarried", badWorld, bad, tooMany, nil)
-	check(inSlot(bad, 8) == nil, "spreadCarried: ignored with more slots listed than the screen has")
+	send("spreadCarriedStackOverSlots", badWorld, bad, tooMany, nil)
+	check(inSlot(bad, 8) == nil, "spreadCarriedStackOverSlots: ignored with more slots listed than the screen has")
 	table.remove(tooMany)
-	send("spreadCarried", badWorld, bad, tooMany, nil)
+	send("spreadCarriedStackOverSlots", badWorld, bad, tooMany, nil)
 	check(
 		is(inSlot(bad, 8), "log", 12) and carriedBy(bad) == nil,
-		"spreadCarried: but as many as the screen has is a spread, and a slot listed twice counts once"
+		"spreadCarriedStackOverSlots: but as many as the screen has is a spread, and a slot listed twice counts once"
 	)
 
 	local crateWorld, withCrate = newWorld()
 	local crate = openPlaced(crateWorld, withCrate, "crate")
-	send("pickUp", crateWorld, withCrate, "pack", 2)
+	send("pickUpFromSlot", crateWorld, withCrate, "pack", 2)
 	local long = {}
 	for _ = 1, PlayerState.PACK_SLOTS + crate.slotCount + 1 do
 		table.insert(long, at2("other", 2))
 	end
-	send("spreadCarried", crateWorld, withCrate, long, nil)
+	send("spreadCarriedStackOverSlots", crateWorld, withCrate, long, nil)
 	check(
 		Inventory.isEmpty(crate),
-		"spreadCarried: with a crate open, ignored with more slots listed than the two have"
+		"spreadCarriedStackOverSlots: with a crate open, ignored with more slots listed than the two have"
 	)
 	table.remove(long)
-	send("spreadCarried", crateWorld, withCrate, long, nil)
+	send("spreadCarriedStackOverSlots", crateWorld, withCrate, long, nil)
 	check(
 		is(Inventory.getStack(crate, 2), "fish", 5),
-		"spreadCarried: but as many as the pack and the crate have is a spread, here into the crate"
+		"spreadCarriedStackOverSlots: but as many as the pack and the crate have is a spread, here into the crate"
 	)
 
 	local ovenWorld, withOven = newWorld()
 	local oven = openPlaced(ovenWorld, withOven, "oven")
-	send("pickUp", ovenWorld, withOven, "pack", 1)
-	send("spreadCarried", ovenWorld, withOven, { at2("other", 1), at2("other", 2), at2("other", 3) }, nil)
+	send("pickUpFromSlot", ovenWorld, withOven, "pack", 1)
+	send("spreadCarriedStackOverSlots", ovenWorld, withOven, { at2("other", 1), at2("other", 2), at2("other", 3) }, nil)
 	check(
 		Inventory.getStack(oven, 1) == nil
 			and is(Inventory.getStack(oven, 2), "log", 12)
 			and Inventory.getStack(oven, 3) == nil,
-		"spreadCarried: only the slots that accept the carried item take part"
+		"spreadCarriedStackOverSlots: only the slots that accept the carried item take part"
 	)
 end
 
-do -- dropCarried
+do -- dropCarriedStack
 	local world, state = newWorld()
-	send("dropCarried", world, state, 1)
-	check(onGround(world, "log") == 0, "dropCarried: does nothing when no screen is open")
+	send("dropCarriedStack", world, state, 1)
+	check(onGround(world, "log") == 0, "dropCarriedStack: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("dropCarried", world, state, 1)
-	check(onGround(world, "log") == 0, "dropCarried: does nothing when nothing is carried")
+	send("dropCarriedStack", world, state, 1)
+	check(onGround(world, "log") == 0, "dropCarriedStack: does nothing when nothing is carried")
 
-	send("pickUp", world, state, "pack", 1)
-	send("dropCarried", world, state, 5)
+	send("pickUpFromSlot", world, state, "pack", 1)
+	send("dropCarriedStack", world, state, 5)
 	check(
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
-		"dropCarried: puts that many of the carried items on the ground"
+		"dropCarriedStack: puts that many of the carried items on the ground"
 	)
 	local landed = next(world.groundItems.byId)
 	local groundItem = world.groundItems.byId[landed :: number]
 	check(
 		groundItem.position.x == 12 and groundItem.position.y == 0 and groundItem.position.z == 0,
-		"dropCarried: where the player's drops land"
+		"dropCarriedStack: where the player's drops land"
 	)
-	check(groundItem.droppedAt == 100, "dropCarried: dropped at the world's time")
-	send("dropCarried", world, state, 0)
-	check(onGround(world, "log") == 5 and is(carriedBy(state), "log", 7), "dropCarried: a count of 0 drops nothing")
+	check(groundItem.droppedAt == 100, "dropCarriedStack: dropped at the world's time")
+	send("dropCarriedStack", world, state, 0)
+	check(
+		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
+		"dropCarriedStack: a count of 0 drops nothing"
+	)
 	for _, bad in badCounts do
-		send("dropCarried", world, state, bad)
+		send("dropCarriedStack", world, state, bad)
 	end
 	check(
 		onGround(world, "log") == 5 and is(carriedBy(state), "log", 7),
-		"dropCarried: ignored with a count that is not a whole number of 0 or more"
+		"dropCarriedStack: ignored with a count that is not a whole number of 0 or more"
 	)
-	send("dropCarried", world, state, 99)
+	send("dropCarriedStack", world, state, 99)
 	check(
 		onGround(world, "log") == 12 and carriedBy(state) == nil,
-		"dropCarried: a count of more than is carried drops all of it"
+		"dropCarriedStack: a count of more than is carried drops all of it"
 	)
 
 	local allWorld, all = newWorld()
 	send("openPack", allWorld, all)
-	send("pickUp", allWorld, all, "pack", 1)
-	send("dropCarried", allWorld, all, nil)
-	check(onGround(allWorld, "log") == 12 and carriedBy(all) == nil, "dropCarried: with no count drops all of it")
-	send("dropCarried", allWorld, all)
-	check(onGround(allWorld, "log") == 12, "dropCarried: and again drops nothing")
+	send("pickUpFromSlot", allWorld, all, "pack", 1)
+	send("dropCarriedStack", allWorld, all, nil)
+	check(onGround(allWorld, "log") == 12 and carriedBy(all) == nil, "dropCarriedStack: with no count drops all of it")
+	send("dropCarriedStack", allWorld, all)
+	check(onGround(allWorld, "log") == 12, "dropCarriedStack: and again drops nothing")
 
 	local movedWorld, moved = newWorld()
 	World.setPlayerPosition(movedWorld, 1, at(1, 0, 1), at(3, 0, 4))
 	send("openPack", movedWorld, moved)
-	send("pickUp", movedWorld, moved, "pack", 1)
-	send("dropCarried", movedWorld, moved, nil)
+	send("pickUpFromSlot", movedWorld, moved, "pack", 1)
+	send("dropCarriedStack", movedWorld, moved, nil)
 	local movedItem = movedWorld.groundItems.byId[next(movedWorld.groundItems.byId) :: number]
 	check(
 		movedItem.position.x == 3 and movedItem.position.z == 4,
-		"dropCarried: drops at the player's drop position as it is now"
+		"dropCarriedStack: drops at the player's drop position as it is now"
 	)
 	World.setPlayerPosition(movedWorld, 1, nil)
-	send("pickUp", movedWorld, moved, "pack", 10)
-	send("dropCarried", movedWorld, moved, nil)
-	check(onGround(movedWorld, "log") == 16, "dropCarried: a player with no character can drop, where they last could")
+	send("pickUpFromSlot", movedWorld, moved, "pack", 10)
+	send("dropCarriedStack", movedWorld, moved, nil)
+	check(
+		onGround(movedWorld, "log") == 16,
+		"dropCarriedStack: a player with no character can drop, where they last could"
+	)
 end
 
 do -- dropFromSlot
@@ -834,7 +864,7 @@ do -- dropFromSlot
 		"dropFromSlot: ignored for a count that is not a whole number of 0 or more, or a side or slot that is not there"
 	)
 
-	send("pickUp", world, state, "pack", 10)
+	send("pickUpFromSlot", world, state, "pack", 10)
 	send("dropFromSlot", world, state, "pack", 10, 1)
 	check(is(carriedBy(state), "log", 4), "dropFromSlot: what is carried is not dropped")
 
@@ -867,50 +897,50 @@ do -- selectHotbarSlot
 	check(state.hotbar.selectedSlot == 3, "selectHotbarSlot: also while a screen is open")
 end
 
-do -- dropSelected
+do -- dropFromSelectedSlot
 	local world, state = newWorld()
-	send("dropSelected", world, state, 1)
+	send("dropFromSelectedSlot", world, state, 1)
 	check(
 		is(inSlot(state, 1), "log", 11) and onGround(world, "log") == 1,
-		"dropSelected: puts that many of what is in hand on the ground"
+		"dropFromSelectedSlot: puts that many of what is in hand on the ground"
 	)
 	local landed = world.groundItems.byId[next(world.groundItems.byId) :: number]
 	check(
 		landed.position.x == 12 and landed.position.z == 0 and landed.droppedAt == 100,
-		"dropSelected: at the player's drop position, at the world's time"
+		"dropFromSelectedSlot: at the player's drop position, at the world's time"
 	)
-	send("dropSelected", world, state, 99)
+	send("dropFromSelectedSlot", world, state, 99)
 	check(
 		inSlot(state, 1) == nil and onGround(world, "log") == 12,
-		"dropSelected: a count of more than is in hand drops all of it"
+		"dropFromSelectedSlot: a count of more than is in hand drops all of it"
 	)
-	send("dropSelected", world, state, 1)
-	send("dropSelected", world, state, nil)
-	check(onGround(world, "log") == 12, "dropSelected: an empty hand drops nothing")
+	send("dropFromSelectedSlot", world, state, 1)
+	send("dropFromSelectedSlot", world, state, nil)
+	check(onGround(world, "log") == 12, "dropFromSelectedSlot: an empty hand drops nothing")
 
 	send("selectHotbarSlot", world, state, 10)
 	send("selectHotbarSlot", world, state, 9)
 	Inventory.setStack(state.pack, 9, ItemStack.new("fish", 7))
-	send("dropSelected", world, state)
+	send("dropFromSelectedSlot", world, state)
 	check(
 		onGround(world, "fish") == 7 and inSlot(state, 9) == nil,
-		"dropSelected: with no count drops the whole stack in hand"
+		"dropFromSelectedSlot: with no count drops the whole stack in hand"
 	)
 
 	local zeroWorld, zero = newWorld()
-	send("dropSelected", zeroWorld, zero, 0)
+	send("dropFromSelectedSlot", zeroWorld, zero, 0)
 	for _, bad in badCounts do
-		send("dropSelected", zeroWorld, zero, bad)
+		send("dropFromSelectedSlot", zeroWorld, zero, bad)
 	end
 	check(
 		is(inSlot(zero, 1), "log", 12) and onGround(zeroWorld, "log") == 0,
-		"dropSelected: a count of 0, or one that is not a whole number of 0 or more, drops nothing"
+		"dropFromSelectedSlot: a count of 0, or one that is not a whole number of 0 or more, drops nothing"
 	)
 	send("openPack", zeroWorld, zero)
-	send("dropSelected", zeroWorld, zero, 2)
+	send("dropFromSelectedSlot", zeroWorld, zero, 2)
 	check(
 		is(inSlot(zero, 1), "log", 10) and onGround(zeroWorld, "log") == 2,
-		"dropSelected: works while a screen is open too"
+		"dropFromSelectedSlot: works while a screen is open too"
 	)
 end
 
@@ -972,7 +1002,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		World.setPlayerPosition(world, 1, at(6, 0, 0), at(12, 0, 0))
 		local crateId = World.placeItem(world, "crate", 6, 6) :: number
 		local ovenId = World.placeItem(world, "oven", 6, 5) :: number
-		local crate = world.plot.placedById[crateId].inventory :: Inventory.Inventory
+		local crate = world.plot.placedItemsById[crateId].inventory :: Inventory.Inventory
 		for _ = 1, 10 do
 			local itemId = itemIds[random(#itemIds)]
 			local target = if random(3) == 1 then crate else state.pack
@@ -985,7 +1015,7 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 		for _ = 1, 300 do
 			-- Now and then the world itself opens a screen for the player, as using a placed item would.
 			if state.screen == nil and random(12) == 1 then
-				World.openPlaced(world, state, if random(2) == 1 then crateId else ovenId)
+				World.openPlacedItem(world, state, if random(2) == 1 then crateId else ovenId)
 			end
 			local name = names[random(#names)]
 			local ok, result =
@@ -999,14 +1029,16 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 					allConserved = false
 				end
 			end
-			for _, inventory in { state.pack, crate, world.plot.placedById[ovenId].inventory :: Inventory.Inventory } do
+			for _, inventory in
+				{ state.pack, crate, world.plot.placedItemsById[ovenId].inventory :: Inventory.Inventory }
+			do
 				for slot, stack in inventory.slots do
 					if ItemStack.validate(stack) ~= nil or not Inventory.hasSlot(inventory, slot) then
 						allValid = false
 					end
 				end
 			end
-			local carried = if state.screen then state.screen.carried else nil
+			local carried = if state.screen then state.screen.carriedStack else nil
 			if carried ~= nil and ItemStack.validate(carried) ~= nil then
 				allValid = false
 			end

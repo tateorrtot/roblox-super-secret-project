@@ -17,7 +17,7 @@ for index, definition in ItemDefinitions do
 	end)
 	check(problem == nil, "row " .. index .. " is a definition the registry accepts: " .. tostring(problem))
 end
-check(#ItemRegistry.all() == #ItemDefinitions, "every row is registered under an id of its own")
+check(#ItemRegistry.getAll() == #ItemDefinitions, "every row is registered under an id of its own")
 
 for _, definition in ItemDefinitions do
 	local look = ItemLooks[definition.id]

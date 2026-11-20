@@ -2,7 +2,7 @@
 --- The picture of a stack on the screen: a block in the item's colour with the item's name across
 --- it and the count in the corner.
 ---
---- `show` makes it show a stack, or nothing. A stack of one shows no count. The block stands in
+--- `setStack` makes it show a stack, or nothing. A stack of one shows no count. The block stands in
 --- for an icon until items have art.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -70,7 +70,7 @@ function StackIcon.new(parent: Instance): StackIcon
 end
 
 --- Makes the picture show `stack`, or nothing if `stack` is `nil`.
-function StackIcon.show(icon: StackIcon, stack: ItemStack.ItemStack?)
+function StackIcon.setStack(icon: StackIcon, stack: ItemStack.ItemStack?)
 	if stack == nil then
 		icon.block.Visible = false
 		return

@@ -29,7 +29,7 @@ export type Screen = {
 	--- How many slots the other inventory has. `nil` when the pack is open alone.
 	read otherSlots: number?,
 	--- The stack being carried. `nil` when nothing is carried.
-	read carried: Stack?,
+	read carriedStack: Stack?,
 	--- Returns the stack in a slot, or `nil` if it holds nothing.
 	read getStack: (slot: Slot) -> Stack?,
 }
@@ -41,27 +41,32 @@ end
 local function forShiftClick(screen: Screen, slot: Slot): Request?
 	local otherSlots = screen.otherSlots
 	if otherSlots ~= nil and slot.side == "pack" then
-		return request("moveStack", "pack", slot.slot, "other", 1, otherSlots)
+		return request("moveFromSlotToInventory", "pack", slot.slot, "other", 1, otherSlots)
 	elseif otherSlots ~= nil then
-		return request("moveStack", "other", slot.slot, "pack", 1, screen.packSlots)
+		return request("moveFromSlotToInventory", "other", slot.slot, "pack", 1, screen.packSlots)
 	elseif screen.hotbarSlots >= screen.packSlots then
 		return nil
 	elseif slot.slot <= screen.hotbarSlots then
-		return request("moveStack", "pack", slot.slot, "pack", screen.hotbarSlots + 1, screen.packSlots)
+		return request("moveFromSlotToInventory", "pack", slot.slot, "pack", screen.hotbarSlots + 1, screen.packSlots)
 	end
-	return request("moveStack", "pack", slot.slot, "pack", 1, screen.hotbarSlots)
+	return request("moveFromSlotToInventory", "pack", slot.slot, "pack", 1, screen.hotbarSlots)
 end
 
 local function forClick(screen: Screen, slot: Slot, button: SlotGestures.Button): Request?
-	local carried, there = screen.carried, screen.getStack(slot)
+	local carried, there = screen.carriedStack, screen.getStack(slot)
 	if carried == nil and there == nil then
 		return nil
 	elseif carried == nil and there ~= nil then
-		return request("pickUp", slot.side, slot.slot, if button == "left" then nil else math.ceil(there.count / 2))
+		return request(
+			"pickUpFromSlot",
+			slot.side,
+			slot.slot,
+			if button == "left" then nil else math.ceil(there.count / 2)
+		)
 	elseif carried ~= nil and there ~= nil and there.itemId ~= carried.itemId then
-		return request("swapCarried", slot.side, slot.slot)
+		return request("swapCarriedStackWithSlot", slot.side, slot.slot)
 	end
-	return request("putDown", slot.side, slot.slot, if button == "left" then nil else 1)
+	return request("putDownInSlot", slot.side, slot.slot, if button == "left" then nil else 1)
 end
 
 --- Returns the request that a gesture on the slots asks for.
@@ -76,38 +81,38 @@ end
 --- - A drag with a stack carried puts it down across the slots it crossed: in equal shares with
 ---   the left button, and one item in each with the right. With nothing carried, a drag that ends
 ---   on the slot it began on is a click, and any other drag asks for nothing.
-function InventoryControls.requestForGesture(screen: Screen, gesture: SlotGestures.Gesture): Request?
+function InventoryControls.getRequestForGesture(screen: Screen, gesture: SlotGestures.Gesture): Request?
 	local first, releasedOn = gesture.slots[1], gesture.releasedOn
-	if gesture.kind == "drag" and screen.carried ~= nil then
-		return request("spreadCarried", gesture.slots, if gesture.button == "left" then nil else 1)
+	if gesture.kind == "drag" and screen.carriedStack ~= nil then
+		return request("spreadCarriedStackOverSlots", gesture.slots, if gesture.button == "left" then nil else 1)
 	end
 	local endedElsewhere = releasedOn == nil or releasedOn.side ~= first.side or releasedOn.slot ~= first.slot
 	if gesture.kind == "drag" and endedElsewhere then
 		return nil
 	elseif gesture.button == "left" and gesture.shiftHeld then
 		return forShiftClick(screen, first)
-	elseif gesture.kind == "doubleClick" and screen.carried ~= nil and screen.getStack(first) == nil then
-		return request("gatherCarried")
+	elseif gesture.kind == "doubleClick" and screen.carriedStack ~= nil and screen.getStack(first) == nil then
+		return request("fillCarriedStackFromAllSlots")
 	end
 	return forClick(screen, first, gesture.button)
 end
 
 --- Returns the request that a number key asks for while the pointer is over a slot: the slot's
 --- stack and the stack in the hotbar slot of that number change places.
-function InventoryControls.requestForDigitKey(over: Slot, digit: number): Request
+function InventoryControls.getRequestForDigitKeyOverSlot(over: Slot, digit: number): Request
 	return request("swapSlots", over.side, over.slot, "pack", digit)
 end
 
 --- Returns the request that the drop key asks for while the pointer is over a slot: one item is
 --- dropped from the slot, or the whole stack if `wholeStack` is `true`.
-function InventoryControls.requestForDropKey(over: Slot, wholeStack: boolean): Request
+function InventoryControls.getRequestForDropKeyOverSlot(over: Slot, wholeStack: boolean): Request
 	return request("dropFromSlot", over.side, over.slot, if wholeStack then nil else 1)
 end
 
 --- Returns the request that a click outside the screen asks for: the carried stack is dropped
 --- with the left button, and one item of it with the right.
-function InventoryControls.requestForOutsideClick(button: SlotGestures.Button): Request
-	return request("dropCarried", if button == "left" then nil else 1)
+function InventoryControls.getRequestForOutsideClick(button: SlotGestures.Button): Request
+	return request("dropCarriedStack", if button == "left" then nil else 1)
 end
 
 return InventoryControls

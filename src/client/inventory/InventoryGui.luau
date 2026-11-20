@@ -4,7 +4,7 @@
 --- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are its
 --- bottom row, a little apart from the rest. The carried stack follows the pointer. When the other
 --- inventory is a station's, its first slot is drawn above its second, with a fire gauge between them,
---- and its third slot to the right, past a work gauge. `show` draws, `markSlots` brightens slots and
+--- and its third slot to the right, past a work gauge. `show` draws, `setHighlightedSlots` brightens slots and
 --- `hide` closes the screen. The screen changes no inventory: it reports what the player does on its slots
 --- through its `callbacks`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -71,7 +71,7 @@ export type InventoryGui = {
 }
 
 --- How far a station's fire has burnt down and how far its work has got, each from 0 to 1.
-export type StationGauges = { burning: number, working: number }
+export type StationGauges = { fuelLeftRatio: number, workDoneRatio: number }
 
 local COLUMNS = 9
 local GAP = 4
@@ -249,7 +249,7 @@ local function makePanel(screenGui: ScreenGui): Frame
 	local panelCorner = Instance.new("UICorner")
 	panelCorner.CornerRadius = UDim.new(0, 10)
 	panelCorner.Parent = panel
-	ScreenScale.apply(panel)
+	ScreenScale.applyTo(panel)
 	return panel
 end
 
@@ -376,7 +376,7 @@ local function makeCarried(screenGui: ScreenGui): (Frame, StackIcon.StackIcon)
 	carriedFrame.BackgroundTransparency = 1
 	carriedFrame.ZIndex = 10
 	carriedFrame.Parent = screenGui
-	ScreenScale.apply(carriedFrame)
+	ScreenScale.applyTo(carriedFrame)
 	local carriedIcon = StackIcon.new(carriedFrame)
 	carriedIcon.block.ZIndex = 10
 	carriedIcon.nameLabel.ZIndex = 10
@@ -419,7 +419,7 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	}
 end
 
---- Opens the screen, or redraws it if it is open, showing `pack`, the `carried` stack at the pointer if
+--- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
 --- there is one, and the `other` inventory above the pack if there is one. `otherName` is written
 --- over the other inventory and is not used when there is none. If `gauges` is given and `other` has
 --- three slots, they are drawn as a station's input, fuel and output, and the gauges are filled as far
@@ -429,15 +429,15 @@ function InventoryGui.show(
 	pack: Inventory.Inventory,
 	other: Inventory.Inventory?,
 	otherName: string,
-	carried: ItemStack.ItemStack?,
+	carriedStack: ItemStack.ItemStack?,
 	gauges: StationGauges?
 )
 	inventoryGui.title.Text = if other ~= nil then otherName else PACK_NAME
 	local otherSlotCount = if other ~= nil then other.slotCount else 0
 	local showsStation = gauges ~= nil and otherSlotCount == 3
 	if gauges ~= nil and showsStation then
-		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(gauges.burning, 0, 1))
-		inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(gauges.working, 0, 1), 1)
+		inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(gauges.fuelLeftRatio, 0, 1))
+		inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(gauges.workDoneRatio, 0, 1), 1)
 	end
 	if
 		#inventoryGui.packSlots ~= pack.slotCount
@@ -450,21 +450,24 @@ function InventoryGui.show(
 		layOut(inventoryGui)
 	end
 	for slot, slotGui in inventoryGui.packSlots do
-		SlotGui.show(slotGui, Inventory.getStack(pack, slot))
+		SlotGui.setStack(slotGui, Inventory.getStack(pack, slot))
 	end
 	if other ~= nil then
 		for slot, slotGui in inventoryGui.otherSlots do
-			SlotGui.show(slotGui, Inventory.getStack(other, slot))
+			SlotGui.setStack(slotGui, Inventory.getStack(other, slot))
 		end
 	end
-	StackIcon.show(inventoryGui.carriedIcon, carried)
+	StackIcon.setStack(inventoryGui.carriedIcon, carriedStack)
 	followPointer(inventoryGui)
 	inventoryGui.screenGui.Enabled = true
 end
 
 --- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An empty
 --- list gives every slot its plain edge. A named slot that does not exist is ignored.
-function InventoryGui.markSlots(inventoryGui: InventoryGui, screenSlots: { { read side: string, read slot: number } })
+function InventoryGui.setHighlightedSlots(
+	inventoryGui: InventoryGui,
+	screenSlots: { { read side: string, read slot: number } }
+)
 	local marked: { [SlotGui.SlotGui]: boolean } = {}
 	for _, screenSlot in screenSlots do
 		local slots = if screenSlot.side == "pack" then inventoryGui.packSlots else inventoryGui.otherSlots
@@ -484,7 +487,7 @@ end
 --- carried stack. Does nothing if the screen is closed already.
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
-	InventoryGui.markSlots(inventoryGui, {})
+	InventoryGui.setHighlightedSlots(inventoryGui, {})
 	inventoryGui.hovered = nil
 	local following = inventoryGui.following
 	if following ~= nil then

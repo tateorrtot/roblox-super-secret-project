@@ -107,259 +107,253 @@ end
 
 do -- cooking one fish
 	local station = stoveWith("fish 1", "log 4", "-")
-	Station.step(station, 0.5)
-	check(contents(station) == "fish 1, log 3, -", "step: lighting the fire uses up one item of fuel")
+	Station.advance(station, 0.5)
+	check(contents(station) == "fish 1, log 3, -", "advance: lighting the fire uses up one item of fuel")
 	check(
 		Station.isBurning(station) and station.burnSecondsLeft == 15.5 and station.burnSecondsTotal == 16,
-		"step: the fire burns for as long as that item burns"
+		"advance: the fire burns for as long as that item burns"
 	)
 	check(
 		station.workedSeconds == 0.5 and station.workingOn == "fish",
-		"step: the fish has been worked on for the time that passed"
+		"advance: the fish has been worked on for the time that passed"
 	)
-	Station.step(station, 7.5)
+	Station.advance(station, 7.5)
 	check(
 		contents(station) == "-, log 3, cooked_fish 1",
-		"step: after its recipe's time the fish is a cooked fish in the output slot"
+		"advance: after its recipe's time the fish is a cooked fish in the output slot"
 	)
 	check(
 		station.workedSeconds == 0 and station.burnSecondsLeft == 8,
-		"step: nothing is being worked on, and the fire burns on"
+		"advance: nothing is being worked on, and the fire burns on"
 	)
-	Station.step(station, 7.9)
+	Station.advance(station, 7.9)
 	check(
 		Station.isBurning(station) and near(station.burnSecondsLeft, 0.1),
-		"step: the fire burns down with nothing to work on"
+		"advance: the fire burns down with nothing to work on"
 	)
-	Station.step(station, 100)
-	check(not Station.isBurning(station) and station.burnSecondsLeft == 0, "step: and goes out")
-	check(contents(station) == "-, log 3, cooked_fish 1", "step: no fuel is used when there is nothing to work on")
-	check(station.workingOn == nil, "step: and nothing is being worked on")
+	Station.advance(station, 100)
+	check(not Station.isBurning(station) and station.burnSecondsLeft == 0, "advance: and goes out")
+	check(contents(station) == "-, log 3, cooked_fish 1", "advance: no fuel is used when there is nothing to work on")
+	check(station.workingOn == nil, "advance: and nothing is being worked on")
 end
 
 do -- a fire is never lit for nothing
 	local fuelOnly = stoveWith("-", "log 4", "-")
-	Station.step(fuelOnly, 30)
-	check(contents(fuelOnly) == "-, log 4, -" and not Station.isBurning(fuelOnly), "step: fuel alone lights no fire")
+	Station.advance(fuelOnly, 30)
+	check(contents(fuelOnly) == "-, log 4, -" and not Station.isBurning(fuelOnly), "advance: fuel alone lights no fire")
 	local noFuel = stoveWith("fish 3", "-", "-")
-	Station.step(noFuel, 30)
-	check(contents(noFuel) == "fish 3, -, -" and noFuel.workedSeconds == 0, "step: with no fuel nothing is worked on")
+	Station.advance(noFuel, 30)
+	check(
+		contents(noFuel) == "fish 3, -, -" and noFuel.workedSeconds == 0,
+		"advance: with no fuel nothing is worked on"
+	)
 	local noRecipe = stoveWith("stone 3", "log 4", "-")
-	Station.step(noRecipe, 30)
-	check(contents(noRecipe) == "stone 3, log 4, -", "step: an item the station does nothing with lights no fire")
+	Station.advance(noRecipe, 30)
+	check(contents(noRecipe) == "stone 3, log 4, -", "advance: an item the station does nothing with lights no fire")
 	local notFuel = stoveWith("fish 3", "stone 4", "-")
-	Station.step(notFuel, 30)
-	check(contents(notFuel) == "fish 3, stone 4, -", "step: an item that does not burn lights no fire")
+	Station.advance(notFuel, 30)
+	check(contents(notFuel) == "fish 3, stone 4, -", "advance: an item that does not burn lights no fire")
 	local blocked = stoveWith("fish 3", "log 4", "stone 1")
-	Station.step(blocked, 30)
+	Station.advance(blocked, 30)
 	check(
 		contents(blocked) == "fish 3, log 4, stone 1",
-		"step: nor is one lit when the output slot holds something else"
+		"advance: nor is one lit when the output slot holds something else"
 	)
 	local full = stoveWith("fish 3", "log 4", "cooked_fish 8")
-	Station.step(full, 30)
-	check(contents(full) == "fish 3, log 4, cooked_fish 8", "step: or is full")
+	Station.advance(full, 30)
+	check(contents(full) == "fish 3, log 4, cooked_fish 8", "advance: or is full")
 end
 
 do -- many items, and one long step against many short ones
 	local long = stoveWith("fish 5", "log 4", "-")
-	Station.step(long, 40)
-	check(contents(long) == "-, log 1, cooked_fish 5", "step: five fish take forty seconds and three logs")
+	Station.advance(long, 40)
+	check(contents(long) == "-, log 1, cooked_fish 5", "advance: five fish take forty seconds and three logs")
 	check(
 		near(long.burnSecondsLeft, 8) and long.workedSeconds == 0,
-		"step: the third log has eight seconds left to burn"
+		"advance: the third log has eight seconds left to burn"
 	)
 
 	local short = stoveWith("fish 5", "log 4", "-")
 	for _ = 1, 400 do
-		Station.step(short, 0.1)
+		Station.advance(short, 0.1)
 	end
-	check(contents(short) == contents(long), "step: four hundred steps of a tenth of a second end the same way")
+	check(contents(short) == contents(long), "advance: four hundred steps of a tenth of a second end the same way")
 	check(
 		near(short.burnSecondsLeft, long.burnSecondsLeft) and near(short.workedSeconds, long.workedSeconds),
-		"step: with the same fire and the same work done"
+		"advance: with the same fire and the same work done"
 	)
 
 	local whole = stoveWith("fish 1", "log 1", "-")
-	Station.step(whole, 16)
+	Station.advance(whole, 16)
 	local pieces = stoveWith("fish 1", "log 1", "-")
 	for _ = 1, 160 do
-		Station.step(pieces, 0.1)
+		Station.advance(pieces, 0.1)
 	end
 	local thirds = stoveWith("fish 1", "log 1", "-")
 	for _ = 1, 48 do
-		Station.step(thirds, 1 / 3)
+		Station.advance(thirds, 1 / 3)
 	end
 	check(
 		not Station.isBurning(whole) and whole.burnSecondsLeft == 0,
-		"step: a log is burnt out after its sixteen seconds"
+		"advance: a log is burnt out after its sixteen seconds"
 	)
 	check(
 		not Station.isBurning(pieces)
 			and pieces.burnSecondsLeft == 0
 			and not Station.isBurning(thirds)
 			and thirds.burnSecondsLeft == 0,
-		"step: and just as burnt out when the sixteen seconds came in small pieces"
+		"advance: and just as burnt out when the sixteen seconds came in small pieces"
 	)
 
 	local uneven = stoveWith("fish 5", "log 4", "-")
 	for _, seconds in { 3, 0, 9.5, 0.25, 11, 16.25 } do
-		Station.step(uneven, seconds)
+		Station.advance(uneven, seconds)
 	end
 	check(
 		contents(uneven) == contents(long) and near(uneven.burnSecondsLeft, 8),
-		"step: and so do uneven steps of the same total"
+		"advance: and so do uneven steps of the same total"
 	)
 
 	local partway = stoveWith("fish 5", "log 4", "-")
-	Station.step(partway, 20)
+	Station.advance(partway, 20)
 	check(
 		contents(partway) == "fish 3, log 2, cooked_fish 2",
-		"step: after twenty seconds two fish are done and a second log is lit"
+		"advance: after twenty seconds two fish are done and a second log is lit"
 	)
-	check(near(partway.workedSeconds, 4) and near(partway.burnSecondsLeft, 12), "step: the third fish is half done")
+	check(near(partway.workedSeconds, 4) and near(partway.burnSecondsLeft, 12), "advance: the third fish is half done")
 end
 
 do -- the fire going out, and coming back
 	local station = stoveWith("fish 1", "twig 1", "-")
-	Station.step(station, 2)
+	Station.advance(station, 2)
 	check(
 		contents(station) == "fish 1, -, -" and near(station.workedSeconds, 2),
-		"step: a twig burns for two seconds of work"
+		"advance: a twig burns for two seconds of work"
 	)
-	check(not Station.isBurning(station), "step: and then the fire is out")
-	Station.step(station, 1)
+	check(not Station.isBurning(station), "advance: and then the fire is out")
+	Station.advance(station, 1)
 	check(
 		station.workedSeconds == 0 and station.workingOn == nil,
-		"step: with no fuel to light it again, the work done is lost"
+		"advance: with no fuel to light it again, the work done is lost"
 	)
-	check(contents(station) == "fish 1, -, -", "step: but the fish is still there")
+	check(contents(station) == "fish 1, -, -", "advance: but the fish is still there")
 	Inventory.setStack(station.inventory, FUEL, ItemStack.new("twig", 5))
-	Station.step(station, 8)
-	check(contents(station) == "-, twig 1, cooked_fish 1", "step: four twigs, one after another, cook the fish")
+	Station.advance(station, 8)
+	check(contents(station) == "-, twig 1, cooked_fish 1", "advance: four twigs, one after another, cook the fish")
 
 	local relit = stoveWith("fish 2", "twig 16", "-")
-	Station.step(relit, 5)
+	Station.advance(relit, 5)
 	check(
 		near(relit.workedSeconds, 5) and contents(relit) == "fish 2, twig 13, -",
-		"step: a fire that goes out mid-work is lit again at once if there is fuel, and the work goes on"
+		"advance: a fire that goes out mid-work is lit again at once if there is fuel, and the work goes on"
 	)
 end
 
 do -- changing what is in the input slot
 	local station = stoveWith("fish 1", "log 4", "-")
-	Station.step(station, 5)
+	Station.advance(station, 5)
 	Inventory.setStack(station.inventory, INPUT, ItemStack.new("apple", 1))
-	Station.step(station, 1)
+	Station.advance(station, 1)
 	check(
 		station.workingOn == "apple" and near(station.workedSeconds, 1),
-		"step: a different item in the input slot starts from nothing"
+		"advance: a different item in the input slot starts from nothing"
 	)
-	Station.step(station, 4.9)
-	check(contents(station) == "apple 1, log 3, -", "step: so the apple is not done early")
-	Station.step(station, 0.1)
-	check(contents(station) == "-, log 3, baked_apple 1", "step: it is done after its own recipe's time")
+	Station.advance(station, 4.9)
+	check(contents(station) == "apple 1, log 3, -", "advance: so the apple is not done early")
+	Station.advance(station, 0.1)
+	check(contents(station) == "-, log 3, baked_apple 1", "advance: it is done after its own recipe's time")
 
 	local taken = stoveWith("fish 1", "log 4", "-")
-	Station.step(taken, 5)
+	Station.advance(taken, 5)
 	Inventory.setStack(taken.inventory, INPUT, nil)
-	Station.step(taken, 1)
-	check(taken.workedSeconds == 0 and taken.workingOn == nil, "step: taking the item away loses the work done on it")
+	Station.advance(taken, 1)
+	check(
+		taken.workedSeconds == 0 and taken.workingOn == nil,
+		"advance: taking the item away loses the work done on it"
+	)
 	Inventory.setStack(taken.inventory, INPUT, ItemStack.new("fish", 1))
-	Station.step(taken, 7.9)
-	check(contents(taken) == "fish 1, log 3, -", "step: and one put back is worked on from the start")
+	Station.advance(taken, 7.9)
+	check(contents(taken) == "fish 1, log 3, -", "advance: and one put back is worked on from the start")
 end
 
 do -- the output slot filling up
 	local station = stoveWith("fish 8", "log 8", "cooked_fish 7")
-	Station.step(station, 8)
-	check(contents(station) == "fish 7, log 7, cooked_fish 8", "step: the last one that fits is made")
-	Station.step(station, 200)
-	check(contents(station) == "fish 7, log 7, cooked_fish 8", "step: and then work stops, and no more fuel is used")
-	check(not Station.isBurning(station), "step: once the log that was burning has burnt out")
+	Station.advance(station, 8)
+	check(contents(station) == "fish 7, log 7, cooked_fish 8", "advance: the last one that fits is made")
+	Station.advance(station, 200)
+	check(contents(station) == "fish 7, log 7, cooked_fish 8", "advance: and then work stops, and no more fuel is used")
+	check(not Station.isBurning(station), "advance: once the log that was burning has burnt out")
 	Inventory.takeFromSlot(station.inventory, OUTPUT, 3)
-	Station.step(station, 8)
+	Station.advance(station, 8)
 	check(
 		contents(station) == "fish 6, log 6, cooked_fish 6",
-		"step: making room in the output slot starts the work again"
+		"advance: making room in the output slot starts the work again"
 	)
 end
 
-do -- the gauges
+do -- getFuelLeftRatio and getWorkDoneRatio
 	local station = stoveWith("fish 2", "log 4", "-")
-	local view = Station.getProgress(station)
-	check(view.burning == 0 and view.working == 0, "getProgress: nothing burning and nothing done at first")
-	Station.step(station, 4)
-	view = Station.getProgress(station)
-	check(
-		near(view.burning, 0.75) and near(view.working, 0.5),
-		"getProgress: three quarters of the log left, and the fish half done"
-	)
-	Station.step(station, 12)
-	view = Station.getProgress(station)
-	check(
-		view.burning == 0 and view.working == 0,
-		"getProgress: both at nothing when the log has burnt out and the second fish is done"
-	)
+	check(Station.getFuelLeftRatio(station) == 0, "getFuelLeftRatio: 0 before the fire is lit")
+	check(Station.getWorkDoneRatio(station) == 0, "getWorkDoneRatio: 0 before any work is done")
+	Station.advance(station, 4)
+	check(near(Station.getFuelLeftRatio(station), 0.75), "getFuelLeftRatio: three quarters of the log is left")
+	check(near(Station.getWorkDoneRatio(station), 0.5), "getWorkDoneRatio: the fish is half done")
+	Station.advance(station, 12)
+	check(Station.getFuelLeftRatio(station) == 0, "getFuelLeftRatio: 0 when the log has burnt out")
+	check(Station.getWorkDoneRatio(station) == 0, "getWorkDoneRatio: 0 when the second fish is done")
 	check(contents(station) == "-, log 3, cooked_fish 2", "the log lasted exactly two fish")
-	local count = 0
-	for key, value in view :: any do
-		count += 1
-		check(type(key) == "string" and type(value) == "number", "getProgress: the view is plain data")
-	end
-	check(count == 2, "getProgress: two numbers and nothing else")
 	local swapped = stoveWith("fish 2", "log 4", "-")
-	Station.step(swapped, 4)
+	Station.advance(swapped, 4)
 	Inventory.setStack(swapped.inventory, INPUT, ItemStack.new("apple", 2))
 	check(
-		Station.getProgress(swapped).working == 0,
-		"getProgress: nothing done on an item that has just been put in the place of another"
+		Station.getWorkDoneRatio(swapped) == 0,
+		"getWorkDoneRatio: 0 for an item that has just been put in the place of another"
 	)
-	Station.step(swapped, 3)
-	check(
-		near(Station.getProgress(swapped).working, 0.5),
-		"getProgress: and after a step, what has been done on that item"
-	)
+	Station.advance(swapped, 3)
+	check(near(Station.getWorkDoneRatio(swapped), 0.5), "getWorkDoneRatio: and then what has been done on that item")
 	local nearlyOut = stoveWith("fish 2", "log 1", "-")
-	Station.step(nearlyOut, 15.5)
+	Station.advance(nearlyOut, 15.5)
 	check(
-		near(Station.getProgress(nearlyOut).burning, 0.5 / 16),
-		"getProgress: a fire with half a second left still shows as burning"
+		near(Station.getFuelLeftRatio(nearlyOut), 0.5 / 16),
+		"getFuelLeftRatio: above 0 for a fire with half a second left"
 	)
 	local burningDown = stoveWith("fish 1", "log 1", "-")
-	Station.step(burningDown, 10)
-	view = Station.getProgress(burningDown)
-	check(near(view.burning, 6 / 16) and view.working == 0, "getProgress: a fire can burn with nothing being worked on")
+	Station.advance(burningDown, 10)
+	check(
+		near(Station.getFuelLeftRatio(burningDown), 6 / 16),
+		"getFuelLeftRatio: a fire burns on with nothing to work on"
+	)
+	check(Station.getWorkDoneRatio(burningDown) == 0, "getWorkDoneRatio: 0 with nothing to work on")
 end
 
 do -- which items each slot takes
 	check(
-		Station.accepts("stove", INPUT, "fish") and Station.accepts("stove", INPUT, "apple"),
-		"accepts: the input slot takes what the station has recipes for"
+		Station.slotAcceptsItem("stove", INPUT, "fish") and Station.slotAcceptsItem("stove", INPUT, "apple"),
+		"slotAcceptsItem: the input slot takes what the station has recipes for"
 	)
 	check(
-		not Station.accepts("stove", INPUT, "log")
-			and not Station.accepts("stove", INPUT, "stone")
-			and not Station.accepts("stove", INPUT, "cooked_fish"),
-		"accepts: the input slot takes nothing else"
+		not Station.slotAcceptsItem("stove", INPUT, "log")
+			and not Station.slotAcceptsItem("stove", INPUT, "stone")
+			and not Station.slotAcceptsItem("stove", INPUT, "cooked_fish"),
+		"slotAcceptsItem: the input slot takes nothing else"
 	)
 	check(
-		Station.accepts("stove", FUEL, "log") and Station.accepts("stove", FUEL, "twig"),
-		"accepts: the fuel slot takes what burns"
+		Station.slotAcceptsItem("stove", FUEL, "log") and Station.slotAcceptsItem("stove", FUEL, "twig"),
+		"slotAcceptsItem: the fuel slot takes what burns"
 	)
 	check(
-		not Station.accepts("stove", FUEL, "fish") and not Station.accepts("stove", FUEL, "stone"),
-		"accepts: the fuel slot takes nothing that does not burn, even what the station has a recipe for"
+		not Station.slotAcceptsItem("stove", FUEL, "fish") and not Station.slotAcceptsItem("stove", FUEL, "stone"),
+		"slotAcceptsItem: the fuel slot takes nothing that does not burn, even what the station has a recipe for"
 	)
 	check(
-		not Station.accepts("stove", OUTPUT, "cooked_fish")
-			and not Station.accepts("stove", OUTPUT, "log")
-			and not Station.accepts("stove", OUTPUT, "fish"),
-		"accepts: the output slot takes nothing"
+		not Station.slotAcceptsItem("stove", OUTPUT, "cooked_fish")
+			and not Station.slotAcceptsItem("stove", OUTPUT, "log")
+			and not Station.slotAcceptsItem("stove", OUTPUT, "fish"),
+		"slotAcceptsItem: the output slot takes nothing"
 	)
 	check(
-		not Station.accepts("crate", INPUT, "fish"),
-		"accepts: a kind of item with no recipes takes nothing in its input slot"
+		not Station.slotAcceptsItem("crate", INPUT, "fish"),
+		"slotAcceptsItem: a kind of item with no recipes takes nothing in its input slot"
 	)
 
 	local pack = Inventory.new(4)
@@ -368,59 +362,77 @@ do -- which items each slot takes
 	Inventory.setStack(pack, 3, ItemStack.new("stone", 1))
 	local station = stoveWith("-", "-", "cooked_fish 1")
 	local screen = InventoryScreen.new(pack, station.inventory, function(slot: number, itemId: string): boolean
-		return Station.accepts("stove", slot, itemId)
+		return Station.slotAcceptsItem("stove", slot, itemId)
 	end)
-	check(InventoryScreen.moveStack(screen, "pack", 1, "other") == 6, "moveStack: logs sent to the stove all go in")
-	check(InventoryScreen.moveStack(screen, "pack", 2, "other") == 2, "moveStack: fish sent to the stove all go in")
-	check(InventoryScreen.moveStack(screen, "pack", 3, "other") == 0, "moveStack: stone sent to the stove goes nowhere")
+	check(
+		InventoryScreen.moveFromSlotToInventory(screen, "pack", 1, "other") == 6,
+		"moveFromSlotToInventory: logs sent to the stove all go in"
+	)
+	check(
+		InventoryScreen.moveFromSlotToInventory(screen, "pack", 2, "other") == 2,
+		"moveFromSlotToInventory: fish sent to the stove all go in"
+	)
+	check(
+		InventoryScreen.moveFromSlotToInventory(screen, "pack", 3, "other") == 0,
+		"moveFromSlotToInventory: stone sent to the stove goes nowhere"
+	)
 	check(
 		contents(station) == "fish 2, log 6, cooked_fish 1",
-		"moveStack: each thing sent to the stove lands in its own slot"
+		"moveFromSlotToInventory: each thing sent to the stove lands in its own slot"
 	)
-	check(Inventory.countItems(pack, "stone") == 1, "moveStack: what the station has no use for stays in the pack")
-	check(InventoryScreen.pickUp(screen, "other", OUTPUT) == 1, "pickUp: what was made can be taken out")
-	check(InventoryScreen.putDown(screen, "other", OUTPUT) == 0, "putDown: nothing can be put where it came from")
+	check(
+		Inventory.countItems(pack, "stone") == 1,
+		"moveFromSlotToInventory: what the station has no use for stays in the pack"
+	)
+	check(
+		InventoryScreen.pickUpFromSlot(screen, "other", OUTPUT) == 1,
+		"pickUpFromSlot: what was made can be taken out"
+	)
+	check(
+		InventoryScreen.putDownInSlot(screen, "other", OUTPUT) == 0,
+		"putDownInSlot: nothing can be put where it came from"
+	)
 	local done = stoveWith("fish 1", "log 1", "-")
-	Station.step(done, 8)
+	Station.advance(done, 8)
 	local doneScreen = InventoryScreen.new(
 		Inventory.new(4),
 		done.inventory,
 		function(slot: number, itemId: string): boolean
-			return Station.accepts("stove", slot, itemId)
+			return Station.slotAcceptsItem("stove", slot, itemId)
 		end
 	)
 	check(
-		InventoryScreen.pickUp(doneScreen, "other", OUTPUT) == 1,
-		"pickUp: a cooked fish made by step can be taken out"
+		InventoryScreen.pickUpFromSlot(doneScreen, "other", OUTPUT) == 1,
+		"pickUpFromSlot: a cooked fish made by advance can be taken out"
 	)
 	check(
-		doneScreen.carried ~= nil and doneScreen.carried.itemId == "cooked_fish",
-		"pickUp: and what is carried is the cooked fish"
+		doneScreen.carriedStack ~= nil and doneScreen.carriedStack.itemId == "cooked_fish",
+		"pickUpFromSlot: and what is carried is the cooked fish"
 	)
 end
 
 do -- steps of no time, and of one second at a time
 	local station = stoveWith("fish 1", "log 1", "-")
-	Station.step(station, 0)
+	Station.advance(station, 0)
 	check(
 		contents(station) == "fish 1, log 1, -" and not Station.isBurning(station),
-		"step: a step of no time changes nothing"
+		"advance: 0 seconds changes nothing"
 	)
-	check(station.burnSecondsTotal == 0, "step: and lights no fire")
+	check(station.burnSecondsTotal == 0, "advance: and lights no fire")
 end
 
 do -- the length of a fire that is out
 	local station = stoveWith("fish 1", "log 1", "-")
 	check(station.burnSecondsTotal == 0, "burnSecondsTotal: 0 before a fire is lit")
-	Station.step(station, 4)
+	Station.advance(station, 4)
 	check(station.burnSecondsTotal == 16, "burnSecondsTotal: how long the item burning burns in all, while it burns")
-	Station.step(station, 100)
+	Station.advance(station, 100)
 	check(
 		station.burnSecondsTotal == 0 and station.burnSecondsLeft == 0,
 		"burnSecondsTotal: 0 again once the fire has gone out"
 	)
 	local twigs = stoveWith("fish 1", "twig 1", "-")
-	Station.step(twigs, 2)
+	Station.advance(twigs, 2)
 	check(twigs.burnSecondsTotal == 0, "burnSecondsTotal: 0 when the fire went out for want of fuel")
 end
 
@@ -451,7 +463,7 @@ do -- many random puts, takes and steps: fuel only burns, and each thing made us
 				local fuel = count(station, "log") + count(station, "twig")
 				local stone = count(station, "stone")
 				local raw = count(station, "fish") + count(station, "apple")
-				Station.step(station, random(400) / 10)
+				Station.advance(station, random(400) / 10)
 				if
 					count(station, "fish") + count(station, "cooked_fish") ~= fish
 					or count(station, "apple") + count(station, "baked_apple") ~= apples

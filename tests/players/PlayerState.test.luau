@@ -28,7 +28,7 @@ do -- a new player
 		"new: the hotbar has 9 slots, slot 1 selected"
 	)
 	check(state.screen == nil, "new: no inventory screen is open")
-	check(state.openedPlacedId == nil, "new: no placed item is open")
+	check(state.openedPlacedItemId == nil, "new: no placed item is open")
 	check(state.position == nil, "new: the player has no character")
 	check(state.dropPosition == dropAt, "new: a dropped stack lands at the drop position given")
 	check(PlayerState.new(dropAt).pack ~= state.pack, "new: each player has a pack of their own")
@@ -60,8 +60,8 @@ do -- the plain fields can be changed
 	check(state.position == there, "position: holds where the character stands once set")
 	state.position = nil
 	check(state.position == nil, "position: is nil again when set to nil")
-	state.openedPlacedId = 7
-	check(state.openedPlacedId == 7, "openedPlacedId: holds the id of the open placed item once set")
+	state.openedPlacedItemId = 7
+	check(state.openedPlacedItemId == 7, "openedPlacedItemId: holds the id of the open placed item once set")
 	local other = Position.new(9, 9, 9)
 	state.dropPosition = other
 	check(state.dropPosition == other, "dropPosition: can be moved")

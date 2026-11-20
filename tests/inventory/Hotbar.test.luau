@@ -58,10 +58,10 @@ do -- it is the inventory's own slots, not a copy
 		is(Hotbar.getSelectedStack(hotbar), "log", 5),
 		"getSelectedStack: what the inventory holds in the selected slot"
 	)
-	Hotbar.select(hotbar, 3)
+	Hotbar.selectSlot(hotbar, 3)
 	check(
 		hotbar.selectedSlot == 3 and is(Hotbar.getSelectedStack(hotbar), "stone", 2),
-		"select: changes which slot is in hand"
+		"selectSlot: changes which slot is in hand"
 	)
 	Inventory.takeFromSlot(pack, 3)
 	check(Hotbar.getSelectedStack(hotbar) == nil, "getSelectedStack: follows the inventory when the slot is emptied")
@@ -81,49 +81,58 @@ end
 do -- taking from the selected slot
 	local pack = Inventory.new(27)
 	local hotbar = Hotbar.new(pack, 9)
-	check(Hotbar.takeSelected(hotbar) == nil, "takeSelected: nil when the selected slot holds nothing")
-	check(Hotbar.takeSelected(hotbar, 3) == nil, "takeSelected: nil when asked for some and the slot holds nothing")
+	check(Hotbar.takeFromSelectedSlot(hotbar) == nil, "takeFromSelectedSlot: nil when the selected slot holds nothing")
+	check(
+		Hotbar.takeFromSelectedSlot(hotbar, 3) == nil,
+		"takeFromSelectedSlot: nil when asked for some and the slot holds nothing"
+	)
 
 	Inventory.setStack(pack, 1, ItemStack.new("log", 10))
 	Inventory.setStack(pack, 2, ItemStack.new("stone", 4))
-	check(is(Hotbar.takeSelected(hotbar, 3), "log", 3), "takeSelected: returns the count asked for")
-	check(is(Inventory.getStack(pack, 1), "log", 7), "takeSelected: the rest stays in the slot")
-	check(Hotbar.takeSelected(hotbar, 0) == nil, "takeSelected: 0 takes nothing")
-	check(is(Inventory.getStack(pack, 1), "log", 7), "takeSelected: 0 leaves the slot as it was")
-	check(is(Hotbar.takeSelected(hotbar, 50), "log", 7), "takeSelected: asked for more than there is, takes all of it")
-	check(Inventory.getStack(pack, 1) == nil, "takeSelected: the slot then holds nothing")
+	check(is(Hotbar.takeFromSelectedSlot(hotbar, 3), "log", 3), "takeFromSelectedSlot: returns the count asked for")
+	check(is(Inventory.getStack(pack, 1), "log", 7), "takeFromSelectedSlot: the rest stays in the slot")
+	check(Hotbar.takeFromSelectedSlot(hotbar, 0) == nil, "takeFromSelectedSlot: 0 takes nothing")
+	check(is(Inventory.getStack(pack, 1), "log", 7), "takeFromSelectedSlot: 0 leaves the slot as it was")
+	check(
+		is(Hotbar.takeFromSelectedSlot(hotbar, 50), "log", 7),
+		"takeFromSelectedSlot: asked for more than there is, takes all of it"
+	)
+	check(Inventory.getStack(pack, 1) == nil, "takeFromSelectedSlot: the slot then holds nothing")
 
 	Inventory.setStack(pack, 1, ItemStack.new("log", 6))
-	check(is(Hotbar.takeSelected(hotbar), "log", 6), "takeSelected: with no count takes everything in the slot")
-	check(Inventory.getStack(pack, 1) == nil, "takeSelected: with no count empties the slot")
+	check(
+		is(Hotbar.takeFromSelectedSlot(hotbar), "log", 6),
+		"takeFromSelectedSlot: with no count takes everything in the slot"
+	)
+	check(Inventory.getStack(pack, 1) == nil, "takeFromSelectedSlot: with no count empties the slot")
 
-	Hotbar.select(hotbar, 2)
-	check(is(Hotbar.takeSelected(hotbar, 1), "stone", 1), "takeSelected: takes from the selected slot")
-	check(is(Inventory.getStack(pack, 2), "stone", 3), "takeSelected: and from no other")
+	Hotbar.selectSlot(hotbar, 2)
+	check(is(Hotbar.takeFromSelectedSlot(hotbar, 1), "stone", 1), "takeFromSelectedSlot: takes from the selected slot")
+	check(is(Inventory.getStack(pack, 2), "stone", 3), "takeFromSelectedSlot: and from no other")
 	check(
 		Inventory.countItems(pack, "log") == 0 and Inventory.countItems(pack, "stone") == 3,
-		"takeSelected: loses no items"
+		"takeFromSelectedSlot: loses no items"
 	)
 end
 
 do -- selecting
 	local pack = Inventory.new(5)
 	local hotbar = Hotbar.new(pack, 3)
-	Hotbar.select(hotbar, 3)
-	check(hotbar.selectedSlot == 3, "select: the last hotbar slot can be selected")
-	Hotbar.select(hotbar, 1)
-	check(hotbar.selectedSlot == 1, "select: slot 1 can be selected again")
-	Hotbar.select(hotbar, 2)
+	Hotbar.selectSlot(hotbar, 3)
+	check(hotbar.selectedSlot == 3, "selectSlot: the last hotbar slot can be selected")
+	Hotbar.selectSlot(hotbar, 1)
+	check(hotbar.selectedSlot == 1, "selectSlot: slot 1 can be selected again")
+	Hotbar.selectSlot(hotbar, 2)
 	for _, badSlot in { 0, 4, 5, 6, -1, 1.5, 0 / 0, math.huge } do
 		local message = errorFrom(function()
-			Hotbar.select(hotbar, badSlot)
+			Hotbar.selectSlot(hotbar, badSlot)
 		end)
 		check(
 			message ~= nil and string.find(message, "the hotbar has no slot " .. tostring(badSlot), 1, true) ~= nil,
-			"select: refuses slot " .. tostring(badSlot) .. " and says the hotbar has no such slot"
+			"selectSlot: refuses slot " .. tostring(badSlot) .. " and says the hotbar has no such slot"
 		)
 	end
-	check(hotbar.selectedSlot == 2, "select: a refused slot leaves the selection as it was")
+	check(hotbar.selectedSlot == 2, "selectSlot: a refused slot leaves the selection as it was")
 end
 
 Check.finish("Hotbar")

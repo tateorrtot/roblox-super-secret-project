@@ -53,11 +53,11 @@ local function inWorld(world: World.World, itemId: string): number
 	for _, state in world.players do
 		count += Inventory.countItems(state.pack, itemId)
 		local screen = state.screen
-		if screen ~= nil and screen.carried ~= nil and screen.carried.itemId == itemId then
-			count += screen.carried.count
+		if screen ~= nil and screen.carriedStack ~= nil and screen.carriedStack.itemId == itemId then
+			count += screen.carriedStack.count
 		end
 	end
-	for _, placedItem in world.plot.placedById do
+	for _, placedItem in world.plot.placedItemsById do
 		if placedItem.itemId == itemId then
 			count += 1
 		end
@@ -74,8 +74,8 @@ end
 -- a crate in slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.PlayerState, number)
 	local plot = Plot.new(6, 6)
-	local crateId = Plot.place(plot, "crate", 2, 2) :: number
-	Inventory.addItems(plot.placedById[crateId].inventory :: Inventory.Inventory, "fish", 5)
+	local crateId = Plot.placeItem(plot, "crate", 2, 2) :: number
+	Inventory.addItems(plot.placedItemsById[crateId].inventory :: Inventory.Inventory, "fish", 5)
 	local world = World.new(plot, at(0, 0, 0), 100)
 	local players = {}
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10) } do
@@ -175,9 +175,9 @@ do -- carryOut
 		first.screen ~= nil and second.screen == nil,
 		"carryOut: carries out an inventory request for the player who asked"
 	)
-	carryOut(world, 1, "pickUp", "pack", 1, 5)
+	carryOut(world, 1, "pickUpFromSlot", "pack", 1, 5)
 	check(
-		is((first.screen :: InventoryScreen.InventoryScreen).carried, "log", 5)
+		is((first.screen :: InventoryScreen.InventoryScreen).carriedStack, "log", 5)
 			and is(Inventory.getStack(first.pack, 1), "log", 7),
 		"carryOut: passes on what the player's machine sent after the name"
 	)
@@ -186,15 +186,15 @@ do -- carryOut
 		first.screen == nil and Inventory.countItems(first.pack, "log") == 12,
 		"carryOut: more arguments than a request takes are left unused"
 	)
-	carryOut(world, 2, "usePlaced", crateId)
+	carryOut(world, 2, "usePlacedItem", crateId)
 	check(
-		second.openedPlacedId == crateId and first.openedPlacedId == nil,
+		second.openedPlacedItemId == crateId and first.openedPlacedItemId == nil,
 		"carryOut: carries out a plot request for the player who asked"
 	)
 	carryOut(world, 2, "selectHotbarSlot", 4)
 	check(second.hotbar.selectedSlot == 4 and first.hotbar.selectedSlot == 1, "carryOut: and only for them")
-	carryOut(world, 2, "pickUp")
-	carryOut(world, 2, "pickUp", "pack")
+	carryOut(world, 2, "pickUpFromSlot")
+	carryOut(world, 2, "pickUpFromSlot", "pack")
 	carryOut(world, 2, "swapSlots", "pack", 1, "other")
 	check(
 		Inventory.countItems(second.pack, "log") == 12,
@@ -231,7 +231,7 @@ do -- carryOut
 	)
 	for _, playerId in { 0, 3, -1, 1.5, 0 / 0, math.huge, "1", true, {} } :: { any } do
 		carryOut(world, playerId, "openPack")
-		carryOut(world, playerId, "dropSelected", 1)
+		carryOut(world, playerId, "dropFromSelectedSlot", 1)
 	end
 	carryOut(world, nil, "openPack")
 	check(
@@ -329,12 +329,12 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				errors += 1
 				firstError = if firstError == "" then tostring(name) .. ": " .. tostring(result) else firstError
 			end
-			someTakenOff = someTakenOff or world.plot.placedById[crateId] == nil
+			someTakenOff = someTakenOff or world.plot.placedItemsById[crateId] == nil
 			for _, state in world.players do
-				someOpened = someOpened or state.openedPlacedId ~= nil
+				someOpened = someOpened or state.openedPlacedItemId ~= nil
 			end
 			now += 0.5
-			World.step(world, now)
+			World.advanceTo(world, now)
 			for _, itemId in itemIds do
 				if inWorld(world, itemId) ~= total[itemId] then
 					allConserved = false

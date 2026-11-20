@@ -2,8 +2,8 @@
 --- A grey stand-in for the game's world.
 ---
 --- `build` makes a flat plot beside the place where players appear, with a post at each corner and
---- a crate and a stove standing on it. `restock` keeps a few stacks of items lying on the plot, and
---- `fillPack` gives a new player something to hold. All of it is placeholder content, made by code
+--- a crate and a stove standing on it. `restockGroundItems` keeps a few stacks of items lying on the plot, and
+--- `addStartingItems` gives a new player something to hold. All of it is placeholder content, made by code
 --- so that the project folder alone is enough to run the game, and it goes when there is a real map.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -97,13 +97,13 @@ end
 
 local function makeStockedPlot(): Plot.Plot
 	local plot = Plot.new(PlaceholderWorld.PLOT_TILES, PlaceholderWorld.PLOT_TILES)
-	local crateId = Plot.place(plot, "crate", 13, 7) :: number
-	local inCrate = plot.placedById[crateId].inventory :: Inventory.Inventory
+	local crateId = Plot.placeItem(plot, "crate", 13, 7) :: number
+	local inCrate = plot.placedItemsById[crateId].inventory :: Inventory.Inventory
 	Inventory.addItems(inCrate, "cheese", 8)
 	Inventory.addItems(inCrate, "fish", 5)
 	Inventory.addItems(inCrate, "crystal", 40)
 	Inventory.addItems(inCrate, "crate", 1)
-	Plot.place(plot, "stove", 6, 13)
+	Plot.placeItem(plot, "stove", 6, 13)
 	return plot
 end
 
@@ -128,7 +128,7 @@ function PlaceholderWorld.build(): PlaceholderWorld
 end
 
 --- Adds a few items to `pack`, so that a new player's hotbar is not bare.
-function PlaceholderWorld.fillPack(pack: Inventory.Inventory)
+function PlaceholderWorld.addStartingItems(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "apple", 4)
 	Inventory.addItems(pack, "log", 20)
 	Inventory.addItems(pack, "crate", 1)
@@ -139,7 +139,11 @@ end
 --- or a crate could not be placed on the chosen tile because something stands there, in which case
 --- nothing is dropped until the next call. Does nothing while the Workspace attribute
 --- `PlaceholderRestock` is `false`, which the play test sets so that it knows what lies on the ground.
-function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: GroundItems.GroundItems, now: number)
+function PlaceholderWorld.restockGroundItems(
+	placeholder: PlaceholderWorld,
+	groundItems: GroundItems.GroundItems,
+	now: number
+)
 	if now < nextRestockAt or Workspace:GetAttribute("PlaceholderRestock") == false then
 		return
 	end
@@ -161,15 +165,15 @@ function PlaceholderWorld.restock(placeholder: PlaceholderWorld, groundItems: Gr
 		y = slab.Position.Y + slab.Size.Y / 2,
 		z = slab.Position.Z - slab.Size.Z / 2,
 	}
-	local spot = Plot.tileCenter(corner, tileX, tileZ)
-	if not Plot.canPlace(plot, "crate", tileX, tileZ) then
+	local spot = Plot.getTileCenter(corner, tileX, tileZ)
+	if not Plot.canPlaceItem(plot, "crate", tileX, tileZ) then
 		return
 	end
 
-	local definitions = ItemRegistry.all()
+	local definitions = ItemRegistry.getAll()
 	local definition = definitions[random:NextInteger(1, #definitions)]
 	local count = random:NextInteger(1, definition.stackSize)
-	GroundItems.drop(groundItems, ItemStack.new(definition.id, count), spot, now)
+	GroundItems.dropStack(groundItems, ItemStack.new(definition.id, count), spot, now)
 end
 
 return PlaceholderWorld

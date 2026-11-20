@@ -44,13 +44,13 @@ function ItemStack.validate(value: unknown): string?
 end
 
 --- Returns how many more items the stack could hold before it is full.
-function ItemStack.spaceLeft(stack: ItemStack): number
+function ItemStack.getSpaceLeft(stack: ItemStack): number
 	return ItemRegistry.get(stack.itemId).stackSize - stack.count
 end
 
 --- Returns `true` if the stack holds as many items as its item's stack size.
 function ItemStack.isFull(stack: ItemStack): boolean
-	return ItemStack.spaceLeft(stack) == 0
+	return ItemStack.getSpaceLeft(stack) == 0
 end
 
 --- Returns `true` if both stacks are of the same item, whatever their counts.
@@ -65,7 +65,7 @@ function ItemStack.merge(into: ItemStack, from: ItemStack): (ItemStack, ItemStac
 	if into.itemId ~= from.itemId then
 		return into, from
 	end
-	local moved = math.min(from.count, ItemStack.spaceLeft(into))
+	local moved = math.min(from.count, ItemStack.getSpaceLeft(into))
 	local merged = ItemStack.new(into.itemId, into.count + moved)
 	if moved == from.count then
 		return merged, nil

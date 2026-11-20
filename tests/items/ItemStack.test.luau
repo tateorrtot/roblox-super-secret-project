@@ -60,14 +60,14 @@ do -- a stack never changes
 	check(is(logs, "log", 12), "the stack is as it was after both attempts")
 end
 
-do -- spaceLeft and isFull
+do -- getSpaceLeft and isFull
 	local logs = ItemStack.new("log", 12)
-	check(ItemStack.spaceLeft(logs) == 4, "spaceLeft: how many more fit")
+	check(ItemStack.getSpaceLeft(logs) == 4, "getSpaceLeft: how many more fit")
 	check(ItemStack.isFull(logs) == false, "isFull: false when there is room")
 	local full = ItemStack.new("log", 16)
-	check(ItemStack.spaceLeft(full) == 0, "spaceLeft: 0 for a full stack")
+	check(ItemStack.getSpaceLeft(full) == 0, "getSpaceLeft: 0 for a full stack")
 	check(ItemStack.isFull(full), "isFull: true for a full stack")
-	check(ItemStack.spaceLeft(ItemStack.new("log", 1)) == 15, "spaceLeft: 15 for one log")
+	check(ItemStack.getSpaceLeft(ItemStack.new("log", 1)) == 15, "getSpaceLeft: 15 for one log")
 	check(ItemStack.isFull(ItemStack.new("stove", 1)), "isFull: one of an item that does not stack is full")
 end
 

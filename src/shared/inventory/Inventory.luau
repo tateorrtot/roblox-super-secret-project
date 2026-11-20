@@ -46,7 +46,7 @@ function Inventory.hasSlot(inventory: Inventory, slot: unknown): boolean
 end
 
 --- Returns the number of every slot, lowest first.
-function Inventory.getSlots(inventory: Inventory): { number }
+function Inventory.getSlotNumbers(inventory: Inventory): { number }
 	local slots = {}
 	for slot = 1, inventory.slotCount do
 		table.insert(slots, slot)
@@ -122,7 +122,7 @@ function Inventory.addItems(inventory: Inventory, itemId: string, count: number,
 	if count % 1 ~= 0 or count < 0 then
 		error(`cannot add {count} items`, 2)
 	end
-	local slots = intoSlots or Inventory.getSlots(inventory)
+	local slots = intoSlots or Inventory.getSlotNumbers(inventory)
 	for _, slot in slots do
 		checkSlot(inventory, slot)
 	end

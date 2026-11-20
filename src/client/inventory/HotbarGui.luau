@@ -3,7 +3,7 @@
 --- pack, a bright edge on the one in hand, the name of what is in hand above the slots, and a button
 --- that opens the pack.
 ---
---- `show` draws the pack's first slots and the one in hand. The hotbar changes no inventory: a click
+--- `update` draws the pack's first slots and the one in hand. The hotbar changes no inventory: a click
 --- on a slot or on the pack button is reported through the `Callbacks` given to `new`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -109,7 +109,7 @@ function HotbarGui.new(parent: Instance, slotCount: number, callbacks: Callbacks
 	row.Size = UDim2.fromOffset(slotCount * (SlotGui.SIZE + GAP) + PACK_BUTTON_WIDTH, SlotGui.SIZE)
 	row.BackgroundTransparency = 1
 	row.Parent = screenGui
-	ScreenScale.apply(row)
+	ScreenScale.applyTo(row)
 
 	local slots = {}
 	for slot = 1, slotCount do
@@ -124,9 +124,9 @@ end
 
 --- Draws the first slots of `pack`, with a bright edge on slot `selectedSlot` and the name of the
 --- stack in it above the slots. The name is empty if that slot holds nothing.
-function HotbarGui.show(hotbarGui: HotbarGui, pack: Inventory.Inventory, selectedSlot: number)
+function HotbarGui.update(hotbarGui: HotbarGui, pack: Inventory.Inventory, selectedSlot: number)
 	for slot, slotGui in hotbarGui.slots do
-		SlotGui.show(slotGui, Inventory.getStack(pack, slot))
+		SlotGui.setStack(slotGui, Inventory.getStack(pack, slot))
 		SlotGui.setSelected(slotGui, slot == selectedSlot)
 	end
 	local held = Inventory.getStack(pack, selectedSlot)

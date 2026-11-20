@@ -8,7 +8,7 @@ local check = Check.that
 local raises = Check.raises
 
 do -- an empty registry
-	check(#ItemRegistry.all() == 0, "all: a registry with nothing registered has no item types")
+	check(#ItemRegistry.getAll() == 0, "getAll: a registry with nothing registered has no item types")
 	check(ItemRegistry.has("log") == false, "has: false before anything is registered")
 end
 
@@ -43,12 +43,12 @@ do -- the registry keeps its own copy, and item types never change
 	check(ItemRegistry.get("plank").stackSize == 16, "get: still unchanged after the attempt")
 end
 
-do -- all
-	local all = ItemRegistry.all()
-	check(#all == 3, "all: one entry for each registered item type")
-	check(all[1].id == "log" and all[2].id == "plank" and all[3].id == "stove", "all: ordered by id")
+do -- getAll
+	local all = ItemRegistry.getAll()
+	check(#all == 3, "getAll: one entry for each registered item type")
+	check(all[1].id == "log" and all[2].id == "plank" and all[3].id == "stove", "getAll: ordered by id")
 	table.remove(all)
-	check(#ItemRegistry.all() == 3, "all: changing the returned list does not change the registry")
+	check(#ItemRegistry.getAll() == 3, "getAll: changing the returned list does not change the registry")
 end
 
 local function refuses(definition: any): boolean
@@ -74,7 +74,7 @@ do -- what register refuses
 		"register: refuses a field item definitions do not have"
 	)
 	check(ItemRegistry.has("odd") == false, "register: nothing refused was registered")
-	check(#ItemRegistry.all() == 3, "register: the registry still has only the three good item types")
+	check(#ItemRegistry.getAll() == 3, "register: the registry still has only the three good item types")
 end
 
 do -- items that can be placed, and that hold things

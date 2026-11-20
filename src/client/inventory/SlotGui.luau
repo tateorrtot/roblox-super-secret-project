@@ -3,7 +3,7 @@
 --- nothing when the slot holds nothing.
 ---
 --- The square is `button`: it is placed by setting its `Position`, and a click on the slot is a
---- click on it. `show` changes what the slot shows, and `setSelected` gives it a bright edge.
+--- click on it. `setStack` changes what the slot shows, and `setSelected` gives it a bright edge.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -63,8 +63,8 @@ function SlotGui.new(parent: Instance): SlotGui
 end
 
 --- Makes the slot show `stack`, or nothing if `stack` is `nil`.
-function SlotGui.show(slotGui: SlotGui, stack: ItemStack.ItemStack?)
-	StackIcon.show(slotGui.icon, stack)
+function SlotGui.setStack(slotGui: SlotGui, stack: ItemStack.ItemStack?)
+	StackIcon.setStack(slotGui.icon, stack)
 end
 
 --- Gives the slot a bright, thicker edge if `selected` is `true`, and its plain edge if not.

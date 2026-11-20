@@ -11,6 +11,14 @@ local World = require("./World")
 
 local PlayerSnapshot = {}
 
+--- How far a station's fire and work have got.
+export type StationProgress = {
+	--- What `Station.getFuelLeftRatio` returns: 1 when the fuel was just lit, 0 when the fire is out.
+	fuelLeftRatio: number,
+	--- What `Station.getWorkDoneRatio` returns: 0 when the work has not begun, 1 when it is done.
+	workDoneRatio: number,
+}
+
 export type EncodedSnapshot = {
 	pack: Inventory.EncodedInventory,
 	--- The open inventory screen. `nil` when none is open.
@@ -19,9 +27,9 @@ export type EncodedSnapshot = {
 		other: Inventory.EncodedInventory?,
 		--- The id of the item that the placed item whose inventory `other` is, is: `"crate"`.
 		otherItemId: string?,
-		carried: { itemId: string, count: number }?,
-		--- How far the fire and the work have got, if `other` is a station's inventory.
-		progress: Station.Progress?,
+		carriedStack: { itemId: string, count: number }?,
+		--- How far the fire and the work have got. `nil` unless `other` is a station's inventory.
+		stationProgress: StationProgress?,
 	}?,
 }
 
@@ -31,34 +39,41 @@ export type PlayerSnapshot = {
 	screen: InventoryScreen.InventoryScreen?,
 	--- The id of the item that the placed item shown beside the pack is, such as `"crate"`.
 	otherItemId: string?,
-	--- How far the fire and the work have got, if that placed item is a station.
-	progress: Station.Progress?,
+	--- How far the fire and the work have got. `nil` unless that placed item is a station.
+	stationProgress: StationProgress?,
 }
+
+local function stationProgressOf(station: Station.Station): StationProgress
+	return {
+		fuelLeftRatio = Station.getFuelLeftRatio(station),
+		workDoneRatio = Station.getWorkDoneRatio(station),
+	}
+end
 
 --- Returns what to tell the machine of the player with the id `playerId`, as plain data. Fails if
 --- no player has that id.
 function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSnapshot
-	local state = assert(world.players[playerId], `no player has the id {playerId}`)
-	local screen = state.screen
+	local player = assert(world.players[playerId], `no player has the id {playerId}`)
+	local screen = player.screen
 	if screen == nil then
-		return { pack = Inventory.encode(state.pack) }
+		return { pack = Inventory.encode(player.pack) }
 	end
-	local placedId = state.openedPlacedId
-	local placedItem = if placedId then world.plot.placedById[placedId] else nil
-	local station = if placedId then world.stations[placedId] else nil
-	local carried = screen.carried
+	local placedItemId = player.openedPlacedItemId
+	local placedItem = if placedItemId then world.plot.placedItemsById[placedItemId] else nil
+	local station = if placedItemId then world.stations[placedItemId] else nil
+	local carried = screen.carriedStack
 	return {
-		pack = Inventory.encode(state.pack),
+		pack = Inventory.encode(player.pack),
 		screen = {
 			other = if screen.other then Inventory.encode(screen.other) else nil,
 			otherItemId = if placedItem then placedItem.itemId else nil,
-			carried = if carried then { itemId = carried.itemId, count = carried.count } else nil,
-			progress = if station then Station.getProgress(station) else nil,
+			carriedStack = if carried then { itemId = carried.itemId, count = carried.count } else nil,
+			stationProgress = if station then stationProgressOf(station) else nil,
 		},
 	}
 end
 
---- Returns the view read from data that `encode` made. Fails if the data holds an inventory or a
+--- Returns the snapshot read from data that `encode` made. Fails if the data holds an inventory or a
 --- stack that cannot be read.
 function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 	local pack = assert(Inventory.decode(encoded.pack))
@@ -66,15 +81,15 @@ function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 	if encodedScreen == nil then
 		return { pack = pack }
 	end
-	local carried = encodedScreen.carried
+	local carried = encodedScreen.carriedStack
 	local screen =
 		InventoryScreen.new(pack, if encodedScreen.other then assert(Inventory.decode(encodedScreen.other)) else nil)
-	screen.carried = if carried then ItemStack.new(carried.itemId, carried.count) else nil
+	screen.carriedStack = if carried then ItemStack.new(carried.itemId, carried.count) else nil
 	return {
 		pack = pack,
 		screen = screen,
 		otherItemId = encodedScreen.otherItemId,
-		progress = encodedScreen.progress,
+		stationProgress = encodedScreen.stationProgress,
 	}
 end
 

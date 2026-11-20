@@ -29,7 +29,7 @@ local function at(side: string, slot: number): Slot
 	return { side = side, slot = slot }
 end
 
--- Describes a request such as `moveStack("pack", 3, "other", 1, 27)`, with "nil" for a missing argument
+-- Describes a request such as `moveFromSlotToInventory("pack", 3, "other", 1, 27)`, with "nil" for a missing argument
 -- and "none" for no request. The arguments are counted up to `argumentCount`, so that a missing last
 -- argument is not hidden.
 local function describe(request: Request?, argumentCount: number): string
@@ -75,7 +75,7 @@ local function screenOf(
 		packSlots = packSlots or 36,
 		hotbarSlots = hotbarSlots or 9,
 		otherSlots = otherSlots,
-		carried = stackOf(carried),
+		carriedStack = stackOf(carried),
 		getStack = function(slot: Slot): InventoryControls.Stack?
 			return stackOf(held[slot.side .. " " .. slot.slot])
 		end,
@@ -89,135 +89,140 @@ end
 do -- a click with nothing carried
 	local screen = screenOf({ ["pack 3"] = "log 5", ["pack 4"] = "log 1", ["other 2"] = "stone 8" }, nil, 27)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("left", at("pack", 3))), 3) == "pickUp(pack, 3, nil)",
-		"requestForGesture: a left click on a stack, with nothing carried, picks up all of it"
+		describe(InventoryControls.getRequestForGesture(screen, click("left", at("pack", 3))), 3)
+			== "pickUpFromSlot(pack, 3, nil)",
+		"getRequestForGesture: a left click on a stack, with nothing carried, picks up all of it"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("right", at("pack", 3))), 3) == "pickUp(pack, 3, 3)",
-		"requestForGesture: a right click on a stack of 5, with nothing carried, picks up the larger half, 3"
+		describe(InventoryControls.getRequestForGesture(screen, click("right", at("pack", 3))), 3)
+			== "pickUpFromSlot(pack, 3, 3)",
+		"getRequestForGesture: a right click on a stack of 5, with nothing carried, picks up the larger half, 3"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("right", at("pack", 4))), 3) == "pickUp(pack, 4, 1)",
-		"requestForGesture: a right click on a stack of 1 picks up that 1"
+		describe(InventoryControls.getRequestForGesture(screen, click("right", at("pack", 4))), 3)
+			== "pickUpFromSlot(pack, 4, 1)",
+		"getRequestForGesture: a right click on a stack of 1 picks up that 1"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("right", at("other", 2))), 3)
-			== "pickUp(other, 2, 4)",
-		"requestForGesture: a right click on a stack of 8 picks up 4, and names the other inventory's slot"
+		describe(InventoryControls.getRequestForGesture(screen, click("right", at("other", 2))), 3)
+			== "pickUpFromSlot(other, 2, 4)",
+		"getRequestForGesture: a right click on a stack of 8 picks up 4, and names the other inventory's slot"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("left", at("other", 2))), 3)
-			== "pickUp(other, 2, nil)",
-		"requestForGesture: a left click on the other inventory's stack picks up all of it"
+		describe(InventoryControls.getRequestForGesture(screen, click("left", at("other", 2))), 3)
+			== "pickUpFromSlot(other, 2, nil)",
+		"getRequestForGesture: a left click on the other inventory's stack picks up all of it"
 	)
 	check(
-		InventoryControls.requestForGesture(screen, click("left", at("pack", 5))) == nil,
-		"requestForGesture: a left click on a slot that holds nothing, with nothing carried, asks for nothing"
+		InventoryControls.getRequestForGesture(screen, click("left", at("pack", 5))) == nil,
+		"getRequestForGesture: a left click on a slot that holds nothing, with nothing carried, asks for nothing"
 	)
 	check(
-		InventoryControls.requestForGesture(screen, click("right", at("pack", 5))) == nil,
-		"requestForGesture: nor does a right click on a slot that holds nothing"
+		InventoryControls.getRequestForGesture(screen, click("right", at("pack", 5))) == nil,
+		"getRequestForGesture: nor does a right click on a slot that holds nothing"
 	)
 end
 
 do -- a click with a stack carried
 	local screen = screenOf({ ["pack 3"] = "log 5", ["pack 4"] = "stone 2", ["other 2"] = "log 1" }, "log 7", 27)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("left", at("pack", 6))), 3)
-			== "putDown(pack, 6, nil)",
-		"requestForGesture: a left click on a slot that holds nothing, with a stack carried, puts all of it down"
+		describe(InventoryControls.getRequestForGesture(screen, click("left", at("pack", 6))), 3)
+			== "putDownInSlot(pack, 6, nil)",
+		"getRequestForGesture: a left click on a slot that holds nothing, with a stack carried, puts all of it down"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("right", at("pack", 6))), 3) == "putDown(pack, 6, 1)",
-		"requestForGesture: a right click on a slot that holds nothing puts one down"
+		describe(InventoryControls.getRequestForGesture(screen, click("right", at("pack", 6))), 3)
+			== "putDownInSlot(pack, 6, 1)",
+		"getRequestForGesture: a right click on a slot that holds nothing puts one down"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("left", at("pack", 3))), 3)
-			== "putDown(pack, 3, nil)",
-		"requestForGesture: a left click on a slot that holds the carried item puts all of it down"
+		describe(InventoryControls.getRequestForGesture(screen, click("left", at("pack", 3))), 3)
+			== "putDownInSlot(pack, 3, nil)",
+		"getRequestForGesture: a left click on a slot that holds the carried item puts all of it down"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("right", at("other", 2))), 3)
-			== "putDown(other, 2, 1)",
-		"requestForGesture: a right click on a slot of the other inventory that holds the carried item puts one down"
+		describe(InventoryControls.getRequestForGesture(screen, click("right", at("other", 2))), 3)
+			== "putDownInSlot(other, 2, 1)",
+		"getRequestForGesture: a right click on a slot of the other inventory that holds the carried item puts one down"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("left", at("pack", 4))), 2) == "swapCarried(pack, 4)",
-		"requestForGesture: a left click on a slot that holds a different item exchanges the two stacks"
+		describe(InventoryControls.getRequestForGesture(screen, click("left", at("pack", 4))), 2)
+			== "swapCarriedStackWithSlot(pack, 4)",
+		"getRequestForGesture: a left click on a slot that holds a different item exchanges the two stacks"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(screen, click("right", at("pack", 4))), 2)
-			== "swapCarried(pack, 4)",
-		"requestForGesture: and so does a right click"
+		describe(InventoryControls.getRequestForGesture(screen, click("right", at("pack", 4))), 2)
+			== "swapCarriedStackWithSlot(pack, 4)",
+		"getRequestForGesture: and so does a right click"
 	)
 	check(
-		#(InventoryControls.requestForGesture(screen, click("left", at("pack", 4))) :: Request).arguments == 2,
-		"requestForGesture: and an exchange is sent with the side and slot only"
+		#(InventoryControls.getRequestForGesture(screen, click("left", at("pack", 4))) :: Request).arguments == 2,
+		"getRequestForGesture: and an exchange is sent with the side and slot only"
 	)
 end
 
 do -- Shift and a click
 	local withOther = screenOf({ ["pack 3"] = "log 5", ["pack 20"] = "log 5", ["other 2"] = "stone 8" }, nil, 27)
 	check(
-		describe(InventoryControls.requestForGesture(withOther, click("left", at("pack", 3), true)), 6)
-			== "moveStack(pack, 3, other, 1, 27, nil)",
-		"requestForGesture: a left click with Shift held, with another inventory open, moves a pack stack to all of its slots"
+		describe(InventoryControls.getRequestForGesture(withOther, click("left", at("pack", 3), true)), 6)
+			== "moveFromSlotToInventory(pack, 3, other, 1, 27, nil)",
+		"getRequestForGesture: a left click with Shift held, with another inventory open, moves a pack stack to all of its slots"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(withOther, click("left", at("other", 2), true)), 6)
-			== "moveStack(other, 2, pack, 1, 36, nil)",
-		"requestForGesture: and moves a stack of the other inventory to all of the pack's slots"
+		describe(InventoryControls.getRequestForGesture(withOther, click("left", at("other", 2), true)), 6)
+			== "moveFromSlotToInventory(other, 2, pack, 1, 36, nil)",
+		"getRequestForGesture: and moves a stack of the other inventory to all of the pack's slots"
 	)
 	local small = screenOf({}, nil, 3, 20, 5)
 	check(
-		describe(InventoryControls.requestForGesture(small, click("left", at("pack", 20), true)), 5)
-			== "moveStack(pack, 20, other, 1, 3)",
-		"requestForGesture: the last slot named is the size of the other inventory"
+		describe(InventoryControls.getRequestForGesture(small, click("left", at("pack", 20), true)), 5)
+			== "moveFromSlotToInventory(pack, 20, other, 1, 3)",
+		"getRequestForGesture: the last slot named is the size of the other inventory"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(small, click("left", at("other", 1), true)), 5)
-			== "moveStack(other, 1, pack, 1, 20)",
-		"requestForGesture: and the size of the pack when going the other way"
+		describe(InventoryControls.getRequestForGesture(small, click("left", at("other", 1), true)), 5)
+			== "moveFromSlotToInventory(other, 1, pack, 1, 20)",
+		"getRequestForGesture: and the size of the pack when going the other way"
 	)
 
 	local alone = screenOf({ ["pack 3"] = "log 5", ["pack 20"] = "log 5" }, nil, nil)
 	check(
-		describe(InventoryControls.requestForGesture(alone, click("left", at("pack", 3), true)), 5)
-			== "moveStack(pack, 3, pack, 10, 36)",
-		"requestForGesture: with the pack open alone, a left click with Shift held on a hotbar slot moves the stack to the rest of the pack"
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 3), true)), 5)
+			== "moveFromSlotToInventory(pack, 3, pack, 10, 36)",
+		"getRequestForGesture: with the pack open alone, a left click with Shift held on a hotbar slot moves the stack to the rest of the pack"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(alone, click("left", at("pack", 9), true)), 5)
-			== "moveStack(pack, 9, pack, 10, 36)",
-		"requestForGesture: the last hotbar slot is a hotbar slot"
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 9), true)), 5)
+			== "moveFromSlotToInventory(pack, 9, pack, 10, 36)",
+		"getRequestForGesture: the last hotbar slot is a hotbar slot"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(alone, click("left", at("pack", 20), true)), 5)
-			== "moveStack(pack, 20, pack, 1, 9)",
-		"requestForGesture: and on a slot of the rest of the pack moves it to the hotbar"
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 20), true)), 5)
+			== "moveFromSlotToInventory(pack, 20, pack, 1, 9)",
+		"getRequestForGesture: and on a slot of the rest of the pack moves it to the hotbar"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(alone, click("left", at("pack", 10), true)), 5)
-			== "moveStack(pack, 10, pack, 1, 9)",
-		"requestForGesture: the first slot after the hotbar is not a hotbar slot"
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 10), true)), 5)
+			== "moveFromSlotToInventory(pack, 10, pack, 1, 9)",
+		"getRequestForGesture: the first slot after the hotbar is not a hotbar slot"
 	)
 
 	local allHotbar = screenOf({ ["pack 1"] = "log 5" }, nil, nil, 9, 9)
 	check(
-		InventoryControls.requestForGesture(allHotbar, click("left", at("pack", 1), true)) == nil,
-		"requestForGesture: with a pack that is all hotbar and no other inventory open, there is nowhere to move to and it asks for nothing"
+		InventoryControls.getRequestForGesture(allHotbar, click("left", at("pack", 1), true)) == nil,
+		"getRequestForGesture: with a pack that is all hotbar and no other inventory open, there is nowhere to move to and it asks for nothing"
 	)
 
 	check(
-		describe(InventoryControls.requestForGesture(withOther, click("right", at("pack", 3), true)), 3)
-			== "pickUp(pack, 3, 3)",
-		"requestForGesture: a right click with Shift held is a right click"
+		describe(InventoryControls.getRequestForGesture(withOther, click("right", at("pack", 3), true)), 3)
+			== "pickUpFromSlot(pack, 3, 3)",
+		"getRequestForGesture: a right click with Shift held is a right click"
 	)
 
 	local carrying = screenOf({ ["pack 3"] = "log 5" }, "log 2", 27)
 	check(
-		describe(InventoryControls.requestForGesture(carrying, click("left", at("pack", 3), true)), 3) ~= "none",
-		"requestForGesture: a left click with Shift held asks for a move whatever is carried"
+		describe(InventoryControls.getRequestForGesture(carrying, click("left", at("pack", 3), true)), 3) ~= "none",
+		"getRequestForGesture: a left click with Shift held asks for a move whatever is carried"
 	)
 end
 
@@ -225,153 +230,165 @@ do -- a double click
 	local screen = screenOf({ ["pack 3"] = "log 5", ["pack 4"] = "stone 2" }, "log 7", 27)
 	local double = gestureOf("doubleClick", "left", false, { at("pack", 6) }, at("pack", 6))
 	check(
-		describe(InventoryControls.requestForGesture(screen, double), 1) == "gatherCarried(nil)"
-			and #(InventoryControls.requestForGesture(screen, double) :: Request).arguments == 0,
-		"requestForGesture: a double click on a slot that holds nothing, with a stack carried, gathers into the carried stack, with nothing sent"
+		describe(InventoryControls.getRequestForGesture(screen, double), 1) == "fillCarriedStackFromAllSlots(nil)"
+			and #(InventoryControls.getRequestForGesture(screen, double) :: Request).arguments == 0,
+		"getRequestForGesture: a double click on a slot that holds nothing, with a stack carried, gathers into the carried stack, with nothing sent"
 	)
 	check(
 		describe(
-			InventoryControls.requestForGesture(
+			InventoryControls.getRequestForGesture(
 				screen,
 				gestureOf("doubleClick", "left", false, { at("pack", 3) }, at("pack", 3))
 			),
 			3
-		) == "putDown(pack, 3, nil)",
-		"requestForGesture: a double click on a slot that holds the carried item is a left click"
+		) == "putDownInSlot(pack, 3, nil)",
+		"getRequestForGesture: a double click on a slot that holds the carried item is a left click"
 	)
 	check(
 		describe(
-			InventoryControls.requestForGesture(
+			InventoryControls.getRequestForGesture(
 				screen,
 				gestureOf("doubleClick", "left", false, { at("pack", 4) }, at("pack", 4))
 			),
 			3
-		) == "swapCarried(pack, 4, nil)",
-		"requestForGesture: a double click on a slot that holds a different item is a left click"
+		) == "swapCarriedStackWithSlot(pack, 4, nil)",
+		"getRequestForGesture: a double click on a slot that holds a different item is a left click"
 	)
 
 	local empty = screenOf({ ["pack 3"] = "log 5" }, nil, 27)
 	check(
 		describe(
-			InventoryControls.requestForGesture(
+			InventoryControls.getRequestForGesture(
 				empty,
 				gestureOf("doubleClick", "left", false, { at("pack", 3) }, at("pack", 3))
 			),
 			3
-		) == "pickUp(pack, 3, nil)",
-		"requestForGesture: a double click with nothing carried is a left click"
+		) == "pickUpFromSlot(pack, 3, nil)",
+		"getRequestForGesture: a double click with nothing carried is a left click"
 	)
 	check(
-		InventoryControls.requestForGesture(
+		InventoryControls.getRequestForGesture(
 			empty,
 			gestureOf("doubleClick", "left", false, { at("pack", 6) }, at("pack", 6))
 		) == nil,
-		"requestForGesture: a double click on a slot that holds nothing, with nothing carried, asks for nothing"
+		"getRequestForGesture: a double click on a slot that holds nothing, with nothing carried, asks for nothing"
 	)
 end
 
 do -- a drag
 	local screen = screenOf({ ["pack 1"] = "log 5" }, "log 7", 27)
 	local slots = { at("pack", 2), at("pack", 3), at("other", 1) }
-	local left = InventoryControls.requestForGesture(screen, gestureOf("drag", "left", false, slots, at("other", 1)))
+	local left = InventoryControls.getRequestForGesture(screen, gestureOf("drag", "left", false, slots, at("other", 1)))
 	check(
-		left ~= nil and left.name == "spreadCarried",
-		"requestForGesture: a drag with the left button, with a stack carried, spreads it in equal shares"
+		left ~= nil and left.name == "spreadCarriedStackOverSlots",
+		"getRequestForGesture: a drag with the left button, with a stack carried, spreads it in equal shares"
 	)
 	check(
 		left ~= nil and left.arguments[1] == slots and left.arguments[2] == nil,
-		"requestForGesture: and sends the slots crossed, and no count for each"
+		"getRequestForGesture: and sends the slots crossed, and no count for each"
 	)
-	local right = InventoryControls.requestForGesture(screen, gestureOf("drag", "right", false, slots, at("other", 1)))
+	local right =
+		InventoryControls.getRequestForGesture(screen, gestureOf("drag", "right", false, slots, at("other", 1)))
 	check(
-		right ~= nil and right.name == "spreadCarried" and right.arguments[1] == slots and right.arguments[2] == 1,
-		"requestForGesture: a drag with the right button spreads it one item in each"
+		right ~= nil
+			and right.name == "spreadCarriedStackOverSlots"
+			and right.arguments[1] == slots
+			and right.arguments[2] == 1,
+		"getRequestForGesture: a drag with the right button spreads it one item in each"
 	)
-	local over = InventoryControls.requestForGesture(screen, gestureOf("drag", "left", false, slots, nil))
+	local over = InventoryControls.getRequestForGesture(screen, gestureOf("drag", "left", false, slots, nil))
 	check(
-		over ~= nil and over.name == "spreadCarried",
-		"requestForGesture: a drag with a stack carried spreads it wherever the button comes up"
+		over ~= nil and over.name == "spreadCarriedStackOverSlots",
+		"getRequestForGesture: a drag with a stack carried spreads it wherever the button comes up"
 	)
-	local shifted = InventoryControls.requestForGesture(screen, gestureOf("drag", "left", true, slots, at("other", 1)))
+	local shifted =
+		InventoryControls.getRequestForGesture(screen, gestureOf("drag", "left", true, slots, at("other", 1)))
 	check(
-		shifted ~= nil and shifted.name == "spreadCarried",
-		"requestForGesture: a drag with Shift held, with a stack carried, spreads it"
+		shifted ~= nil and shifted.name == "spreadCarriedStackOverSlots",
+		"getRequestForGesture: a drag with Shift held, with a stack carried, spreads it"
 	)
 
 	local nothing = screenOf({ ["pack 2"] = "log 5" }, nil, 27)
 	local back = { at("pack", 2), at("pack", 3) }
 	check(
-		describe(InventoryControls.requestForGesture(nothing, gestureOf("drag", "left", false, back, at("pack", 2))), 3)
-			== "pickUp(pack, 2, nil)",
-		"requestForGesture: a drag with nothing carried that ends on the slot it began on is a left click"
+		describe(
+			InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "left", false, back, at("pack", 2))),
+			3
+		) == "pickUpFromSlot(pack, 2, nil)",
+		"getRequestForGesture: a drag with nothing carried that ends on the slot it began on is a left click"
 	)
 	check(
 		describe(
-			InventoryControls.requestForGesture(nothing, gestureOf("drag", "right", false, back, at("pack", 2))),
+			InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "right", false, back, at("pack", 2))),
 			3
-		) == "pickUp(pack, 2, 3)",
-		"requestForGesture: and with the right button is a right click"
+		) == "pickUpFromSlot(pack, 2, 3)",
+		"getRequestForGesture: and with the right button is a right click"
 	)
 	check(
-		describe(InventoryControls.requestForGesture(nothing, gestureOf("drag", "left", true, back, at("pack", 2))), 5)
-			== "moveStack(pack, 2, other, 1, 27)",
-		"requestForGesture: and with Shift held is a click with Shift held"
+		describe(
+			InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "left", true, back, at("pack", 2))),
+			5
+		) == "moveFromSlotToInventory(pack, 2, other, 1, 27)",
+		"getRequestForGesture: and with Shift held is a click with Shift held"
 	)
 	check(
-		InventoryControls.requestForGesture(nothing, gestureOf("drag", "left", false, back, at("pack", 3))) == nil,
-		"requestForGesture: a drag with nothing carried that ends on another slot asks for nothing"
+		InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "left", false, back, at("pack", 3))) == nil,
+		"getRequestForGesture: a drag with nothing carried that ends on another slot asks for nothing"
 	)
 	check(
-		InventoryControls.requestForGesture(nothing, gestureOf("drag", "left", false, back, at("other", 2))) == nil,
-		"requestForGesture: nor does one that ends on the same slot number of the other side"
+		InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "left", false, back, at("other", 2))) == nil,
+		"getRequestForGesture: nor does one that ends on the same slot number of the other side"
 	)
 	check(
-		InventoryControls.requestForGesture(nothing, gestureOf("drag", "left", false, back, nil)) == nil,
-		"requestForGesture: nor does one that ends over no slot"
+		InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "left", false, back, nil)) == nil,
+		"getRequestForGesture: nor does one that ends over no slot"
 	)
 	check(
-		InventoryControls.requestForGesture(
+		InventoryControls.getRequestForGesture(
 			nothing,
 			gestureOf("drag", "left", false, { at("other", 2), at("other", 1) }, at("other", 2))
 		) == nil,
-		"requestForGesture: a drag that ends on the slot it began on, where that slot holds nothing, asks for nothing"
+		"getRequestForGesture: a drag that ends on the slot it began on, where that slot holds nothing, asks for nothing"
 	)
 end
 
-do -- requestForDigitKey
+do -- getRequestForDigitKeyOverSlot
 	check(
-		describe(InventoryControls.requestForDigitKey(at("pack", 20), 3), 4) == "swapSlots(pack, 20, pack, 3)",
-		"requestForDigitKey: a number key over a pack slot swaps it with the hotbar slot of that number"
+		describe(InventoryControls.getRequestForDigitKeyOverSlot(at("pack", 20), 3), 4)
+			== "swapSlots(pack, 20, pack, 3)",
+		"getRequestForDigitKeyOverSlot: a number key over a pack slot swaps it with the hotbar slot of that number"
 	)
 	check(
-		describe(InventoryControls.requestForDigitKey(at("other", 5), 9), 4) == "swapSlots(other, 5, pack, 9)",
-		"requestForDigitKey: over a slot of the other inventory swaps it with the pack's hotbar slot"
+		describe(InventoryControls.getRequestForDigitKeyOverSlot(at("other", 5), 9), 4)
+			== "swapSlots(other, 5, pack, 9)",
+		"getRequestForDigitKeyOverSlot: over a slot of the other inventory swaps it with the pack's hotbar slot"
 	)
 	check(
-		describe(InventoryControls.requestForDigitKey(at("pack", 1), 1), 4) == "swapSlots(pack, 1, pack, 1)",
-		"requestForDigitKey: over a hotbar slot itself asks for the swap all the same"
-	)
-end
-
-do -- requestForDropKey
-	check(
-		describe(InventoryControls.requestForDropKey(at("pack", 4), false), 3) == "dropFromSlot(pack, 4, 1)",
-		"requestForDropKey: drops one item from the slot"
-	)
-	check(
-		describe(InventoryControls.requestForDropKey(at("other", 7), true), 3) == "dropFromSlot(other, 7, nil)",
-		"requestForDropKey: with the whole stack asked for, drops everything in the slot"
+		describe(InventoryControls.getRequestForDigitKeyOverSlot(at("pack", 1), 1), 4) == "swapSlots(pack, 1, pack, 1)",
+		"getRequestForDigitKeyOverSlot: over a hotbar slot itself asks for the swap all the same"
 	)
 end
 
-do -- requestForOutsideClick
+do -- getRequestForDropKeyOverSlot
 	check(
-		describe(InventoryControls.requestForOutsideClick("left"), 1) == "dropCarried(nil)",
-		"requestForOutsideClick: a left click drops all of the carried stack"
+		describe(InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), false), 3) == "dropFromSlot(pack, 4, 1)",
+		"getRequestForDropKeyOverSlot: drops one item from the slot"
 	)
 	check(
-		describe(InventoryControls.requestForOutsideClick("right"), 1) == "dropCarried(1)",
-		"requestForOutsideClick: a right click drops one item of it"
+		describe(InventoryControls.getRequestForDropKeyOverSlot(at("other", 7), true), 3)
+			== "dropFromSlot(other, 7, nil)",
+		"getRequestForDropKeyOverSlot: with the whole stack asked for, drops everything in the slot"
+	)
+end
+
+do -- getRequestForOutsideClick
+	check(
+		describe(InventoryControls.getRequestForOutsideClick("left"), 1) == "dropCarriedStack(nil)",
+		"getRequestForOutsideClick: a left click drops all of the carried stack"
+	)
+	check(
+		describe(InventoryControls.getRequestForOutsideClick("right"), 1) == "dropCarriedStack(1)",
+		"getRequestForOutsideClick: a right click drops one item of it"
 	)
 end
 
@@ -410,7 +427,7 @@ end
 -- Describes what the player carries, such as "log 5" or "-".
 local function carriedBy(state: PlayerState.PlayerState): string
 	local screen = state.screen :: InventoryScreen.InventoryScreen
-	return if screen.carried then screen.carried.itemId .. " " .. screen.carried.count else "-"
+	return if screen.carriedStack then screen.carriedStack.itemId .. " " .. screen.carriedStack.count else "-"
 end
 
 -- Describes what lies on the ground, such as "log 3" or "-". Items of one kind are added together.
@@ -434,7 +451,7 @@ local function screenOfPlayer(state: PlayerState.PlayerState): Screen
 		packSlots = screen.pack.slotCount,
 		hotbarSlots = PlayerState.HOTBAR_SLOTS,
 		otherSlots = if screen.other then screen.other.slotCount else nil,
-		carried = screen.carried,
+		carriedStack = screen.carriedStack,
 		getStack = function(slot: Slot): InventoryControls.Stack?
 			return Inventory.getStack(InventoryScreen.getInventory(screen, slot.side :: any), slot.slot)
 		end,
@@ -450,7 +467,7 @@ end
 
 -- Does what the player's controls do for `gesture`, and returns the request it asked for.
 local function perform(world: World.World, state: PlayerState.PlayerState, gesture: SlotGestures.Gesture): Request?
-	local request = InventoryControls.requestForGesture(screenOfPlayer(state), gesture)
+	local request = InventoryControls.getRequestForGesture(screenOfPlayer(state), gesture)
 	send(world, request)
 	return request
 end
@@ -466,11 +483,11 @@ local function mouse(
 	shiftHeld: boolean?,
 	now: number?
 ): Request?
-	SlotGestures.press(gestures, button, slots[1])
+	SlotGestures.beginGesture(gestures, button, slots[1])
 	for index = 2, #slots do
-		SlotGestures.enter(gestures, slots[index])
+		SlotGestures.dragOverSlot(gestures, slots[index])
 	end
-	local gesture = SlotGestures.release(gestures, button, slots[#slots], shiftHeld == true, now or 0)
+	local gesture = SlotGestures.endGesture(gestures, button, slots[#slots], shiftHeld == true, now or 0)
 	if gesture == nil then
 		return nil
 	end
@@ -609,7 +626,7 @@ do -- a double click gathers
 	check(carriedBy(state) == "log 4", "the first click of a double click carries the stack")
 	local request = mouse(world, state, gestures, "left", { at("pack", 1) }, nil, 10.2)
 	check(
-		request ~= nil and request.name == "gatherCarried",
+		request ~= nil and request.name == "fillCarriedStackFromAllSlots",
 		"the second click of a double click on the emptied slot asks to gather"
 	)
 	check(carriedBy(state) == "log 16", "the carried stack is filled from the others")
@@ -623,7 +640,7 @@ do -- a double click gathers
 
 	local next = mouse(world, state, gestures, "left", { at("pack", 1) }, nil, 10.3)
 	check(
-		next ~= nil and next.name == "putDown",
+		next ~= nil and next.name == "putDownInSlot",
 		"a third click straight after is a first click again, and puts the stack down"
 	)
 	check(
@@ -692,7 +709,7 @@ do -- a drag with nothing carried
 	check(request == nil, "a drag with nothing carried that ends on another slot asks for nothing")
 	check(held(state, "pack", 1) == "log 7" and carriedBy(state) == "-", "and changes nothing")
 	local back = mouse(world, state, gestures, "left", { at("pack", 1), at("pack", 2), at("pack", 1) })
-	check(back ~= nil and back.name == "pickUp", "a drag that comes back to the slot it began on is a click")
+	check(back ~= nil and back.name == "pickUpFromSlot", "a drag that comes back to the slot it began on is a click")
 	check(carriedBy(state) == "log 7", "and picks the stack up")
 end
 
@@ -700,48 +717,48 @@ do -- a number key
 	local world, state = openedWorld(5)
 	put(state, "pack", 20, "stone 3")
 	put(state, "pack", 3, "log 4")
-	send(world, InventoryControls.requestForDigitKey(at("pack", 20), 3))
+	send(world, InventoryControls.getRequestForDigitKeyOverSlot(at("pack", 20), 3))
 	check(
 		held(state, "pack", 20) == "log 4" and held(state, "pack", 3) == "stone 3",
 		"a number key swaps a pack slot with that hotbar slot"
 	)
 	put(state, "other", 2, "fish 2")
-	send(world, InventoryControls.requestForDigitKey(at("other", 2), 3))
+	send(world, InventoryControls.getRequestForDigitKeyOverSlot(at("other", 2), 3))
 	check(
 		held(state, "other", 2) == "stone 3" and held(state, "pack", 3) == "fish 2",
 		"and a slot of the other inventory with it"
 	)
-	send(world, InventoryControls.requestForDigitKey(at("pack", 9), 9))
+	send(world, InventoryControls.getRequestForDigitKeyOverSlot(at("pack", 9), 9))
 	check(held(state, "pack", 9) == "-", "a number key over the hotbar slot of its own number changes nothing")
 end
 
 do -- the drop key and a click outside
 	local world, state = openedWorld(nil)
 	put(state, "pack", 4, "log 5")
-	send(world, InventoryControls.requestForDropKey(at("pack", 4), false))
+	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), false))
 	check(held(state, "pack", 4) == "log 4" and onGround(world) == "log 1", "the drop key drops one item of the slot")
-	send(world, InventoryControls.requestForDropKey(at("pack", 4), true))
+	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), true))
 	check(
 		held(state, "pack", 4) == "-" and onGround(world) == "log 5",
 		"the drop key with the whole stack asked for drops all of it"
 	)
-	send(world, InventoryControls.requestForDropKey(at("pack", 4), false))
+	send(world, InventoryControls.getRequestForDropKeyOverSlot(at("pack", 4), false))
 	check(onGround(world) == "log 5", "the drop key over an empty slot drops nothing")
 
 	put(state, "pack", 6, "stone 6")
 	local gestures = SlotGestures.new()
 	mouse(world, state, gestures, "left", { at("pack", 6) })
-	send(world, InventoryControls.requestForOutsideClick("right"))
+	send(world, InventoryControls.getRequestForOutsideClick("right"))
 	check(
 		carriedBy(state) == "stone 5" and onGround(world) == "log 5, stone 1",
 		"a right click outside the screen drops one item of the carried stack"
 	)
-	send(world, InventoryControls.requestForOutsideClick("left"))
+	send(world, InventoryControls.getRequestForOutsideClick("left"))
 	check(
 		carriedBy(state) == "-" and onGround(world) == "log 5, stone 6",
 		"a left click outside the screen drops all of it"
 	)
-	send(world, InventoryControls.requestForOutsideClick("left"))
+	send(world, InventoryControls.getRequestForOutsideClick("left"))
 	check(onGround(world) == "log 5, stone 6", "a click outside the screen with nothing carried drops nothing")
 end
 
@@ -752,21 +769,24 @@ do -- every request the controls make is one the server knows
 		names[name] = true
 	end
 	local requests: { Request? } = {
-		InventoryControls.requestForGesture(screen, click("left", at("pack", 3))),
-		InventoryControls.requestForGesture(screen, click("left", at("pack", 4))),
-		InventoryControls.requestForGesture(screen, click("left", at("pack", 3), true)),
-		InventoryControls.requestForGesture(
+		InventoryControls.getRequestForGesture(screen, click("left", at("pack", 3))),
+		InventoryControls.getRequestForGesture(screen, click("left", at("pack", 4))),
+		InventoryControls.getRequestForGesture(screen, click("left", at("pack", 3), true)),
+		InventoryControls.getRequestForGesture(
 			screen,
 			gestureOf("doubleClick", "left", false, { at("pack", 6) }, at("pack", 6))
 		),
-		InventoryControls.requestForGesture(
+		InventoryControls.getRequestForGesture(
 			screen,
 			gestureOf("drag", "left", false, { at("pack", 6), at("pack", 7) }, nil)
 		),
-		InventoryControls.requestForDigitKey(at("pack", 3), 2),
-		InventoryControls.requestForDropKey(at("pack", 3), true),
-		InventoryControls.requestForOutsideClick("left"),
-		InventoryControls.requestForGesture(screenOf({ ["pack 3"] = "log 5" }, nil, 27), click("left", at("pack", 3))),
+		InventoryControls.getRequestForDigitKeyOverSlot(at("pack", 3), 2),
+		InventoryControls.getRequestForDropKeyOverSlot(at("pack", 3), true),
+		InventoryControls.getRequestForOutsideClick("left"),
+		InventoryControls.getRequestForGesture(
+			screenOf({ ["pack 3"] = "log 5" }, nil, 27),
+			click("left", at("pack", 3))
+		),
 	}
 	for _, request in requests do
 		check(
@@ -790,7 +810,7 @@ local function everything(world: World.World, state: PlayerState.PlayerState): s
 			add(Inventory.getStack(inventory, slot))
 		end
 	end
-	add(screen.carried)
+	add(screen.carriedStack)
 	for _, groundItem in world.groundItems.byId do
 		add(groundItem.stack)
 	end
@@ -846,11 +866,11 @@ do -- a long run of random mouse and key use: no item is made and none is lost
 				end
 				mouse(world, state, gestures, button, slots, random(5) == 1, now)
 			elseif kind == 6 then
-				send(world, InventoryControls.requestForDigitKey(randomSlot(), random(9)))
+				send(world, InventoryControls.getRequestForDigitKeyOverSlot(randomSlot(), random(9)))
 			elseif kind == 7 then
-				send(world, InventoryControls.requestForDropKey(randomSlot(), random(2) == 1))
+				send(world, InventoryControls.getRequestForDropKeyOverSlot(randomSlot(), random(2) == 1))
 			else
-				send(world, InventoryControls.requestForOutsideClick(button))
+				send(world, InventoryControls.getRequestForOutsideClick(button))
 			end
 			local after = everything(world, state)
 			if after ~= total then
@@ -863,7 +883,7 @@ do -- a long run of random mouse and key use: no item is made and none is lost
 		end
 		check(
 			lost == 0,
-			"requestForGesture: after 4000 random clicks, drags and keys "
+			"getRequestForGesture: after 4000 random clicks, drags and keys "
 				.. (if withOther then "with another inventory open" else "on the pack alone")
 				.. ", no item was made or lost"
 		)

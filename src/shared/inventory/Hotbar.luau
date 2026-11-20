@@ -32,7 +32,7 @@ function Hotbar.hasSlot(hotbar: Hotbar, slot: unknown): boolean
 end
 
 --- Selects a slot. Fails if the hotbar has no such slot.
-function Hotbar.select(hotbar: Hotbar, slot: number)
+function Hotbar.selectSlot(hotbar: Hotbar, slot: number)
 	assert(Hotbar.hasSlot(hotbar, slot), `the hotbar has no slot {slot}`)
 	hotbar.selectedSlot = slot
 end
@@ -44,7 +44,7 @@ end
 
 --- Takes up to `count` items out of the selected slot and returns them as a stack. Takes
 --- everything in the slot if `count` is left out. Returns `nil` if nothing was taken.
-function Hotbar.takeSelected(hotbar: Hotbar, count: number?): ItemStack?
+function Hotbar.takeFromSelectedSlot(hotbar: Hotbar, count: number?): ItemStack?
 	return Inventory.takeFromSlot(hotbar.inventory, hotbar.selectedSlot, count)
 end
 

@@ -153,7 +153,7 @@ end)
 local function addPlayer(player: Player)
 	if world.players[player.UserId] == nil then
 		local state = World.addPlayer(world, player.UserId, toPosition(placeholder.spawnPoint))
-		PlaceholderWorld.fillPack(state.pack)
+		PlaceholderWorld.addStartingItems(state.pack)
 	end
 end
 
@@ -175,8 +175,8 @@ local function step()
 			try("reading where a player stands", tellPosition, player)
 		end
 	end
-	try("stepping the World", World.step, world, os.clock())
-	try("restocking the plot", PlaceholderWorld.restock, placeholder, world.groundItems, world.now)
+	try("stepping the World", World.advanceTo, world, os.clock())
+	try("restocking the plot", PlaceholderWorld.restockGroundItems, placeholder, world.groundItems, world.now)
 	showWorldToPlayers()
 end
 

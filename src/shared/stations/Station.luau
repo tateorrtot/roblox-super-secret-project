@@ -2,7 +2,7 @@
 --- A placed item that turns one item into another while its fire burns: a stove.
 ---
 --- A station has three slots. `INPUT_SLOT` holds what is to be worked on, `FUEL_SLOT` holds fuel,
---- and what is made collects in `OUTPUT_SLOT`. `step` burns the fire and does the work. The fire
+--- and what is made collects in `OUTPUT_SLOT`. `advance` burns the fire and does the work. The fire
 --- is lit only when there is something to work on, and once lit it burns its fuel out.
 local Inventory = require("../inventory/Inventory")
 local ItemRegistry = require("../items/ItemRegistry")
@@ -26,14 +26,6 @@ export type Station = {
 	workedSeconds: number,
 	--- The id of the item that work is being done on. `nil` when nothing is being worked on.
 	workingOn: string?,
-}
-
---- How far a station's fire and work have got, as plain data.
-export type Progress = {
-	--- How much of the fuel now burning is left, from 1 just lit to 0 burnt out.
-	burning: number,
-	--- How far the item in the input slot is from done, from 0 not begun to 1 done.
-	working: number,
 }
 
 --- The slot that holds what is to be worked on.
@@ -61,7 +53,7 @@ end
 --- Returns `true` if a slot of the station that the item `stationItemId` is accepts the item
 --- `itemId`. The input slot accepts what that station has a recipe for, the fuel slot accepts
 --- what burns, and the output slot accepts nothing.
-function Station.accepts(stationItemId: string, slot: number, itemId: string): boolean
+function Station.slotAcceptsItem(stationItemId: string, slot: number, itemId: string): boolean
 	if slot == Station.INPUT_SLOT then
 		return RecipeRegistry.find(stationItemId, itemId) ~= nil
 	end
@@ -117,13 +109,13 @@ local function work(station: Station, recipe: RecipeRegistry.Recipe, seconds: nu
 	end
 end
 
---- Burns the fire and works for `seconds`. While there is a recipe to work on (see `getRecipe`),
---- a fire that is out is lit with one item from the fuel slot, and the item in the input slot is
---- worked on. Each time it has been worked on for its recipe's seconds, one of it becomes one of
+--- Burns the fire and works for `seconds`. While `getWorkableRecipe` returns a recipe, a fire
+--- that is out is lit with one item from the fuel slot, and the item in the input slot is worked
+--- on. Each time it has been worked on for its recipe's seconds, one of it becomes one of
 --- the recipe's output in the output slot. A lit fire burns its fuel out even with nothing to work
 --- on. Work done on an item is lost if the fire goes out for want of fuel, if the item in the
 --- input slot changes, or if the output slot has no room.
-function Station.step(station: Station, seconds: number)
+function Station.advance(station: Station, seconds: number)
 	local left = seconds
 	while left > 0 do
 		local recipe = Station.getWorkableRecipe(station)
@@ -133,24 +125,30 @@ function Station.step(station: Station, seconds: number)
 			setWorkingOn(station, nil)
 			return
 		end
-		local advance =
+		local passed =
 			math.min(left, station.burnSecondsLeft, if recipe then recipe.seconds - station.workedSeconds else left)
-		left -= advance
-		burn(station, advance)
+		left -= passed
+		burn(station, passed)
 		if recipe ~= nil then
-			work(station, recipe, advance)
+			work(station, recipe, passed)
 		end
 	end
 end
 
---- Returns how far the fire and the work have got, each as a number from 0 to 1.
-function Station.getProgress(station: Station): Progress
+--- Returns how much of the fuel now burning is left, as a number from 1, when it was just lit, down
+--- to 0, when the fire is out.
+function Station.getFuelLeftRatio(station: Station): number
+	return if Station.isBurning(station) then station.burnSecondsLeft / station.burnSecondsTotal else 0
+end
+
+--- Returns how far the work on the item in the input slot has got, as a number from 0, when it has
+--- not begun, up to 1, when it is done. Returns 0 while `getWorkableRecipe` returns `nil`.
+function Station.getWorkDoneRatio(station: Station): number
 	local recipe = Station.getWorkableRecipe(station)
-	local isWorkedOn = recipe ~= nil and recipe.input == station.workingOn
-	return {
-		burning = if Station.isBurning(station) then station.burnSecondsLeft / station.burnSecondsTotal else 0,
-		working = if recipe ~= nil and isWorkedOn then station.workedSeconds / recipe.seconds else 0,
-	}
+	if recipe == nil or recipe.input ~= station.workingOn then
+		return 0
+	end
+	return station.workedSeconds / recipe.seconds
 end
 
 return Station

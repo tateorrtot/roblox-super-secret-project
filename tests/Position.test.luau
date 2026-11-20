@@ -16,18 +16,21 @@ end
 
 do -- distances
 	local here = Position.new(10, 0, -4)
-	check(Position.distance(here, here) == 0, "distance: 0 from a position to itself")
-	check(Position.distance(here, Position.new(13, 4, -4)) == 5, "distance: in a straight line, height counted")
-	check(Position.distance(Position.new(13, 4, -4), here) == 5, "distance: the same both ways")
-	check(Position.distance(here, Position.new(10, 0, -16)) == 12, "distance: along z")
-	check(Position.distance(Position.new(1, 2, 3), Position.new(3, 5, 9)) == 7, "distance: along all three at once")
-	check(Position.groundDistance(here, Position.new(13, 4, -4)) == 3, "groundDistance: height is left out")
-	check(Position.groundDistance(here, Position.new(10, 99, -4)) == 0, "groundDistance: 0 straight above")
-	check(Position.groundDistance(here, Position.new(13, -7, 0)) == 5, "groundDistance: along x and z together")
-	check(Position.groundDistance(Position.new(13, -7, 0), here) == 5, "groundDistance: the same both ways")
+	check(Position.getDistance(here, here) == 0, "getDistance: 0 from a position to itself")
+	check(Position.getDistance(here, Position.new(13, 4, -4)) == 5, "getDistance: in a straight line, height counted")
+	check(Position.getDistance(Position.new(13, 4, -4), here) == 5, "getDistance: the same both ways")
+	check(Position.getDistance(here, Position.new(10, 0, -16)) == 12, "getDistance: along z")
 	check(
-		Position.distance({ x = 0, y = 0, z = 0 }, { x = 0, y = 2, z = 0 }) == 2,
-		"distance: works on a position written by hand"
+		Position.getDistance(Position.new(1, 2, 3), Position.new(3, 5, 9)) == 7,
+		"getDistance: along all three at once"
+	)
+	check(Position.getGroundDistance(here, Position.new(13, 4, -4)) == 3, "getGroundDistance: height is left out")
+	check(Position.getGroundDistance(here, Position.new(10, 99, -4)) == 0, "getGroundDistance: 0 straight above")
+	check(Position.getGroundDistance(here, Position.new(13, -7, 0)) == 5, "getGroundDistance: along x and z together")
+	check(Position.getGroundDistance(Position.new(13, -7, 0), here) == 5, "getGroundDistance: the same both ways")
+	check(
+		Position.getDistance({ x = 0, y = 0, z = 0 }, { x = 0, y = 2, z = 0 }) == 2,
+		"getDistance: works on a position written by hand"
 	)
 end
 
