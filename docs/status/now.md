@@ -7,7 +7,7 @@ As of the end of 2026-11-20. This file holds only what is true now. What is over
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | On the branch `dropped-items`, cut from `first-pieces`. Neither is merged, and nothing is pushed |
-| **Checked** | `lune run tools/check` passes, with 2,048 test checks. The play test passes 83 of 83 in Studio, on the last code commit |
+| **Checked** | `lune run tools/check` passes, with 2,054 test checks. The play test passes 83 of 83 in Studio, on the last code commit |
 | **Not checked** | A phone. Two players. A real server. How a thrown item looks from another player's machine |
 | **Waiting on the user** | To read the code. Then their feedback on the game. The open questions are in `asked-of-the-user.md` |
 | **Approved, not built** | Prediction on the player's machine (`next.md`) |
@@ -43,11 +43,12 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 - **Hit.** A short right click on a placed thing knocks it off the plot. It spills out as an item, upwards and a little outwards, and so does each stack that was in a crate.
 
 ## What has been checked
-- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,048 test checks and the demo.
+- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,054 test checks and the demo.
 - **Mutation testing** of each piece changed on 2026-11-20 leaves only changes no caller could see: `GroundItems` 133 of 136, `Direction` 13 of 13, `PlotCollision` 80 of 81, `InventoryRequests` 136 of 140, `World` 160 of 163, `Signal` 22 of 22. Every plain-Luau piece was last run together before the dropped-items work, at 1,475 of 1,527.
 - **The delete test** (`python tools/delete_directory_test.py`): `players`, `plots` and `stations` do not break one another.
 - **The play test** (`python tools/playtest.py`) passed 83 of 83 in Studio on 2026-11-20, on the last code commit. It drives a test character through every action in the list above, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
-- **The names** were tested on readers given nothing but the names, before the user's seventh review. The names added since (`Signal`, `mergeItems`, the `can...` functions) have not been.
+- **The names** of seven classes were tested on 2026-11-20 on readers given nothing but the names, after the last code change: `GroundItems`, `Signal`, `Direction`, `Plot`, `PlayerState`, `InventoryScreen` and `World`. Every member of `Signal` read clear, and so did four of the five `can...` functions. One new name was doubted and changed: `movedIds` became `idsMovedSinceMerge`. `mergeItems` was read rightly, with a doubt about whether it merges every ground item or only some; it stands, and its comment says which. Older names that readers would not bet on are for the user's read of the code: `PlacedItem.itemId`, and a tile's `x` and `z` beside a position's.
+- **Two reviewers read the merge and the first-person throw** on 2026-11-20 and found no bug. What they found is fixed: two comments that left a case out, two private functions named without a verb, a constant whose name did not say what it measured, and two gaps in the tests.
 - **The server's and the client's scripts were read by four reviewers** on 2026-11-20, since they are not type-checked. The client's throw has changed since, and is covered by the play test.
 - **By hand, on 2026-11-19,** driving a test character through Studio's connector: that a player keeps their pack when their character dies; that ground items vanish after five minutes; that a player who leaves while carrying a stack causes no error.
 
@@ -55,6 +56,7 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 - **A phone, or any touch screen.**
 - **Two players at once.** The crate is shared and each player is sent its changes, but nobody has watched two screens.
 - **A real server.** In Studio there is no delay. On a real server the screen waits for the server's answer after each click.
+- **The edge between first and third person.** The play test throws at a camera distance of half a stud and of twelve and a half. Exactly one stud, where the two meet, is checked by nothing: the choice sits in `Main.client`, which the tests in `tests/` cannot reach.
 
 ## Known problems
 - **The hotbar's highlight, every click in the inventory, and a throw each wait for the server.** In Studio that is a frame or two. On a real server it is the player's ping, and nobody has measured it. Prediction on the player's machine is the fix, and is next.

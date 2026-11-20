@@ -49,7 +49,7 @@ export type GroundItems = {
 	itemsById: { [number]: GroundItem },
 	--- The ids of the ground items spawned, or given a new position, since `mergeItems` last ran.
 	--- An id may be listed after its ground item has gone.
-	movedIds: { [number]: true },
+	idsMovedSinceMerge: { [number]: true },
 	--- The time `mergeItems` was last given. `nil` until it has run.
 	lastMergeTime: number?,
 }
@@ -118,7 +118,7 @@ end
 
 --- Returns a new set of ground items with nothing in the world.
 function GroundItems.new(): GroundItems
-	return { nextId = 1, itemsById = {}, movedIds = {} }
+	return { nextId = 1, itemsById = {}, idsMovedSinceMerge = {} }
 end
 
 --- Makes a new ground item that holds `stack`, at `position` and moving at `velocity`, spawned at
@@ -140,7 +140,7 @@ function GroundItems.spawnStack(
 		spawnTime = now,
 	})
 	groundItems.nextId = id + 1
-	groundItems.movedIds[id] = true
+	groundItems.idsMovedSinceMerge[id] = true
 	return id
 end
 
@@ -157,7 +157,7 @@ function GroundItems.setItemPosition(groundItems: GroundItems, id: number, posit
 		spawnVelocity = groundItem.spawnVelocity,
 		spawnTime = groundItem.spawnTime,
 	})
-	groundItems.movedIds[id] = true
+	groundItems.idsMovedSinceMerge[id] = true
 end
 
 local function mergeItemInto(groundItems: GroundItems, fromId: number, intoId: number)
@@ -193,7 +193,7 @@ local function isDueForMerge(groundItems: GroundItems, id: number, since: number
 	local spawnTime = groundItems.itemsById[id].spawnTime
 	local checksBySince = math.floor((since - spawnTime) / GroundItems.MERGE_CHECK_SECONDS)
 	local checksByNow = math.floor((now - spawnTime) / GroundItems.MERGE_CHECK_SECONDS)
-	return groundItems.movedIds[id] == true or checksByNow > checksBySince
+	return groundItems.idsMovedSinceMerge[id] == true or checksByNow > checksBySince
 end
 
 --- Merges ground items of the same item that are within `MERGE_REACH` of each other. Not every
@@ -206,10 +206,13 @@ end
 --- The one being looked at is tried with each ground item of the same item in reach of it, the
 --- nearest first, and of two equally near, the lower id first. The other need not be one that is
 --- looked at. Two merge only if both stacks fit in one stack. The one with the bigger stack then
---- holds both, stays where it is, and counts as spawned at the later of the two items' times. The
---- other is gone, and its id with it. If the two stacks are the same size, the one being looked
+--- holds both, stays where it is, keeps the velocity it was spawned with, and counts as spawned at
+--- the later of the two items' times. The other is gone, and its id with it. If the two stacks are the same size, the one being looked
 --- at is the one that goes. One that took the other in is tried with the next nearest, and so on
 --- until it is gone or there are no more.
+---
+--- If `now` is no later than the time `mergeItems` was last given, only the ground items spawned
+--- or given a new position since then are looked at.
 function GroundItems.mergeItems(groundItems: GroundItems, now: number)
 	local since = groundItems.lastMergeTime or now
 	local due = {}
@@ -219,7 +222,7 @@ function GroundItems.mergeItems(groundItems: GroundItems, now: number)
 		end
 	end
 	table.sort(due)
-	table.clear(groundItems.movedIds)
+	table.clear(groundItems.idsMovedSinceMerge)
 	groundItems.lastMergeTime = now
 	for _, id in due do
 		if groundItems.itemsById[id] ~= nil then

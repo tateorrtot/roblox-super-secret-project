@@ -32,7 +32,7 @@ local function isFromMinusOneToOne(value: unknown): boolean
 	return type(value) == "number" and value >= -1 and value <= 1
 end
 
-local function toDirection(sent: unknown): Direction.Direction?
+local function decodeDirection(sent: unknown): Direction.Direction?
 	if type(sent) ~= "table" then
 		return nil
 	end
@@ -41,7 +41,7 @@ local function toDirection(sent: unknown): Direction.Direction?
 	return if isInRange then Direction.new(x, y, z) else nil
 end
 
-local function screenWithSlot(player: PlayerState, side: unknown, slot: unknown): InventoryScreen?
+local function findScreenWithSlot(player: PlayerState, side: unknown, slot: unknown): InventoryScreen?
 	local screen = player.screen
 	return if screen ~= nil and InventoryScreen.hasSlot(screen, side, slot) then screen else nil
 end
@@ -80,7 +80,7 @@ function InventoryRequests.pickUpFromSlot(
 	slot: unknown,
 	count: unknown
 )
-	local screen = screenWithSlot(player, side, slot)
+	local screen = findScreenWithSlot(player, side, slot)
 	if screen ~= nil and isCountOrNil(count) then
 		InventoryScreen.pickUpFromSlot(screen, side :: any, slot :: any, count :: any)
 	end
@@ -95,7 +95,7 @@ function InventoryRequests.putDownInSlot(
 	slot: unknown,
 	count: unknown
 )
-	local screen = screenWithSlot(player, side, slot)
+	local screen = findScreenWithSlot(player, side, slot)
 	if screen ~= nil and isCountOrNil(count) then
 		InventoryScreen.putDownInSlot(screen, side :: any, slot :: any, count :: any)
 	end
@@ -104,7 +104,7 @@ end
 --- Exchanges the carried stack with the stack in a slot of the open screen. Does nothing if the
 --- slot does not accept the carried item.
 function InventoryRequests.swapCarriedStackWithSlot(_world: World, player: PlayerState, side: unknown, slot: unknown)
-	local screen = screenWithSlot(player, side, slot)
+	local screen = findScreenWithSlot(player, side, slot)
 	if screen ~= nil and InventoryScreen.canSwapCarriedStackWithSlot(screen, side :: any, slot :: any) then
 		InventoryScreen.swapCarriedStackWithSlot(screen, side :: any, slot :: any)
 	end
@@ -120,7 +120,7 @@ function InventoryRequests.swapSlots(
 	withSide: unknown,
 	withSlot: unknown
 )
-	local screen = screenWithSlot(player, side, slot)
+	local screen = findScreenWithSlot(player, side, slot)
 	if screen == nil or not InventoryScreen.hasSlot(screen, withSide, withSlot) then
 		return
 	end
@@ -141,7 +141,7 @@ function InventoryRequests.moveFromSlotToInventory(
 	toFirstSlot: unknown,
 	toLastSlot: unknown
 )
-	local screen = screenWithSlot(player, side, slot)
+	local screen = findScreenWithSlot(player, side, slot)
 	if screen == nil or not InventoryScreen.hasSlot(screen, toSide, toFirstSlot) then
 		return
 	end
@@ -188,7 +188,7 @@ end
 function InventoryRequests.dropCarriedStack(world: World, player: PlayerState, direction: unknown, count: unknown)
 	local screen = player.screen
 	local character = player.character
-	local way = toDirection(direction)
+	local way = decodeDirection(direction)
 	if screen ~= nil and character ~= nil and way ~= nil and isCountOrNil(count) then
 		throwFromCharacter(world, InventoryScreen.takeCarriedStack(screen, count :: any), character, way)
 	end
@@ -205,9 +205,9 @@ function InventoryRequests.dropFromSlot(
 	direction: unknown,
 	count: unknown
 )
-	local screen = screenWithSlot(player, side, slot)
+	local screen = findScreenWithSlot(player, side, slot)
 	local character = player.character
-	local way = toDirection(direction)
+	local way = decodeDirection(direction)
 	if screen ~= nil and character ~= nil and way ~= nil and isCountOrNil(count) then
 		local inventory = InventoryScreen.getInventoryOnSide(screen, side :: any)
 		throwFromCharacter(world, Inventory.takeFromSlot(inventory, slot :: any, count :: any), character, way)
@@ -226,7 +226,7 @@ end
 --- `direction` points.
 function InventoryRequests.dropFromSelectedSlot(world: World, player: PlayerState, direction: unknown, count: unknown)
 	local character = player.character
-	local way = toDirection(direction)
+	local way = decodeDirection(direction)
 	if character ~= nil and way ~= nil and isCountOrNil(count) then
 		throwFromCharacter(world, Hotbar.takeFromSelectedSlot(player.hotbar, count :: any), character, way)
 	end

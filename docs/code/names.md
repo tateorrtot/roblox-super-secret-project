@@ -26,7 +26,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | Name | Means |
 |---|---|
 | `slot` | A slot number, from 1 |
-| `side` | Which of an open screen's two inventories: `"pack"` or `"other"` |
+| `side` | Which of an open screen's two inventories: `"pack"` or `"other"`. `PlotCollision` alone uses it for a side of a tile, in names that say so: `findNearestFreeSideOfTile` |
 | `itemId`, `count`, `stack`, `inventory`, `screen` | What they say |
 | `carriedStack` | The stack a player is moving between slots |
 | `player` | A `PlayerState`, in the rules |

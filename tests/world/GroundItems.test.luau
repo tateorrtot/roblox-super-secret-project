@@ -389,6 +389,56 @@ do -- merging: which ground items are looked at
 		"mergeItems: the two seconds are counted from when each ground item was spawned"
 	)
 
+	-- The two seconds are counted from a spawn time that is not a whole number just the same. The
+	-- times here are ones a number holds exactly, so that the edge falls where the test says.
+	local quarter = GroundItems.new()
+	local quarterFull = dropAt(quarter, ItemStack.new("log", 16), at(0, 0, 0), 0.25)
+	local quarterPart = dropAt(quarter, ItemStack.new("log", 3), at(1, 0, 0), 0.25)
+	GroundItems.mergeItems(quarter, 0.25)
+	local quarterPack = Inventory.new(1)
+	Inventory.addItems(quarterPack, "log", 10)
+	GroundItems.moveNearbyStacksToInventory(quarter, at(-RADIUS, 0, 0), quarterPack, 0.25 + DELAY)
+	GroundItems.mergeItems(quarter, 2.125)
+	check(
+		holds(quarter, quarterFull, "log", 10) and holds(quarter, quarterPart, "log", 3),
+		"mergeItems: a ground item spawned at a quarter past is not looked at again an eighth of a second early"
+	)
+	GroundItems.mergeItems(quarter, 2.25)
+	check(
+		groundItemCount(quarter) == 1 and itemsOnGround(quarter, "log") == 13,
+		"mergeItems: and is looked at again two seconds after it was spawned, to the moment"
+	)
+
+	-- A time no later than the last one looks at nothing that lies still.
+	local back = GroundItems.new()
+	local backFull = dropAt(back, ItemStack.new("log", 16), at(0, 0, 0), 0)
+	local backPart = dropAt(back, ItemStack.new("log", 3), at(1, 0, 0), 0)
+	GroundItems.mergeItems(back, 9)
+	local backPack = Inventory.new(1)
+	Inventory.addItems(backPack, "log", 10)
+	GroundItems.moveNearbyStacksToInventory(back, at(-RADIUS, 0, 0), backPack, 9)
+	GroundItems.mergeItems(back, 9)
+	check(
+		holds(back, backFull, "log", 10) and holds(back, backPart, "log", 3),
+		"mergeItems: given the same time again, it looks at no ground item that lies still"
+	)
+	GroundItems.mergeItems(back, 4)
+	check(
+		holds(back, backFull, "log", 10) and holds(back, backPart, "log", 3),
+		"mergeItems: given an earlier time, it looks at no ground item that lies still"
+	)
+	local backSpawned = dropAt(back, ItemStack.new("log", 2), at(1, 0, 0), 4)
+	GroundItems.mergeItems(back, 3)
+	check(
+		back.itemsById[backSpawned] == nil and holds(back, backPart, "log", 5),
+		"mergeItems: given an earlier time, it still looks at one that was spawned since"
+	)
+	GroundItems.mergeItems(back, 5)
+	check(
+		groundItemCount(back) == 1 and itemsOnGround(back, "log") == 15,
+		"mergeItems: and when time goes on again, the ones that lie still are looked at as before"
+	)
+
 	-- One that was spawned since the last run is looked at whatever the time. The one it lies
 	-- beside is not, and is merged with all the same.
 	local fresh = GroundItems.new()

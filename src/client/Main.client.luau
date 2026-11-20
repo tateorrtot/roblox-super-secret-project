@@ -70,12 +70,13 @@ local mouseButtons: { [Enum.UserInputType]: SlotGestures.Button } = {
 }
 
 --- The camera is in first person when it is nearer than this to the point it turns about, in
---- studs. Roblox's own camera scripts go into first person below this distance, where they hold
---- the camera half a stud from that point, and no property says that they have.
-local FIRST_PERSON_WITHIN = 1
+--- studs.
+--- Note: no property of the camera says that it is in first person. Roblox's own camera scripts
+--- go into first person below this distance, and then hold the camera half a stud from that point.
+local CAMERA_IN_FIRST_PERSON_WITHIN = 1
 
 local function isCameraInFirstPerson(camera: Camera): boolean
-	return (camera.Focus.Position - camera.CFrame.Position).Magnitude < FIRST_PERSON_WITHIN
+	return (camera.Focus.Position - camera.CFrame.Position).Magnitude < CAMERA_IN_FIRST_PERSON_WITHIN
 end
 
 --- The way a stack the player drops is thrown. In first person it is the way the camera looks, up

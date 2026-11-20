@@ -12,8 +12,8 @@ local Direction = {}
 export type Direction = { read x: number, read y: number, read z: number }
 
 --- Returns the direction in which `x`, `y` and `z` point, whatever their length, as a value that
---- cannot be changed. They are any three numbers that are not infinite, however small or large.
---- Returns `nil` if all three are 0, which points nowhere.
+--- cannot be changed. They are any three numbers, however small or large, that are neither
+--- infinite nor NaN. Returns `nil` if all three are 0, which points nowhere.
 function Direction.new(x: number, y: number, z: number): Direction?
 	local largest = math.max(math.abs(x), math.abs(y), math.abs(z))
 	if largest == 0 then
