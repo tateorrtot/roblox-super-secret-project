@@ -29,6 +29,7 @@ entities: things that move
 - **Walking is Roblox's.** `PathfindingService` makes the path. One library that exists wraps it well and is one day old (`docs/research/25-library-audit-npc-brains.md`): it is a model to copy from, and not yet a thing to depend on.
 
 Open, and the user's to decide:
+- [ ] **Whether a thing that lies on the ground is an entity.** The user, late on 2026-11-21: "isnt it an entity? like we should have some kinda entity library no?" Of the `ground-items` library, six of `Ground`'s eight functions and one of `Drop`'s four fields are what any thing in a world needs: the list, adding and removing, what is in a box, and saving. The rest is only a drop's.
 - [ ] **The word.** Minecraft says entity, and mob for one that acts. Roblox has a character, which is a `Model` with a `Humanoid`. The user said creature.
 - [ ] **What an NPC is made of.** A Roblox character that the engine moves, or a record on the server that each client draws. `docs/game/decisions.md` says the second, for helpers, from before any was built.
 - [ ] **How many at once,** since that decides the answer above. No number is written down.
