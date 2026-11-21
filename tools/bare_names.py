@@ -28,6 +28,11 @@ def sheet_for(path):
         types.append((found.start(), found.group(1), re.findall(r'^\t(?:read )?(\w+): ', found.group(2), re.MULTILINE)))
     for found in re.finditer(r'^export type (\w+)(?:<[^>\n]*>)? = \{ (.*) \}$', text, re.MULTILINE):
         types.append((found.start(), found.group(1), re.findall(r'(?:^|, )(?:read )?(\w+): ', found.group(2))))
+    # A type may also be another type with more fields: `export type Crate = Plot.PlacedObject & {`.
+    extended = r'^export type (\w+)(?:<[^>\n]*>)? = ([\w.]+) & \{\n(.*?)^\}'
+    for found in re.finditer(extended, text, re.MULTILINE | re.DOTALL):
+        fields = re.findall(r'^\t(?:read )?(\w+): ', found.group(3), re.MULTILINE)
+        types.append((found.start(), f'{found.group(1)} is a {found.group(2)}, and', fields))
     for _, name, fields in sorted(types):
         if fields:
             lines.append(f'  a {name} has: ' + ', '.join(fields))

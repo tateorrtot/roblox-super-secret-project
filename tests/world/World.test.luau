@@ -1098,6 +1098,44 @@ do -- time passing: picking up
 	)
 end
 
+do -- time passing: picking up into a pack with too little room
+	-- Player 1 stands at the origin, far from the plot, with a pack of two slots: 10 logs and nothing.
+	local world = World.new(Plot.new(2, 2), at(100, 0, 100), 0)
+	local pack = Inventory.new(2)
+	Inventory.setStack(pack, 1, ItemStack.new("log", 10))
+	World.addPlayer(world, 1, pack)
+	World.setCharacterPosition(world, 1, at(0, 0, 0))
+	local far = World.spawnStack(world, ItemStack.new("log", 16), at(3, 0, 0), { x = 5, y = 0, z = 0 })
+	local near = World.spawnStack(world, ItemStack.new("fish", 8), at(1, 0, 0), STILL)
+	World.advanceTo(world, 10)
+	check(
+		is(Inventory.getStack(pack, 2), "fish", 8) and world.groundItems.itemsById[near] == nil,
+		"advanceTo: the nearest ground item is picked up first, and one that fits whole is gone from the ground"
+	)
+	check(
+		is(Inventory.getStack(pack, 1), "log", 16),
+		"advanceTo: a ground item that fits in part goes into the pack as far as it fits"
+	)
+	local rest = world.groundItems.itemsById[far]
+	check(
+		rest ~= nil and is(rest.stack, "log", 10) and groundItemCount(world) == 1,
+		"advanceTo: and what did not fit stays on the ground, in the same ground item"
+	)
+	check(
+		rest ~= nil and isAt(rest, 3, 0, 0) and rest.spawnTime == 0 and wasSpawnedMovingAt(rest, 5, 0, 0),
+		"advanceTo: which lies where it lay and is as old as it was"
+	)
+	World.advanceTo(world, 11)
+	check(
+		groundItemCount(world) == 1 and is(world.groundItems.itemsById[far].stack, "log", 10),
+		"advanceTo: a ground item that none of fits stays on the ground whole"
+	)
+	check(
+		is(Inventory.getStack(pack, 1), "log", 16) and is(Inventory.getStack(pack, 2), "fish", 8),
+		"advanceTo: and the pack is as it was"
+	)
+end
+
 do -- time passing: ground items expire
 	local world = newWorld()
 	World.spawnStack(world, ItemStack.new("fish", 2), at(30, 0, 30), STILL)

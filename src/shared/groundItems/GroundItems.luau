@@ -5,20 +5,19 @@
 --- A ground item is a stack, the position it is at, the velocity it was spawned with and the time
 --- it was spawned. `spawnStack` makes one. Nothing here moves a ground item afterwards:
 --- `setItemPosition` records where it has got to. `mergeItems` makes ground items of the same item
---- that are close together into one. `moveNearbyStacksToInventory` moves ground items into an
---- inventory, `removeItem` takes one out of the world, and `removeExpiredItems` removes the ones
---- that have been out too long. Ground items are numbered from 1 in the order they were spawned,
---- and a number is never used twice. Time is a number of seconds, passed in as `now`, from any
---- clock that only goes forward. Positions and distances are in studs. Ground items are never
---- saved.
-local Inventory = require("../inventory/Inventory")
+--- that are close together into one. `getItemIdsInPickupReach` says which ground items can be
+--- picked up from a position, and `setItemStack` changes what one holds, so that whoever picks one
+--- up can leave on the ground what they had no room for. `removeItem` takes one out of the world,
+--- and `removeExpiredItems` removes the ones that have been out too long. Ground items are
+--- numbered from 1 in the order they were spawned, and a number is never used twice. Time is a
+--- number of seconds, passed in as `now`, from any clock that only goes forward. Positions and
+--- distances are in studs. Ground items are never saved.
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
 
 local GroundItems = {}
 
 type ItemStack = ItemStack.ItemStack
-type Inventory = Inventory.Inventory
 
 --- A point in the world, in studs.
 export type Position = Position.Position
@@ -26,8 +25,8 @@ export type Position = Position.Position
 --- How fast a thing moves along each axis, in studs a second. `y` is upwards.
 export type Velocity = { read x: number, read y: number, read z: number }
 
---- One stack loose in the world. It never changes: when its position is set, or part of it is
---- picked up, a new ground item takes its place under the same id.
+--- One stack loose in the world. It never changes: when its position or its stack is set, a new
+--- ground item takes its place under the same id.
 export type GroundItem = {
 	read stack: ItemStack,
 	--- Where it is: the middle of its underside.
@@ -57,17 +56,18 @@ export type GroundItems = {
 --- How long a ground item lasts before `removeExpiredItems` removes it, in seconds.
 GroundItems.LIFETIME_SECONDS = 300
 
---- How long after it was spawned a ground item cannot be picked up, in seconds.
+--- How long after it was spawned a ground item is left out of what `getItemIdsInPickupReach`
+--- returns, in seconds.
 GroundItems.PICKUP_DELAY_SECONDS = 1.5
 
---- How near a position must be to a ground item, along the ground, for
---- `moveNearbyStacksToInventory` to pick it up, in studs.
+--- How near a position must be to a ground item, along the ground, for the ground item to be in
+--- pickup reach of it, in studs.
 GroundItems.PICKUP_RADIUS = 4
 
---- How far above the position `moveNearbyStacksToInventory` picks up from, in studs.
+--- How far above a position a ground item may be and still be in pickup reach of it, in studs.
 GroundItems.PICKUP_REACH_UP = 7
 
---- How far below the position `moveNearbyStacksToInventory` picks up from, in studs.
+--- How far below a position a ground item may be and still be in pickup reach of it, in studs.
 GroundItems.PICKUP_REACH_DOWN = 2
 
 --- How wide, deep and tall a ground item is, in studs: it takes up a cube this wide, standing on
@@ -240,44 +240,37 @@ function GroundItems.removeItem(groundItems: GroundItems, id: number): ItemStack
 	return if groundItem then groundItem.stack else nil
 end
 
-local function moveIntoInventory(groundItems: GroundItems, id: number, inventory: Inventory): number
+--- Returns the ids of the ground items in pickup reach of `position` at the time `now`, as a new
+--- list: the nearest in a straight line first, and of two equally near, the one with the lower
+--- id. A ground item is in pickup reach if it is within `PICKUP_RADIUS` of `position` along the
+--- ground, and no more than `PICKUP_REACH_UP` above it or `PICKUP_REACH_DOWN` below it. A ground
+--- item spawned less than `PICKUP_DELAY_SECONDS` before `now` is left out.
+function GroundItems.getItemIdsInPickupReach(groundItems: GroundItems, position: Position, now: number): { number }
+	local ids = {}
+	for _, id in idsNearestFirst(groundItems, position, isInPickupReach) do
+		if now - groundItems.itemsById[id].spawnTime >= GroundItems.PICKUP_DELAY_SECONDS then
+			table.insert(ids, id)
+		end
+	end
+	return ids
+end
+
+--- Makes the ground item `id` hold `stack`, and discards the stack it held. It stays where it is
+--- under the same id, with the velocity and the time it was spawned with. If `stack` is `nil`, the
+--- ground item is taken out of the world. Does nothing if no ground item has that id.
+function GroundItems.setItemStack(groundItems: GroundItems, id: number, stack: ItemStack?)
 	local groundItem = groundItems.itemsById[id]
-	local stack = groundItem.stack
-	local added = Inventory.addItems(inventory, stack.itemId, stack.count)
-	if added == stack.count then
-		groundItems.itemsById[id] = nil
-	elseif added > 0 then
-		groundItems.itemsById[id] = table.freeze({
-			stack = ItemStack.new(stack.itemId, stack.count - added),
+	if groundItem == nil then
+		return
+	end
+	groundItems.itemsById[id] = if stack == nil
+		then nil
+		else table.freeze({
+			stack = stack,
 			position = groundItem.position,
 			spawnVelocity = groundItem.spawnVelocity,
 			spawnTime = groundItem.spawnTime,
 		})
-	end
-	return added
-end
-
---- Moves the ground items in reach of `position` into `inventory`, as far as they fit, and
---- returns how many items moved. A ground item is in reach if it is within `PICKUP_RADIUS` of
---- `position` along the ground, and no more than `PICKUP_REACH_UP` above it or
---- `PICKUP_REACH_DOWN` below it. A ground item spawned less than `PICKUP_DELAY_SECONDS` before
---- `now` is left alone. The nearest in a straight line is picked up first, and of two equally
---- near, the one with the lower id. In the inventory, stacks of the same item are topped up first
---- and then slots that hold nothing are filled, lowest slot first. When only part of a ground item
---- fits, the rest stays in the world under the same id, spawned at the same time.
-function GroundItems.moveNearbyStacksToInventory(
-	groundItems: GroundItems,
-	position: Position,
-	inventory: Inventory,
-	now: number
-): number
-	local moved = 0
-	for _, id in idsNearestFirst(groundItems, position, isInPickupReach) do
-		if now - groundItems.itemsById[id].spawnTime >= GroundItems.PICKUP_DELAY_SECONDS then
-			moved += moveIntoInventory(groundItems, id, inventory)
-		end
-	end
-	return moved
 end
 
 --- Removes every ground item that was spawned `LIFETIME_SECONDS` or more before `now`. Their
