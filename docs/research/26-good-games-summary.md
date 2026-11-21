@@ -1,6 +1,6 @@
 # How good Roblox games are made and built: what six briefs found
 
-The user asked for this on the night of 2026-11-21: "research how to make good roblox games and roblox architecture". Six readers on Sonnet each wrote a brief, and a second reader checked each against its sources. This page is Claude's reading of the six, after the second reading. It keeps what a source states, and it marks what is only Claude's inference for this game. Each brief lists what its checker found wrong: 16 claims in all, and 30 lines of advice that went further than their evidence.
+The user asked for this on the night of 2026-11-21: "research how to make good roblox games and roblox architecture". Six readers on Sonnet each wrote a brief, and a second reader checked each against its sources. This page is Claude's reading of the six, after the second reading. It keeps what a source states, and it marks what is only Claude's inference for this game. Each brief lists what its checker found wrong: 20 claims in all (2 in the brief on discovery, 4 on the first session, 5 on long life, 2 on devices, 4 on architecture, 3 on sandbox design), and 39 lines of advice that went further than their evidence.
 
 ## What decides whether Roblox shows a game (`26-good-games-discovery.md`)
 From Roblox's own pages, dated 2026-11-20, and its post of 2026-06-15:
