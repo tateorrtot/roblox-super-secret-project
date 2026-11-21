@@ -6,7 +6,7 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - **Whether the keys move onto Roblox's input actions next, before prediction** (`next.md`). Asked on 2026-11-20.
 - **Whether the scripts read right to them:** `ItemScripts` and `PlacedObjectScripts`, and the game's things in `src/shared/content`. The names and shapes that are Claude's are in `claudes-calls.md`, with the four names a cold reader doubted in `history/2026-11-20-scripts-and-input.md`.
-- **Whether the quick move's request should take the slot alone,** with the server choosing where the stack goes (`next.md`). Asked on 2026-11-21, after they called its seven values "over the top".
+- **Whether the comment of `InventoryRequests.moveFromSlotToInventory` is now as concrete as they mean.** It is the sample for every other comment (`next.md`). Asked on 2026-11-21.
 - **What to call `screen` and `side`.** They read `screen` as a GUI and `side` as a side of the player (`next.md`).
 - **Whether an item's look is a ModuleScript for each item,** with one function for what a slot shows and one for what the world shows (`next.md`). Drawn for them on 2026-11-21 as "a look piece", which they could not read.
 - **What to call the thing that a plot becomes.** They asked: "is "Plot" the best word here? Were basically taking the existing concept of a plot and giving it physics - no?" Claude answered that a plot is land with an owner in every Roblox building game, that a tree or a vehicle reads oddly as a plot, and that they will want the word for "multiple plots with associated owners". The choice is theirs (`next.md`).

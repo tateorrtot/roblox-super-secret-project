@@ -17,6 +17,8 @@ The rules come from three places:
 - **Nothing else.** A private helper gets a name that says what it does. A function's body has no comment. A script that runs by itself, `Main.server` or `Main.client`, may keep a plain `--` comment over a block where the engine sets a trap.
 
 ## What a comment says
+- **Every noun is a thing the reader can point at:** an argument, a field, a type, or a literal value, in backticks. Claude wrote "Moves the whole stack out of one slot of the player's open screen". The user, 2026-11-21: "What is the whole stack? What is one slot? [Didnt you literally define it as an argument!] ... you say things that sound good at first glance but can be done so much more concretley." It is now "Moves the `ItemStack` in `slot`", and the open screen is `player.screen`.
+- **Each argument is said to be what it is,** one to a line: its values or its type, and the field that it stands for. "`side`: `"pack"` or `"other"`. It picks the inventory that `slot` is in: `"pack"` is `player.screen.pack`".
 - **Everything a caller needs:** what changes, what the function returns, and what happens in each case a caller can meet.
 - **Only what is true of the code.** Read the function before writing its comment. If the comment and the code disagree, the comment changes.
 - **What is, never what was.** No history, no date, and no reason from a review.
@@ -66,7 +68,7 @@ Godot's rules. Each pair is a comment of `Plot` before and after the pass of 202
 ## What a page needs
 The user opened one method's page on 2026-11-21 and could not read it: "what the hell is a side", and of the code spans, "they look like broken hyperlinks. That repeat the word before them sometimes?" Their words are in `docs/working/code-reviews/2026-11-21-2-what-is-a-side.md`.
 - **A page uses no word that it does not explain or link.** A reader lands on one method and reads nothing else. Where an argument's type does not say what the argument is, the comment says so, or names the type in full so that the page links to it: "`side` is an `InventoryScreen.Side`".
-- **A function with four or more arguments lists them,** one to a line, each with what it is.
+- **The sample is `InventoryRequests.moveFromSlotToInventory`,** written to the two rules at the top of "What a comment says". The other comments are not yet brought to them: that waits on the user's word on the sample.
 - **An example is a file in `demos`, named for its module:** `demos/Plot.luau`. `lune run tools/check` runs every one, and the module's page shows the file with what it prints. Writing one is also the test of the interface: if the example is hard to write, the interface is hard to use.
 
 ## Layout

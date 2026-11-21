@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code sixteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code seventeen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 In a file's name, the number counts the reviews of that day. For 2026-11-20 it is one less than the review's place in this list.
 
@@ -22,13 +22,17 @@ In a file's name, the number counts the reviews of that day. For 2026-11-20 it i
 | 14 | `2026-11-20-13-contained-spaghetti.md` | "who said colour? Are you coupling visuals to logic?" How a thing looks is a black box. "so i said the plots are 3D did i not...?" One noun for one thing. Systems, and content that glues them "in a messy frenzy". "again making up a lot of words to say other simple already defined things" |
 | 15 | `2026-11-21-1-grids-on-bodies.md` | "why is there a colour..? Im confused" An item looks like a 2D texture or a 3D model, and no contract says which. "VoxelGrids on PhysicsBodies": a tree cut through falls. "who said we cant place things mid air? Or that Y is always up?" No floors or levels in the code |
 | 16 | `2026-11-21-2-what-is-a-side.md` | "What is "a look piece". be more concrete youre talking very lofty and abstract." One page of the reference, read for the first time: "what the hell is a side", code that looked like "broken hyperlinks", each word said twice. "this is slop lol". A request of seven values: "Why so over the top." |
+| 17 | `2026-11-21-3-concretely.md` | "I think you might've just done it again." A comment whose nouns point at nothing: "What is one slot? [Didnt you literally define it as an argument!]" "you say things that sound good at first glance but can be done so much more concretley." A change they could not follow: "why are you saying cut this thing?" |
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
 Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth. The fourteenth and the fifteenth came the same way, each from Claude's report on the work before. Their message after the fifteenth was direction and not a review: the reading of a plot confirmed, building and physics as two systems, and "The documentation must be *good*" (`docs/game/decisions.md`, `docs/code/comments.md`).
 
 ## What to check before showing them code
-These are Claude's readings of the sixteen reviews. The quotes are in the files.
+These are Claude's readings of the seventeen reviews. The quotes are in the files.
+
+- **Every noun points at a real thing.** In a comment, and in a message to them: an argument, a field, a type, a file, a value. "One slot of the player's open screen" is `slot`, `player`, and `player.screen`. A sentence that reads well and names nothing is the fault they have found three times in one day.
+- **No proposal to change code that they cannot yet read.** Claude asked whether to cut a request down, in words that took the code as known: "why are you saying cut this thing?" First make what is there readable. Then say why, in one plain sentence.
 
 - **Say the kind of thing, then one case with real numbers.** Claude wrote "a look piece" for a ModuleScript, and "takes the stack" where it meant the 12 logs in slot 1 of the pack: "be more concrete youre talking very lofty and abstract". A script, a function, a table, a part: name it as that first.
 - **A count comes with its list.** "Ten doubts stand" told them nothing: "Faults? What faults?" The count was wrong too.
@@ -87,4 +91,4 @@ These are Claude's readings of the sixteen reviews. The quotes are in the files.
 - **Have a helper apply their latest review to the result,** told to assume the author thinks it is mended and to quote the words each finding goes against. After the tenth, that helper found twelve things where the two ordinary reviewers found none of them.
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
-Each of the sixteen reviews found something the checks before it had passed. Expect a seventeenth.
+Each of the seventeen reviews found something the checks before it had passed. Expect an eighteenth.

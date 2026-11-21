@@ -148,17 +148,25 @@ function InventoryRequests.swapSlots(
 	end
 end
 
---- Moves the whole stack out of one slot of the player's open screen and into a run of other slots,
---- as `InventoryScreen.moveFromSlotToInventory` does.
---- - `side` and `slot` name the slot that the stack moves out of. `side` is an
---- `InventoryScreen.Side`.
---- - `toSide`, `toFirstSlot`, and `toLastSlot` name the slots that the stack moves into: the slots
---- numbered from `toFirstSlot` to `toLastSlot`, both included, in the inventory on `toSide`.
+--- Moves the `ItemStack` in `slot` into the slots from `toFirstSlot` to `toLastSlot`.
+--- - `world`: the `World`. This request does not read it.
+--- - `player`: the player whose client sent the request. The request acts on `player.screen`.
+--- - `side`: `"pack"` or `"other"`. It picks the inventory that `slot` is in: `"pack"` is
+--- `player.screen.pack`, and `"other"` is `player.screen.otherInventory`.
+--- - `slot`: a slot number in that inventory.
+--- - `toSide`: `"pack"` or `"other"`. It picks the inventory that the stack moves into, as `side`
+--- does.
+--- - `toFirstSlot`, `toLastSlot`: slot numbers in the inventory that `toSide` picks. The target
+--- slots are the slots numbered from `toFirstSlot` to `toLastSlot`, both included.
 ---
---- The request tops up the stacks of the same item in those slots first, and then fills the slots
---- that hold nothing. Items that do not fit stay in `slot`. Does nothing if no screen is open, or
---- if `side` and `slot`, `toSide` and `toFirstSlot`, or `toSide` and `toLastSlot` name no slot of
---- it.
+--- Moves as many of the stack's `count` items as fit. First, adds items to each target slot that
+--- holds an `ItemStack` with the same `itemId`, until that stack reaches its item's `stackSize`.
+--- Then, puts the items that are left into the target slots that hold `nil`. Skips a target slot
+--- that `InventoryScreen.slotAcceptsItem` returns `false` for, and skips `slot` itself if `side`
+--- equals `toSide`. The items that do not fit stay in `slot`.
+---
+--- Does nothing if `player.screen` is `nil`, or if `InventoryScreen.hasSlot` returns `false` for
+--- `side` and `slot`, for `toSide` and `toFirstSlot`, or for `toSide` and `toLastSlot`.
 function InventoryRequests.moveFromSlotToInventory(
 	_world: World,
 	player: PlayerState,
