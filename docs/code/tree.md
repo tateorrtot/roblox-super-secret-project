@@ -75,8 +75,9 @@ Open, and the user's to decide before any of this branch is built:
 - [ ] **Whether a plot owns what is built in it,** or only says who may build there.
 - [ ] **Whether a grid is kept at all,** since they want it as "a pure guideline rather than a set boundary".
 
-## Entities
-Parked by the user: "this one is complex maybe dont worry about it yet". Minecraft's word is entity. A dropped item is an entity there too, so `ground-items` may touch this branch.
+## Entities, and vehicles
+The user parked entities: "this one is complex maybe dont worry about it yet". Later that night they named vehicles and NPCs as the next parts. A first cut of both is in `docs/code/tree-next.md`. Minecraft's word is entity, and a dropped item is an entity there too, so `ground-items` may touch this branch.
 
-## What Roblox already has
-For each part above, `docs/research` has a brief of what Roblox offers, each checked by a second reader: the files whose names start with `23-roblox-first`.
+## What was looked up
+- **What Roblox already has,** for each part above: the files of `docs/research` whose names start with `23-roblox-first`, each checked by a second reader.
+- **Libraries that exist,** judged by their source against a checklist: the files whose names start with `24-library-audit` and `25-library-audit`. For inventory, things that lie in the world, signals, state machines, stats, NPC brains, and vehicles, the answer was to write our own. Each file names the nearest miss and what it lacks.
