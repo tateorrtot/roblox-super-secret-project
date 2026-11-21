@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Content = require(Shared.content.Content)
+local PlacedObjectKinds = require(Shared.content.PlacedObjectKinds)
 local Crate = require(Shared.content.Crate)
 local PlacedObjectScripts = require(Shared.requests.PlacedObjectScripts)
 local PlayerSnapshot = require(Shared.requests.PlayerSnapshot)
@@ -47,6 +48,10 @@ local placedObjectPieces: { [string]: PlotParts.PlacedObjectPiece } = {
 	[Crate.PLACED_OBJECT_KIND_ID] = CrateModel,
 	[Stove.PLACED_OBJECT_KIND_ID] = StoveModel,
 }
+for _, kind in PlacedObjectKinds.ALL do
+	local kindId = kind.PLACED_OBJECT_KIND_ID
+	assert(placedObjectPieces[kindId] ~= nil, `the kind of placed object "{kindId}" has no piece that shows it`)
+end
 
 Content.register()
 

@@ -4,9 +4,8 @@
 ---
 --- `getTargetAt` looks through the camera at a point and reads what it hits. A part inside a
 --- Model that has the attribute `placedObjectId` is a placed object, whatever the Model holds.
---- The top of a slab tagged `Plot`, which has the
---- attributes `cornerX`, `cornerY`, `cornerZ`, `widthInTiles` and `depthInTiles`, is a grid of
---- tiles.
+--- The top of a slab tagged `Plot`, which has the attributes `cornerX`, `cornerY`, `cornerZ`,
+--- `widthInTiles` and `depthInTiles`, is a grid of tiles.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

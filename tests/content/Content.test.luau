@@ -88,6 +88,10 @@ do -- what must agree between the things
 	end
 	for _, kind in PlacedObjectKinds.ALL do
 		check(
+			itemIdWhenBroken[kind.PLACED_OBJECT_KIND_ID] ~= nil,
+			'ITEM_ID_WHEN_BROKEN: the kind "' .. kind.PLACED_OBJECT_KIND_ID .. '" leaves an item when it is broken'
+		)
+		check(
 			PlacedObjectScripts.find(kind.PLACED_OBJECT_KIND_ID) == kind :: any,
 			'register: the kind "' .. kind.PLACED_OBJECT_KIND_ID .. '" is registered as the script of its own kind'
 		)

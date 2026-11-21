@@ -257,8 +257,8 @@ remotes.askForSnapshot:FireServer()
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
 --- A white outline around the placed object that the pointer is over, while the player's
---- character reaches it. It is Roblox's own SelectionBox, and its `Adornee` is the part it is
---- around.
+--- character reaches it. It is Roblox's own SelectionBox, and its `Adornee` is the placed
+--- object's Model.
 local pointerOutline = Instance.new("SelectionBox")
 pointerOutline.Name = "PointerOutline"
 pointerOutline.LineThickness = 0.05
