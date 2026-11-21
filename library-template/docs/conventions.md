@@ -54,6 +54,7 @@ Tate, 2026-11-20: "if you say "jump" dont have a check inside that method. Check
 - A check's message says what should be true, and starts with the name of the function it is about.
 - `Check.raises` also requires the error to blame the calling script.
 - A test never reaches into a thing's fields to set them up when a function of the module can.
+- **A test uses numbers that are not round** as well as ones that are: `8.25` and `1.1`, and not only `8` and `1`. A function that searches is also tested against the plain search that it replaces, over many made-up inputs.
 - **Each module has an example in `demos`, named for it,** that runs and prints. Writing it is the test of the interface: if the example is hard to write, the interface is hard to use.
 - **The cases in `README.md` are tests.** Each case that the page says the library serves has a test or a demo that shows it served, with no change to the library.
 
@@ -64,5 +65,6 @@ Tate, 2026-11-20: "if you say "jump" dont have a check inside that method. Check
 4. `python tools/unused.py` lists no function: every public function is called in `src`, in a demo, or in a case of the page.
 5. Its names pass the names test in `names.md`.
 6. A cold reader, shown one page of the reference and nothing else, can say what each member does.
+7. A skeptic, told that the library is finished, ran probes against it and found no way to make data, lose data, or leave a thing half-changed. The skeptic uses numbers that are not round: two libraries passed every check and every mutation run with a fault at an edge that no round number met.
 
 A passing check says that the code does what was written. It never says that the design is right: a reader does that.
