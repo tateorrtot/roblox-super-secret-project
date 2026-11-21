@@ -46,7 +46,7 @@ Tate (@tateorrtot) is an experienced programmer and Godot architect who is new t
 2. **A page before code.** A library's `README.md` says what it is and why it exists, the cases it serves, its name and the names rejected, each decision with its reason, its files, its signatures, its rules of use, and what is open. Tate reads the page first.
 3. **One job each.** A function does one thing, every time. Two jobs are two functions, and whoever uses them calls them in turn. A check is a separate `can...` or `is...`.
 4. **No contract nobody asked for.** Count what a type has room for (one, two, "someone is there") and ask who said so. Never invent a concept to route between two things: pass the thing itself.
-5. **Roblox first.** Before building a thing, say what Roblox already has for it and why that will not do.
+5. **Roblox first, then a library that exists.** Before building a thing, say what Roblox already has for it and why that will not do. Then look for a library that already does it. Tate, 2026-11-21: "if a library existing with everything I want lets use it ... If not custom. If youre unsure, custom." Judge a library by its source, not its README.
 6. **Checked, and said plainly.** The folder's own check must pass. A passing check says that the code does what was written. It never says that the design is right: a reader does that.
 7. **Names, code, and comments** follow `docs/names.md`, `docs/conventions.md`, and `docs/comments.md` of the folder you are in. Read them before changing code.
 
