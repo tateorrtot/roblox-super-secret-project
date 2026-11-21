@@ -97,3 +97,14 @@ Read by one reader on Sonnet, on 2026-11-21, from create.roblox.com/docs pages w
 - https://create.roblox.com/docs/workspace/streaming.md
 - Disagreement: collisions.md states no maximum number of collision groups; PhysicsService.md gives 32.
 - Disagreement: proximity-prompts.md says `RequiresLineOfSight` defaults to true; ProximityPrompt.md states no default.
+## Checked by a second reader
+- Claims checked: 26. Confirmed: 19. Wrong: 3. Unconfirmed: 5 (listed below).
+- Wrong: `BasePart.CanQuery`. The brief says parts with `CanQuery` false are never included, and omits a condition. BasePart.md says "CanCollide must be disabled for CanQuery to take effect". https://create.roblox.com/docs/reference/engine/classes/BasePart.md
+- Wrong: the line 98 "disagreement" over collision group limits. collisions.md says nothing about a maximum. It does not disagree with PhysicsService.md, which gives 32 through `GetMaxCollisionGroups()`. https://create.roblox.com/docs/workspace/collisions.md
+- Wrong: the line 57 source. collisions.md does not mention `RaycastParams.CollisionGroup` (only a plugin tip) nor the 100-character limit. The facts are true, from https://create.roblox.com/docs/reference/engine/datatypes/RaycastParams.md and BasePart.md.
+- Unconfirmed: "Equipping moves the `Tool` from the `Backpack` into the `Player.Character`". Tool.md as fetched did not say this.
+- Unconfirmed: `DragDetector` physical-mode settings `MaxTorque` and `Responsiveness` apply only to unanchored parents. DragDetector.md says this only of `MaxForce`.
+- Unconfirmed: `OverlapParams` `RespectCanCollide` meaning, "exclusions win", and the advice against `BruteForceAllSlow` in live experiences. The page text returned was cut off or silent.
+- Unconfirmed: `StreamingMinRadius` content "never streams out". Streaming.md as fetched gave only the default of 64.
+- Unconfirmed: `ClickDetector.MouseClick` event arguments, and that `DragDetector` is placed under a `BasePart` or `Model`. Not read.
+- Confirmed (examples): `CanBeDropped`, `RequiresHandle`, `ManualActivationOnly`, `EquipTool` unequipping others, `ProximityPrompt` defaults and client events, `MaxIndicatorsVisible` 16 and 0 to 64, `RequiresLineOfSight` default true (proximity-prompts.md only), `ClickDetector` deepest-fires rule, `RunLocally`, spatial query methods, `TouchesUseCollisionGroups`, `RegisterCollisionGroup`, streaming defaults and rules.

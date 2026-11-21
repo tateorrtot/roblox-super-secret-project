@@ -80,3 +80,36 @@ How games with slot inventories relate to `Tool` (forum threads, from search sum
 - https://devforum.roblox.com/raw/1015502
 - https://devforum.roblox.com/raw/2873576
 - Search-summary-only (not opened): the devforum.roblox.com/t/ URLs listed above.
+
+## Checked by a second reader
+Read on 2026-11-21. Pages were read through a summarising fetch, so quotes below are the summary's, not word for word.
+- Claims checked: 24 (lines 8 to 35, 38 to 40, 47, 52 of the brief above).
+- Confirmed: 13 groups of claims (listed below). Wrong (partly): 3. Unconfirmed: 6 items.
+
+### Confirmed
+- `Tool` description and inheritance (`BackpackItem`, `Model`, `PVInstance`, `Instance`). https://create.roblox.com/docs/reference/engine/classes/Tool.md
+- `Tool` properties `CanBeDropped` (Backspace), `Grip` (`CFrame`), `ManualActivationOnly`, `RequiresHandle`, `ToolTip`; `Tool:Activate()` and `Tool:Deactivate()` need an equipped tool; `Activated` does not fire with Ctrl held; `Equipped` and `Unequipped` do not fire when `RequiresHandle` is true and there is no handle. Same page.
+- `BackpackItem` is `NotCreatable`; its `TextureId` is the icon shown in the backpack. https://create.roblox.com/docs/reference/engine/classes/BackpackItem.md
+- `Backpack` has no members of its own; `Tool` objects in it show as icon buttons; it is refilled from `StarterPack` and `StarterGear` on spawn; on death the client destroys it and makes a new one. https://create.roblox.com/docs/reference/engine/classes/Backpack.md
+- `StarterPack` copies into each `Backpack` at character spawn. https://create.roblox.com/docs/reference/engine/classes/StarterPack.md
+- `StarterGear` is inserted into each `Player` on join and is player-specific. https://create.roblox.com/docs/reference/engine/classes/StarterGear.md
+- `Humanoid:EquipTool` first unequips all equipped tools; `Humanoid:UnequipTools` parents the tool to the `Backpack`, does nothing if none is equipped, works only for a `Humanoid` with a `Player`. https://create.roblox.com/docs/reference/engine/classes/Humanoid.md
+- `Enum.CoreGuiType.Backpack` has value 2. https://create.roblox.com/docs/reference/engine/enums/CoreGuiType.md
+- `StarterGui:SetCoreGuiEnabled(coreGuiType, enabled)` exists; its section does not name `Backpack`. https://create.roblox.com/docs/reference/engine/classes/StarterGui.md
+- The `Backpack` page says to call `SetCoreGuiEnabled` in a LocalScript. Backpack page above.
+- `players/tools.md`: StarterPack order is order added; a `ReplicatedStorage` clone affects one player; number hotkeys; activation by click, tap or gamepad back-right trigger; `RemoteEvent` carries client input to the server; page gives no slot count. https://create.roblox.com/docs/players/tools.md
+- The same page says tool events "fire only in LocalScripts" (line 40). The `Tool` page itself does not say where they fire. Its examples use LocalScripts.
+- DevForum 2873576 (12 March 2024) uses `SetCoreGuiEnabled(Enum.CoreGuiType.Backpack,false)` and names `HOTBAR_SLOTS_FULL`, with the instruction to set it to thirteen. https://devforum.roblox.com/t/2873576.json (the `/raw/` address returned an empty page here)
+
+### Wrong (partly)
+- Line 27: "ten tools fit, more go behind a button that shows the rest". The source thread (30 January 2021, three non-staff posters) has the button only in the original question. The replies say the slot count cannot be changed and the bar is designed for the 1 to 0 hotkeys, and that players choose which tools occupy the ten. No reply says more tools go behind a button. https://devforum.roblox.com/t/1015502.json (the `/raw/` address returned an empty page here)
+- Line 12: the quoted phrase "exist[s] only in the inventory" was not found. The `tools.md` page says a non-physical tool "simply occupies a player's inventory" and that `RequiresHandle` should be turned off. The meaning is the same. The quotation marks are not accurate. https://create.roblox.com/docs/players/tools.md
+- Line 9: "when false it cannot be activated and its events do not fire". The `Tool` page names only `Activate`, `Deactivate`, `Activated` and `Deactivated` as blocked. It does not say `Equipped` or `Unequipped` stop firing.
+
+### Unconfirmed
+- Line 11: "If blank, the interface shows the tool's name". The `BackpackItem` page text read does not say this.
+- Line 19: a `Tool` in Workspace is picked up "on touch". The page says collected tools are picked up automatically, with no collision code needed. "Touch" is not in the text read.
+- Line 33: the quote about moving "from the Backpack and into a Player.Character model in the Workspace", and "held in the right hand by default". Neither phrase was found in the `Tool` page text returned.
+- Line 28: `HOTBAR_SLOTS_MINI`. Not opened. Not found.
+- Lines 44 and 64 to 67: the forum threads from search summaries (`3542187`, `1425204`, `4717210`, `3619173`, `3120003`). Not opened by this reader.
+- Line 15: "if the place allows gear" is supported. "Differs per player" is supported. Nothing found on which gear is inserted beyond "appropriate gear Tools the player owns".
