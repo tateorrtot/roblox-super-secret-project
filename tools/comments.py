@@ -8,7 +8,8 @@ Run from the repository root:
 
 It fails if a module has no description or a brief description of more than 200 characters, if a public
 function, an exported type, a field of an exported type or a constant has no comment, if a function that
-returns a value never says "Returns", or if a comment uses a word the rules ban. Whether a comment is true,
+returns a value never says "Returns", if a comment says a word and then an argument of the same name, or
+if a comment uses a word the rules ban. Whether a comment is true,
 complete and well put is for a reader to judge: this only catches what can be matched.
 """
 import io
@@ -76,6 +77,9 @@ def check(path):
                 for found in re.finditer(pattern, text, re.IGNORECASE if 'Fired' not in pattern else 0):
                     problems.append((number, f'"{found.group(0)}": {why}'))
             passive += len(re.findall(PASSIVE, text))
+            for found in re.finditer(r'\b(\w+) `(\w+)`', stripped):
+                if found.group(1).lower() == found.group(2).lower():
+                    problems.append((number, f'"{found.group(0)}": say the argument alone, not a word and then the argument'))
         if stripped.startswith('---'):
             pending.append(line)
             continue

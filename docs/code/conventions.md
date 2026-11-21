@@ -21,7 +21,7 @@ The user's rule, 2026-11-20: "if you say "jump" dont have a check inside that me
 - **A function does what its name says, every time it is called.** It does not look first and quietly do nothing.
 - **The check is a function of its own,** named `can...` or `is...`, and the caller asks it first. A request from a client asks; a caller that means to force the thing does not.
 - **The same goes for a tool.** `python tools/studio.py sync` syncs. Whether the code passed its checks is another command's to say.
-- **An action that cannot be carried out fails loudly,** where going on would spoil the data, and its comment says so as Godot does: "Fails if ...". It never quietly does nothing.
+- **An action that cannot be carried out fails loudly,** where going on would spoil the data, and its comment says so: "Raises an error if ...". It never quietly does nothing.
 - **The pairs in the rules:** `Plot.canPlaceObject` and `World.canPlaceObject` before `Plot.placeObject` and a kind's `place`; `PlayerState.canOpenScreen` before `PlayerState.openScreen`; `InventoryScreen.canSwapCarriedStackWithSlot` and `canSwapSlots` before the two swaps.
 - **A function of a script is told that something happened, and what follows is its own to say.** `CrateItem.interactWithTile` is told that someone holding a crate item interacted with a tile. It asks `World.canPlaceObject`, and places a crate or does nothing. That is not a hidden check: its name promises that it is told, not that anything is placed.
 - A function that is asked to remove a thing that is not there has nothing to do, and that is not a check: `removeCharacter`, `closeScreen`.
@@ -67,7 +67,7 @@ Comments are written as Godot's class reference is. `comments.md` has the rules 
 - **A file opens with what the thing is, in a phrase** ("A countdown timer."), then at most a few sentences on how its main members work together.
 - **Each public function, type, field and constant says what it does or is, completely and in the piece's own words:** what changes, what is returned, and what happens in each case a caller can meet ("Starts the timer, or resets the timer if it was started already."). That is usually one to three sentences.
 - **A comment never defines behaviour by pointing outside the file.** Not at another game ("as in Minecraft"), not at a device ("what a double click does"), not at who calls it ("for the caller to put on the ground"), not at another comment. It refers to the piece's own members by name.
-- **"Note:" is for a trap.** A guard that is kept is stated as Godot states it: "Fails if ...".
+- **"Note:" is for a trap.** A guard that is kept is one sentence: "Raises an error if ...".
 - **No comment inside a function,** and no explanation of the language. Private helpers get clear names, not comments.
 - **The comments are the class reference.** `python tools/reference.py` makes a page for each module from them, laid out as a page of Godot's class reference is, and the user reads those pages before they read a script. The first paragraph of a file's comment is the page's brief description: what the thing is and does, in 200 characters or fewer.
 - **Godot's writing guidelines hold for every comment and every note.** The user sent them on 2026-11-20 (https://contributing.godotengine.org/en/latest/development/documentation/docs_writing_guidelines.html). In short:

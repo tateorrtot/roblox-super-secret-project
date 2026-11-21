@@ -7,7 +7,8 @@ Needs Python 3 and MkDocs (`python -m pip install mkdocs`). Run it from the repo
 
 The first command reads every module in `src` and writes a page for it under `build/reference/docs`, laid
 out as a page of Godot's class reference is: a brief description, what the module requires and what requires
-it, the description, the properties, the methods, the constants, and then each method's description. Every
+it, the description, the properties, the methods, the constants, and then each method's description. A module with a file of its own name in `demos`
+shows that file as its example, with what it prints. Every
 word on a page is the comment that stands over that thing in the code. Where a comment names a module or a
 member in backticks, the page links to it. The notes on how the code is written, in `docs/code`, are copied
 in as the contributing pages. The second command serves the pages at http://127.0.0.1:8000, with a search
@@ -18,6 +19,7 @@ import io
 import os
 import re
 import shutil
+import subprocess
 import sys
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -157,6 +159,72 @@ def link(text, top, module, own=None):
     return re.sub(r'`(\w+)(?:\.(\w+))?`', replace, text)
 
 
+def split_parameters(parameters):
+    """The parameters of a function, one to an entry, from what stands between its brackets."""
+    out, depth, current = [], 0, ''
+    for character in parameters:
+        if character in '({<[':
+            depth += 1
+        elif character in ')}]' or (character == '>' and not current.endswith('-')):
+            depth -= 1
+        if character == ',' and depth == 0:
+            out.append(current.strip())
+            current = ''
+        else:
+            current += character
+    if current.strip():
+        out.append(current.strip())
+    return out
+
+
+def signature_html(module, top, name, signature, aliases):
+    """A function's signature as HTML: one parameter to a line when there are several, and each type linked to its page."""
+    parameters, returns = split_signature(signature)
+    members = MODULES[(top, module)]['members']
+
+    def link_types(written):
+        def replace(found):
+            first, second = found.group(1), found.group(2)
+            if second is None and first in aliases:
+                first, second = aliases[first]
+            key = find_module(first, top) if second is not None else None
+            if key and second in MODULES[key]['members']:
+                page = '' if key == (top, module) else MODULES[key]['page'].replace('.md', '.html')
+                return f'<a href="{page}#{MODULES[key]["members"][second]}">{found.group(0)}</a>'
+            if second is None and members.get(first, '').startswith('type-'):
+                return f'<a href="#{members[first]}">{first}</a>'
+            return found.group(0)
+        escaped = written.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        return re.sub(r'\b([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?', replace, escaped)
+
+    # A parameter that the function does not use is written with an underscore before its name. The page leaves that out.
+    listed = [re.sub(r'^_(?=[a-z])', '', parameter) for parameter in split_parameters(parameters[1:-1])]
+    if len(listed) > 2 or len(signature) > 90:
+        inside = NEWLINE + (',' + NEWLINE).join(f'    {link_types(parameter)}' for parameter in listed) + NEWLINE
+    else:
+        inside = ', '.join(link_types(parameter) for parameter in listed)
+    tail = f': {link_types(returns)}' if returns else ''
+    return f'<pre class="signature"><b>{module}.{name}</b>({inside}){tail}</pre>'
+
+
+def example_of(module, top):
+    """The lines that show a module's example on its page: the file in `demos` named for it, and what it prints."""
+    demo = os.path.join(REPO, 'demos', module + '.luau')
+    if top != 'shared' or not os.path.exists(demo):
+        return []
+    code = io.open(demo, encoding='utf-8').read().strip()
+    out = ['## Example', '', f'The file `demos/{module}.luau`. `lune run tools/check` runs it, and fails if it raises an error.', '',
+           '```lua', code, '```', '']
+    lune = shutil.which('lune') or os.path.join(os.path.expanduser('~'), '.rokit', 'bin', 'lune.exe')
+    try:
+        printed = subprocess.run([lune, 'run', demo], cwd=REPO, capture_output=True, timeout=60).stdout.decode('utf-8').strip()
+    except (OSError, subprocess.TimeoutExpired):
+        printed = ''
+    if printed:
+        out += ['It prints:', '', '```text', printed.replace(chr(13), ''), '```', '']
+    return out
+
+
 def module_links(keys):
     """A list of modules as links to their pages, by name, or the word nothing."""
     names = sorted(set(keys), key=lambda key: (key[1].lower(), key[0]))
@@ -176,6 +244,12 @@ def page_for(path, folder):
 
     def linked(text, own=None):
         return link(text, top, module, own)
+
+    aliases = {}
+    for line in lines:
+        alias = re.match(r'^type (\w+) = (\w+)\.(\w+)$', line)
+        if alias:
+            aliases[alias.group(1)] = (alias.group(2), alias.group(3))
     index = 1 if lines and lines[0].startswith('--!') else 0
     header = []
     while index < len(lines) and lines[index].startswith('---'):
@@ -214,6 +288,7 @@ def page_for(path, folder):
            f'**Requires:** {module_links(requires)}', '', f'**Required by:** {module_links(required_by)}', '']
     if description:
         out += ['## Description', '', linked(description), '']
+    out += example_of(module, top)
     if fields:
         out += ['## Properties', '', '| Property | Value |', '|---|---|']
         out += [f'| `{name}` | `{in_cell(written)}` |' for name, written, _ in fields] + ['']
@@ -231,7 +306,8 @@ def page_for(path, folder):
         out += ['## Methods', '', '| Returns | Method |', '|---|---|']
         for name, signature, _ in functions:
             parameters, returns = split_signature(signature)
-            out.append(f'| `{in_cell(returns) or "nothing"}` | [{name}](#{anchors[name]}) `{in_cell(parameters)}` |')
+            shown = re.sub(r'([(,] ?)_(?=[a-z])', lambda found: found.group(1), parameters)
+            out.append(f'| `{in_cell(returns) or "nothing"}` | [{name}](#{anchors[name]}) `{in_cell(shown)}` |')
         out.append('')
     if constants:
         out += ['## Constants', '']
@@ -240,7 +316,8 @@ def page_for(path, folder):
     if functions:
         out += ['## Method Descriptions', '']
         for name, signature, comment in functions:
-            out += [f'### {name} {{#{anchors[name]}}}', '', '```lua', signature, '```', '', linked(comment, name), '']
+            out += [f'### {name} {{#{anchors[name]}}}', '', signature_html(module, top, name, signature, aliases), '',
+                    linked(comment, name), '']
     return module, NEWLINE.join(out), in_cell(linked(brief))
 
 
@@ -305,8 +382,17 @@ for source in ['docs/code/names.md', 'docs/code/conventions.md', 'docs/code/comm
     nav.append(f'    - "{title}": {page_name}')
 home.append('')
 
+# The theme draws code in red with a border, which reads as a broken link. Code is plain here, and a link is blue and underlined.
+STYLE = '''
+.rst-content code, .rst-content tt { color: inherit; border: none; background: rgba(127, 127, 127, 0.14); padding: 1px 4px; font-size: 90%; }
+.rst-content a, .rst-content a code { color: #2980b9; text-decoration: underline; }
+.rst-content a code { background: none; padding: 0; }
+.rst-content pre.signature { white-space: pre-wrap; padding: 10px 12px; margin: 0 0 12px; border: 1px solid rgba(127, 127, 127, 0.3); background: rgba(127, 127, 127, 0.08); font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+.rst-content pre.signature b { font-weight: 700; }
+'''
+io.open(os.path.join(OUT, 'docs', 'extra.css'), 'w', encoding='utf-8').write(STYLE)
 io.open(os.path.join(OUT, 'docs', 'index.md'), 'w', encoding='utf-8').write(NEWLINE.join(home))
 io.open(os.path.join(OUT, 'mkdocs.yml'), 'w', encoding='utf-8').write(NEWLINE.join([
     'site_name: Class reference', 'theme: readthedocs', 'docs_dir: docs', 'site_dir: site',
-    'use_directory_urls: false', 'markdown_extensions:', '  - attr_list', 'nav:'] + nav) + NEWLINE)
+    'use_directory_urls: false', 'extra_css:', '  - extra.css', 'markdown_extensions:', '  - attr_list', 'nav:'] + nav) + NEWLINE)
 print(f'wrote {count} pages to build/reference/docs')

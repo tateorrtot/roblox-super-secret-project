@@ -21,7 +21,7 @@ The rules come from three places:
 - **Only what is true of the code.** Read the function before writing its comment. If the comment and the code disagree, the comment changes.
 - **What is, never what was.** No history, no date, and no reason from a review.
 - **Nothing outside the file.** A comment never points at another game, a device, another comment, or whoever calls the function. It names the module's own members, and the members of other modules that the function calls.
-- **A guard** is one sentence: `Fails if ...`. Say what stays unchanged.
+- **A guard** is one sentence: `Raises an error if ...`. Say what stays unchanged. The comments said "Fails if" until a cold reader asked whether that meant an error or a `nil`.
 - **A trap** is a line that starts with `Note:`. A check that a function leaves out is a trap.
 - **No more than that.** One to three sentences is usual. If a shorter comment loses no fact, the shorter comment is better.
 
@@ -33,8 +33,8 @@ The rules come from three places:
 | Field or constant | A noun phrase, with its unit | The plot's width, in tiles along x. |
 | Boolean field | `If true, ...` | If `true`, a Shift key was down when the button came up. |
 | Signal | `Fires after ...`, then `Passes ...` | Fires after `placeObject` adds a placed object. Passes the placed object's id and the placed object. |
-| Function | A verb in the third person | Removes the placed object with the id `id` from the plot and returns it. |
-| Function that only answers | `Returns ...` | Returns `true` if a placed object stands on the tile `tileX`, `tileZ`. |
+| Function | A verb in the third person | Removes the placed object `id` from the plot and returns it. |
+| Function that only answers | `Returns ...` | Returns `true` if a placed object stands on the tile at `tileX`, `tileZ`. |
 
 A function that returns a value says so with the word `Returns` or `returns`.
 
@@ -46,12 +46,13 @@ Godot's rules. Each pair is a comment of `Plot` before and after the pass of 202
 | The active voice. The subject is the thing described, or whatever acts | Fired when an object has been placed | Fires after `placeObject` adds a placed object |
 | A precise verb. A comment never only says the function's name again | Places `placedObject` on the tile it names | Adds `placedObject` to the plot, on the tile `placedObject.tileX`, `placedObject.tileZ` |
 | No verb in `-ing` for a change that happens at once | Returns `nil`, changing nothing and firing nothing | Returns `nil`, changes nothing, and fires nothing |
-| No word that adds nothing | may be any values at all, and nothing fails | Accepts a value of any type for each, and never fails |
+| No word that adds nothing | may be any values at all, and nothing fails | Accepts a value of any type for each, and never raises an error |
 | The thing named again where `it` could be doubted | with the id it had | Passes the id that the placed object had |
 | `'s` for what belongs to a thing | How many tiles it has along x | The plot's width, in tiles along x |
 | A comma before the `and` or `or` that ends a list of three or more | changing nothing and firing nothing | changes nothing, and fires nothing |
 | A value that a caller passes or gets is a literal: digits, in backticks | counted from 1 | counted from `1` |
 | The defined word | the player's machine | the client |
+| The argument alone, never a word and then the argument of the same name | Returns the stack in the slot `slot` on the side `side` | Returns the stack in `slot` of the inventory on `side` |
 
 - **Never:** `obvious`, `simple`, `basic`, `easy`, `actual`, `just`, `clear`, `however`, their forms in `-ly`, `the former`, and `the latter`.
 - **`It` is fine** when it can only mean the subject of its own sentence, or the thing the comment stands over.
@@ -62,10 +63,18 @@ Godot's rules. Each pair is a comment of `Plot` before and after the pass of 202
 - **A signal fires and passes. A callback connects.** Those are Roblox's words.
 - **Backticks go around every argument, member, type, and literal value.** A member of this module is written by its bare name, `placeObject`. A member of another module is written in full, `Plot.placeObject`, and the reference makes it a link.
 
+## What a page needs
+The user opened one method's page on 2026-11-21 and could not read it: "what the hell is a side", and of the code spans, "they look like broken hyperlinks. That repeat the word before them sometimes?" Their words are in `docs/working/code-reviews/2026-11-21-2-what-is-a-side.md`.
+- **A page uses no word that it does not explain or link.** A reader lands on one method and reads nothing else. Where an argument's type does not say what the argument is, the comment says so, or names the type in full so that the page links to it: "`side` is an `InventoryScreen.Side`".
+- **A function with four or more arguments lists them,** one to a line, each with what it is.
+- **An example is a file in `demos`, named for its module:** `demos/Plot.luau`. `lune run tools/check` runs every one, and the module's page shows the file with what it prints. Writing one is also the test of the interface: if the example is hard to write, the interface is hard to use.
+
 ## Layout
 - `---` and a space, directly over the thing, wrapped at 100 columns with a tab counted as 4.
 - A bare `---` starts a new paragraph. A list item starts with `- `.
 
 ## How comments are checked
-- **`python tools/comments.py`** fails for a missing comment, a brief description over 200 characters, a function that returns a value and never says `Returns`, and each banned word or phrase. `lune run tools/check` runs it. With `--report` it counts the sentences that look passive, for a reader to judge.
-- **A script cannot tell whether a comment is true, complete, or well put.** A reader does that, against the function, and then on the page that `python tools/reference.py` makes.
+- **`python tools/comments.py`** fails for a missing comment, a brief description over 200 characters, a word followed by an argument of the same name, a function that returns a value and never says `Returns`, and each banned word or phrase. `lune run tools/check` runs it. With `--report` it counts the sentences that look passive, for a reader to judge.
+- **A script cannot tell whether a comment is true, complete, or well put.** A reader does that, against the function.
+- **Look at the page in a browser,** as the user will: `python tools/reference.py`, and then the page itself. Claude shipped 53 pages without opening one.
+- **A cold reader reads the page.** A fresh helper is shown one page and nothing else, says what each member does, and lists each word it could not explain from the page. A guess is a failure, as it is for a name (`names.md`).
