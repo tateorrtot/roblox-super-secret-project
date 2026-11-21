@@ -340,17 +340,19 @@ local function pickUpNearbyStacks(world: World, player: PlayerState)
 	end
 end
 
-local function closeScreenIfOutOfReach(world: World, player: PlayerState)
+--- Returns `true` if the player's screen is open on a placed object, and the player's character
+--- stands more than `SCREEN_CLOSES_BEYOND` from the middle of that placed object's tile, along the
+--- ground. Returns `false` if the player's screen is closed or shows the pack alone, or if the
+--- player has no character.
+function World.isOpenedPlacedObjectOutOfReach(world: World, player: PlayerState): boolean
 	local placedObjectId = World.getOpenedPlacedObjectId(world, player)
 	local character = player.character
 	if placedObjectId == nil or character == nil then
-		return
+		return false
 	end
 	local placedObject = world.plot.placedObjectsById[placedObjectId]
 	local center = tileCenter(world, placedObject.tileX, placedObject.tileZ)
-	if Position.getGroundDistance(character.position, center) > World.SCREEN_CLOSES_BEYOND then
-		World.closeScreen(world, player)
-	end
+	return Position.getGroundDistance(character.position, center) > World.SCREEN_CLOSES_BEYOND
 end
 
 --- Moves the world on to the time `now`, in this order:
@@ -360,23 +362,28 @@ end
 ---   character's position to the player's pack, in the order it returns them. `Inventory.addItems`
 ---   adds as many items of each stack as fit, and `GroundItems.takeFromItem` takes that many out of
 ---   the ground item. What did not fit stays in the same ground item, and a ground item of which
----   no item fits stays as it was. Then, if the player's screen is open on a placed object that the
----   character stands more than `SCREEN_CLOSES_BEYOND` from, the world closes the screen, as
----   `closeScreen` does.
---- - `timePassed` fires, passing the seconds since the time `advanceTo` was last given, or `0` if
----   `now` is no later than that time.
+---   no item fits stays as it was. Then, if `isOpenedPlacedObjectOutOfReach` returns `true` for
+---   the player, the world closes the player's screen, as `closeScreen` does.
+--- - `timePassed` fires, passing the seconds from the world's `now` before this call to `now`.
 --- - `GroundItems.removeExpiredItems` removes every ground item that was spawned
 ---   `GroundItems.LIFETIME_SECONDS` or more before `now`.
+--- Raises an error, and changes nothing, if `now` is not a finite number, or is earlier than the
+--- world's `now`.
 --- Note: an error in a callback connected to `timePassed` passes out of `advanceTo`. By then
 --- `advanceTo` has set the world's `now` to `now`, and it does not do the step after `timePassed`.
 function World.advanceTo(world: World, now: number)
-	local elapsed = math.max(now - world.now, 0)
+	local elapsed = now - world.now
+	if not (elapsed >= 0 and elapsed < math.huge) then
+		error(`the world's time is {world.now}, and cannot be advanced to {now}`, 2)
+	end
 	world.now = now
 	GroundItems.mergeItems(world.groundItems, now)
 	for _, playerId in sortedPlayerIds(world) do
 		local player = world.players[playerId]
 		pickUpNearbyStacks(world, player)
-		closeScreenIfOutOfReach(world, player)
+		if World.isOpenedPlacedObjectOutOfReach(world, player) then
+			World.closeScreen(world, player)
+		end
 	end
 	Signal.fire(world.timePassed, elapsed)
 	GroundItems.removeExpiredItems(world.groundItems, now)

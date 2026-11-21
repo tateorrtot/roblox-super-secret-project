@@ -1126,6 +1126,44 @@ do -- time passing: screens close
 	)
 end
 
+do -- isOpenedPlacedObjectOutOfReach
+	-- The crate stands on tile 2, 2, whose middle is at 6, 6.
+	local world, state, ids = newWorld()
+	check(
+		not World.isOpenedPlacedObjectOutOfReach(world, state),
+		"isOpenedPlacedObjectOutOfReach: false for a player with no screen open"
+	)
+	openOn(world, state, ids.crate)
+	check(
+		not World.isOpenedPlacedObjectOutOfReach(world, state),
+		"isOpenedPlacedObjectOutOfReach: false for a character 6 from the placed object"
+	)
+	World.setCharacterPosition(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND))
+	check(
+		not World.isOpenedPlacedObjectOutOfReach(world, state),
+		"isOpenedPlacedObjectOutOfReach: false for a character at SCREEN_CLOSES_BEYOND exactly"
+	)
+	World.setCharacterPosition(world, 1, at(6, 37.5, 6 + World.SCREEN_CLOSES_BEYOND))
+	check(
+		not World.isOpenedPlacedObjectOutOfReach(world, state),
+		"isOpenedPlacedObjectOutOfReach: measures along the ground, so a character 37.5 higher is no further"
+	)
+	World.setCharacterPosition(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND + 0.25))
+	check(
+		World.isOpenedPlacedObjectOutOfReach(world, state),
+		"isOpenedPlacedObjectOutOfReach: true for a character 0.25 beyond SCREEN_CLOSES_BEYOND"
+	)
+	check(
+		World.getOpenedPlacedObjectId(world, state) == ids.crate,
+		"isOpenedPlacedObjectOutOfReach: changes nothing, so the screen stays open"
+	)
+	World.closeScreen(world, state)
+	check(
+		not World.isOpenedPlacedObjectOutOfReach(world, state),
+		"isOpenedPlacedObjectOutOfReach: false once the screen is closed, wherever the character stands"
+	)
+end
+
 do -- time passing: timePassed is fired
 	local world = newWorld()
 	local given: { number } = {}
@@ -1144,19 +1182,35 @@ do -- time passing: timePassed is fired
 		#given == 3 and given[3] == 0,
 		"advanceTo: fires timePassed with 0 when now is equal to the time it was last given"
 	)
-	World.advanceTo(world, 103)
 	check(
-		#given == 4 and given[4] == 0 and world.now == 103,
-		"advanceTo: fires timePassed with 0 when now is earlier than the time it was last given"
+		Check.raises("the world's time is 105.5, and cannot be advanced to 103", function()
+			World.advanceTo(world, 103)
+		end)
+			and #given == 3
+			and world.now == 105.5,
+		"advanceTo: raises an error and changes nothing when now is earlier than the world's now"
 	)
-	World.advanceTo(world, 104)
-	check(#given == 5 and given[5] == 1, "advanceTo: counts the seconds from the earlier time that was given last")
+	for _, notFinite in { 0 / 0, math.huge, -math.huge } do
+		check(
+			Check.raises("the world's time is 105.5, and cannot be advanced to", function()
+				World.advanceTo(world, notFinite)
+			end)
+				and #given == 3
+				and world.now == 105.5,
+			"advanceTo: raises an error and changes nothing when now is " .. tostring(notFinite)
+		)
+	end
+	World.advanceTo(world, 106.75)
+	check(
+		#given == 4 and given[4] == 1.25,
+		"advanceTo: counts the seconds from the last time that it took, after a time that it refused"
+	)
 	local second: { number } = {}
 	Signal.connect(world.timePassed, function(seconds: number)
 		table.insert(second, seconds)
 	end)
-	World.advanceTo(world, 106)
-	check(#given == 6 and #second == 1 and second[1] == 2, "advanceTo: fires every callback connected, each once")
+	World.advanceTo(world, 109)
+	check(#given == 5 and #second == 1 and second[1] == 2.25, "advanceTo: fires every callback connected, each once")
 
 	-- The state of the world as a callback of timePassed finds it.
 	local seen = newWorld()

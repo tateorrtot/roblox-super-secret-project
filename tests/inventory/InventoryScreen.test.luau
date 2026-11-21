@@ -871,7 +871,8 @@ do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do wha
 	)
 
 	-- A right click carrying nothing: pickUpFromSlot of the larger half.
-	for _, case in { { "log 12", 6 }, { "log 5", 3 }, { "log 1", 1 }, { "log 16", 8 } } :: { { any } } do
+	-- Each case: the stack in the slot, how many are picked up, and how many stay in the slot.
+	for _, case in { { "log 12", 6, 6 }, { "log 5", 3, 2 }, { "log 1", 1, 0 }, { "log 16", 8, 8 } } :: { { any } } do
 		local count = tonumber(string.match(case[1], "%d+")) :: number
 		local halved = carrying("-", case[1])
 		InventoryScreen.pickUpFromSlot(halved, halved.pack, 1, math.ceil(count / 2))
@@ -879,10 +880,10 @@ do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do wha
 			halved.carriedStack ~= nil and halved.carriedStack.count == case[2],
 			"pickUpFromSlot: half of " .. case[1] .. " is " .. tostring(case[2])
 		)
+		local left = Inventory.getStack(halved.pack, 1) :: ItemStack.ItemStack?
 		check(
-			(Inventory.getStack(halved.pack, 1) :: ItemStack.ItemStack?) == nil
-				or (Inventory.getStack(halved.pack, 1) :: ItemStack.ItemStack).count == count - case[2],
-			"pickUpFromSlot: the other half of " .. case[1] .. " stays"
+			(if left ~= nil then left.count else 0) == case[3],
+			"pickUpFromSlot: of " .. case[1] .. ", " .. tostring(case[3]) .. " stay in the slot"
 		)
 	end
 
@@ -928,6 +929,11 @@ do -- no action ever makes or loses an item
 	local screen = InventoryScreen.new(pack, crate, crateAccepts)
 	local inventories = { pack, crate }
 	local broken: string? = nil
+	local function countInCrateSlot(slot: number): number
+		local stack = Inventory.getStack(crate, slot) :: ItemStack.ItemStack?
+		return if stack ~= nil then stack.count else 0
+	end
+	local inThirdSlotBefore = countInCrateSlot(3)
 	for step = 1, 30000 do
 		local inventory = inventories[random(2)]
 		local slot = random(4)
@@ -971,6 +977,14 @@ do -- no action ever makes or loses an item
 		end
 		if carried and (carried.count < 1 or ItemStack.getSpaceLeft(carried) < 0) then
 			broken = broken or string.format("step %d: the carried stack is one that could not exist", step)
+		end
+		if countInCrateSlot(3) > inThirdSlotBefore then
+			broken = broken or string.format("step %d: the crate's slot 3, which accepts no item, gained items", step)
+		end
+		inThirdSlotBefore = countInCrateSlot(3)
+		local first = Inventory.getStack(crate, 1) :: ItemStack.ItemStack?
+		if first ~= nil and first.itemId == "log" then
+			broken = broken or string.format("step %d: the crate's slot 1 holds logs, which it does not accept", step)
 		end
 		if broken then
 			break

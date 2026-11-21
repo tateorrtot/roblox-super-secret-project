@@ -6,11 +6,11 @@
 --- a block for each ground item that has none, relabels a block whose stack changed in count, and
 --- destroys a block whose ground item is gone. A new block starts with its underside at the ground
 --- item's `position`, moving at the ground item's `spawnVelocity`. After that the block is an
---- unanchored part: Roblox's physics makes it fall, land, and come to rest, and Roblox decides
---- which client or the server works out its motion. A block passes through the other blocks and
---- through characters, and collides with every other part. A raycast passes through a block.
---- `getMovedPositions` returns where the blocks have got to. The grey blocks stand in until items
---- have models.
+--- unanchored part: Roblox's physics makes it fall, land, and come to rest. The server works out
+--- the block's motion, and no client does, so that a client cannot move a block to where it
+--- chooses. A block passes through the other blocks and through characters, and collides with
+--- every other part. A raycast passes through a block. `getMovedPositions` returns where the
+--- blocks have got to. The grey blocks stand in until items have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -83,6 +83,7 @@ end
 
 local function putPartInWorld(part: Part, folder: Folder, velocity: GroundItems.Velocity)
 	part.Parent = folder
+	part:SetNetworkOwner(nil)
 	part.AssemblyLinearVelocity = Vector3.new(velocity.x, velocity.y, velocity.z)
 end
 

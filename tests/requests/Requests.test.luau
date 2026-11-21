@@ -250,6 +250,48 @@ do -- carryOut
 	check(second.screen == nil, "carryOut: does nothing for a player who has left")
 end
 
+do -- carryOut closes a screen that is out of reach, before the request
+	-- The bell stands on tile 2, 2, whose middle is at 6, 6. Each world's bell has 10 logs inside.
+	local function newWorldWithScreenOpen(): (World.World, PlayerState.PlayerState, Inventory.Inventory)
+		local world, player, _, bellId = newWorld()
+		local inside = Inventory.new(3)
+		Inventory.setStack(inside, 1, ItemStack.new("log", 10))
+		World.openPlacedObjectScreen(world, player, bellId, inside)
+		return world, player, inside
+	end
+
+	local world, player, inside = newWorldWithScreenOpen()
+	World.setCharacterPosition(world, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND))
+	carryOut(world, 1, "moveFromSlotToInventory", "other", 1, "pack", { 1 })
+	check(
+		player.screen ~= nil
+			and is(Inventory.getStack(inside, 1), "log", 6)
+			and is(Inventory.getStack(player.pack, 1), "log", 16),
+		"carryOut: carries out a request about a placed object's inventory for a character at SCREEN_CLOSES_BEYOND exactly"
+	)
+
+	local farWorld, farPlayer, farInside = newWorldWithScreenOpen()
+	World.setCharacterPosition(farWorld, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND + 0.25))
+	carryOut(farWorld, 1, "moveFromSlotToInventory", "other", 1, "pack", { 1 })
+	check(
+		farPlayer.screen == nil,
+		"carryOut: closes the screen of a character 0.25 beyond SCREEN_CLOSES_BEYOND, before the request"
+	)
+	check(
+		is(Inventory.getStack(farInside, 1), "log", 10) and is(Inventory.getStack(farPlayer.pack, 1), "log", 12),
+		"carryOut: a request from beyond SCREEN_CLOSES_BEYOND takes nothing out of the placed object's inventory"
+	)
+
+	local packWorld, packPlayer = newWorld()
+	carryOut(packWorld, 1, "openPack")
+	World.setCharacterPosition(packWorld, 1, at(512.5, 0, 731.25))
+	carryOut(packWorld, 1, "pickUpFromSlot", "pack", 1)
+	check(
+		packPlayer.screen ~= nil and is(packPlayer.screen.carriedStack, "log", 12),
+		"carryOut: leaves a screen that shows the pack alone open, wherever the character stands"
+	)
+end
+
 do -- whatever a player's machine sends, nothing raises an error and no item is made or lost
 	local seed = 90210
 	local function random(limit: number): number
