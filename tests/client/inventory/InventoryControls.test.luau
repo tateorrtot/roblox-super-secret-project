@@ -432,22 +432,23 @@ local function openedWorld(otherSlotCount: number?): (World.World, PlayerState.P
 	return world, state
 end
 
+-- Returns the pack of `screen` if `side` is "pack", and its other inventory if `side` is "other".
+local function inventoryOnSide(screen: InventoryScreen.InventoryScreen, side: string): Inventory.Inventory
+	return if side == "pack" then screen.pack else screen.otherInventory :: Inventory.Inventory
+end
+
 -- Puts `text`, such as "log 5", in a slot of the screen.
 local function put(state: PlayerState.PlayerState, side: string, slot: number, text: string)
 	local screen = state.screen :: InventoryScreen.InventoryScreen
 	local itemId, count = string.match(text, "^(%S+) (%d+)$")
 	assert(itemId and count, "bad test stack: " .. text)
-	Inventory.setStack(
-		InventoryScreen.getInventoryOnSide(screen, side :: any),
-		slot,
-		ItemStack.new(itemId, tonumber(count) :: number)
-	)
+	Inventory.setStack(inventoryOnSide(screen, side), slot, ItemStack.new(itemId, tonumber(count) :: number))
 end
 
 -- Describes what a slot of the screen holds, such as "log 5" or "-".
 local function held(state: PlayerState.PlayerState, side: string, slot: number): string
 	local screen = state.screen :: InventoryScreen.InventoryScreen
-	local stack = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, side :: any), slot)
+	local stack = Inventory.getStack(inventoryOnSide(screen, side), slot)
 	return if stack then stack.itemId .. " " .. stack.count else "-"
 end
 
@@ -480,7 +481,7 @@ local function screenOfPlayer(state: PlayerState.PlayerState): Screen
 		otherSlotCount = if screen.otherInventory then screen.otherInventory.slotCount else nil,
 		carriedStack = screen.carriedStack,
 		getStack = function(slot: Slot): InventoryControls.Stack?
-			return Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, slot.side :: any), slot.slot)
+			return Inventory.getStack(inventoryOnSide(screen, slot.side), slot.slot)
 		end,
 	}
 end

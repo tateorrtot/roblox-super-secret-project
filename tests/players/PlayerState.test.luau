@@ -9,6 +9,16 @@ local ItemStack = require("../../src/shared/items/ItemStack")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Position = require("../../src/shared/Position")
 
+-- Returns the pack of `screen`, which is open.
+local function packOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).pack
+end
+
+-- Returns the other inventory of `screen`, which has one open.
+local function otherOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
+end
+
 local check = Check.that
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
@@ -145,8 +155,8 @@ do -- opening the pack with another inventory beside it
 	)
 	check(
 		screen ~= nil
-			and InventoryScreen.slotAcceptsItem(screen, "other", 1, "log")
-			and not InventoryScreen.slotAcceptsItem(screen, "other", 2, "log"),
+			and InventoryScreen.slotAcceptsItem(screen, otherOf(screen), 1, "log")
+			and not InventoryScreen.slotAcceptsItem(screen, otherOf(screen), 2, "log"),
 		"openScreen: the other inventory's slots take what the rule given says"
 	)
 	check(
@@ -160,7 +170,7 @@ do -- opening the pack with another inventory beside it
 	local plain = newPlayerWithCharacter()
 	PlayerState.openScreen(plain, Inventory.new(3))
 	check(
-		plain.screen ~= nil and InventoryScreen.slotAcceptsItem(plain.screen, "other", 2, "stove"),
+		plain.screen ~= nil and InventoryScreen.slotAcceptsItem(plain.screen, otherOf(plain.screen), 2, "stove"),
 		"openScreen: with no rule given, every slot of the other inventory takes every item"
 	)
 
@@ -180,7 +190,7 @@ do -- closing the screen
 
 	Inventory.setStack(player.pack, 1, ItemStack.new("log", 12))
 	PlayerState.openScreen(player)
-	InventoryScreen.pickUpFromSlot(player.screen :: any, "pack", 1)
+	InventoryScreen.pickUpFromSlot(player.screen :: any, packOf(player.screen), 1)
 	check(PlayerState.closeScreen(player) == nil, "closeScreen: returns nil when what was carried fits in the pack")
 	check(
 		player.screen == nil and Inventory.countItems(player.pack, "log") == 12,
@@ -194,7 +204,7 @@ do -- closing the screen
 	local crate = Inventory.new(3)
 	Inventory.setStack(crate, 1, ItemStack.new("log", 5))
 	PlayerState.openScreen(full, crate)
-	InventoryScreen.pickUpFromSlot(full.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(full.screen :: any, otherOf(full.screen), 1)
 	local leftover = PlayerState.closeScreen(full)
 	check(
 		leftover ~= nil and leftover.itemId == "log" and leftover.count == 5,
@@ -213,7 +223,7 @@ do -- closing the screen
 	local other = Inventory.new(3)
 	Inventory.setStack(other, 1, ItemStack.new("log", 5))
 	PlayerState.openScreen(partly, other)
-	InventoryScreen.pickUpFromSlot(partly.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(partly.screen :: any, otherOf(partly.screen), 1)
 	local rest = PlayerState.closeScreen(partly)
 	check(
 		rest ~= nil and rest.count == 3 and Inventory.countItems(partly.pack, "log") == 16,

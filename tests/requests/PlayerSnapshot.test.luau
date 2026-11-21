@@ -14,6 +14,16 @@ local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local World = require("../../src/shared/world/World")
 
+-- Returns the pack of `screen`, which is open.
+local function packOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).pack
+end
+
+-- Returns the other inventory of `screen`, which has one open.
+local function otherOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
+end
+
 local check = Check.that
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
@@ -181,7 +191,7 @@ do -- the pack open alone, with a stack carried
 	local world = newWorld()
 	local state = world.players[1]
 	PlayerState.openScreen(state)
-	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "pack", 7, 3)
+	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, packOf(state.screen), 7, 3)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local encodedScreen = encoded.screen
 	check(
@@ -246,7 +256,7 @@ do -- a chest open
 	)
 
 	-- With the fish carried.
-	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "other", 1, 4)
+	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, otherOf(state.screen), 1, 4)
 	local carrying = PlayerSnapshot.encode(world, 1)
 	check(
 		carrying.screen ~= nil and carrying.screen.carriedStack ~= nil and carrying.screen.carriedStack.count == 4,
@@ -303,7 +313,7 @@ do -- a bell open, a kind whose script has a getScreenData
 	check(#bellCalls == callsBefore + 2, "decode: does not call the getScreenData")
 
 	-- Carrying a stack too.
-	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "pack", 7)
+	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, packOf(state.screen), 7)
 	local both = PlayerSnapshot.decode(PlayerSnapshot.encode(world, 1))
 	check(
 		both.screen ~= nil
@@ -404,7 +414,7 @@ do -- whatever the world holds, a view decodes to the same
 			Inventory.addItems(state.pack, itemId, random(6))
 			local screen = state.screen
 			if screen ~= nil then
-				InventoryScreen.pickUpFromSlot(screen, "pack", random(36), random(5))
+				InventoryScreen.pickUpFromSlot(screen, packOf(screen), random(36), random(5))
 			end
 		else
 			World.advanceTo(world, world.now + random(10))

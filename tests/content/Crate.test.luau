@@ -14,6 +14,11 @@ local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
 local World = require("../../src/shared/world/World")
 
+-- Returns the other inventory of `screen`, which has one open.
+local function otherOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
+end
+
 local check = Check.that
 local at = Position.new
 
@@ -172,7 +177,7 @@ do -- interact
 	check(World.getOpenedPlacedObjectId(world, player) == crateId, "interact: as the screen of that crate")
 	check(screen.otherSlotAcceptsItem == nil, "interact: every slot of the crate takes every item")
 
-	InventoryScreen.pickUpFromSlot(screen, "other", 1)
+	InventoryScreen.pickUpFromSlot(screen, otherOf(screen), 1)
 	Crate.interact(world, player, crateId)
 	check(
 		player.screen ~= screen and player.screen ~= nil,
@@ -226,7 +231,7 @@ do -- breakPlacedObject
 	local watcher = World.addPlayer(world, 2)
 	World.setCharacterPosition(world, 2, at(10, 0, 10))
 	Crate.interact(world, watcher, crateId)
-	InventoryScreen.pickUpFromSlot(watcher.screen :: InventoryScreen.InventoryScreen, "other", 3, 2)
+	InventoryScreen.pickUpFromSlot(watcher.screen :: InventoryScreen.InventoryScreen, otherOf(watcher.screen), 3, 2)
 
 	World.setCharacterPosition(world, 1, at(500, 0, 500))
 	Crate.breakPlacedObject(world, crateId)

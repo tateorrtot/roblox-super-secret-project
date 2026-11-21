@@ -1,5 +1,5 @@
 --!strict
---- Numbered slots that each hold one stack of items or nothing, such as a player's pack.
+--- Numbered slots that each hold one `ItemStack` or `nil`.
 ---
 --- An inventory has a fixed number of slots, numbered from `1`. `getStack`, `setStack`,
 --- `takeFromSlot` and `putInSlot` act on one slot. `addItems` and `addStack` put items in whichever

@@ -166,7 +166,8 @@ local function controlsScreen(screen: InventoryScreen.InventoryScreen): Inventor
 		otherSlotCount = if other then other.slotCount else nil,
 		carriedStack = screen.carriedStack,
 		getStack = function(slot)
-			return Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, slot.side :: any), slot.slot)
+			local inventory = if slot.side == "pack" then screen.pack else screen.otherInventory
+			return if inventory ~= nil then Inventory.getStack(inventory, slot.slot) else nil
 		end,
 	}
 end

@@ -29,16 +29,16 @@ Inventory.addItems(pack, "fish", 5)
 Inventory.addItems(crate, "log", 10)
 
 local screen = InventoryScreen.new(pack, crate)
-print('The screen has two sides: "pack" is the player\'s pack, and "other" is the crate.\n')
+print("The screen has two inventories open: pack is the player's pack, and crate is the crate.\n")
 print("pack     " .. contents(pack))
 print("crate    " .. contents(crate))
 
-print('\npickUpFromSlot(screen, "pack", 2): pick up the fish in slot 2 of the pack.')
-InventoryScreen.pickUpFromSlot(screen, "pack", 2)
+print("\npickUpFromSlot(screen, pack, 2): pick up the fish in slot 2 of the pack.")
+InventoryScreen.pickUpFromSlot(screen, pack, 2)
 print("carried  " .. describe(screen.carriedStack))
 
-print('\nputDownInSlot(screen, "other", 3, 2): put 2 of them down in slot 3 of the crate.')
-InventoryScreen.putDownInSlot(screen, "other", 3, 2)
+print("\nputDownInSlot(screen, crate, 3, 2): put 2 of them down in slot 3 of the crate.")
+InventoryScreen.putDownInSlot(screen, crate, 3, 2)
 print("carried  " .. describe(screen.carriedStack))
 print("crate    " .. contents(crate))
 

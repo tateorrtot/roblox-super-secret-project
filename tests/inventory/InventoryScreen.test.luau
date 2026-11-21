@@ -47,21 +47,26 @@ local function inventoryOf(text: string): Inventory.Inventory
 	return inventory
 end
 
+-- Returns the other inventory of a screen that has one open.
+local function otherOf(screen: InventoryScreen.InventoryScreen): Inventory.Inventory
+	return screen.otherInventory :: Inventory.Inventory
+end
+
 -- Describes the other inventory of a screen.
 local function otherContents(screen: InventoryScreen.InventoryScreen): string
-	return contents(screen.otherInventory :: Inventory.Inventory)
+	return contents(otherOf(screen))
 end
 
 -- Returns a screen over a pack holding `inPack`, already carrying `carried`.
 local function carrying(carried: string, inPack: string): InventoryScreen.InventoryScreen
 	local screen = InventoryScreen.new(inventoryOf(inPack), inventoryOf(carried))
-	InventoryScreen.pickUpFromSlot(screen, "other", 1)
+	InventoryScreen.pickUpFromSlot(screen, otherOf(screen), 1)
 	return screen
 end
 
--- Names a slot of the screen, for a list of them.
-local function at(side: InventoryScreen.Side, slot: number): InventoryScreen.ScreenSlot
-	return { side = side, slot = slot }
+-- Names a slot of an inventory, for a list of them.
+local function at(inventory: Inventory.Inventory, slot: number): InventoryScreen.ScreenSlot
+	return { inventory = inventory, slot = slot }
 end
 
 -- A stove: slot 1 accepts only stone, slot 2 only logs, and slot 3 nothing.
@@ -91,122 +96,34 @@ do -- new
 	check(both.carriedStack == nil, "new: nothing is carried when another inventory is open")
 end
 
-do -- getInventoryOnSide
-	local pack, crate = Inventory.new(2), Inventory.new(3)
-	local screen = InventoryScreen.new(pack, crate)
-	check(InventoryScreen.getInventoryOnSide(screen, "pack") == pack, "getInventoryOnSide: the pack is the pack")
-	check(
-		InventoryScreen.getInventoryOnSide(screen, "other") == crate,
-		"getInventoryOnSide: other is the other inventory"
-	)
-	local alone = InventoryScreen.new(pack)
-	check(InventoryScreen.getInventoryOnSide(alone, "pack") == pack, "getInventoryOnSide: the pack, when open alone")
-	local message = Check.errorFrom(function()
-		return InventoryScreen.getInventoryOnSide(alone, "other")
-	end)
-	check(
-		message ~= nil and string.find(message, "no other inventory is open", 1, true) ~= nil,
-		"getInventoryOnSide: fails for the other side when the pack is open alone"
-	)
-end
-
-do -- hasSlot
-	local pack = Inventory.new(4)
-	local alone = InventoryScreen.new(pack)
-	local withCrate = InventoryScreen.new(pack, Inventory.new(2))
-	check(InventoryScreen.hasSlot(alone, "pack", 1), "hasSlot: the first slot of the pack")
-	check(InventoryScreen.hasSlot(alone, "pack", 4), "hasSlot: the last slot of the pack")
-	check(not InventoryScreen.hasSlot(alone, "pack", 5), "hasSlot: not a slot past the last")
-	check(not InventoryScreen.hasSlot(alone, "pack", 0), "hasSlot: not slot 0")
-	check(not InventoryScreen.hasSlot(alone, "other", 1), "hasSlot: not the other side when the pack is open alone")
-	check(InventoryScreen.hasSlot(withCrate, "other", 2), "hasSlot: the last slot of the other inventory")
-	check(not InventoryScreen.hasSlot(withCrate, "other", 3), "hasSlot: not a slot the other inventory lacks")
-	check(InventoryScreen.hasSlot(withCrate, "pack", 4), "hasSlot: the pack, when another inventory is open too")
-	for _, badSide in { "crate", "", 1, true, {} } :: { any } do
-		check(not InventoryScreen.hasSlot(withCrate, badSide, 1), "hasSlot: not the side " .. tostring(badSide))
-	end
-	check(not InventoryScreen.hasSlot(withCrate, nil, 1), "hasSlot: not without a side")
-	for _, badSlot in { 1.5, -1, 0 / 0, math.huge, "1", true, {} } :: { any } do
-		check(not InventoryScreen.hasSlot(withCrate, "pack", badSlot), "hasSlot: not the slot " .. tostring(badSlot))
-	end
-	check(not InventoryScreen.hasSlot(withCrate, "pack", nil), "hasSlot: not without a slot")
-end
-
-do -- hasEverySlot
-	local alone = InventoryScreen.new(Inventory.new(4))
-	local withCrate = InventoryScreen.new(Inventory.new(4), Inventory.new(2))
-	check(InventoryScreen.hasEverySlot(withCrate, {}), "hasEverySlot: a list of none")
-	check(
-		InventoryScreen.hasEverySlot(withCrate, { at("pack", 4), at("other", 2), at("pack", 4) }),
-		"hasEverySlot: slots of both inventories, even one named twice"
-	)
-	check(
-		not InventoryScreen.hasEverySlot(withCrate, { at("pack", 4), at("other", 3) }),
-		"hasEverySlot: not if one of them is not a slot"
-	)
-	check(
-		not InventoryScreen.hasEverySlot(alone, { at("other", 1) }),
-		"hasEverySlot: not the other side when the pack is open alone"
-	)
-	check(not InventoryScreen.hasEverySlot(withCrate, nil), "hasEverySlot: not nothing at all")
-	for _, notList in { "pack", 7, true } :: { any } do
-		check(not InventoryScreen.hasEverySlot(withCrate, notList), "hasEverySlot: not " .. tostring(notList))
-	end
-	check(not InventoryScreen.hasEverySlot(withCrate, { "pack" }), "hasEverySlot: not a list of something else")
-	check(
-		not InventoryScreen.hasEverySlot(withCrate, { {} }),
-		"hasEverySlot: not a list with an entry that names no slot"
-	)
-	check(
-		not InventoryScreen.hasEverySlot(withCrate, { { side = "pack" } }),
-		"hasEverySlot: not an entry with no slot number"
-	)
-	check(
-		not InventoryScreen.hasEverySlot(withCrate, { at("pack", 1), 5 }),
-		"hasEverySlot: not a list whose second entry is not a slot"
-	)
-	check(
-		not InventoryScreen.hasEverySlot(withCrate, { side = "pack", slot = 1 }),
-		"hasEverySlot: not one slot given where a list is wanted"
-	)
-	local withOtherKeys: any = { at("pack", 1) }
-	withOtherKeys.extra = at("pack", 2)
-	check(
-		not InventoryScreen.hasEverySlot(withCrate, withOtherKeys),
-		"hasEverySlot: not a list with other keys as well"
-	)
-end
-
 do -- slotAcceptsItem
 	local screen = stoveScreen("-", "-, -, -")
+	local stove = otherOf(screen)
 	check(
-		InventoryScreen.slotAcceptsItem(screen, "other", 1, "stone"),
+		InventoryScreen.slotAcceptsItem(screen, stove, 1, "stone"),
 		"slotAcceptsItem: a slot accepts an item its rule names"
 	)
 	check(
-		not InventoryScreen.slotAcceptsItem(screen, "other", 1, "log"),
+		not InventoryScreen.slotAcceptsItem(screen, stove, 1, "log"),
 		"slotAcceptsItem: and not one the rule leaves out"
 	)
+	check(InventoryScreen.slotAcceptsItem(screen, stove, 2, "log"), "slotAcceptsItem: each slot has a rule of its own")
 	check(
-		InventoryScreen.slotAcceptsItem(screen, "other", 2, "log"),
-		"slotAcceptsItem: each slot has a rule of its own"
-	)
-	check(
-		not InventoryScreen.slotAcceptsItem(screen, "other", 3, "log"),
+		not InventoryScreen.slotAcceptsItem(screen, stove, 3, "log"),
 		"slotAcceptsItem: a slot that accepts nothing says no"
 	)
 	check(
-		InventoryScreen.slotAcceptsItem(screen, "pack", 1, "stove"),
+		InventoryScreen.slotAcceptsItem(screen, screen.pack, 1, "stove"),
 		"slotAcceptsItem: every slot of the pack accepts anything"
 	)
 	local plain = InventoryScreen.new(inventoryOf("-"), inventoryOf("-"))
 	check(
-		InventoryScreen.slotAcceptsItem(plain, "other", 1, "stove"),
+		InventoryScreen.slotAcceptsItem(plain, otherOf(plain), 1, "stove"),
 		"slotAcceptsItem: with no rule, every slot accepts everything"
 	)
 	local full = inventoryOf("log 16")
 	check(
-		InventoryScreen.slotAcceptsItem(InventoryScreen.new(inventoryOf("-"), full), "other", 1, "log"),
+		InventoryScreen.slotAcceptsItem(InventoryScreen.new(inventoryOf("-"), full), full, 1, "log"),
 		"slotAcceptsItem: a slot with no room may still accept the item"
 	)
 end
@@ -214,41 +131,47 @@ end
 do -- pickUpFromSlot
 	local screen = InventoryScreen.new(inventoryOf("log 12, stone 5, -"))
 	check(
-		InventoryScreen.pickUpFromSlot(screen, "pack", 3) == 0 and screen.carriedStack == nil,
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 3) == 0 and screen.carriedStack == nil,
 		"pickUpFromSlot: a slot that holds nothing gives 0 and nothing is carried"
 	)
-	check(InventoryScreen.pickUpFromSlot(screen, "pack", 1, 5) == 5, "pickUpFromSlot: returns how many were picked up")
+	check(
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 1, 5) == 5,
+		"pickUpFromSlot: returns how many were picked up"
+	)
 	check(
 		describe(screen.carriedStack) == "log 5" and contents(screen.pack) == "log 7, stone 5, -",
 		"pickUpFromSlot: part of a stack is carried and the rest stays in the slot"
 	)
 	check(
-		InventoryScreen.pickUpFromSlot(screen, "pack", 1, 3) == 3 and describe(screen.carriedStack) == "log 8",
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 1, 3) == 3 and describe(screen.carriedStack) == "log 8",
 		"pickUpFromSlot: more of the same item is added to what is carried"
 	)
-	check(InventoryScreen.pickUpFromSlot(screen, "pack", 2) == 0, "pickUpFromSlot: 0 when a different item is carried")
+	check(
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 2) == 0,
+		"pickUpFromSlot: 0 when a different item is carried"
+	)
 	check(
 		describe(screen.carriedStack) == "log 8" and contents(screen.pack) == "log 4, stone 5, -",
 		"pickUpFromSlot: a refused pick up changes nothing"
 	)
 	check(
-		InventoryScreen.pickUpFromSlot(screen, "pack", 1, 0) == 0 and describe(screen.carriedStack) == "log 8",
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 1, 0) == 0 and describe(screen.carriedStack) == "log 8",
 		"pickUpFromSlot: a count of 0 changes nothing"
 	)
 	check(
-		InventoryScreen.pickUpFromSlot(screen, "pack", 1) == 4 and contents(screen.pack) == "-, stone 5, -",
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 1) == 4 and contents(screen.pack) == "-, stone 5, -",
 		"pickUpFromSlot: with no count, all of the stack that the carried stack has room for"
 	)
 	check(describe(screen.carriedStack) == "log 12", "pickUpFromSlot: the carried stack holds everything picked up")
 	check(
-		InventoryScreen.pickUpFromSlot(screen, "pack", 1, 50) == 0,
+		InventoryScreen.pickUpFromSlot(screen, screen.pack, 1, 50) == 0,
 		"pickUpFromSlot: a slot that holds nothing gives 0 whatever count is asked for"
 	)
 
 	local full = InventoryScreen.new(inventoryOf("log 16, log 10"))
-	InventoryScreen.pickUpFromSlot(full, "pack", 2)
+	InventoryScreen.pickUpFromSlot(full, full.pack, 2)
 	check(
-		InventoryScreen.pickUpFromSlot(full, "pack", 1) == 6,
+		InventoryScreen.pickUpFromSlot(full, full.pack, 1) == 6,
 		"pickUpFromSlot: only what the carried stack has room for"
 	)
 	check(
@@ -256,12 +179,12 @@ do -- pickUpFromSlot
 		"pickUpFromSlot: the rest stays in the slot"
 	)
 	check(
-		InventoryScreen.pickUpFromSlot(full, "pack", 1) == 0,
+		InventoryScreen.pickUpFromSlot(full, full.pack, 1) == 0,
 		"pickUpFromSlot: nothing more when the carried stack is full"
 	)
 
 	local crate = InventoryScreen.new(inventoryOf("-"), inventoryOf("log 4"))
-	check(InventoryScreen.pickUpFromSlot(crate, "other", 1) == 4, "pickUpFromSlot: from the other inventory too")
+	check(InventoryScreen.pickUpFromSlot(crate, otherOf(crate), 1) == 4, "pickUpFromSlot: from the other inventory too")
 	check(
 		otherContents(crate) == "-" and describe(crate.carriedStack) == "log 4",
 		"pickUpFromSlot: it is carried, not copied"
@@ -269,14 +192,14 @@ do -- pickUpFromSlot
 
 	local stoves = InventoryScreen.new(inventoryOf("stove 1"))
 	check(
-		InventoryScreen.pickUpFromSlot(stoves, "pack", 1) == 1,
+		InventoryScreen.pickUpFromSlot(stoves, stoves.pack, 1) == 1,
 		"pickUpFromSlot: picks up an item that does not stack"
 	)
 	check(describe(stoves.carriedStack) == "stove 1", "pickUpFromSlot: and it is carried")
 
 	local half = InventoryScreen.new(inventoryOf("log 5"))
 	check(
-		InventoryScreen.pickUpFromSlot(half, "pack", 1, 3) == 3,
+		InventoryScreen.pickUpFromSlot(half, half.pack, 1, 3) == 3,
 		"pickUpFromSlot: half of an odd stack, rounded up, is the larger half"
 	)
 	check(
@@ -287,30 +210,33 @@ end
 
 do -- putDownInSlot
 	local screen = InventoryScreen.new(inventoryOf("-, log 12, stone 5"), inventoryOf("log 10"))
-	check(InventoryScreen.putDownInSlot(screen, "pack", 1) == 0, "putDownInSlot: 0 when nothing is carried")
-	InventoryScreen.pickUpFromSlot(screen, "other", 1)
-	check(InventoryScreen.putDownInSlot(screen, "pack", 1, 3) == 3, "putDownInSlot: returns how many were put down")
+	check(InventoryScreen.putDownInSlot(screen, screen.pack, 1) == 0, "putDownInSlot: 0 when nothing is carried")
+	InventoryScreen.pickUpFromSlot(screen, otherOf(screen), 1)
+	check(
+		InventoryScreen.putDownInSlot(screen, screen.pack, 1, 3) == 3,
+		"putDownInSlot: returns how many were put down"
+	)
 	check(
 		describe(screen.carriedStack) == "log 7" and contents(screen.pack) == "log 3, log 12, stone 5",
 		"putDownInSlot: part is put down and the rest stays carried"
 	)
-	check(InventoryScreen.putDownInSlot(screen, "pack", 3) == 0, "putDownInSlot: 0 onto a different item")
+	check(InventoryScreen.putDownInSlot(screen, screen.pack, 3) == 0, "putDownInSlot: 0 onto a different item")
 	check(
 		describe(screen.carriedStack) == "log 7" and contents(screen.pack) == "log 3, log 12, stone 5",
 		"putDownInSlot: a refused put down changes nothing"
 	)
-	check(InventoryScreen.putDownInSlot(screen, "pack", 2) == 4, "putDownInSlot: only what the slot has room for")
+	check(InventoryScreen.putDownInSlot(screen, screen.pack, 2) == 4, "putDownInSlot: only what the slot has room for")
 	check(
 		describe(screen.carriedStack) == "log 3" and contents(screen.pack) == "log 3, log 16, stone 5",
 		"putDownInSlot: what does not fit stays carried"
 	)
-	check(InventoryScreen.putDownInSlot(screen, "pack", 2) == 0, "putDownInSlot: 0 onto a full stack")
+	check(InventoryScreen.putDownInSlot(screen, screen.pack, 2) == 0, "putDownInSlot: 0 onto a full stack")
 	check(
-		InventoryScreen.putDownInSlot(screen, "pack", 1, 0) == 0 and describe(screen.carriedStack) == "log 3",
+		InventoryScreen.putDownInSlot(screen, screen.pack, 1, 0) == 0 and describe(screen.carriedStack) == "log 3",
 		"putDownInSlot: a count of 0 changes nothing"
 	)
 	check(
-		InventoryScreen.putDownInSlot(screen, "pack", 1, 99) == 3,
+		InventoryScreen.putDownInSlot(screen, screen.pack, 1, 99) == 3,
 		"putDownInSlot: asked for more than is carried, puts down what is carried"
 	)
 	check(
@@ -319,24 +245,27 @@ do -- putDownInSlot
 	)
 
 	local whole = carrying("log 10", "-, -")
-	check(InventoryScreen.putDownInSlot(whole, "pack", 2) == 10, "putDownInSlot: with no count, all that is carried")
+	check(
+		InventoryScreen.putDownInSlot(whole, whole.pack, 2) == 10,
+		"putDownInSlot: with no count, all that is carried"
+	)
 	check(
 		contents(whole.pack) == "-, log 10" and whole.carriedStack == nil,
 		"putDownInSlot: into a slot that holds nothing, and nothing is carried afterwards"
 	)
 
 	local fits = carrying("log 10", "log 3")
-	check(InventoryScreen.putDownInSlot(fits, "pack", 1) == 10, "putDownInSlot: all of it fits on the same item")
+	check(InventoryScreen.putDownInSlot(fits, fits.pack, 1) == 10, "putDownInSlot: all of it fits on the same item")
 	check(contents(fits.pack) == "log 13", "putDownInSlot: and joins the stack there")
 
 	local crate = InventoryScreen.new(inventoryOf("log 5"), inventoryOf("-, -"))
-	InventoryScreen.pickUpFromSlot(crate, "pack", 1)
-	check(InventoryScreen.putDownInSlot(crate, "other", 2) == 5, "putDownInSlot: into the other inventory too")
+	InventoryScreen.pickUpFromSlot(crate, crate.pack, 1)
+	check(InventoryScreen.putDownInSlot(crate, otherOf(crate), 2) == 5, "putDownInSlot: into the other inventory too")
 	check(otherContents(crate) == "-, log 5", "putDownInSlot: it lands in the slot named")
 
 	local stoves = carrying("stove 1", "stove 1")
 	check(
-		InventoryScreen.putDownInSlot(stoves, "pack", 1) == 0,
+		InventoryScreen.putDownInSlot(stoves, stoves.pack, 1) == 0,
 		"putDownInSlot: an item that does not stack never goes onto another"
 	)
 	check(
@@ -347,21 +276,19 @@ end
 
 do -- putDownInSlot into slots that accept only some items
 	local screen = stoveScreen("log 12, stone 5, stove 1, -", "-, -, -")
-	InventoryScreen.pickUpFromSlot(screen, "pack", 1)
+	local stove = otherOf(screen)
+	InventoryScreen.pickUpFromSlot(screen, screen.pack, 1)
 	check(
-		InventoryScreen.putDownInSlot(screen, "other", 1) == 0,
+		InventoryScreen.putDownInSlot(screen, stove, 1) == 0,
 		"putDownInSlot: 0 into a slot that does not accept the item"
 	)
-	check(InventoryScreen.putDownInSlot(screen, "other", 3) == 0, "putDownInSlot: 0 into a slot that accepts nothing")
+	check(InventoryScreen.putDownInSlot(screen, stove, 3) == 0, "putDownInSlot: 0 into a slot that accepts nothing")
 	check(
 		describe(screen.carriedStack) == "log 12" and otherContents(screen) == "-, -, -",
 		"putDownInSlot: a refused put down leaves the stack carried"
 	)
-	check(
-		InventoryScreen.putDownInSlot(screen, "other", 2, 5) == 5,
-		"putDownInSlot: into the slot that accepts the item"
-	)
-	check(InventoryScreen.putDownInSlot(screen, "other", 2) == 7, "putDownInSlot: and the rest of the stack follows")
+	check(InventoryScreen.putDownInSlot(screen, stove, 2, 5) == 5, "putDownInSlot: into the slot that accepts the item")
+	check(InventoryScreen.putDownInSlot(screen, stove, 2) == 7, "putDownInSlot: and the rest of the stack follows")
 	check(
 		otherContents(screen) == "-, log 12, -" and screen.carriedStack == nil,
 		"putDownInSlot: the stack is in the slot meant for it"
@@ -370,53 +297,56 @@ do -- putDownInSlot into slots that accept only some items
 	-- What comes out of a stove sits in the slot that accepts nothing, and can always be taken out.
 	local cooked = stoveScreen("-, -, -, -", "-, -, stove 1")
 	check(
-		InventoryScreen.pickUpFromSlot(cooked, "other", 3) == 1,
+		InventoryScreen.pickUpFromSlot(cooked, otherOf(cooked), 3) == 1,
 		"pickUpFromSlot: takes a stack out of a slot that accepts nothing"
 	)
 	check(describe(cooked.carriedStack) == "stove 1", "pickUpFromSlot: and it is carried")
-	check(InventoryScreen.putDownInSlot(cooked, "other", 3) == 0, "putDownInSlot: but it cannot be put back there")
-	check(InventoryScreen.putDownInSlot(cooked, "pack", 1) == 1, "putDownInSlot: it can go into the pack")
+	check(
+		InventoryScreen.putDownInSlot(cooked, otherOf(cooked), 3) == 0,
+		"putDownInSlot: but it cannot be put back there"
+	)
+	check(InventoryScreen.putDownInSlot(cooked, cooked.pack, 1) == 1, "putDownInSlot: it can go into the pack")
 end
 
 do -- swapCarriedStackWithSlot
 	local screen = InventoryScreen.new(inventoryOf("log 12, stone 5, -"))
-	InventoryScreen.swapCarriedStackWithSlot(screen, "pack", 1)
+	InventoryScreen.swapCarriedStackWithSlot(screen, screen.pack, 1)
 	check(
 		describe(screen.carriedStack) == "log 12" and contents(screen.pack) == "-, stone 5, -",
 		"swapCarriedStackWithSlot: carrying nothing, it carries the slot's whole stack"
 	)
-	InventoryScreen.swapCarriedStackWithSlot(screen, "pack", 2)
+	InventoryScreen.swapCarriedStackWithSlot(screen, screen.pack, 2)
 	check(
 		describe(screen.carriedStack) == "stone 5" and contents(screen.pack) == "-, log 12, -",
 		"swapCarriedStackWithSlot: exchanges the carried stack with the slot's"
 	)
-	InventoryScreen.swapCarriedStackWithSlot(screen, "pack", 3)
+	InventoryScreen.swapCarriedStackWithSlot(screen, screen.pack, 3)
 	check(
 		screen.carriedStack == nil and contents(screen.pack) == "-, log 12, stone 5",
 		"swapCarriedStackWithSlot: into a slot that holds nothing, it puts the carried stack down"
 	)
-	InventoryScreen.swapCarriedStackWithSlot(screen, "pack", 1)
+	InventoryScreen.swapCarriedStackWithSlot(screen, screen.pack, 1)
 	check(
 		screen.carriedStack == nil and contents(screen.pack) == "-, log 12, stone 5",
 		"swapCarriedStackWithSlot: nothing with nothing changes nothing"
 	)
 
 	local same = carrying("log 10", "log 16")
-	InventoryScreen.swapCarriedStackWithSlot(same, "pack", 1)
+	InventoryScreen.swapCarriedStackWithSlot(same, same.pack, 1)
 	check(
 		describe(same.carriedStack) == "log 16" and contents(same.pack) == "log 10",
 		"swapCarriedStackWithSlot: the same item is exchanged whole, not merged"
 	)
 
 	local different = carrying("log 10", "stone 4")
-	InventoryScreen.swapCarriedStackWithSlot(different, "pack", 1)
+	InventoryScreen.swapCarriedStackWithSlot(different, different.pack, 1)
 	check(
 		describe(different.carriedStack) == "stone 4" and contents(different.pack) == "log 10",
 		"swapCarriedStackWithSlot: a different item is exchanged"
 	)
 
 	local crate = InventoryScreen.new(inventoryOf("log 4"), inventoryOf("stone 2"))
-	InventoryScreen.swapCarriedStackWithSlot(crate, "other", 1)
+	InventoryScreen.swapCarriedStackWithSlot(crate, otherOf(crate), 1)
 	check(
 		describe(crate.carriedStack) == "stone 2" and otherContents(crate) == "-",
 		"swapCarriedStackWithSlot: picks up from the other inventory"
@@ -424,8 +354,8 @@ do -- swapCarriedStackWithSlot
 
 	-- It exchanges whatever the slot accepts: asking is canSwapCarriedStackWithSlot's.
 	local stove = stoveScreen("stove 1, log 12, -, -", "-, log 12, -")
-	InventoryScreen.pickUpFromSlot(stove, "pack", 1)
-	InventoryScreen.swapCarriedStackWithSlot(stove, "other", 2)
+	InventoryScreen.pickUpFromSlot(stove, stove.pack, 1)
+	InventoryScreen.swapCarriedStackWithSlot(stove, otherOf(stove), 2)
 	check(
 		describe(stove.carriedStack) == "log 12" and otherContents(stove) == "-, stove 1, -",
 		"swapCarriedStackWithSlot: it does not ask whether the slot accepts the carried item"
@@ -434,103 +364,66 @@ end
 
 do -- canSwapCarriedStackWithSlot
 	local stove = stoveScreen("stove 1, log 12, -, -", "-, log 12, -")
+	local stoveSlots = otherOf(stove)
 	check(
-		InventoryScreen.canSwapCarriedStackWithSlot(stove, "other", 2)
-			and InventoryScreen.canSwapCarriedStackWithSlot(stove, "other", 3),
+		InventoryScreen.canSwapCarriedStackWithSlot(stove, stoveSlots, 2)
+			and InventoryScreen.canSwapCarriedStackWithSlot(stove, stoveSlots, 3),
 		"canSwapCarriedStackWithSlot: true with nothing carried, whatever the slot accepts"
 	)
-	InventoryScreen.pickUpFromSlot(stove, "pack", 1)
+	InventoryScreen.pickUpFromSlot(stove, stove.pack, 1)
 	check(
-		not InventoryScreen.canSwapCarriedStackWithSlot(stove, "other", 2),
+		not InventoryScreen.canSwapCarriedStackWithSlot(stove, stoveSlots, 2),
 		"canSwapCarriedStackWithSlot: false when the slot does not accept the carried item"
 	)
 	check(
-		not InventoryScreen.canSwapCarriedStackWithSlot(stove, "other", 1),
+		not InventoryScreen.canSwapCarriedStackWithSlot(stove, stoveSlots, 1),
 		"canSwapCarriedStackWithSlot: false for a slot that holds nothing and does not accept the carried item"
 	)
 	check(
-		InventoryScreen.canSwapCarriedStackWithSlot(stove, "pack", 3),
+		InventoryScreen.canSwapCarriedStackWithSlot(stove, stove.pack, 3),
 		"canSwapCarriedStackWithSlot: true for a slot of the pack, which accepts anything"
 	)
 	check(
 		describe(stove.carriedStack) == "stove 1" and otherContents(stove) == "-, log 12, -",
 		"canSwapCarriedStackWithSlot: asking changes nothing"
 	)
-	InventoryScreen.swapCarriedStackWithSlot(stove, "pack", 3)
-	InventoryScreen.swapCarriedStackWithSlot(stove, "other", 2)
+	InventoryScreen.swapCarriedStackWithSlot(stove, stove.pack, 3)
+	InventoryScreen.swapCarriedStackWithSlot(stove, stoveSlots, 2)
 	check(
-		describe(stove.carriedStack) == "log 12" and InventoryScreen.canSwapCarriedStackWithSlot(stove, "other", 2),
+		describe(stove.carriedStack) == "log 12" and InventoryScreen.canSwapCarriedStackWithSlot(stove, stoveSlots, 2),
 		"canSwapCarriedStackWithSlot: true when the slot accepts the carried item"
 	)
 	check(
-		not InventoryScreen.canSwapCarriedStackWithSlot(stove, "other", 1),
+		not InventoryScreen.canSwapCarriedStackWithSlot(stove, stoveSlots, 1),
 		"canSwapCarriedStackWithSlot: and false for the slot beside it that does not"
-	)
-end
-
-do -- swapSlots
-	local screen = InventoryScreen.new(inventoryOf("log 12, stone 3, -, stove 1"), inventoryOf("log 5, -"))
-	InventoryScreen.pickUpFromSlot(screen, "pack", 4)
-	InventoryScreen.swapSlots(screen, "other", 1, "pack", 2)
-	check(
-		contents(screen.pack) == "log 12, log 5, -, -" and otherContents(screen) == "stone 3, -",
-		"swapSlots: slots of different inventories change places"
-	)
-	InventoryScreen.swapSlots(screen, "other", 2, "pack", 1)
-	check(
-		contents(screen.pack) == "-, log 5, -, -" and otherContents(screen) == "stone 3, log 12",
-		"swapSlots: a slot that holds nothing takes the other's stack"
-	)
-	InventoryScreen.swapSlots(screen, "other", 1, "pack", 1)
-	check(
-		contents(screen.pack) == "stone 3, log 5, -, -" and otherContents(screen) == "-, log 12",
-		"swapSlots: the other slot may be the one that holds nothing"
-	)
-	InventoryScreen.swapSlots(screen, "pack", 3, "pack", 2)
-	check(contents(screen.pack) == "stone 3, -, log 5, -", "swapSlots: two slots of the pack change places")
-	InventoryScreen.swapSlots(screen, "pack", 4, "pack", 2)
-	check(contents(screen.pack) == "stone 3, -, log 5, -", "swapSlots: two slots that hold nothing stay so")
-	InventoryScreen.swapSlots(screen, "pack", 1, "pack", 1)
-	check(contents(screen.pack) == "stone 3, -, log 5, -", "swapSlots: a slot swapped with itself is unchanged")
-	check(describe(screen.carriedStack) == "stove 1", "swapSlots: the carried stack is not involved")
-
-	local same = InventoryScreen.new(inventoryOf("log 10, log 3"))
-	InventoryScreen.swapSlots(same, "pack", 1, "pack", 2)
-	check(contents(same.pack) == "log 3, log 10", "swapSlots: stacks of the same item are exchanged, not merged")
-
-	-- It exchanges whatever the slots accept: asking is canSwapSlots's.
-	local stove = stoveScreen("log 12, stone 5, -, stove 1", "-, -, stove 1")
-	InventoryScreen.swapSlots(stove, "other", 1, "pack", 1)
-	check(
-		otherContents(stove) == "log 12, -, stove 1" and contents(stove.pack) == "-, stone 5, -, stove 1",
-		"swapSlots: it does not ask whether each slot accepts the other's stack"
 	)
 end
 
 do -- canSwapSlots
 	local stove = stoveScreen("log 12, stone 5, -, stove 1", "-, -, stove 1")
+	local stoveSlots = otherOf(stove)
 	check(
-		not InventoryScreen.canSwapSlots(stove, "other", 1, "pack", 1),
+		not InventoryScreen.canSwapSlots(stove, stoveSlots, 1, stove.pack, 1),
 		"canSwapSlots: false when a slot does not accept the other slot's stack"
 	)
 	check(
-		not InventoryScreen.canSwapSlots(stove, "pack", 1, "other", 1),
+		not InventoryScreen.canSwapSlots(stove, stove.pack, 1, stoveSlots, 1),
 		"canSwapSlots: and the same with the two slots named the other way round"
 	)
 	check(
-		InventoryScreen.canSwapSlots(stove, "other", 1, "pack", 2),
+		InventoryScreen.canSwapSlots(stove, stoveSlots, 1, stove.pack, 2),
 		"canSwapSlots: true when the slot accepts the other slot's stack"
 	)
 	check(
-		InventoryScreen.canSwapSlots(stove, "other", 3, "pack", 3),
+		InventoryScreen.canSwapSlots(stove, stoveSlots, 3, stove.pack, 3),
 		"canSwapSlots: true when a stack comes out of a slot that accepts nothing into a slot that holds nothing"
 	)
 	check(
-		not InventoryScreen.canSwapSlots(stove, "other", 2, "pack", 4),
+		not InventoryScreen.canSwapSlots(stove, stoveSlots, 2, stove.pack, 4),
 		"canSwapSlots: false when the slot that holds nothing does not accept the other's stack"
 	)
 	check(
-		InventoryScreen.canSwapSlots(stove, "pack", 3, "other", 2),
+		InventoryScreen.canSwapSlots(stove, stove.pack, 3, stoveSlots, 2),
 		"canSwapSlots: true for two slots that hold nothing"
 	)
 	check(
@@ -539,22 +432,25 @@ do -- canSwapSlots
 	)
 	local half = stoveScreen("stove 1, log 4", "-, log 3, -")
 	check(
-		not InventoryScreen.canSwapSlots(half, "pack", 1, "other", 2),
+		not InventoryScreen.canSwapSlots(half, half.pack, 1, otherOf(half), 2),
 		"canSwapSlots: false when only one of the two slots would accept the other's stack"
 	)
 	local pack = InventoryScreen.new(inventoryOf("log 12, stone 5"))
-	check(InventoryScreen.canSwapSlots(pack, "pack", 1, "pack", 2), "canSwapSlots: true for any two slots of the pack")
+	check(
+		InventoryScreen.canSwapSlots(pack, pack.pack, 1, pack.pack, 2),
+		"canSwapSlots: true for any two slots of the pack"
+	)
 end
 
 do -- fillCarriedStackFromAllSlots
 	local screen =
 		InventoryScreen.new(inventoryOf("log 16, log 3, stone 5, log 2"), inventoryOf("log 4, log 16, stone 1"))
-	local other = screen.otherInventory :: Inventory.Inventory
+	local other = otherOf(screen)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(screen) == 0,
 		"fillCarriedStackFromAllSlots: 0 when nothing is carried"
 	)
-	InventoryScreen.pickUpFromSlot(screen, "pack", 2)
+	InventoryScreen.pickUpFromSlot(screen, screen.pack, 2)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(screen) == 13,
 		"fillCarriedStackFromAllSlots: returns how many were gathered"
@@ -577,7 +473,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local few = InventoryScreen.new(inventoryOf("stone 2, log 1, stone 3, stone 16"))
-	InventoryScreen.pickUpFromSlot(few, "pack", 1)
+	InventoryScreen.pickUpFromSlot(few, few.pack, 1)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(few) == 14,
 		"fillCarriedStackFromAllSlots: stops at the stack size"
@@ -589,7 +485,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local odd = InventoryScreen.new(inventoryOf("stone 16, stone 2, stone 3, stone 4"))
-	InventoryScreen.pickUpFromSlot(odd, "pack", 2)
+	InventoryScreen.pickUpFromSlot(odd, odd.pack, 2)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(odd) == 14,
 		"fillCarriedStackFromAllSlots: fills the stack from slots that are not full and then a full stack"
@@ -600,7 +496,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local lots = InventoryScreen.new(inventoryOf("stove 1, log 2, log 3, log 4"))
-	InventoryScreen.pickUpFromSlot(lots, "pack", 2)
+	InventoryScreen.pickUpFromSlot(lots, lots.pack, 2)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(lots) == 7,
 		"fillCarriedStackFromAllSlots: takes every slot that is not full when they do not fill the stack"
@@ -611,7 +507,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local oneShort = InventoryScreen.new(inventoryOf("log 15, log 3"))
-	InventoryScreen.pickUpFromSlot(oneShort, "pack", 1)
+	InventoryScreen.pickUpFromSlot(oneShort, oneShort.pack, 1)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(oneShort) == 1,
 		"fillCarriedStackFromAllSlots: takes a single item when that is all the stack lacks"
@@ -621,7 +517,7 @@ do -- fillCarriedStackFromAllSlots
 		"fillCarriedStackFromAllSlots: and that one item is carried, not lost"
 	)
 	local oneThere = InventoryScreen.new(inventoryOf("log 4, log 1, -"))
-	InventoryScreen.pickUpFromSlot(oneThere, "pack", 1)
+	InventoryScreen.pickUpFromSlot(oneThere, oneThere.pack, 1)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(oneThere) == 1,
 		"fillCarriedStackFromAllSlots: gathers a single item"
@@ -629,7 +525,7 @@ do -- fillCarriedStackFromAllSlots
 	check(describe(oneThere.carriedStack) == "log 5", "fillCarriedStackFromAllSlots: and that item is carried")
 
 	local nothing = InventoryScreen.new(inventoryOf("stove 1, log 4"))
-	InventoryScreen.pickUpFromSlot(nothing, "pack", 2)
+	InventoryScreen.pickUpFromSlot(nothing, nothing.pack, 2)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(nothing) == 0,
 		"fillCarriedStackFromAllSlots: 0 when no slot holds its kind"
@@ -640,7 +536,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local order = InventoryScreen.new(inventoryOf("log 5, log 4, stone 5, -"))
-	InventoryScreen.pickUpFromSlot(order, "pack", 1)
+	InventoryScreen.pickUpFromSlot(order, order.pack, 1)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(order) == 4,
 		"fillCarriedStackFromAllSlots: takes from the slot that holds the carried kind"
@@ -652,7 +548,7 @@ do -- fillCarriedStackFromAllSlots
 
 	-- The slot rule does not apply to taking items out.
 	local gathering = stoveScreen("log 2, -, -, -", "-, log 5, log 3")
-	InventoryScreen.pickUpFromSlot(gathering, "pack", 1)
+	InventoryScreen.pickUpFromSlot(gathering, gathering.pack, 1)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(gathering) == 8,
 		"fillCarriedStackFromAllSlots: takes from slots whatever their rule"
@@ -664,7 +560,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local ties = InventoryScreen.new(inventoryOf("log 2, log 2, -"), inventoryOf("log 2, log 2"))
-	InventoryScreen.pickUpFromSlot(ties, "pack", 1)
+	InventoryScreen.pickUpFromSlot(ties, ties.pack, 1)
 	InventoryScreen.fillCarriedStackFromAllSlots(ties)
 	check(
 		describe(ties.carriedStack) == "log 8",
@@ -676,7 +572,7 @@ do -- fillCarriedStackFromAllSlots
 	)
 
 	local partly = InventoryScreen.new(inventoryOf("log 6, log 16, log 8"), inventoryOf("log 7"))
-	InventoryScreen.pickUpFromSlot(partly, "pack", 1)
+	InventoryScreen.pickUpFromSlot(partly, partly.pack, 1)
 	check(
 		InventoryScreen.fillCarriedStackFromAllSlots(partly) == 10,
 		"fillCarriedStackFromAllSlots: takes from slots that are not full, other inventory first"
@@ -690,7 +586,7 @@ end
 do -- spreadCarriedStackOverSlots
 	local screen = carrying("log 7", "-, -, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(screen, { at("pack", 1), at("pack", 2) }) == 6,
+		InventoryScreen.spreadCarriedStackOverSlots(screen, { at(screen.pack, 1), at(screen.pack, 2) }) == 6,
 		"spreadCarriedStackOverSlots: returns how many items were put down"
 	)
 	check(
@@ -701,7 +597,8 @@ do -- spreadCarriedStackOverSlots
 
 	local exact = carrying("log 12", "-, -, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(exact, { at("pack", 4), at("pack", 1), at("pack", 2) }) == 12,
+		InventoryScreen.spreadCarriedStackOverSlots(exact, { at(exact.pack, 4), at(exact.pack, 1), at(exact.pack, 2) })
+			== 12,
 		"spreadCarriedStackOverSlots: a stack that divides exactly is all put down"
 	)
 	check(
@@ -711,7 +608,10 @@ do -- spreadCarriedStackOverSlots
 
 	local topping = carrying("log 12", "log 14, -, log 3")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(topping, { at("pack", 1), at("pack", 2), at("pack", 3) }) == 10,
+		InventoryScreen.spreadCarriedStackOverSlots(
+			topping,
+			{ at(topping.pack, 1), at(topping.pack, 2), at(topping.pack, 3) }
+		) == 10,
 		"spreadCarriedStackOverSlots: a slot takes only as much as it has room for"
 	)
 	check(
@@ -721,7 +621,8 @@ do -- spreadCarriedStackOverSlots
 
 	local mixed = carrying("log 8", "stone 5, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(mixed, { at("pack", 1), at("pack", 2), at("pack", 3) }) == 8,
+		InventoryScreen.spreadCarriedStackOverSlots(mixed, { at(mixed.pack, 1), at(mixed.pack, 2), at(mixed.pack, 3) })
+			== 8,
 		"spreadCarriedStackOverSlots: a slot holding a different item is passed over"
 	)
 	check(
@@ -731,7 +632,7 @@ do -- spreadCarriedStackOverSlots
 
 	local full = carrying("log 9", "log 16, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(full, { at("pack", 1), at("pack", 2), at("pack", 3) }) == 6,
+		InventoryScreen.spreadCarriedStackOverSlots(full, { at(full.pack, 1), at(full.pack, 2), at(full.pack, 3) }) == 6,
 		"spreadCarriedStackOverSlots: a full stack of the carried item takes part, and gets nothing"
 	)
 	check(
@@ -743,7 +644,7 @@ do -- spreadCarriedStackOverSlots
 	check(
 		InventoryScreen.spreadCarriedStackOverSlots(
 			twice,
-			{ at("pack", 1), at("pack", 1), at("pack", 2), at("pack", 1) }
+			{ at(twice.pack, 1), at(twice.pack, 1), at(twice.pack, 2), at(twice.pack, 1) }
 		) == 8,
 		"spreadCarriedStackOverSlots: a slot named twice counts once"
 	)
@@ -751,8 +652,10 @@ do -- spreadCarriedStackOverSlots
 
 	local few = carrying("log 2", "-, -, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(few, { at("pack", 3), at("pack", 1), at("pack", 2), at("pack", 4) })
-			== 2,
+		InventoryScreen.spreadCarriedStackOverSlots(
+			few,
+			{ at(few.pack, 3), at(few.pack, 1), at(few.pack, 2), at(few.pack, 4) }
+		) == 2,
 		"spreadCarriedStackOverSlots: no more slots take part than there are items carried"
 	)
 	check(
@@ -764,7 +667,7 @@ do -- spreadCarriedStackOverSlots
 	local passedOver = carrying("log 2", "stone 1, -, -, -")
 	InventoryScreen.spreadCarriedStackOverSlots(
 		passedOver,
-		{ at("pack", 1), at("pack", 2), at("pack", 3), at("pack", 4) }
+		{ at(passedOver.pack, 1), at(passedOver.pack, 2), at(passedOver.pack, 3), at(passedOver.pack, 4) }
 	)
 	check(
 		contents(passedOver.pack) == "stone 1, log 1, log 1, -",
@@ -773,7 +676,8 @@ do -- spreadCarriedStackOverSlots
 
 	local ones = carrying("log 5", "-, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(ones, { at("pack", 1), at("pack", 2), at("pack", 3) }, 1) == 3,
+		InventoryScreen.spreadCarriedStackOverSlots(ones, { at(ones.pack, 1), at(ones.pack, 2), at(ones.pack, 3) }, 1)
+			== 3,
 		"spreadCarriedStackOverSlots: with a count, each slot gets that many"
 	)
 	check(
@@ -782,7 +686,8 @@ do -- spreadCarriedStackOverSlots
 	)
 	local twos = carrying("log 5", "-, -, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(twos, { at("pack", 1), at("pack", 2), at("pack", 3) }, 2) == 5,
+		InventoryScreen.spreadCarriedStackOverSlots(twos, { at(twos.pack, 1), at(twos.pack, 2), at(twos.pack, 3) }, 2)
+			== 5,
 		"spreadCarriedStackOverSlots: a count is given out for as long as the carried stack lasts"
 	)
 	check(
@@ -791,7 +696,7 @@ do -- spreadCarriedStackOverSlots
 	)
 	local zero = carrying("log 5", "-, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(zero, { at("pack", 1), at("pack", 2) }, 0) == 0,
+		InventoryScreen.spreadCarriedStackOverSlots(zero, { at(zero.pack, 1), at(zero.pack, 2) }, 0) == 0,
 		"spreadCarriedStackOverSlots: a count of 0 puts nothing down"
 	)
 	check(
@@ -800,9 +705,10 @@ do -- spreadCarriedStackOverSlots
 	)
 
 	local both = InventoryScreen.new(inventoryOf("log 6, -"), inventoryOf("-, -"))
-	InventoryScreen.pickUpFromSlot(both, "pack", 1)
+	InventoryScreen.pickUpFromSlot(both, both.pack, 1)
+	local bothOther = otherOf(both)
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(both, { at("other", 2), at("pack", 2), at("other", 1) }) == 6,
+		InventoryScreen.spreadCarriedStackOverSlots(both, { at(bothOther, 2), at(both.pack, 2), at(bothOther, 1) }) == 6,
 		"spreadCarriedStackOverSlots: the slots may be in both inventories"
 	)
 	check(
@@ -811,11 +717,12 @@ do -- spreadCarriedStackOverSlots
 	)
 
 	local stove = stoveScreen("log 6, -", "-, -, -")
-	InventoryScreen.pickUpFromSlot(stove, "pack", 1)
+	InventoryScreen.pickUpFromSlot(stove, stove.pack, 1)
+	local stoveSlots = otherOf(stove)
 	check(
 		InventoryScreen.spreadCarriedStackOverSlots(
 			stove,
-			{ at("other", 1), at("other", 2), at("other", 3), at("pack", 2) }
+			{ at(stoveSlots, 1), at(stoveSlots, 2), at(stoveSlots, 3), at(stove.pack, 2) }
 		) == 6,
 		"spreadCarriedStackOverSlots: a slot that does not accept the carried item is passed over"
 	)
@@ -826,7 +733,7 @@ do -- spreadCarriedStackOverSlots
 
 	local single = carrying("log 6", "log 12, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(single, { at("pack", 1) }) == 4,
+		InventoryScreen.spreadCarriedStackOverSlots(single, { at(single.pack, 1) }) == 4,
 		"spreadCarriedStackOverSlots: over one slot, it is a putting down"
 	)
 	check(
@@ -836,7 +743,7 @@ do -- spreadCarriedStackOverSlots
 
 	local ones2 = carrying("log 6", "-")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(ones2, { at("pack", 1) }, 1) == 1,
+		InventoryScreen.spreadCarriedStackOverSlots(ones2, { at(ones2.pack, 1) }, 1) == 1,
 		"spreadCarriedStackOverSlots: over one slot with a count of 1, puts one down"
 	)
 	check(
@@ -846,13 +753,13 @@ do -- spreadCarriedStackOverSlots
 
 	local nothing = InventoryScreen.new(inventoryOf("log 6, -"))
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(nothing, { at("pack", 2) }) == 0,
+		InventoryScreen.spreadCarriedStackOverSlots(nothing, { at(nothing.pack, 2) }) == 0,
 		"spreadCarriedStackOverSlots: 0 with nothing carried"
 	)
 	check(contents(nothing.pack) == "log 6, -", "spreadCarriedStackOverSlots: and nothing changes")
 	local blocked = carrying("log 6", "stone 1, stone 2")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(blocked, { at("pack", 1), at("pack", 2) }) == 0,
+		InventoryScreen.spreadCarriedStackOverSlots(blocked, { at(blocked.pack, 1), at(blocked.pack, 2) }) == 0,
 		"spreadCarriedStackOverSlots: 0 when no slot named takes part"
 	)
 	check(
@@ -866,7 +773,11 @@ do -- spreadCarriedStackOverSlots
 
 	local three = carrying("log 7", "-, log 16, -")
 	check(
-		InventoryScreen.spreadCarriedStackOverSlots(three, { at("pack", 1), at("pack", 2), at("pack", 3) }, 1) == 2,
+		InventoryScreen.spreadCarriedStackOverSlots(
+			three,
+			{ at(three.pack, 1), at(three.pack, 2), at(three.pack, 3) },
+			1
+		) == 2,
 		"spreadCarriedStackOverSlots: one in each slot that has room, with a full stack getting nothing"
 	)
 	check(
@@ -882,7 +793,7 @@ do -- takeCarriedStack
 		InventoryScreen.takeCarriedStack(screen, 2) == nil,
 		"takeCarriedStack: nothing when nothing is carried, whatever count is asked for"
 	)
-	InventoryScreen.pickUpFromSlot(screen, "pack", 1)
+	InventoryScreen.pickUpFromSlot(screen, screen.pack, 1)
 	check(
 		describe(InventoryScreen.takeCarriedStack(screen, 1)) == "log 1",
 		"takeCarriedStack: returns that many as a stack"
@@ -897,14 +808,14 @@ do -- takeCarriedStack
 		"takeCarriedStack: a count of exactly what is carried takes it all"
 	)
 	Inventory.addItems(screen.pack, "log", 6)
-	InventoryScreen.pickUpFromSlot(screen, "pack", 1)
+	InventoryScreen.pickUpFromSlot(screen, screen.pack, 1)
 	check(
 		describe(InventoryScreen.takeCarriedStack(screen, 50)) == "log 6",
 		"takeCarriedStack: asked for more than is carried, returns what is carried"
 	)
 	check(screen.carriedStack == nil, "takeCarriedStack: nothing is carried afterwards")
 	Inventory.addItems(screen.pack, "log", 4)
-	InventoryScreen.pickUpFromSlot(screen, "pack", 1)
+	InventoryScreen.pickUpFromSlot(screen, screen.pack, 1)
 	check(
 		describe(InventoryScreen.takeCarriedStack(screen)) == "log 4" and screen.carriedStack == nil,
 		"takeCarriedStack: with no count, the whole carried stack"
@@ -915,11 +826,11 @@ end
 do -- what the mouse's clicks come to: a left click, carrying nothing
 	local pickedUp = carrying("-", "log 12")
 	check(
-		InventoryScreen.pickUpFromSlot(pickedUp, "pack", 1) == 12 and describe(pickedUp.carriedStack) == "log 12",
+		InventoryScreen.pickUpFromSlot(pickedUp, pickedUp.pack, 1) == 12 and describe(pickedUp.carriedStack) == "log 12",
 		"pickUpFromSlot: picks up the whole stack"
 	)
 	local stove = carrying("-", "stove 1")
-	InventoryScreen.pickUpFromSlot(stove, "pack", 1)
+	InventoryScreen.pickUpFromSlot(stove, stove.pack, 1)
 	check(
 		describe(stove.carriedStack) == "stove 1" and contents(stove.pack) == "-",
 		"pickUpFromSlot: an item that does not stack"
@@ -929,14 +840,14 @@ end
 do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do what clicks on a slot need
 	-- A left click carrying a stack: putDownInSlot, then swapCarriedStackWithSlot if the slot holds a different item.
 	local onNothing = carrying("log 10", "-")
-	InventoryScreen.putDownInSlot(onNothing, "pack", 1)
+	InventoryScreen.putDownInSlot(onNothing, onNothing.pack, 1)
 	check(
 		onNothing.carriedStack == nil and contents(onNothing.pack) == "log 10",
 		"putDownInSlot: the whole stack onto nothing"
 	)
 
 	local onSame = carrying("log 10", "log 12")
-	InventoryScreen.putDownInSlot(onSame, "pack", 1)
+	InventoryScreen.putDownInSlot(onSame, onSame.pack, 1)
 	check(
 		describe(onSame.carriedStack) == "log 6" and contents(onSame.pack) == "log 16",
 		"putDownInSlot: what does not fit stays carried"
@@ -944,7 +855,7 @@ do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do wha
 
 	local onFull = carrying("log 10", "log 16")
 	check(
-		InventoryScreen.putDownInSlot(onFull, "pack", 1) == 0,
+		InventoryScreen.putDownInSlot(onFull, onFull.pack, 1) == 0,
 		"putDownInSlot: nothing onto a full stack of the same item"
 	)
 	check(
@@ -953,7 +864,7 @@ do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do wha
 	)
 
 	local filling = carrying("log 16", "log 1")
-	InventoryScreen.putDownInSlot(filling, "pack", 1)
+	InventoryScreen.putDownInSlot(filling, filling.pack, 1)
 	check(
 		describe(filling.carriedStack) == "log 1" and contents(filling.pack) == "log 16",
 		"putDownInSlot: a full stack onto a smaller one fills the slot and the rest stays carried"
@@ -963,7 +874,7 @@ do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do wha
 	for _, case in { { "log 12", 6 }, { "log 5", 3 }, { "log 1", 1 }, { "log 16", 8 } } :: { { any } } do
 		local count = tonumber(string.match(case[1], "%d+")) :: number
 		local halved = carrying("-", case[1])
-		InventoryScreen.pickUpFromSlot(halved, "pack", 1, math.ceil(count / 2))
+		InventoryScreen.pickUpFromSlot(halved, halved.pack, 1, math.ceil(count / 2))
 		check(
 			halved.carriedStack ~= nil and halved.carriedStack.count == case[2],
 			"pickUpFromSlot: half of " .. case[1] .. " is " .. tostring(case[2])
@@ -977,20 +888,20 @@ do -- pickUpFromSlot, putDownInSlot and swapCarriedStackWithSlot together do wha
 
 	-- A right click carrying a stack: one is put down.
 	local oneDown = carrying("log 10", "log 3")
-	InventoryScreen.putDownInSlot(oneDown, "pack", 1, 1)
+	InventoryScreen.putDownInSlot(oneDown, oneDown.pack, 1, 1)
 	check(
 		describe(oneDown.carriedStack) == "log 9" and contents(oneDown.pack) == "log 4",
 		"putDownInSlot: one item onto the same item"
 	)
 	local last = carrying("log 1", "log 3")
-	InventoryScreen.putDownInSlot(last, "pack", 1, 1)
+	InventoryScreen.putDownInSlot(last, last.pack, 1, 1)
 	check(
 		last.carriedStack == nil and contents(last.pack) == "log 4",
 		"putDownInSlot: the last item leaves nothing carried"
 	)
 	local fullOne = carrying("log 10", "log 16")
 	check(
-		InventoryScreen.putDownInSlot(fullOne, "pack", 1, 1) == 0 and describe(fullOne.carriedStack) == "log 10",
+		InventoryScreen.putDownInSlot(fullOne, fullOne.pack, 1, 1) == 0 and describe(fullOne.carriedStack) == "log 10",
 		"putDownInSlot: one item onto a full stack does not move"
 	)
 end
@@ -1015,31 +926,26 @@ do -- no action ever makes or loses an item
 		return slot ~= 3 and (slot ~= 1 or itemId ~= "log")
 	end
 	local screen = InventoryScreen.new(pack, crate, crateAccepts)
-	local sides: { InventoryScreen.Side } = { "pack", "other" }
+	local inventories = { pack, crate }
 	local broken: string? = nil
 	for step = 1, 30000 do
-		local side = sides[random(2)]
+		local inventory = inventories[random(2)]
 		local slot = random(4)
-		local action = random(10)
+		local action = random(9)
 		if action == 1 then
-			InventoryScreen.pickUpFromSlot(screen, side, slot, if random(2) == 1 then nil else random(21) - 1)
+			InventoryScreen.pickUpFromSlot(screen, inventory, slot, if random(2) == 1 then nil else random(21) - 1)
 		elseif action == 2 then
-			InventoryScreen.putDownInSlot(screen, side, slot, if random(2) == 1 then nil else random(21) - 1)
+			InventoryScreen.putDownInSlot(screen, inventory, slot, if random(2) == 1 then nil else random(21) - 1)
 		elseif action == 3 then
-			if InventoryScreen.canSwapCarriedStackWithSlot(screen, side, slot) then
-				InventoryScreen.swapCarriedStackWithSlot(screen, side, slot)
+			if InventoryScreen.canSwapCarriedStackWithSlot(screen, inventory, slot) then
+				InventoryScreen.swapCarriedStackWithSlot(screen, inventory, slot)
 			end
-		elseif action == 4 then
-			local withSide, withSlot = sides[random(2)], random(4)
-			if InventoryScreen.canSwapSlots(screen, side, slot, withSide, withSlot) then
-				InventoryScreen.swapSlots(screen, side, slot, withSide, withSlot)
-			end
-		elseif action == 5 or action == 6 then
+		elseif action == 4 or action == 5 then
 			InventoryScreen.fillCarriedStackFromAllSlots(screen)
-		elseif action == 7 or action == 8 then
+		elseif action == 6 or action == 7 then
 			local screenSlots: { InventoryScreen.ScreenSlot } = {}
 			for _ = 1, random(5) do
-				table.insert(screenSlots, { side = sides[random(2)], slot = random(4) })
+				table.insert(screenSlots, { inventory = inventories[random(2)], slot = random(4) })
 			end
 			InventoryScreen.spreadCarriedStackOverSlots(
 				screen,

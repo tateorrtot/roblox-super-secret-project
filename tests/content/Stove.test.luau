@@ -16,6 +16,16 @@ local Signal = require("../../src/shared/Signal")
 local Stove = require("../../src/shared/content/Stove")
 local World = require("../../src/shared/world/World")
 
+-- Returns the pack of `screen`, which is open.
+local function packOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).pack
+end
+
+-- Returns the other inventory of `screen`, which has one open.
+local function otherOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
+end
+
 local check = Check.that
 local at = Position.new
 
@@ -578,18 +588,18 @@ do -- slotAcceptsItem
 	local rig = stoveWith("-", "-", "cooked_fish 1")
 	local screen = InventoryScreen.new(pack, rig.stove.inventory, Stove.slotAcceptsItem)
 	check(
-		InventoryScreen.pickUpFromSlot(screen, "other", OUTPUT) == 1,
+		InventoryScreen.pickUpFromSlot(screen, otherOf(screen), OUTPUT) == 1,
 		"pickUpFromSlot: what was made can be taken out"
 	)
 	check(
-		InventoryScreen.putDownInSlot(screen, "other", OUTPUT) == 0,
+		InventoryScreen.putDownInSlot(screen, otherOf(screen), OUTPUT) == 0,
 		"putDownInSlot: nothing can be put where it came from"
 	)
 	local done = stoveWith("fish 1", "log 1", "-")
 	advance(done, 8)
 	local doneScreen = InventoryScreen.new(Inventory.new(4), done.stove.inventory, Stove.slotAcceptsItem)
 	check(
-		InventoryScreen.pickUpFromSlot(doneScreen, "other", OUTPUT) == 1,
+		InventoryScreen.pickUpFromSlot(doneScreen, otherOf(doneScreen), OUTPUT) == 1,
 		"pickUpFromSlot: a cooked fish made by advance can be taken out"
 	)
 	check(
@@ -810,23 +820,23 @@ do -- interact
 	)
 	check(World.getOpenedPlacedObjectId(world, player) == stoveId, "interact: as the screen of that stove")
 	check(
-		InventoryScreen.slotAcceptsItem(screen, "other", INPUT, "fish")
-			and not InventoryScreen.slotAcceptsItem(screen, "other", INPUT, "log"),
+		InventoryScreen.slotAcceptsItem(screen, otherOf(screen), INPUT, "fish")
+			and not InventoryScreen.slotAcceptsItem(screen, otherOf(screen), INPUT, "log"),
 		"interact: the input slot takes only what a stove has a recipe for"
 	)
 	check(
-		InventoryScreen.slotAcceptsItem(screen, "other", FUEL, "log")
-			and not InventoryScreen.slotAcceptsItem(screen, "other", FUEL, "fish"),
+		InventoryScreen.slotAcceptsItem(screen, otherOf(screen), FUEL, "log")
+			and not InventoryScreen.slotAcceptsItem(screen, otherOf(screen), FUEL, "fish"),
 		"interact: the fuel slot takes only what burns"
 	)
 	check(
-		not InventoryScreen.slotAcceptsItem(screen, "other", OUTPUT, "cooked_fish"),
+		not InventoryScreen.slotAcceptsItem(screen, otherOf(screen), OUTPUT, "cooked_fish"),
 		"interact: nothing can be put in the output slot"
 	)
-	check(InventoryScreen.slotAcceptsItem(screen, "pack", 1, "fish"), "interact: while the pack takes anything")
+	check(InventoryScreen.slotAcceptsItem(screen, packOf(screen), 1, "fish"), "interact: while the pack takes anything")
 
 	Inventory.setStack(player.pack, 1, ItemStack.new("log", 6))
-	InventoryScreen.pickUpFromSlot(screen, "pack", 1)
+	InventoryScreen.pickUpFromSlot(screen, packOf(screen), 1)
 	Stove.interact(world, player, stoveId)
 	check(
 		player.screen ~= screen and player.screen ~= nil,

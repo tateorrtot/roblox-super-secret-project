@@ -49,20 +49,20 @@ say("Select hotbar slot " .. hotbar.selectedSlot .. ":", describe(Hotbar.getSele
 print("\nThe player opens the crate.\n")
 local screen = InventoryScreen.new(pack, crate)
 
-InventoryScreen.pickUpFromSlot(screen, "pack", 3)
+InventoryScreen.pickUpFromSlot(screen, pack, 3)
 say("Pick up the 8 logs in the pack:", "carrying " .. describe(screen.carriedStack))
-InventoryScreen.putDownInSlot(screen, "other", 1)
+InventoryScreen.putDownInSlot(screen, crate, 1)
 say("Put them down in the crate's first slot:", "carrying " .. describe(screen.carriedStack))
 say("", "crate  " .. contents(crate))
 
-InventoryScreen.pickUpFromSlot(screen, "pack", 1, 8)
+InventoryScreen.pickUpFromSlot(screen, pack, 1, 8)
 say("Pick up 8 of the 16 logs in the pack:", "carrying " .. describe(screen.carriedStack))
-InventoryScreen.putDownInSlot(screen, "other", 2, 1)
-InventoryScreen.putDownInSlot(screen, "other", 2, 1)
+InventoryScreen.putDownInSlot(screen, crate, 2, 1)
+InventoryScreen.putDownInSlot(screen, crate, 2, 1)
 say("Put one down in the crate's second slot, twice:", "carrying " .. describe(screen.carriedStack))
 say("", "crate  " .. contents(crate))
 
-InventoryScreen.swapCarriedStackWithSlot(screen, "pack", 4)
+InventoryScreen.swapCarriedStackWithSlot(screen, pack, 4)
 say("Swap with the stove in the pack:", "carrying " .. describe(screen.carriedStack))
 say("", "pack   " .. contents(pack))
 

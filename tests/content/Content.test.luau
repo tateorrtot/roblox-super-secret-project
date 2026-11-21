@@ -24,6 +24,11 @@ local Stove = require("../../src/shared/content/Stove")
 local StoveItem = require("../../src/shared/content/StoveItem")
 local World = require("../../src/shared/world/World")
 
+-- Returns the other inventory of `screen`, which has one open.
+local function otherOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
+end
+
 local check = Check.that
 local at = Position.new
 local carryOut = Requests.carryOut :: (world: World.World, playerId: any, name: any, ...any) -> ()
@@ -232,8 +237,8 @@ do -- the stove item and the stove, through the requests
 	)
 	check(
 		screen ~= nil
-			and InventoryScreen.slotAcceptsItem(screen, "other", Stove.INPUT_SLOT, "fish")
-			and not InventoryScreen.slotAcceptsItem(screen, "other", Stove.INPUT_SLOT, "cheese"),
+			and InventoryScreen.slotAcceptsItem(screen, otherOf(screen), Stove.INPUT_SLOT, "fish")
+			and not InventoryScreen.slotAcceptsItem(screen, otherOf(screen), Stove.INPUT_SLOT, "cheese"),
 		"interactWithPlacedObject: and its input slot takes only what the stove has a recipe for"
 	)
 	carryOut(world, 1, "closeScreen")

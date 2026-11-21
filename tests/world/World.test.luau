@@ -13,6 +13,16 @@ local Position = require("../../src/shared/Position")
 local Signal = require("../../src/shared/Signal")
 local World = require("../../src/shared/world/World")
 
+-- Returns the pack of `screen`, which is open.
+local function packOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).pack
+end
+
+-- Returns the other inventory of `screen`, which has one open.
+local function otherOf(screen: any): Inventory.Inventory
+	return (screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
+end
+
 local check = Check.that
 local STILL = { x = 0, y = 0, z = 0 }
 
@@ -274,7 +284,7 @@ do -- a player's character
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
 	openOn(full, fullState, fullIds.crate)
-	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(fullState.screen :: any, otherOf(fullState.screen), 1)
 	World.removeCharacter(full, 1)
 	check(
 		fullState.screen == nil and World.getOpenedPlacedObjectId(full, fullState) == nil and fullState.character == nil,
@@ -464,7 +474,7 @@ do -- closing a player's screen
 	check(state.screen == nil, "closeScreen: the screen is gone")
 
 	openOn(world, state, ids.crate)
-	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(state.screen :: any, otherOf(state.screen), 1)
 	check(
 		is((state.screen :: any).carriedStack, "fish", 5) and Inventory.countItems(state.pack, "fish") == 0,
 		"closeScreen: (set up) the player carries the fish out of the crate"
@@ -491,7 +501,7 @@ do -- closing a player's screen
 	end
 	Inventory.setStack(insideOf(world, ids.crate), 1, ItemStack.new("fish", 5))
 	openOn(world, state, ids.crate)
-	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(state.screen :: any, otherOf(state.screen), 1)
 	World.closeScreen(world, state)
 	local fish = groundStacks(world, "fish")
 	check(
@@ -511,7 +521,7 @@ do -- closing a player's screen
 	end
 	Inventory.setStack(state2.pack, 10, ItemStack.new("fish", 6))
 	openOn(world2, state2, ids2.crate)
-	InventoryScreen.pickUpFromSlot(state2.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(state2.screen :: any, otherOf(state2.screen), 1)
 	World.closeScreen(world2, state2)
 	check(
 		is(Inventory.getStack(state2.pack, 10), "fish", 8) and onGround(world2, "fish") == 3,
@@ -572,7 +582,7 @@ do -- opening a placed object's screen
 	check(state.screen ~= first and state.screen ~= nil, "openPlacedObjectScreen: opening it again opens it afresh")
 
 	-- Another screen is closed first, as closeScreen does.
-	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(state.screen :: any, otherOf(state.screen), 1)
 	local bellInside = insideOf(world, ids.bell)
 	local onlyLogsInSlotOne = function(slot: number, itemId: string): boolean
 		return slot == 1 and itemId == "log"
@@ -589,13 +599,13 @@ do -- opening a placed object's screen
 	local bellScreen = state.screen :: InventoryScreen.InventoryScreen
 	check(bellScreen.otherInventory == bellInside, "openPlacedObjectScreen: beside the inventory given this time")
 	check(
-		InventoryScreen.slotAcceptsItem(bellScreen, "other", 1, "log")
-			and not InventoryScreen.slotAcceptsItem(bellScreen, "other", 1, "fish")
-			and not InventoryScreen.slotAcceptsItem(bellScreen, "other", 2, "log"),
+		InventoryScreen.slotAcceptsItem(bellScreen, otherOf(bellScreen), 1, "log")
+			and not InventoryScreen.slotAcceptsItem(bellScreen, otherOf(bellScreen), 1, "fish")
+			and not InventoryScreen.slotAcceptsItem(bellScreen, otherOf(bellScreen), 2, "log"),
 		"openPlacedObjectScreen: the inventory's slots take what the rule given says"
 	)
 	check(
-		InventoryScreen.slotAcceptsItem(bellScreen, "pack", 1, "fish"),
+		InventoryScreen.slotAcceptsItem(bellScreen, packOf(bellScreen), 1, "fish"),
 		"openPlacedObjectScreen: while the pack takes anything"
 	)
 
@@ -773,7 +783,7 @@ do -- taking a placed object off
 	World.setCharacterPosition(world, 2, at(10, 0, 10))
 	openOn(world, state, ids.crate)
 	openOn(world, other, ids.crate)
-	InventoryScreen.pickUpFromSlot(other.screen :: any, "other", 1, 3)
+	InventoryScreen.pickUpFromSlot(other.screen :: any, otherOf(other.screen), 1, 3)
 	knockOff(world, ids.crate)
 	check(
 		world.plot.placedObjectsById[ids.crate] == nil,
@@ -1062,7 +1072,7 @@ do -- time passing: screens close
 
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	openOn(world, state, ids.crate)
-	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(state.screen :: any, otherOf(state.screen), 1)
 	World.removeCharacter(world, 1)
 	check(
 		state.screen == nil,
@@ -1100,7 +1110,7 @@ do -- time passing: screens close
 	-- The pack is full, so what is carried is dropped at the player's character.
 	local full, fullState, fullIds = newWorld()
 	openOn(full, fullState, fullIds.crate)
-	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(fullState.screen :: any, otherOf(fullState.screen), 1)
 	for slot = 1, PlayerState.PACK_SLOT_COUNT do
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
@@ -1177,7 +1187,7 @@ end
 do -- a player leaves
 	local world, state, ids = newWorld()
 	openOn(world, state, ids.crate)
-	InventoryScreen.pickUpFromSlot(state.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(state.screen :: any, otherOf(state.screen), 1)
 	local removed = World.removePlayer(world, 1)
 	check(removed == state and world.players[1] == nil, "removePlayer: the player is out of the world")
 	check(
@@ -1195,7 +1205,7 @@ do -- a player leaves
 		Inventory.setStack(fullState.pack, slot, ItemStack.new("stove", 1))
 	end
 	openOn(full, fullState, fullIds.crate)
-	InventoryScreen.pickUpFromSlot(fullState.screen :: any, "other", 1)
+	InventoryScreen.pickUpFromSlot(fullState.screen :: any, otherOf(fullState.screen), 1)
 	World.removePlayer(full, 1)
 	local fish = groundStacks(full, "fish")
 	check(
@@ -1365,23 +1375,27 @@ do -- several players, several things at once, and no item is made or lost
 				local screen = if state ~= nil then state.screen else nil
 				if screen ~= nil then
 					run(function()
-						local side: InventoryScreen.Side = if screen.otherInventory ~= nil and random(2) == 1
-							then "other"
-							else "pack"
-						local inventory = InventoryScreen.getInventoryOnSide(screen, side)
+						local inventory = if screen.otherInventory ~= nil and random(2) == 1
+							then screen.otherInventory
+							else screen.pack
 						local slot = random(inventory.slotCount)
 						local kind = random(4)
 						if kind == 1 then
 							InventoryScreen.pickUpFromSlot(
 								screen,
-								side,
+								inventory,
 								slot,
 								if random(2) == 1 then nil else random(8)
 							)
 						elseif kind == 2 then
-							InventoryScreen.putDownInSlot(screen, side, slot, if random(2) == 1 then nil else random(8))
+							InventoryScreen.putDownInSlot(
+								screen,
+								inventory,
+								slot,
+								if random(2) == 1 then nil else random(8)
+							)
 						elseif kind == 3 then
-							InventoryScreen.swapCarriedStackWithSlot(screen, side, slot)
+							InventoryScreen.swapCarriedStackWithSlot(screen, inventory, slot)
 						else
 							local taken = InventoryScreen.takeCarriedStack(screen, random(4))
 							local character = (state :: PlayerState.PlayerState).character
