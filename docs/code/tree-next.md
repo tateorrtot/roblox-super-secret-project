@@ -56,6 +56,11 @@ a vehicle
 - **Tried in a gym, and the idea holds** (`gyms/vehicles`). One function of 80 lines, which knows no Roblox instance, drove two bodies of welded blocks with wheels at uneven places: one with two steering wheels, one that turns as a tank does. A wheel must not collide with the body that it is on. A block cut loose at speed became a body of its own, and the vehicle drove on.
 - **This waits on the objects branch.** Its five open decisions in `tree.md` come first, since a vehicle is made of what that branch places and joins.
 
+## For the user's reading
+- `docs/research/27-entities-summary.md`: what an entity is elsewhere, what Roblox already does for every thing in its world, and the one problem that an entity might solve here.
+- `docs/code/state-machine-uses.md`: a draft list of where a state machine might be used. One clear use was found: a helper.
+- `docs/working/libraries-as-submodules.md`: how the game would hold a clone of each library inside itself, tried in a scratch folder.
+
 ## What was looked up for these
 - What Roblox already has: the files of `docs/research` whose names start with `23-roblox-first`.
 - Libraries that exist, judged by their source: the files whose names start with `25-library-audit`. The answer for each of the four was to write our own.
