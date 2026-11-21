@@ -30,8 +30,22 @@ local function at(side: string, slot: number): Slot
 	return { side = side, slot = slot }
 end
 
--- Describes a request such as `moveFromSlotToInventory("pack", 3, "other", 1, 27)`, with "nil" for a missing argument
--- and "none" for no request. The arguments are counted up to `argumentCount`, so that a missing last
+-- Describes one argument of a request: a list of numbers that follow one another as its first and its last,
+-- such as "1..27", any other list as its numbers, and a missing argument as "nil".
+local function describeArgument(argument: any): string
+	if type(argument) ~= "table" or type(argument[1]) ~= "number" then
+		return if argument == nil then "nil" else tostring(argument)
+	end
+	for index = 2, #argument do
+		if argument[index] ~= argument[index - 1] + 1 then
+			return table.concat(argument, " ")
+		end
+	end
+	return argument[1] .. ".." .. argument[#argument]
+end
+
+-- Describes a request such as `moveFromSlotToInventory("pack", 3, "other", { 1, 2, 3 })`, with "nil" for a missing
+-- argument and "none" for no request. The arguments are counted up to `argumentCount`, so that a missing last
 -- argument is not hidden.
 local function describe(request: Request?, argumentCount: number): string
 	if request == nil then
@@ -40,7 +54,7 @@ local function describe(request: Request?, argumentCount: number): string
 	local parts = {}
 	for index = 1, argumentCount do
 		local argument = request.arguments[index]
-		table.insert(parts, if argument == nil then "nil" else tostring(argument))
+		table.insert(parts, describeArgument(argument))
 	end
 	return request.name .. "(" .. table.concat(parts, ", ") .. ")"
 end
@@ -165,46 +179,46 @@ end
 do -- Shift and a click
 	local withOther = screenOf({ ["pack 3"] = "log 5", ["pack 20"] = "log 5", ["other 2"] = "stone 8" }, nil, 27)
 	check(
-		describe(InventoryControls.getRequestForGesture(withOther, click("left", at("pack", 3), true)), 6)
-			== "moveFromSlotToInventory(pack, 3, other, 1, 27, nil)",
+		describe(InventoryControls.getRequestForGesture(withOther, click("left", at("pack", 3), true)), 5)
+			== "moveFromSlotToInventory(pack, 3, other, 1..27, nil)",
 		"getRequestForGesture: a left click with Shift held, with another inventory open, moves a pack stack to all of its slots"
 	)
 	check(
-		describe(InventoryControls.getRequestForGesture(withOther, click("left", at("other", 2), true)), 6)
-			== "moveFromSlotToInventory(other, 2, pack, 1, 36, nil)",
+		describe(InventoryControls.getRequestForGesture(withOther, click("left", at("other", 2), true)), 5)
+			== "moveFromSlotToInventory(other, 2, pack, 1..36, nil)",
 		"getRequestForGesture: and moves a stack of the other inventory to all of the pack's slots"
 	)
 	local small = screenOf({}, nil, 3, 20, 5)
 	check(
-		describe(InventoryControls.getRequestForGesture(small, click("left", at("pack", 20), true)), 5)
-			== "moveFromSlotToInventory(pack, 20, other, 1, 3)",
-		"getRequestForGesture: the last slot named is the size of the other inventory"
+		describe(InventoryControls.getRequestForGesture(small, click("left", at("pack", 20), true)), 4)
+			== "moveFromSlotToInventory(pack, 20, other, 1..3)",
+		"getRequestForGesture: the slots listed are every slot of the other inventory"
 	)
 	check(
-		describe(InventoryControls.getRequestForGesture(small, click("left", at("other", 1), true)), 5)
-			== "moveFromSlotToInventory(other, 1, pack, 1, 20)",
-		"getRequestForGesture: and the size of the pack when going the other way"
+		describe(InventoryControls.getRequestForGesture(small, click("left", at("other", 1), true)), 4)
+			== "moveFromSlotToInventory(other, 1, pack, 1..20)",
+		"getRequestForGesture: and every slot of the pack when going the other way"
 	)
 
 	local alone = screenOf({ ["pack 3"] = "log 5", ["pack 20"] = "log 5" }, nil, nil)
 	check(
-		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 3), true)), 5)
-			== "moveFromSlotToInventory(pack, 3, pack, 10, 36)",
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 3), true)), 4)
+			== "moveFromSlotToInventory(pack, 3, pack, 10..36)",
 		"getRequestForGesture: with the pack open alone, a left click with Shift held on a hotbar slot moves the stack to the rest of the pack"
 	)
 	check(
-		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 9), true)), 5)
-			== "moveFromSlotToInventory(pack, 9, pack, 10, 36)",
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 9), true)), 4)
+			== "moveFromSlotToInventory(pack, 9, pack, 10..36)",
 		"getRequestForGesture: the last hotbar slot is a hotbar slot"
 	)
 	check(
-		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 20), true)), 5)
-			== "moveFromSlotToInventory(pack, 20, pack, 1, 9)",
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 20), true)), 4)
+			== "moveFromSlotToInventory(pack, 20, pack, 1..9)",
 		"getRequestForGesture: and on a slot of the rest of the pack moves it to the hotbar"
 	)
 	check(
-		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 10), true)), 5)
-			== "moveFromSlotToInventory(pack, 10, pack, 1, 9)",
+		describe(InventoryControls.getRequestForGesture(alone, click("left", at("pack", 10), true)), 4)
+			== "moveFromSlotToInventory(pack, 10, pack, 1..9)",
 		"getRequestForGesture: the first slot after the hotbar is not a hotbar slot"
 	)
 
@@ -328,8 +342,8 @@ do -- a drag
 	check(
 		describe(
 			InventoryControls.getRequestForGesture(nothing, gestureOf("drag", "left", true, back, at("pack", 2))),
-			5
-		) == "moveFromSlotToInventory(pack, 2, other, 1, 27)",
+			4
+		) == "moveFromSlotToInventory(pack, 2, other, 1..27)",
 		"getRequestForGesture: and with Shift held is a click with Shift held"
 	)
 	check(

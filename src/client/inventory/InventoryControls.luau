@@ -43,25 +43,28 @@ local function request(name: string, ...: any): Request
 	return { name = name, arguments = { ... } }
 end
 
+local function getSlotNumbers(first: number, last: number): { number }
+	local slots = {}
+	for slot = first, last do
+		table.insert(slots, slot)
+	end
+	return slots
+end
+
 local function forShiftClick(screen: Screen, slot: Slot): Request?
 	local otherSlotCount = screen.otherSlotCount
+	local hotbarSlotCount, packSlotCount = screen.hotbarSlotCount, screen.packSlotCount
 	if otherSlotCount ~= nil and slot.side == "pack" then
-		return request("moveFromSlotToInventory", "pack", slot.slot, "other", 1, otherSlotCount)
+		return request("moveFromSlotToInventory", "pack", slot.slot, "other", getSlotNumbers(1, otherSlotCount))
 	elseif otherSlotCount ~= nil then
-		return request("moveFromSlotToInventory", "other", slot.slot, "pack", 1, screen.packSlotCount)
-	elseif screen.hotbarSlotCount >= screen.packSlotCount then
+		return request("moveFromSlotToInventory", "other", slot.slot, "pack", getSlotNumbers(1, packSlotCount))
+	elseif hotbarSlotCount >= packSlotCount then
 		return nil
-	elseif slot.slot <= screen.hotbarSlotCount then
-		return request(
-			"moveFromSlotToInventory",
-			"pack",
-			slot.slot,
-			"pack",
-			screen.hotbarSlotCount + 1,
-			screen.packSlotCount
-		)
+	elseif slot.slot <= hotbarSlotCount then
+		local rest = getSlotNumbers(hotbarSlotCount + 1, packSlotCount)
+		return request("moveFromSlotToInventory", "pack", slot.slot, "pack", rest)
 	end
-	return request("moveFromSlotToInventory", "pack", slot.slot, "pack", 1, screen.hotbarSlotCount)
+	return request("moveFromSlotToInventory", "pack", slot.slot, "pack", getSlotNumbers(1, hotbarSlotCount))
 end
 
 local function forClick(screen: Screen, slot: Slot, button: SlotGestures.Button): Request?

@@ -193,7 +193,7 @@ do -- the crate item and the crate, through the requests
 			and World.getOpenedPlacedObjectId(world, player) == crateId,
 		"interactWithPlacedObject: the crate's inventory opens on the player's screen"
 	)
-	carryOut(world, 1, "moveFromSlotToInventory", "pack", 4, "other", 1, Crate.SLOT_COUNT)
+	carryOut(world, 1, "moveFromSlotToInventory", "pack", 4, "other", { 1, 2, 3 })
 	check(
 		Inventory.countItems(findInside(world, crateId) :: Inventory.Inventory, "fish") == 5,
 		"an inventory request puts the player's fish in the crate"

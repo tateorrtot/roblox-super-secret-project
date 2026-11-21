@@ -518,27 +518,36 @@ do -- swapSlots
 end
 
 do -- moveFromSlotToInventory
+	-- Returns the slot numbers from `first` to `last`, as a client lists the slots to add a stack to.
+	local function slots(first: number, last: number): { number }
+		local list = {}
+		for slot = first, last do
+			table.insert(list, slot)
+		end
+		return list
+	end
+
 	local world, state = newWorld()
-	send("moveFromSlotToInventory", world, state, "pack", 1, "pack", 20, 22)
+	send("moveFromSlotToInventory", world, state, "pack", 1, "pack", slots(20, 22))
 	check(is(inSlot(state, 1), "log", 12), "moveFromSlotToInventory: does nothing when no screen is open")
 
 	send("openPack", world, state)
-	send("moveFromSlotToInventory", world, state, "pack", 1, "pack", 20, 22)
+	send("moveFromSlotToInventory", world, state, "pack", 1, "pack", slots(20, 22))
 	check(
 		inSlot(state, 1) == nil and is(inSlot(state, 20), "log", 12) and inSlot(state, 21) == nil,
-		"moveFromSlotToInventory: moves the stack into the first slot of the range that holds nothing"
+		"moveFromSlotToInventory: moves the stack into the first listed slot that holds nothing"
 	)
-	send("moveFromSlotToInventory", world, state, "pack", 10, "pack", 18, 20)
+	send("moveFromSlotToInventory", world, state, "pack", 10, "pack", slots(18, 20))
 	check(
 		inSlot(state, 10) == nil and is(inSlot(state, 20), "log", 16) and inSlot(state, 18) == nil,
 		"moveFromSlotToInventory: tops up a stack of the same item before filling a slot that holds nothing"
 	)
-	send("moveFromSlotToInventory", world, state, "pack", 2, "pack", 20, 22)
+	send("moveFromSlotToInventory", world, state, "pack", 2, "pack", slots(20, 22))
 	check(
 		inSlot(state, 2) == nil and is(inSlot(state, 20), "log", 16) and is(inSlot(state, 21), "fish", 5),
 		"moveFromSlotToInventory: a different item goes past a stack of another item into a slot that holds nothing"
 	)
-	send("moveFromSlotToInventory", world, state, "pack", 4, "pack", 1, 3)
+	send("moveFromSlotToInventory", world, state, "pack", 4, "pack", slots(1, 3))
 	check(
 		inSlot(state, 4) == nil and inSlot(state, 1) == nil,
 		"moveFromSlotToInventory: a slot that holds nothing moves nothing"
@@ -547,7 +556,7 @@ do -- moveFromSlotToInventory
 	local splitWorld, split = newWorld()
 	send("openPack", splitWorld, split)
 	Inventory.setStack(split.pack, 20, ItemStack.new("log", 14))
-	send("moveFromSlotToInventory", splitWorld, split, "pack", 1, "pack", 20, 21)
+	send("moveFromSlotToInventory", splitWorld, split, "pack", 1, "pack", slots(20, 21))
 	check(
 		is(inSlot(split, 20), "log", 16) and is(inSlot(split, 21), "log", 10) and inSlot(split, 1) == nil,
 		"moveFromSlotToInventory: fills one slot and puts the rest in the next"
@@ -555,72 +564,117 @@ do -- moveFromSlotToInventory
 	local shortWorld, short = newWorld()
 	send("openPack", shortWorld, short)
 	Inventory.setStack(short.pack, 20, ItemStack.new("log", 14))
-	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 20, 20)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", slots(20, 20))
 	check(
 		is(inSlot(short, 20), "log", 16) and is(inSlot(short, 1), "log", 10),
 		"moveFromSlotToInventory: what does not fit stays where it was"
 	)
-	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 1, 1)
-	check(is(inSlot(short, 1), "log", 10), "moveFromSlotToInventory: a stack is not moved into its own slot")
-	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 5, 3)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", slots(1, 1))
+	check(
+		is(inSlot(short, 1), "log", 10),
+		"moveFromSlotToInventory: a stack that is added to its own slot alone stays there"
+	)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", slots(5, 3))
 	check(
 		is(inSlot(short, 1), "log", 10) and inSlot(short, 4) == nil,
-		"moveFromSlotToInventory: a range that ends before it begins holds no slots"
+		"moveFromSlotToInventory: an empty list of slots moves nothing"
 	)
-	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", 1, 36)
+	send("moveFromSlotToInventory", shortWorld, short, "pack", 1, "pack", slots(1, 36))
 	check(
 		inSlot(short, 1) == nil and is(inSlot(short, 10), "log", 14),
-		"moveFromSlotToInventory: a stack may go anywhere in the range except its own slot, here topping up the stack in slot 10"
+		"moveFromSlotToInventory: a stack tops up a listed slot that holds the same item, here slot 10, before it fills one that holds nothing"
 	)
 
 	local crateWorld, withCrate = newWorld()
 	local crate = openPlaced(crateWorld, withCrate, "crate")
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", slots(1, 3))
 	check(
 		inSlot(withCrate, 1) == nil and is(Inventory.getStack(crate, 1), "log", 12),
 		"moveFromSlotToInventory: moves a stack from the pack into the other inventory"
 	)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 1, "pack", 1, 9)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 1, "pack", slots(1, 9))
 	check(
 		is(inSlot(withCrate, 1), "log", 12) and Inventory.isEmpty(crate),
 		"moveFromSlotToInventory: moves a stack from the other inventory into the pack"
 	)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 2, "pack", 1, 9)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 2, "pack", slots(1, 9))
 	check(
 		inWorld(crateWorld, "log") == 16,
 		"moveFromSlotToInventory: a slot of the other inventory that holds nothing moves nothing"
 	)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 2, 99)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 0, 3)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1.5, 3)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1, "3")
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "nowhere", 1, 3)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 99, "other", 1, 3)
-	send("moveFromSlotToInventory", crateWorld, withCrate, "nowhere", 1, "other", 1, 3)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", slots(2, 99))
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", slots(0, 3))
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", { 1.5, 3 })
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", { 1, "3" })
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "nowhere", slots(1, 3))
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 99, "other", slots(1, 3))
+	send("moveFromSlotToInventory", crateWorld, withCrate, "nowhere", 1, "other", slots(1, 3))
 	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", 1)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", "1")
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", { [1] = 1, [3] = 3 })
+	local listWithAnotherKey: { [any]: number } = { 1, 2 }
+	listWithAnotherKey.extra = 3
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", listWithAnotherKey)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", table.create(crate.slotCount + 1, 1))
 	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1)
 	send("moveFromSlotToInventory", crateWorld, withCrate)
 	check(
 		is(inSlot(withCrate, 1), "log", 12) and Inventory.isEmpty(crate),
-		"moveFromSlotToInventory: ignored when a slot or the range is not there, or when arguments are missing"
+		"moveFromSlotToInventory: ignored when a slot is not there, when the slots are not a list of the inventory's slots no longer than it has slots, or when arguments are missing"
 	)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "pack", 1, "other", table.create(crate.slotCount, 2))
+	check(
+		inSlot(withCrate, 1) == nil and is(Inventory.getStack(crate, 2), "log", 12),
+		"moveFromSlotToInventory: a list as long as the inventory has slots is allowed, and may name a slot twice"
+	)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 2, "other", { 3, 1 })
+	check(
+		Inventory.getStack(crate, 2) == nil and is(Inventory.getStack(crate, 3), "log", 12),
+		"moveFromSlotToInventory: fills the listed slots in the order of the list"
+	)
+	send("moveFromSlotToInventory", crateWorld, withCrate, "other", 3, "pack", { 1 })
 
 	local ovenWorld, withOven = newWorld()
 	local oven = openPlaced(ovenWorld, withOven, "oven")
-	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 1, "other", 1, 1)
+	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 1, "other", slots(1, 1))
 	check(
 		is(inSlot(withOven, 1), "log", 12) and Inventory.isEmpty(oven),
 		"moveFromSlotToInventory: never into a slot that does not accept the item"
 	)
-	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 1, "other", 1, 3)
+	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 1, "other", slots(1, 3))
 	check(
 		inSlot(withOven, 1) == nil and is(Inventory.getStack(oven, 2), "log", 12),
 		"moveFromSlotToInventory: a stack of logs goes to an oven's fuel slot"
 	)
-	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 2, "other", 1, 3)
+	send("moveFromSlotToInventory", ovenWorld, withOven, "pack", 2, "other", slots(1, 3))
 	check(
 		inSlot(withOven, 2) == nil and is(Inventory.getStack(oven, 1), "fish", 5),
 		"moveFromSlotToInventory: and a stack of fish to its input slot"
+	)
+
+	local fullWorld, withFull = newWorld()
+	local full = openPlaced(fullWorld, withFull, "crate")
+	for slot = 1, full.slotCount do
+		Inventory.setStack(full, slot, ItemStack.new("log", 16))
+	end
+	send("moveFromSlotToInventory", fullWorld, withFull, "pack", 1, "other", slots(1, full.slotCount))
+	check(
+		is(inSlot(withFull, 1), "log", 12),
+		"moveFromSlotToInventory: moves nothing into an inventory whose slots are full, and the stack stays in its slot"
+	)
+	Inventory.setStack(full, 2, ItemStack.new("log", 10))
+	send("moveFromSlotToInventory", fullWorld, withFull, "pack", 1, "other", slots(1, full.slotCount))
+	check(
+		is(inSlot(withFull, 1), "log", 6) and is(Inventory.getStack(full, 2), "log", 16),
+		"moveFromSlotToInventory: between two inventories, moves the items that fit and leaves the rest in their slot"
+	)
+
+	local aloneWorld, alone = newWorld()
+	send("openPack", aloneWorld, alone)
+	send("moveFromSlotToInventory", aloneWorld, alone, "pack", 1, "other", { 1 })
+	check(
+		is(inSlot(alone, 1), "log", 12),
+		"moveFromSlotToInventory: ignored when the slots are in the other inventory and no other inventory is open"
 	)
 end
 
@@ -1148,6 +1202,13 @@ do -- whatever a player's machine sends, nothing raises an error and no item is 
 				table.insert(screenSlots, if random(8) == 1 then junk[random(#junk)] else screenSlot)
 			end
 			return screenSlots
+		elseif kind == 9 then
+			-- The slot numbers to add a stack to: mostly ones an inventory might have, now and then with junk among them.
+			local slotNumbers: { any } = {}
+			for _ = 1, random(5) do
+				table.insert(slotNumbers, if random(8) == 1 then junk[random(#junk)] else random(40))
+			end
+			return slotNumbers
 		end
 		return junk[random(#junk)]
 	end

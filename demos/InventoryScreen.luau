@@ -42,11 +42,11 @@ InventoryScreen.putDownInSlot(screen, "other", 3, 2)
 print("carried  " .. describe(screen.carriedStack))
 print("crate    " .. contents(crate))
 
-print('\nmoveFromSlotToInventory(screen, "pack", 1, "other"): move the 12 logs in slot 1 of the pack into the crate.')
-local moved = InventoryScreen.moveFromSlotToInventory(screen, "pack", 1, "other")
-print(
-	`{moved} moved: 6 top up the crate's 10 logs to a full stack of 16, and 6 fill the first slot that holds nothing.`
-)
+print("\nInventory.takeFromSlot(pack, 1), then Inventory.addStack(crate, taken): move the 12 logs into the crate.")
+local taken = Inventory.takeFromSlot(pack, 1)
+local didNotFit = if taken then Inventory.addStack(crate, taken) else nil
+print("6 top up the crate's 10 logs to a full stack of 16, and 6 fill the first slot that holds nothing.")
+print("did not fit  " .. describe(didNotFit))
 print("pack     " .. contents(pack))
 print("crate    " .. contents(crate))
 

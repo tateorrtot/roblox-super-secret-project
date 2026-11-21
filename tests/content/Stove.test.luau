@@ -575,31 +575,8 @@ do -- slotAcceptsItem
 	)
 
 	local pack = Inventory.new(4)
-	Inventory.setStack(pack, 1, ItemStack.new("log", 6))
-	Inventory.setStack(pack, 2, ItemStack.new("fish", 2))
-	Inventory.setStack(pack, 3, ItemStack.new("stone", 1))
 	local rig = stoveWith("-", "-", "cooked_fish 1")
 	local screen = InventoryScreen.new(pack, rig.stove.inventory, Stove.slotAcceptsItem)
-	check(
-		InventoryScreen.moveFromSlotToInventory(screen, "pack", 1, "other") == 6,
-		"moveFromSlotToInventory: logs sent to the stove all go in"
-	)
-	check(
-		InventoryScreen.moveFromSlotToInventory(screen, "pack", 2, "other") == 2,
-		"moveFromSlotToInventory: fish sent to the stove all go in"
-	)
-	check(
-		InventoryScreen.moveFromSlotToInventory(screen, "pack", 3, "other") == 0,
-		"moveFromSlotToInventory: stone sent to the stove goes nowhere"
-	)
-	check(
-		contents(rig.stove) == "fish 2, log 6, cooked_fish 1",
-		"moveFromSlotToInventory: each thing sent to the stove lands in its own slot"
-	)
-	check(
-		Inventory.countItems(pack, "stone") == 1,
-		"moveFromSlotToInventory: what the stove has no use for stays in the pack"
-	)
 	check(
 		InventoryScreen.pickUpFromSlot(screen, "other", OUTPUT) == 1,
 		"pickUpFromSlot: what was made can be taken out"

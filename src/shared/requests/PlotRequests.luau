@@ -1,17 +1,17 @@
 --!strict
---- The requests that a client makes about the plot: interacting with a tile or a placed object,
---- and breaking a placed object.
+--- The requests that a client makes about the plot: interacting with a tile or a placed object, and
+--- breaking a placed object.
 ---
---- Each function is one request. `world` is the world and `player` is the player who asks. Every
---- argument after them is what the client sent, and may be a value of any type. A request that
---- does not fit the player's state, or whose arguments are not valid, does nothing.
+--- Each function is one request. `Requests.carryOut` calls it with the `World`, then the
+--- `PlayerState` of the player whose client sent the request, and then the values that the client
+--- sent. Each of those values is a `Variant`: a client can send a value of any type, so the request
+--- checks every one before it uses it. A request whose values do not pass its checks does nothing.
 ---
---- A request checks what is about the player: that the player has a character, that it stands
---- within `World.CHARACTER_REACH` of what the player acts on, and that the item the player holds
---- is the one in their selected hotbar slot. A script says what follows. The script of the held
---- item, found with `ItemScripts.find`, says what interacting with a tile does. The script of a
---- placed object's kind, found with `PlacedObjectScripts.find`, says what interacting with the
---- placed object does, and what breaking it does.
+--- Each request checks that `World.canReachTile` returns `true` for `player` and the tile that the
+--- request acts on. `World.canReachTile` returns `false` while `player.character` is `nil`. The
+--- request then calls one function of a script: `interactWithTile` of an `ItemScripts.ItemScript`,
+--- or `interact` or `breakPlacedObject` of a `PlacedObjectScripts.PlacedObjectScript`. That
+--- function does whatever the interaction does.
 local Hotbar = require("../inventory/Hotbar")
 local ItemScripts = require("./ItemScripts")
 local PlacedObjectScripts = require("./PlacedObjectScripts")
@@ -25,6 +25,10 @@ type World = World.World
 type PlayerState = PlayerState.PlayerState
 type ItemScript = ItemScripts.ItemScript
 type PlacedObjectScript = PlacedObjectScripts.PlacedObjectScript
+
+--- A value that a client sent. It may be of any type, whatever `T` says: `T` is the type that the
+--- request checks for before it uses the value.
+export type Variant<T> = unknown
 
 local function findScriptOfSelectedItem(player: PlayerState): ItemScript?
 	local selected = Hotbar.getSelectedStack(player.hotbar)
@@ -42,14 +46,27 @@ local function findScriptOfPlacedObject(world: World, placedObjectId: unknown): 
 	return PlacedObjectScripts.find(placedObject.kindId)
 end
 
---- Interacts with the tile at `tileX`, `tileZ` of the plot, for the player who holds the item in
---- their selected hotbar slot. Calls the `interactWithTile` of that item's script, then takes out
---- of the slot as many items as it returned, or all that the slot holds if that is fewer. Does
---- nothing if the slot holds nothing, if its item has no script or a script without
---- `interactWithTile`, if `tileX` and `tileZ` name no tile of the plot, if the player has no
---- character, or if the character stands more than `World.CHARACTER_REACH` from the tile. Raises an
---- error if `interactWithTile` returns anything but a whole number of `0` or more.
-function PlotRequests.interactWithTile(world: World, player: PlayerState, tileX: unknown, tileZ: unknown)
+--- Calls the `interactWithTile` of the `ItemScripts.ItemScript` that `ItemScripts.find` returns for
+--- the `itemId` of the `ItemStack` in the slot `player.hotbar.selectedSlot`, with `world`, `tileX`,
+--- and `tileZ`. Then takes out of that slot as many items as the call returned, as
+--- `Hotbar.takeFromSelectedSlot` does.
+--- - `world`: the `World` whose `plot` has the tile.
+--- - `player`: the `PlayerState` of the player whose client sent the request.
+--- - `tileX`: a whole `number` from `1` to `world.plot.widthInTiles`. The tile's number along x.
+--- - `tileZ`: a whole `number` from `1` to `world.plot.depthInTiles`. The tile's number along z.
+---
+--- Does nothing if that slot holds `nil`, if `ItemScripts.find` returns `nil`, if the script has no
+--- `interactWithTile`, if `Plot.hasTile` returns `false` for `tileX` and `tileZ`, or if
+--- `World.canReachTile` returns `false` for `player`, `tileX`, and `tileZ`.
+--- Note: the request does not check the number that `interactWithTile` returns.
+--- `Hotbar.takeFromSelectedSlot` raises an error if that number is negative, or is not whole and is
+--- less than the `count` of the `ItemStack` in the slot.
+function PlotRequests.interactWithTile(
+	world: World,
+	player: PlayerState,
+	tileX: Variant<number>,
+	tileZ: Variant<number>
+)
 	local itemScript = findScriptOfSelectedItem(player)
 	local interactWithTile = if itemScript ~= nil then itemScript.interactWithTile else nil
 	if interactWithTile == nil or not Plot.hasTile(world.plot, tileX, tileZ) then
@@ -61,11 +78,18 @@ function PlotRequests.interactWithTile(world: World, player: PlayerState, tileX:
 	end
 end
 
---- Interacts with the placed object `placedObjectId`, for the player. Calls the `interact` of the
---- script of that placed object's kind. Does nothing if no placed object has that id, if its kind
---- has no script or a script without `interact`, if the player has no character, or if the
---- character stands more than `World.CHARACTER_REACH` from the placed object's tile.
-function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
+--- Finds the `Plot.PlacedObject` at `world.plot.placedObjectsById[placedObjectId]`, and calls the
+--- `interact` of the `PlacedObjectScripts.PlacedObjectScript` that `PlacedObjectScripts.find`
+--- returns for its `kindId`, with `world`, `player`, and `placedObjectId`.
+--- - `world`: the `World` whose `plot` holds the `Plot.PlacedObject`.
+--- - `player`: the `PlayerState` of the player whose client sent the request.
+--- - `placedObjectId`: a `number`. A key of `world.plot.placedObjectsById`.
+---
+--- Does nothing if `world.plot.placedObjectsById[placedObjectId]` is `nil`, if
+--- `PlacedObjectScripts.find` returns `nil`, if the script has no `interact`, or if
+--- `World.canReachTile` returns `false` for `player` and the `tileX` and `tileZ` of the
+--- `Plot.PlacedObject`.
+function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState, placedObjectId: Variant<number>)
 	local placedObjectScript = findScriptOfPlacedObject(world, placedObjectId)
 	local interact = if placedObjectScript ~= nil then placedObjectScript.interact else nil
 	if interact == nil then
@@ -77,11 +101,19 @@ function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState
 	end
 end
 
---- Breaks the placed object `placedObjectId`, for the player. Calls the `breakPlacedObject` of the
---- script of that placed object's kind. Does nothing if no placed object has that id, if its kind
---- has no script or a script without `breakPlacedObject`, if the player has no character, or if the
---- character stands more than `World.CHARACTER_REACH` from the placed object's tile.
-function PlotRequests.breakPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
+--- Finds the `Plot.PlacedObject` at `world.plot.placedObjectsById[placedObjectId]`, and calls the
+--- `breakPlacedObject` of the `PlacedObjectScripts.PlacedObjectScript` that
+--- `PlacedObjectScripts.find` returns for its `kindId`, with `world` and `placedObjectId`. The
+--- request changes nothing itself: the script's `breakPlacedObject` does whatever breaking does.
+--- - `world`: the `World` whose `plot` holds the `Plot.PlacedObject`.
+--- - `player`: the `PlayerState` of the player whose client sent the request.
+--- - `placedObjectId`: a `number`. A key of `world.plot.placedObjectsById`.
+---
+--- Does nothing if `world.plot.placedObjectsById[placedObjectId]` is `nil`, if
+--- `PlacedObjectScripts.find` returns `nil`, if the script has no `breakPlacedObject`, or if
+--- `World.canReachTile` returns `false` for `player` and the `tileX` and `tileZ` of the
+--- `Plot.PlacedObject`.
+function PlotRequests.breakPlacedObject(world: World, player: PlayerState, placedObjectId: Variant<number>)
 	local placedObjectScript = findScriptOfPlacedObject(world, placedObjectId)
 	local breakPlacedObject = if placedObjectScript ~= nil then placedObjectScript.breakPlacedObject else nil
 	if breakPlacedObject == nil then

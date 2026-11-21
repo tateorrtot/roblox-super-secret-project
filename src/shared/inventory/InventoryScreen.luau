@@ -206,53 +206,6 @@ function InventoryScreen.swapSlots(screen: InventoryScreen, side: Side, slot: nu
 	Inventory.setStack(withInventory, withSlot, stack)
 end
 
-local function slotsAccepting(
-	screen: InventoryScreen,
-	side: Side,
-	slots: { number },
-	itemId: string,
-	except: number?
-): { number }
-	local accepting = {}
-	for _, slot in slots do
-		if slot ~= except and InventoryScreen.slotAcceptsItem(screen, side, slot, itemId) then
-			table.insert(accepting, slot)
-		end
-	end
-	return accepting
-end
-
---- Moves the stack in `slot` of the inventory on `side` into the inventory on `toSide`, and returns
---- how many items moved. Tops up the stacks of the same item there first, and then fills the slots
---- that hold nothing, each in the order of `toSlots`. Uses only the slots in `toSlots`, or every
---- slot of that inventory if `toSlots` is `nil`, and never a slot that does not accept the item,
---- nor, if `side` equals `toSide`, `slot`. Items that do not fit stay in `slot`. Moves nothing, and
---- returns `0`, if the slot holds nothing. Raises an error if the screen has no such slot.
---- Note: `moveFromSlotToInventory` takes the stack out of `slot` before it checks `toSlots`, so if
---- `toSlots` lists a slot that the inventory on `toSide` lacks, it raises an error and the stack is
---- lost.
-function InventoryScreen.moveFromSlotToInventory(
-	screen: InventoryScreen,
-	side: Side,
-	slot: number,
-	toSide: Side,
-	toSlots: { number }?
-): number
-	local from = InventoryScreen.getInventoryOnSide(screen, side)
-	local to = InventoryScreen.getInventoryOnSide(screen, toSide)
-	local stack = Inventory.takeFromSlot(from, slot)
-	if stack == nil then
-		return 0
-	end
-	local itself = if from == to then slot else nil
-	local accepting = slotsAccepting(screen, toSide, toSlots or Inventory.getSlotNumbers(to), stack.itemId, itself)
-	local leftover = Inventory.addStack(to, stack, accepting)
-	if leftover ~= nil then
-		Inventory.putInSlot(from, slot, leftover)
-	end
-	return stack.count - (if leftover then leftover.count else 0)
-end
-
 local function holdsFullStack(screen: InventoryScreen, screenSlot: ScreenSlot): boolean
 	local there = Inventory.getStack(InventoryScreen.getInventoryOnSide(screen, screenSlot.side), screenSlot.slot)
 	return there ~= nil and ItemStack.isFull(there)

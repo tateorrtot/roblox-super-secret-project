@@ -66,8 +66,9 @@ InventoryScreen.swapCarriedStackWithSlot(screen, "pack", 4)
 say("Swap with the stove in the pack:", "carrying " .. describe(screen.carriedStack))
 say("", "pack   " .. contents(pack))
 
-local moved = InventoryScreen.moveFromSlotToInventory(screen, "pack", 2, "other")
-say("Move 16 logs from the pack to the crate:", moved .. " moved")
+local taken = Inventory.takeFromSlot(pack, 2)
+local didNotFit = if taken then Inventory.addStack(crate, taken) else nil
+say("Take 16 logs out of the pack, add them to the crate:", "did not fit: " .. describe(didNotFit))
 say("", "crate  " .. contents(crate))
 
 local carried = InventoryScreen.takeCarriedStack(screen)

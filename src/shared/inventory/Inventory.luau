@@ -78,9 +78,17 @@ function Inventory.setStack(inventory: Inventory, slot: number, stack: ItemStack
 	inventory.slots[slot] = stack
 end
 
---- Takes up to `count` items out of `slot` and returns them as a stack. Takes everything in the
---- slot if `count` is `nil` or at least what the slot holds. Returns `nil` if the slot holds
---- nothing or `count` is `0`. Raises an error if the inventory lacks `slot`.
+--- Takes items out of the `ItemStack` in `slot`, and returns them as an `ItemStack`.
+--- - `inventory`: the `Inventory` that `slot` is in.
+--- - `slot`: a `number`. A slot number of `inventory`, from `1` to `inventory.slotCount`.
+--- - `count`: a whole `number` of `0` or more, or `nil`. How many items to take. `nil` takes every
+--- item in `slot`.
+---
+--- If `count` is `nil`, or is at least the `count` of the `ItemStack` in `slot`, `takeFromSlot`
+--- returns that `ItemStack` itself, and `slot` then holds `nil`. Otherwise it returns a new
+--- `ItemStack` of `count` items, and `slot` then holds a new `ItemStack` of the items that are
+--- left. Returns `nil`, and changes nothing, if `slot` holds `nil` or `count` is `0`. Raises an
+--- error if `hasSlot` returns `false` for `slot`.
 --- Note: `takeFromSlot` does not check that `count` is a whole number of `0` or more.
 function Inventory.takeFromSlot(inventory: Inventory, slot: number, count: number?): ItemStack?
 	checkSlot(inventory, slot)
@@ -97,10 +105,17 @@ function Inventory.takeFromSlot(inventory: Inventory, slot: number, count: numbe
 	return taken
 end
 
---- Puts `stack` into `slot`, and returns the part that did not fit, or `nil` if all of it went in.
---- A slot that holds nothing takes all of `stack`. A slot that holds the same item takes items
---- until its stack reaches the item's `stackSize`. A slot that holds a different item takes
---- nothing, and `putInSlot` returns `stack`. Raises an error if the inventory lacks `slot`.
+--- Adds the items of `stack` to `slot`, and returns an `ItemStack` of the items that did not fit,
+--- or `nil` if every item went in.
+--- - `inventory`: the `Inventory` that `slot` is in.
+--- - `slot`: a `number`. A slot number of `inventory`, from `1` to `inventory.slotCount`.
+--- - `stack`: the `ItemStack` to add. `putInSlot` does not change it.
+---
+--- If `slot` holds `nil`, `slot` then holds `stack` itself. If `slot` holds an `ItemStack` with the
+--- same `itemId`, `putInSlot` adds items until that `ItemStack` reaches the `stackSize` of its
+--- `ItemRegistry.ItemDefinition`, and returns a new `ItemStack` of the rest. If `slot` holds a
+--- different `itemId`, `putInSlot` adds nothing and returns `stack` itself. Raises an error if
+--- `hasSlot` returns `false` for `slot`.
 function Inventory.putInSlot(inventory: Inventory, slot: number, stack: ItemStack): ItemStack?
 	checkSlot(inventory, slot)
 	local there = inventory.slots[slot]
@@ -119,11 +134,18 @@ local function addToSlot(inventory: Inventory, slot: number, itemId: string, cou
 	return offered - (if leftover then leftover.count else 0)
 end
 
---- Makes up to `count` items with the id `itemId`, adds them to the inventory, and returns how many
---- were added. Tops up the stacks of the item first, and then fills the slots that hold nothing,
---- each in the order of `intoSlots`. Uses only the slots in `intoSlots`, or every slot, lowest
---- first, if `intoSlots` is `nil`. Raises an error, and changes nothing, if `count` is not a whole
---- number of `0` or more, or if the inventory lacks a slot in `intoSlots`.
+--- Makes up to `count` items of `itemId`, adds them to `inventory`, and returns how many it added.
+--- - `inventory`: the `Inventory` to add to.
+--- - `itemId`: the `id` of an item that `ItemRegistry.register` registered, such as `"log"`.
+--- - `count`: a whole `number` of `0` or more. The most items to make.
+--- - `intoSlots`: a list of slot numbers of `inventory`. The function uses only these slots, in
+--- this order. `nil` means every slot, from `1` to `inventory.slotCount`.
+---
+--- First adds items to each slot in `intoSlots` that holds an `ItemStack` with the same `itemId`,
+--- until that `ItemStack` reaches the `stackSize` of its `ItemRegistry.ItemDefinition`. Then puts
+--- new `ItemStack`s in the slots in `intoSlots` that hold `nil`. Stops when it has added `count`
+--- items, or when no slot in `intoSlots` has room. Raises an error, and changes nothing, if `count`
+--- is not a whole number of `0` or more, or if `hasSlot` returns `false` for a slot in `intoSlots`.
 --- Note: `addItems` does not check `itemId` if `count` is `0` or `intoSlots` is empty. In every
 --- other case, it raises an error for an `itemId` that no item has.
 function Inventory.addItems(inventory: Inventory, itemId: string, count: number, intoSlots: { number }?): number
@@ -148,9 +170,17 @@ function Inventory.addItems(inventory: Inventory, itemId: string, count: number,
 	return count - left
 end
 
---- Adds the items of `stack` to the inventory, in the slots and the order that `addItems` uses for
---- `intoSlots`, and returns the part that did not fit, or `nil` if all of it went in. Raises an
---- error, and changes nothing, if the inventory lacks a slot in `intoSlots`.
+--- Adds the items of `stack` to `inventory`, and returns a new `ItemStack` of the items that did
+--- not fit, or `nil` if every item went in.
+--- - `inventory`: the `Inventory` to add to.
+--- - `stack`: the `ItemStack` to add. `addStack` does not change it.
+--- - `intoSlots`: a list of slot numbers of `inventory`. The function uses only these slots, in
+--- this order. `nil` means every slot, from `1` to `inventory.slotCount`.
+---
+--- First adds items to each slot in `intoSlots` that holds an `ItemStack` with the same `itemId`,
+--- until that `ItemStack` reaches the `stackSize` of its `ItemRegistry.ItemDefinition`. Then puts
+--- the items that are left into the slots in `intoSlots` that hold `nil`. Raises an error, and
+--- changes nothing, if `hasSlot` returns `false` for a slot in `intoSlots`.
 function Inventory.addStack(inventory: Inventory, stack: ItemStack, intoSlots: { number }?): ItemStack?
 	local added = Inventory.addItems(inventory, stack.itemId, stack.count, intoSlots)
 	if added == stack.count then

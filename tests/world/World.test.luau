@@ -1370,7 +1370,7 @@ do -- several players, several things at once, and no item is made or lost
 							else "pack"
 						local inventory = InventoryScreen.getInventoryOnSide(screen, side)
 						local slot = random(inventory.slotCount)
-						local kind = random(5)
+						local kind = random(4)
 						if kind == 1 then
 							InventoryScreen.pickUpFromSlot(
 								screen,
@@ -1382,13 +1382,6 @@ do -- several players, several things at once, and no item is made or lost
 							InventoryScreen.putDownInSlot(screen, side, slot, if random(2) == 1 then nil else random(8))
 						elseif kind == 3 then
 							InventoryScreen.swapCarriedStackWithSlot(screen, side, slot)
-						elseif kind == 4 then
-							InventoryScreen.moveFromSlotToInventory(
-								screen,
-								side,
-								slot,
-								if side == "pack" and screen.otherInventory ~= nil then "other" else "pack"
-							)
 						else
 							local taken = InventoryScreen.takeCarriedStack(screen, random(4))
 							local character = (state :: PlayerState.PlayerState).character
