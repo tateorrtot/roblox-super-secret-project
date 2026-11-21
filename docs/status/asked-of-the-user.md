@@ -6,9 +6,9 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - **Whether the keys move onto Roblox's input actions next, before prediction** (`next.md`). Asked on 2026-11-20.
 - **Whether the scripts read right to them:** `ItemScripts` and `PlacedObjectScripts`, and the game's things in `src/shared/content`. The names and shapes that are Claude's are in `claudes-calls.md`, with the four names a cold reader doubted in `history/2026-11-20-scripts-and-input.md`.
-- **Whether to make a tile one value with a height,** which only `Plot` makes and reads, as the first step to 3D plots and to free placement (`next.md`). Claude explained it with the code before and after on 2026-11-20, when they said "I think I want this but I want to verify".
-- **What 3D means in play.** Claude takes "plots are 3D" to mean that a placed object can stand on top of another, or on a floor above. Whether a thing may float, or falls when what is under it goes, is theirs to say.
-- **Whether an item's colour should go the way a kind's went.** `Items.Item` has a `color` for every item, and the slots and the ground items draw from it. It stands in for the texture they said an item has. If it goes, each item's icon and its look on the ground become pieces of the item's own.
+- **Whether Claude's reading of a plot is theirs:** placed objects that hold together on one body, each at a position in the plot's own space, with the plot of today as the anchored case (`next.md`). Asked on 2026-11-21, with a diagram.
+- **What breaking a placed object does to what it held up.** They named two answers and chose neither: it breaks off into a plot of its own, or it drops as items. "Idk."
+- **The specifics of how an item looks,** which they offered: "If you need I can give you more specifics and design." Claude needs what decides whether an item is a texture or a model, and how a texture with depth sits in the hand.
 - **What to call a table of one thing's drawing functions.** The code says `piece` in three type names (`next.md`).
 - **Whether to try a Roblox `Tool` for what the character holds,** as they proposed. The first step is a short measurement in Studio of what Roblox's documentation leaves unsaid (`docs/roblox/input.md`).
 - **Whether `Crate` should be `CratePlacedObject`,** to pair with `CrateItem`. They asked whether `CrateItem` is the best name.
@@ -28,5 +28,6 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **In Studio, select `Workspace` and set `PlayerScriptsUseInputActionSystem` to `Enabled`,** if they want Roblox's own movement and camera to run on input actions too. Roblox's guide recommends it, a script cannot read or set it, and the game's own actions work either way (`docs/roblox/input.md`).
 - **For saving, when it is the next piece:** publish the place and switch on Studio's access (the steps are in `docs/roblox/studio.md`), and a clear yes to downloading ProfileStore, which the survey in docs/research/13 recommends wrapping behind a module of ours.
 - **One Blockbench model with a stepped animation,** in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.
+- **One item's texture and one item's model, uploaded to Roblox by them,** so that an item's look can be built and tried. A script can read an image's pixels only if the image belongs to whoever owns the game, and a published game needs "Allow Mesh / Image APIs" switched on (`docs/roblox/facts.md`).
 - **A budget** for a small ad test, and for the 1,000 Robux fee that lets under-16s see the game later.
 - **Whether they have a cheap Android phone to test on.**

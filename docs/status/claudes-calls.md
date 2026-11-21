@@ -51,21 +51,24 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **What breaking leaves is the kind's to throw:** it takes the stacks out before it takes the object off the plot.
   - **Which placed object a screen was opened on is the world's to remember, by the screen,** so that `PlayerState` names no placed object. `PlayerState.openScreen` is one function, with another inventory beside the pack if one is given.
   - **`PlaceableItems` was a table of item id and kind id.** The user asked why it still existed, and it is gone (below).
-  - **`PlacedObjectLooks` is kept apart from the kinds.** An item's name and colour are in the item's own table since 2026-11-20.
+  - **`PlacedObjectLooks` was kept apart from the kinds.** It is gone: a kind's name is in the kind's own file, and nothing of the content holds a colour.
   - **The names:** `kindId`; `tileX` and `tileZ`; `widthInTiles` and `depthInTiles`; `CHARACTER_REACH`; `PLACED_OBJECT_KIND_ID` and `ITEM_ID_WHEN_BROKEN`; `throwStacksFromTile` and its two speeds; `openPlacedObjectScreen`, `getOpenedPlacedObjectId`; `Inventory.takeEveryStack`.
   - **The work is on a branch of its own,** `placed-objects`, cut from `dropped-items`.
+- **Stand-ins without colour, 2026-11-21.** The user asked why there was a colour. Taking it out is Claude's answer, and these details are Claude's.
+  - **Every stand-in is one grey, `Color3.fromRGB(110, 112, 120)`, with the thing's name on it.** A lit stove still glows orange: that is the stove's Model's own.
+  - **Each drawing piece that needs the grey writes it,** in four places, so that no piece on the client requires one on the server.
 - **A Model for each kind, and a class reference, 2026-11-20.** The direction is the user's, in their fourteenth review. These details are Claude's.
   - **How a kind looks is a `Model` that the kind's own piece makes,** `CrateModel` and `StoveModel`, with `make` and an `update` that a kind may leave out. `PlotParts` names the Model for its kind, gives it the attribute `placedObjectId`, and puts its pivot on the middle of the tile.
   - **`PlaceholderBlock`,** the plain block with a name over it that both pieces use until there is art.
   - **A kind's `NAME` is in its own file,** and its item takes its name from there. `PlacedObjectKinds.ALL` and `PlacedObjectKinds.get` mirror `Items`.
-  - **A ghost's colour is the ghost's own,** so the crate's colour is written on the server and again on the client.
+  - **A ghost is one plain grey,** as every stand-in is since 2026-11-21.
   - **`Main.server` fails at the start if a kind has no piece that shows it.**
   - **The class reference is made by `tools/reference.py` and MkDocs,** in the theme of Read the Docs, and is not kept in git. Its sections are `shared`, `server` and `client`, and a page is laid out as Godot's are. The four notes on the code in `docs/code` are in it too, as its contributing pages.
 - **One table for each item, and a stove that carries what it is made of, 2026-11-20.** The direction is the user's, in their thirteenth review. These details are Claude's.
   - **`Items.ALL` and `Items.get`,** in `content`. An item that only lies in a slot is a row there, and one that does something is a file of its own that the list names. `Items.Item` is the type of an item's table.
   - **Every item is registered as the script of its own id,** so an item with no function has a script with none.
   - **`ItemRegistry.register` copies the id and the stack size and passes over the rest,** where it used to refuse a field it did not know.
-  - **A name and a colour are not the items system's.** `ItemRegistry` keeps neither, and the drawing code reads them from `Items`.
+  - **A name is not the items system's.** `ItemRegistry` does not keep it, and the drawing code reads it from `Items`.
   - **How a stove works.** The user chose the furnace form; the rest is Claude's, with placeholder numbers. A fire is lit only when there is something to cook, and once lit it burns its fuel out.
   - **The stove is one file of about 300 lines.** Its recipes and fuels are constants keyed by item id, `RECIPES` and `FUEL_SECONDS`. Its fire and its work are two small tables on the placed object, `fire` and `work`, because the plot freezes the object itself.
   - **Time reaches a placed object through its script's `advance`.** `World` fires `timePassed`. `PlacedObjectScripts.advancePlacedObjects` calls the scripts, the lowest id first. Whoever makes the world connects the two: `Main.server`.

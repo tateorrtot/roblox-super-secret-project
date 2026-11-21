@@ -25,7 +25,7 @@ GLUE: joins systems, and holds no thing of the game
   save         SaveData         a player's pack as stored data. Nothing stores it yet
 
 THINGS: the game's own, each in one place
-  content      Items                 every item, one table each: id, stack size, name, colour, what it does
+  content      Items                 every item, one table each: id, stack size, name, what it does
                CrateItem, StoveItem  an item that does something, in a file of its own
                Crate                 the crate, placed: its name, its inventory, its screen, what breaking it leaves
                Stove                 the stove, placed: its slots, recipes, fuels, fire and cooking, its gauges

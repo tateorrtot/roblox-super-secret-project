@@ -1,8 +1,8 @@
 # The user's reviews of the code
 
-The user has reviewed the code fourteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code fifteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
-The number in a file's name counts the reviews of 2026-11-20, so it is one less than the review's place in this list.
+In a file's name, the number counts the reviews of that day. For 2026-11-20 it is one less than the review's place in this list.
 
 | | Review | What they found |
 |---|---|---|
@@ -16,17 +16,22 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 | 8 | `2026-11-20-7-the-item-decides.md` | "Shouldnt it be the item itself that determines what happens when it breaks?" Composition, not inheritance. "You cant just... invent nouns out of nowhere". Roblox's word, or Godot's. "Did you fix what they found?" |
 | 9 | `2026-11-20-8-two-systems.md` | Items and placed objects are "two v e r y different systems that shouldnt rely on or mention eachother". Glue lives outside both. Roblox's style. "Why? Just why this class name?" A question they could not read: "Uh what? Im confused" |
 | 10 | `2026-11-20-9-simple-things-and-glue.md` | "why do PlaceableItems still exist". Items, and events that code is attached to: "Just keep it generic." "Systems shouldnt know about eachother. Dont pull out abstractions." Compose with glue; the FoxFabric-addon test; "You dont make something for every combination" |
-| 14 | `2026-11-20-13-contained-spaghetti.md` | "who said colour? Are you coupling visuals to logic?" How a thing looks is a black box. "so i said the plots are 3D did i not...?" One noun for one thing. Systems, and content that glues them "in a messy frenzy". "again making up a lot of words to say other simple already defined things" |
-| 13 | `2026-11-20-12-content-in-one-place.md` | "Systems being decoupled - fantastic. Pieces of content being scattered - not great." A stove is not every station: "youve now contracted all "stations" to have its spaghetii". "I dont see tileY". Free placement, and the worry about helpers and machines. "I thought you already did this?" |
-| 12 | `2026-11-20-11-where-is-the-item.md` | "Does CrateItem not like, extend Item?" An item's id, stack size and look were not in its file. "what is a station...? ... Is it defined in the codebase? If it is, where? Why?" A crate composed with an inventory: "fantastic". The rigid grid is "Bloxburg's greatest flaw" |
 | 11 | `2026-11-20-10-who-said.md` | "who said an item was always going to be tied to a player. Or a hotbar?" Things stay dumb. The tool in the hand is not the item. Glue is fine; one module requiring another is not. "who said tiles werent 3D?" Two sentences they could not read |
+| 12 | `2026-11-20-11-where-is-the-item.md` | "Does CrateItem not like, extend Item?" An item's id, stack size and look were not in its file. "what is a station...? ... Is it defined in the codebase? If it is, where? Why?" A crate composed with an inventory: "fantastic". The rigid grid is "Bloxburg's greatest flaw" |
+| 13 | `2026-11-20-12-content-in-one-place.md` | "Systems being decoupled - fantastic. Pieces of content being scattered - not great." A stove is not every station: "youve now contracted all "stations" to have its spaghetii". "I dont see tileY". Free placement, and the worry about helpers and machines. "I thought you already did this?" |
+| 14 | `2026-11-20-13-contained-spaghetti.md` | "who said colour? Are you coupling visuals to logic?" How a thing looks is a black box. "so i said the plots are 3D did i not...?" One noun for one thing. Systems, and content that glues them "in a messy frenzy". "again making up a lot of words to say other simple already defined things" |
+| 15 | `2026-11-21-1-grids-on-bodies.md` | "why is there a colour..? Im confused" An item looks like a 2D texture or a 3D model, and no contract says which. "VoxelGrids on PhysicsBodies": a tree cut through falls. "who said we cant place things mid air? Or that Y is always up?" No floors or levels in the code |
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
-Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth.
+Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth. The fourteenth and the fifteenth came the same way, each from Claude's report on the work before.
 
 ## What to check before showing them code
-These are Claude's readings of the fourteen reviews. The quotes are in the files.
+These are Claude's readings of the fifteen reviews. The quotes are in the files.
+
+- **A stand-in is plain, and is kept out of the content.** Claude wrote a colour on every item so that plain blocks could be told apart, and it read as a rule of the game: "why is there a colour..? Im confused". Where there is no art, say "there is no art".
+- **Say what a thing is before why it is there.** "I left it because you said an item has a texture" left out that the colour was a stand-in block's.
+- **Ask "who said?" of every argument of a signature, as of every require.** Claude built a flat floor of tiles on the second day and never went back to it: "who said we cant place things mid air? Or that Y is always up?"
 
 - **Use the defined word.** Client, server, content, stove, Model. Not "the player's machine", "the game's own things", or a title of Claude's own. Godot's writing guidelines hold for comments and notes (`docs/code/conventions.md`).
 - **How a thing looks is a black box.** No rule, and no general drawing code, says what a thing looks like: not a colour, not a cube.
@@ -76,4 +81,4 @@ These are Claude's readings of the fourteen reviews. The quotes are in the files
 - **Have a helper apply their latest review to the result,** told to assume the author thinks it is mended and to quote the words each finding goes against. After the tenth, that helper found twelve things where the two ordinary reviewers found none of them.
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
-Each of the eleven reviews found something the checks before it had passed. Expect a twelfth.
+Each of the fifteen reviews found something the checks before it had passed. Expect a sixteenth.
