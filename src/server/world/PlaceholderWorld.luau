@@ -1,11 +1,10 @@
 --!strict
---- A grey stand-in for the game's world.
+--- A grey stand-in for a map: a plot with some placed objects and ground items on it.
 ---
---- `build` makes a flat plot beside the place where players appear, with a post at each corner,
---- and `placeStartingObjects` stands a crate and a stove on it. `restockGroundItems` keeps a few
---- stacks of items lying on the plot, and `addStartingItemsToPack` gives a new player something to
---- hold. All of it is placeholder content, made by code so that the project folder alone is enough
---- to run the game, and it goes when there is a real map.
+--- `build` makes a slab with a post at each corner and a plot on it, beside the place where
+--- players appear. `placeStartingObjects` stands a crate and a stove on the plot,
+--- `restockGroundItems` keeps a few ground items lying on it, and `addStartingItemsToPack` adds
+--- items to a pack. Code makes all of it.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -20,21 +19,26 @@ local World = require(Shared.world.World)
 
 local PlaceholderWorld = {}
 
+--- What `build` made: the slab, the plot, and the spawn point.
 export type PlaceholderWorld = {
-	--- The grey slab players walk on. The plot lies on its top.
+	--- The grey slab that the plot lies on. The plot lies on its top.
 	read slab: Part,
-	--- The one plot, shared by everyone for now: what stands on which tile.
+	--- The plot that lies on the slab, shared by every player.
 	read plot: Plot.Plot,
-	--- A point on the ground where players appear.
+	--- The position of the SpawnLocation where players appear.
 	read spawnPoint: Vector3,
 }
 
---- How many tiles the square plot has along each side.
+--- The plot's width and its depth, in tiles.
 PlaceholderWorld.PLOT_SIZE_IN_TILES = 18
 
+--- The slab's thickness, in studs.
 local SLAB_HEIGHT = 0.4
+--- How far the slab's edge of least x is from the spawn point, along x, in studs.
 local PLOT_FROM_SPAWN = 12
+--- How many ground items `restockGroundItems` keeps lying about: it spawns none once this many lie.
 local GROUND_ITEMS_KEPT = 10
+--- The time after `restockGroundItems` chooses a tile before it chooses again, in seconds.
 local SECONDS_BETWEEN_RESTOCKS = 4
 
 local random = Random.new()
@@ -98,10 +102,11 @@ local function makePosts(folder: Folder, center: Vector3, side: number)
 	end
 end
 
---- Builds the placeholder world in the Workspace and returns it. Makes a ground and a place to
---- appear only if the Workspace has none, so it works in an empty place and in Studio's baseplate
---- template. The plot lies beside the place where players appear, not under it. Call it once, after
---- the items are registered.
+--- Builds a slab, a post at each corner of it, and a new plot, and returns the slab, the plot, and
+--- the spawn point. Puts the slab and the posts in a Folder called `PlaceholderWorld` in the
+--- Workspace. Makes a part called `Baseplate` in the Folder unless the Workspace has a child of
+--- that name, and a SpawnLocation in the Folder unless the Workspace has one. The plot lies beside
+--- the spawn point, not under it.
 function PlaceholderWorld.build(): PlaceholderWorld
 	local folder = Instance.new("Folder")
 	folder.Name = "PlaceholderWorld"
@@ -118,8 +123,9 @@ function PlaceholderWorld.build(): PlaceholderWorld
 	return { slab = slab, plot = plot, spawnPoint = spawnPoint }
 end
 
---- Stands a crate and a stove on the plot of `world`, and puts a few stacks in the crate. Call it
---- once, on the world made over the plot that `build` returned.
+--- Stands a crate on the tile x `13`, z `7` of `world.plot`, with eight `"cheese"`, five `"fish"`,
+--- 40 `"crystal"`, and one `"crate"` in it, and a stove on the tile x `6`, z `13`. Fails if
+--- `Plot.placeObject` fails for either tile.
 function PlaceholderWorld.placeStartingObjects(world: World.World)
 	local crateId = Crate.place(world.plot, 13, 7)
 	local inCrate = Crate.get(world.plot, crateId).inventory
@@ -130,19 +136,18 @@ function PlaceholderWorld.placeStartingObjects(world: World.World)
 	Stove.place(world.plot, 6, 13)
 end
 
---- Adds a few items to `pack`, so that a new player's hotbar is not bare.
+--- Adds four `"apple"`, 20 `"log"`, and one `"crate"` to `pack`.
 function PlaceholderWorld.addStartingItemsToPack(pack: Inventory.Inventory)
 	Inventory.addItems(pack, "apple", 4)
 	Inventory.addItems(pack, "log", 20)
 	Inventory.addItems(pack, "crate", 1)
 end
 
---- Spawns a stack of a random item in the middle of a random tile of the plot, not moving. Does
---- nothing if `GROUND_ITEMS_KEPT` ground items already lie about, or if it last chose a tile less
---- than `SECONDS_BETWEEN_RESTOCKS` before the world's time. If a placed object stands on the tile
---- it chooses, it spawns nothing, and waits `SECONDS_BETWEEN_RESTOCKS` before it chooses again.
---- Does nothing while the Workspace attribute `PlaceholderRestock` is `false`, which the play test
---- sets so that it knows what lies on the ground.
+--- Chooses a random tile of the plot, and spawns on it a stack of a random item, with a random
+--- count from `1` to the item's stack size, at the tile's middle and not moving. Does nothing if
+--- the Workspace attribute `PlaceholderRestock` is `false`, if `world.now` is less than
+--- `SECONDS_BETWEEN_RESTOCKS` after the last time it chose a tile, or if `GROUND_ITEMS_KEPT` ground
+--- items lie about already. If a placed object stands on the chosen tile, it spawns nothing.
 function PlaceholderWorld.restockGroundItems(placeholder: PlaceholderWorld, world: World.World)
 	local now = world.now
 	if now < nextRestockAt or Workspace:GetAttribute("PlaceholderRestock") == false then

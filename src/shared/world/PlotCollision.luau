@@ -1,9 +1,8 @@
 --!strict
---- What gives way when an object is placed on a plot.
+--- Moves ground items out of the tile of a placed object.
 ---
---- A placed object fills its tile as a cube `Plot.TILE_SIZE` on each side, standing on the tile,
---- and no ground item lies inside one. `pushGroundItemsOutOfTile` moves the ground items out of a
---- tile that has just had an object placed on it.
+--- A placed object fills its tile as a cube `Plot.TILE_SIZE` on each side, standing on the tile.
+--- `pushGroundItemsOutOfTile` moves the ground items that lie in a tile out of it.
 local GroundItems = require("../groundItems/GroundItems")
 local ItemStack = require("../items/ItemStack")
 local Plot = require("../plots/Plot")
@@ -17,8 +16,8 @@ type Position = Position.Position
 type Tile = { plot: Plot.Plot, tileX: number, tileZ: number, center: Position }
 type Side = { x: number, z: number }
 
---- How fast a ground item that `pushGroundItemsOutOfTile` pushes out of a side of a tile starts
---- moving away from the tile along the ground, in studs a second.
+--- The speed along the ground, in studs a second, at which a ground item that
+--- `pushGroundItemsOutOfTile` pushes out of a side of a tile starts moving away from the tile.
 PlotCollision.PUSHED_GROUND_ITEM_SPEED = 6
 
 local NO_VELOCITY: GroundItems.Velocity = table.freeze({ x = 0, y = 0, z = 0 })
@@ -71,20 +70,21 @@ local function pushGroundItemOutOfTile(groundItems: GroundItems, id: number, til
 	}, now)
 end
 
---- Pushes the ground items out of the tile `tileX`, `tileZ` of `plot`, whose tile x 1, z 1 has
+--- Pushes the ground items out of the tile `tileX`, `tileZ` of `plot`, whose tile x `1`, z `1` has
 --- its outer corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of a
---- stud into the cube a placed object fills on that tile. It is taken out of the world and its
---- stack is spawned again at the time `now`, as a new ground item with a new id: just outside the
---- nearest side of the tile that has no placed object against it, no higher and no further along
---- that side than it was, moving away from the tile along the ground at
---- `PUSHED_GROUND_ITEM_SPEED`. A side at the edge of the plot has nothing against it. Of sides
---- equally near, the one towards greater x is used first, then lesser x, then greater z, then
---- lesser z. If all four sides have a placed object against them, the stack is spawned again on
---- top of the cube instead, not moving. Ground items are pushed in the order of their ids, lowest
---- first.
---- Note: it does not check that anything stands on the tile, and where a pushed ground item
---- lands is not checked either. One that lay across a corner of the tile can land partly inside a
---- placed object that stands on the tile diagonally across that corner.
+--- stud into the cube that a placed object fills on that tile. Pushing removes the ground item and
+--- spawns its stack again at the time `now`, as a new ground item with a new id. The new ground
+--- item lies at the same height and at the same place along the side, touching the nearest side of
+--- the tile that has no placed object against it, and starts moving away from the tile along the
+--- ground at `PUSHED_GROUND_ITEM_SPEED`. A side at the edge of the plot has no placed object
+--- against it. Of equally near sides, `pushGroundItemsOutOfTile` uses the side towards greater x
+--- first, then lesser x, then greater z, then lesser z. If a placed object stands against all four
+--- sides, the stack is spawned on top of the cube instead, at the same x and z, not moving. Ground
+--- items are pushed in the order of their ids, lowest first.
+--- Note: `pushGroundItemsOutOfTile` does not check that a placed object stands on the tile, and
+--- does not check where a pushed ground item lands. A ground item that lay across a corner of the
+--- tile can land partly inside a placed object that stands on the tile diagonally across that
+--- corner.
 function PlotCollision.pushGroundItemsOutOfTile(
 	groundItems: GroundItems,
 	plot: Plot.Plot,

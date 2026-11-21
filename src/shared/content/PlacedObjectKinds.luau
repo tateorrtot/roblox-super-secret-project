@@ -2,20 +2,18 @@
 --- Every kind of placed object in the game.
 ---
 --- A kind is one table, written in a file of its own, as `Crate` is. It holds the kind's id, its
---- name, and whichever functions of `PlacedObjectScripts.PlacedObjectScript` it has a use for:
---- what happens when something happens to a placed object of the kind. `ALL` lists every kind,
---- and `get` returns one by its id. How a kind looks is not here: that is a piece of the kind's
---- own on the Roblox side.
+--- name, and whichever functions of `PlacedObjectScripts.PlacedObjectScript` it has a use for.
+--- `ALL` lists every kind, and `get` returns one by its id.
 local Crate = require("./Crate")
 local PlacedObjectScripts = require("../requests/PlacedObjectScripts")
 local Stove = require("./Stove")
 
 local PlacedObjectKinds = {}
 
---- One kind of placed object of the game: what `PlacedObjectScripts.PlacedObjectScript` lists,
---- and the kind's id and name.
+--- A kind's table: the functions of `PlacedObjectScripts.PlacedObjectScript`, and the kind's id
+--- and name.
 export type PlacedObjectKind = PlacedObjectScripts.PlacedObjectScript & {
-	--- The id of the kind, which every placed object of the kind has as its `kindId`.
+	--- The `kindId` that every placed object of the kind has.
 	read PLACED_OBJECT_KIND_ID: string,
 	--- The name shown for a placed object of the kind.
 	read NAME: string,

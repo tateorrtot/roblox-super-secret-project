@@ -1,19 +1,19 @@
 --!strict
---- A click of the Break action: the action pressed and let go again quickly, with the camera
---- facing the same way at both moments.
+--- A click of an input action: a press that ends quickly, with the camera facing the same way at
+--- both moments.
 ---
---- The right mouse button is bound to the Break action, and Roblox's camera turns while that
---- button is held. So a press that lasts, or that turns the camera, is the player looking about,
---- and only a click breaks.
+--- `connect` calls a callback for each click. A press that lasts, or that turns the camera, is not
+--- a click.
 local Workspace = game:GetService("Workspace")
 
 local BreakClick = {}
 
---- A press is a click only if the action is released within this many seconds of it.
+--- The time, in seconds, that a press must be shorter than to be a click.
 BreakClick.RELEASED_WITHIN_SECONDS = 0.35
 
---- The camera has turned between two moments if the dot product of the two directions it looked
---- in is below this.
+--- The camera has turned between the press and the release if the dot product of the two
+--- directions that it looked in is below this. The dot product of two directions is from `-1` to
+--- `1`.
 BreakClick.CAMERA_TURNED_BELOW = 0.9995
 
 local function getCameraLook(): Vector3
@@ -21,9 +21,10 @@ local function getCameraLook(): Vector3
 	return if camera then camera.CFrame.LookVector else Vector3.zero
 end
 
---- Connects `callback` to the clicks of `breakAction`. From then on it is called, with nothing,
---- each time the action is released within `RELEASED_WITHIN_SECONDS` of being pressed, unless the
---- camera has turned since the press, as `CAMERA_TURNED_BELOW` measures it.
+--- Connects `callback` to the clicks of `breakAction`. Calls `callback`, with no arguments, each
+--- time `breakAction` is released within `RELEASED_WITHIN_SECONDS` of being pressed, unless the
+--- camera has turned since the press, as `CAMERA_TURNED_BELOW` measures it. A release with no
+--- press before it calls nothing.
 function BreakClick.connect(breakAction: InputAction, callback: () -> ())
 	local pressedAt: number? = nil
 	local lookWhenPressed = Vector3.zero

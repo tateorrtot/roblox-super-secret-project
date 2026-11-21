@@ -2,16 +2,16 @@
 --- The stacks of items loose in the world of one running game: lying on the ground, or flying
 --- towards it.
 ---
---- A ground item is a stack, the position it is at, the velocity it was spawned with and the time
---- it was spawned. `spawnStack` makes one. Nothing here moves a ground item afterwards:
---- `setItemPosition` records where it has got to. `mergeItems` makes ground items of the same item
---- that are close together into one. `getIdsInPickupReach` says which ground items are in pickup
---- reach of a position. `takeFromItem` takes some of a ground item's stack and leaves the rest
---- where it lies, and `removeItem` takes a whole ground item out of the world.
---- `removeExpiredItems` removes the ones that have been out too long. Ground items are numbered
---- from 1 in the order they were spawned, and a number is never used twice. Time is a number of
---- seconds, passed in as `now`, from any clock that only goes forward. Positions and distances are
---- in studs. Ground items are never saved.
+--- A ground item is a stack, its position, the velocity it was spawned with, and the time it was
+--- spawned. `spawnStack` adds one. Nothing here moves a ground item: `setItemPosition` records
+--- where a ground item has got to. `mergeItems` makes ground items of the same item that lie close
+--- together into one. `getIdsInPickupReach` returns the ids of the ground items in pickup reach of
+--- a position. `takeFromItem` takes some of a ground item's stack and leaves the rest where it
+--- lies, and `removeItem` removes a whole ground item. `removeExpiredItems` removes the ground
+--- items that have been out too long. `spawnStack` numbers ground items from `1` in the order it
+--- adds them, and never gives an id to a second ground item. A time is a number of seconds, passed
+--- in as `now`, from any clock that only goes forward. Positions and distances are in studs. Ground
+--- items are never saved.
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
 
@@ -25,63 +25,66 @@ export type Position = Position.Position
 --- How fast a thing moves along each axis, in studs a second. `y` is upwards.
 export type Velocity = { read x: number, read y: number, read z: number }
 
---- One stack loose in the world. It never changes: when its position is set, or part of its stack
---- is taken, a new ground item takes its place under the same id.
+--- A stack loose in the world. A ground item never changes: `setItemPosition`, `takeFromItem`, and
+--- `mergeItems` each replace one with a new ground item under the same id.
 export type GroundItem = {
+	--- The items that the ground item holds.
 	read stack: ItemStack,
-	--- Where it is: the middle of its underside.
+	--- The ground item's position: the middle of its underside.
 	read position: Position,
-	--- How fast it was moving when it was spawned. It is not kept up to date as the item moves.
+	--- The velocity that the ground item was spawned with. `setItemPosition` does not change it.
 	read spawnVelocity: Velocity,
-	--- The time it was spawned, in seconds. When another ground item merges into it, this becomes
-	--- the later of the two items' times.
+	--- The time that the ground item was spawned, in seconds. When `mergeItems` merges another
+	--- ground item into it, `spawnTime` becomes the later of the two ground items' times.
 	read spawnTime: number,
 }
 
 --- Every ground item in one running game.
 export type GroundItems = {
-	--- The id the next ground item will get.
+	--- The id that `spawnStack` gives the next ground item.
 	nextId: number,
 	--- Every ground item, by id. An id with no entry is not in the world.
-	--- Note: ids are not consecutive, because a ground item that is picked up, merged or expired
-	--- leaves its id unused. `#itemsById` is not the number of ground items.
+	--- Note: the ids stop being consecutive once a ground item leaves the world, so `#itemsById` is
+	--- not the number of ground items.
 	itemsById: { [number]: GroundItem },
-	--- The ids of the ground items spawned, or given a new position, since `mergeItems` last ran.
-	--- An id may be listed after its ground item has gone.
+	--- The id of each ground item that `spawnStack` or `setItemPosition` has changed since
+	--- `mergeItems` last ran. An id may be listed after its ground item has gone.
 	idsMovedSinceMerge: { [number]: true },
-	--- The time `mergeItems` was last given. `nil` until it has run.
+	--- The `now` that `mergeItems` last received. `nil` until `mergeItems` has run.
 	lastMergeTime: number?,
 }
 
---- How long a ground item lasts before `removeExpiredItems` removes it, in seconds.
+--- The time that a ground item lasts, in seconds: `removeExpiredItems` removes a ground item
+--- spawned this long before `now`.
 GroundItems.LIFETIME_SECONDS = 300
 
---- How long after it was spawned a ground item is left out of what `getIdsInPickupReach` returns,
---- in seconds.
+--- The time after a ground item's spawn time during which `getIdsInPickupReach` leaves the ground
+--- item out, in seconds.
 GroundItems.PICKUP_DELAY_SECONDS = 1.5
 
---- How near a position must be to a ground item, along the ground, for the ground item to be in
---- pickup reach of it, in studs.
+--- The greatest distance, along the ground, between a position and a ground item that is in pickup
+--- reach of it, in studs.
 GroundItems.PICKUP_RADIUS = 4
 
---- How far above a position a ground item may be and still be in pickup reach of it, in studs.
+--- The greatest height of a ground item above a position at which it is in pickup reach of the
+--- position, in studs.
 GroundItems.PICKUP_REACH_UP = 7
 
---- How far below a position a ground item may be and still be in pickup reach of it, in studs.
+--- The greatest depth of a ground item below a position at which it is in pickup reach of the
+--- position, in studs.
 GroundItems.PICKUP_REACH_DOWN = 2
 
---- How wide, deep and tall a ground item is, in studs: it takes up a cube this wide, standing on
---- its `position`.
+--- The width, depth, and height of a ground item, in studs: a ground item fills a cube this wide,
+--- standing on its `position`.
 GroundItems.ITEM_WIDTH = 1.2
 
---- How near two ground items of the same item must be for `mergeItems` to make them one, in
---- studs: their positions are less than this apart along x, and along z, which leaves a gap of
---- less than 2 studs between their sides. They must also be less than `ITEM_WIDTH` apart in
---- height, so that neither lies wholly above the other.
+--- The distance within which `mergeItems` merges two ground items of the same item, in studs: their
+--- positions are less than `MERGE_REACH` apart along x, less than `MERGE_REACH` apart along z, and
+--- less than `ITEM_WIDTH` apart in height.
 GroundItems.MERGE_REACH = 2 + GroundItems.ITEM_WIDTH
 
---- How long a ground item that is not given a new position lies between one merge check by
---- `mergeItems` and the next, in seconds.
+--- The time between one merge check of a ground item and the next, in seconds, while
+--- `setItemPosition` does not move the ground item.
 GroundItems.MERGE_CHECK_SECONDS = 2
 
 local function isInMergeReach(from: Position, to: Position): boolean
@@ -116,15 +119,15 @@ local function idsNearestFirst(
 	return ids
 end
 
---- Returns a new set of ground items with nothing in the world.
+--- Returns a new `GroundItems` that holds no ground items.
 function GroundItems.new(): GroundItems
 	return { nextId = 1, itemsById = {}, idsMovedSinceMerge = {} }
 end
 
---- Makes a new ground item that holds `stack`, at `position` and moving at `velocity`, spawned at
---- the time `now`, and returns its id.
---- Note: `spawnStack` does not take the stack from anywhere. A stack that is also left where it
---- came from exists twice.
+--- Adds a ground item that holds `stack`, at `position`, with the spawn velocity `velocity` and the
+--- spawn time `now`. Returns its id.
+--- Note: `spawnStack` takes `stack` from nowhere, so the items of `stack` exist twice if they are
+--- also left where they were.
 function GroundItems.spawnStack(
 	groundItems: GroundItems,
 	stack: ItemStack,
@@ -144,8 +147,9 @@ function GroundItems.spawnStack(
 	return id
 end
 
---- Records that the ground item `id` is now at `position`. Does nothing if no ground item has
---- that id.
+--- Sets the position of the ground item `id` to `position`, and keeps its stack, spawn velocity,
+--- and spawn time. The ground item gets a merge check the next time `mergeItems` runs. Does nothing
+--- if no ground item has the id `id`.
 function GroundItems.setItemPosition(groundItems: GroundItems, id: number, position: Position)
 	local groundItem = groundItems.itemsById[id]
 	if groundItem == nil then
@@ -196,24 +200,23 @@ local function needsMergeCheck(groundItems: GroundItems, id: number, since: numb
 	return groundItems.idsMovedSinceMerge[id] == true or checksByNow > checksBySince
 end
 
---- Merges ground items of the same item that are within `MERGE_REACH` of each other, by giving
---- some of the ground items a merge check. Not every ground item gets one each time: `now` is the
---- time, and decides which do.
+--- Merges ground items of the same item that lie within `MERGE_REACH` of each other. Only some
+--- ground items get a merge check each time `mergeItems` runs, and `now` decides which.
 ---
---- A ground item gets a merge check if it was spawned or given a new position since `mergeItems`
---- last ran, or if it has since been in the world for another whole `MERGE_CHECK_SECONDS`,
---- counted from its `spawnTime`. They are checked one by one, the lowest id first.
+--- A ground item gets a merge check if `spawnStack` or `setItemPosition` has changed it since
+--- `mergeItems` last ran, or if another whole `MERGE_CHECK_SECONDS`, counted from its `spawnTime`,
+--- has passed since then. `mergeItems` checks them one by one, the lowest id first.
 ---
---- In a merge check the ground item is tried with each ground item of the same item in reach of
---- it, the nearest first, and of two equally near, the lower id first. The other need not be one
---- that is being checked. Two merge only if both stacks fit in one stack. The one with the bigger
---- stack then holds both, stays where it is, keeps the velocity it was spawned with, and counts as
---- spawned at the later of the two items' times. The other is gone, and its id with it. If the
---- two stacks are the same size, the one being checked is the one that goes. One that took the
---- other in is tried with the next nearest, and so on until it is gone or there are no more.
+--- A merge check tries the ground item with each ground item of the same item in reach of it, the
+--- nearest first, and of two equally near, the one with the lower id first. The other ground item
+--- need not be one that gets a merge check. Two merge only if both stacks fit in one stack. The one
+--- with the bigger stack then holds both, stays where it is, keeps its spawn velocity, and gets the
+--- later of the two spawn times. The other goes, and its id with it. If the two stacks are the same
+--- size, the ground item being checked goes. A ground item that takes in another is tried with the
+--- next nearest, and so on until it goes or no ground item is left to try.
 ---
---- If `now` is no later than the time `mergeItems` was last given, only the ground items spawned
---- or given a new position since then get a merge check.
+--- If `now` is no later than the `now` that `mergeItems` last received, only the ground items that
+--- `spawnStack` or `setItemPosition` has changed since then get a merge check.
 function GroundItems.mergeItems(groundItems: GroundItems, now: number)
 	local since = groundItems.lastMergeTime or now
 	local idsToCheck = {}
@@ -232,8 +235,8 @@ function GroundItems.mergeItems(groundItems: GroundItems, now: number)
 	end
 end
 
---- Takes the ground item `id` out of the world and returns its stack. Returns `nil`, changing
---- nothing, if no ground item has that id.
+--- Removes the ground item `id` from the world and returns its stack. Returns `nil` and changes
+--- nothing if no ground item has the id `id`.
 function GroundItems.removeItem(groundItems: GroundItems, id: number): ItemStack?
 	local groundItem = groundItems.itemsById[id]
 	groundItems.itemsById[id] = nil
@@ -243,8 +246,8 @@ end
 --- Returns the ids of the ground items in pickup reach of `position` at the time `now`, as a new
 --- list: the nearest in a straight line first, and of two equally near, the one with the lower
 --- id. A ground item is in pickup reach if it is within `PICKUP_RADIUS` of `position` along the
---- ground, and no more than `PICKUP_REACH_UP` above it or `PICKUP_REACH_DOWN` below it. A ground
---- item spawned less than `PICKUP_DELAY_SECONDS` before `now` is left out.
+--- ground, and no more than `PICKUP_REACH_UP` above it or `PICKUP_REACH_DOWN` below it. The list
+--- leaves out a ground item spawned less than `PICKUP_DELAY_SECONDS` before `now`.
 function GroundItems.getIdsInPickupReach(groundItems: GroundItems, position: Position, now: number): { number }
 	local ids = {}
 	for _, id in idsNearestFirst(groundItems, position, isInPickupReach) do
@@ -255,11 +258,12 @@ function GroundItems.getIdsInPickupReach(groundItems: GroundItems, position: Pos
 	return ids
 end
 
---- Takes up to `count` items out of the ground item `id` and returns them as a stack. If that is
---- all it held, the ground item is gone from the world. Otherwise it stays where it is under the
---- same id, with the velocity and the time it was spawned with, holding what is left. Returns
---- `nil`, changing nothing, if `count` is 0. Fails if no ground item has that id, or if `count` is
---- not a whole number of 0 or more.
+--- Takes up to `count` items out of the ground item `id` and returns them as a stack. If `count` is
+--- at least the size of the ground item's stack, the ground item leaves the world and the function
+--- returns the whole stack. Otherwise the ground item stays where it is under the same id, with its
+--- spawn velocity and spawn time, and holds what is left. Returns `nil`, and changes nothing, if
+--- `count` is `0`. Fails if no ground item has the id `id`. Fails, and changes nothing, if `count`
+--- is below `0`, or is not a whole number and is below the size of the stack.
 function GroundItems.takeFromItem(groundItems: GroundItems, id: number, count: number): ItemStack?
 	local groundItem = groundItems.itemsById[id]
 	if groundItem == nil then
@@ -283,8 +287,8 @@ function GroundItems.takeFromItem(groundItems: GroundItems, id: number, count: n
 	return taken
 end
 
---- Removes every ground item that was spawned `LIFETIME_SECONDS` or more before `now`. Their
---- items are gone.
+--- Removes every ground item that was spawned `LIFETIME_SECONDS` or more before `now`. The stacks
+--- of the removed ground items are gone.
 function GroundItems.removeExpiredItems(groundItems: GroundItems, now: number)
 	for id, groundItem in groundItems.itemsById do
 		if now - groundItem.spawnTime >= GroundItems.LIFETIME_SECONDS then

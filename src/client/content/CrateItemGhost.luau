@@ -1,9 +1,10 @@
 --!strict
---- What the crate item shows in the world while it is in the selected hotbar slot: a see-through
---- crate on the tile under the pointer.
+--- A see-through block on the tile under the pointer, shown while the crate item is in the selected
+--- hotbar slot.
 ---
---- It is only a picture on this player's machine. Whether a crate is placed is for
---- `CrateItem.interactWithTile` to say, on the server.
+--- `update` shows or hides the block, and `hide` hides it. The block is a picture on the client and
+--- places nothing: `CrateItem.interactWithTile` runs on the server and decides whether a crate is
+--- placed.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -17,8 +18,8 @@ local CrateItemGhost = {}
 local ghost = PlacementGhost.new()
 ghost.part:SetAttribute("itemId", CrateItem.id)
 
---- Shows the ghost as a crate on the tile that `pointerTarget` is, if it is a tile that the
---- player's character reaches. Hides the ghost if it is anything else, or `nil`.
+--- Shows the block on the tile that `pointerTarget` is, if `pointerTarget` is a tile that the
+--- player's character reaches. Hides the block for anything else, `nil` included.
 function CrateItemGhost.update(pointerTarget: PlotPointer.Target?)
 	if pointerTarget ~= nil and pointerTarget.kind == "tile" and LocalCharacter.canReachPoint(pointerTarget.center) then
 		PlacementGhost.show(ghost, pointerTarget.center)
@@ -27,7 +28,7 @@ function CrateItemGhost.update(pointerTarget: PlotPointer.Target?)
 	end
 end
 
---- Hides the ghost. Does nothing if it is hidden already.
+--- Hides the block. Does nothing if the block is hidden already.
 function CrateItemGhost.hide()
 	PlacementGhost.hide(ghost)
 end

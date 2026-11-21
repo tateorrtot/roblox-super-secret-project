@@ -1,13 +1,14 @@
 --!strict
---- The RemoteEvents that the server and the players' machines talk through, on the server's side.
+--- Makes the RemoteEvents that the server and the clients talk through.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Messages = require(ReplicatedStorage:WaitForChild("Shared").requests.Messages)
 
 local Remotes = {}
 
---- Makes one RemoteEvent for each name in Messages, in a folder called `Remotes` in
---- ReplicatedStorage, and returns them by name. Reading a name that no message has fails.
+--- Makes one RemoteEvent for each name in `Messages.toServer` and `Messages.toClient`, puts them in
+--- a Folder called `Remotes` in ReplicatedStorage, and returns them by name. Reading a name
+--- from the table returned fails if no message has the name.
 function Remotes.create(): { [string]: RemoteEvent }
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"

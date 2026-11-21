@@ -1,34 +1,32 @@
 --!strict
---- A thing's way of telling others that something has happened to it.
+--- A list of callbacks that a thing calls to tell others that something happened to it.
 ---
---- The thing keeps a signal for each kind of happening, and fires it when it happens. Anything
---- that wants to know connects a function, its callback, with `connect`. `fire` calls every
---- callback there and then, before it returns, in the order they were connected, and gives each
---- what it was given. A signal is plain Luau: it is not a Roblox event, and it needs no Roblox to
---- run.
+--- A thing holds one signal for each change that it tells others about. `connect` adds a callback
+--- to a signal. `fire` calls every callback connected, in the order they were connected, and
+--- passes each the values that `fire` received. A signal is plain Luau, and needs no Roblox.
 local Signal = {}
 
---- A signal whose callbacks are given values of the types `T...`.
+--- A signal whose callbacks each receive values of the types `T...`.
 export type Signal<T...> = {
-	--- Every function connected, in the order they were connected.
+	--- The callbacks connected to the signal, in the order they were connected.
 	read connections: { (T...) -> () },
 }
 
---- Returns a new signal with nothing connected to it.
+--- Returns a new signal with no callback connected.
 function Signal.new<T...>(): Signal<T...>
 	return { connections = {} }
 end
 
---- Connects `callback` to the signal: from now on `fire` calls it. A function connected twice is
---- called twice.
+--- Adds `callback` to the end of the signal's `connections`, so that `fire` calls it. A function
+--- that is connected twice is called twice.
 function Signal.connect<T...>(signal: Signal<T...>, callback: (T...) -> ())
 	table.insert(signal.connections, callback)
 end
 
---- Calls every callback of the signal with the values given, in the order they were connected,
---- and returns when the last has returned. A callback connected while the signal is being fired
---- is not called until it is next fired. If a callback fails, so does `fire`, and the callbacks
---- after it are not called.
+--- Calls every callback in the signal's `connections`, in the order they were connected, and
+--- passes each the values `...`. Returns after the last callback returns. Skips a callback that
+--- another callback connects during the call: the next `fire` calls it. Fails if a callback fails,
+--- and does not call the callbacks after it.
 function Signal.fire<T...>(signal: Signal<T...>, ...: T...)
 	local connections = signal.connections
 	for index = 1, #connections do

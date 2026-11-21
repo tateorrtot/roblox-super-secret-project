@@ -1,40 +1,41 @@
 --!strict
---- The mouse and keyboard controls of the inventory screen: which request each gesture or key
---- press asks the server for.
+--- The mouse and keyboard controls of the inventory screen: each function turns an input on the
+--- screen into a `Request` that the client sends to the server.
 ---
---- Each function returns a request, which is the name of one of the server's requests and what to
---- send with it, or `nil` if the input asks for nothing.
+--- Each function returns a `Request`, except that `getRequestForGesture` returns `nil` if the
+--- gesture asks for nothing. No function changes anything.
 local SlotGestures = require("./SlotGestures")
 
 local InventoryControls = {}
 
 type Slot = SlotGestures.Slot
 
---- A way in the world: numbers under `x`, `y` and `z` that together have a length of 1. `y` is
+--- A way in the world: numbers under `x`, `y` and `z` that together have a length of `1`. `y` is
 --- upwards.
 export type Direction = { read x: number, read y: number, read z: number }
 
---- A stack as the controls see it.
+--- The item and the count of a stack, which are all that the controls read of it.
 export type Stack = { read itemId: string, read count: number }
 
+--- A request for the server: its name, and the arguments to send with it.
 export type Request = {
-	--- The name of the request, as in `Requests.NAMES`.
+	--- The name of the request, one of `Requests.NAMES`.
 	name: string,
-	--- What is sent with it, in order.
+	--- The arguments to send with the request, in order.
 	arguments: { any },
 }
 
---- What the controls need to know of the open screen.
+--- What the controls read of the open inventory screen.
 export type Screen = {
-	--- How many slots the pack has.
+	--- The number of slots in the pack.
 	read packSlotCount: number,
-	--- How many of the pack's first slots are the hotbar.
+	--- The number of the pack's first slots that are the hotbar.
 	read hotbarSlotCount: number,
-	--- How many slots the other inventory has. `nil` when the pack is open alone.
+	--- The number of slots in the other inventory. `nil` if the pack is open alone.
 	read otherSlotCount: number?,
-	--- The stack being carried. `nil` when nothing is carried.
+	--- The stack being carried. `nil` if nothing is carried.
 	read carriedStack: Stack?,
-	--- Returns the stack in a slot, or `nil` if it holds nothing.
+	--- Returns the stack in `slot`, or `nil` if it holds nothing.
 	read getStack: (slot: Slot) -> Stack?,
 }
 
@@ -80,18 +81,22 @@ local function forClick(screen: Screen, slot: Slot, button: SlotGestures.Button)
 	return request("putDownInSlot", slot.side, slot.slot, if button == "left" then nil else 1)
 end
 
---- Returns the request that a gesture on the slots asks for.
---- - A left click picks up the whole stack in the slot, and a right click picks up half of it,
----   the larger half of an odd count. With a stack carried, a left click puts all of it down, a
----   right click puts one item down, and either click on a slot holding a different item
----   exchanges the two stacks.
---- - A left click with Shift held moves the slot's stack to the other inventory. With the pack
----   open alone, it moves it between the hotbar and the rest of the pack.
+--- Returns the request that `gesture` asks for on the slots of `screen`, or `nil` if it asks for
+--- nothing.
+--- - A left click picks up the whole stack in the slot, and a right click picks up the larger half
+---   of it. With a stack carried, a left click puts all of it down, a right click puts one item
+---   down, and either click on a slot that holds a different item swaps the carried stack with
+---   the slot's stack. A click on a slot that holds nothing, with nothing carried, asks for
+---   nothing.
+--- - A left click with Shift held, whether or not a stack is carried, takes the place of the left
+---   click above: it moves the slot's stack to the other inventory, or from the other inventory to
+---   the pack. With the pack open alone, it moves the stack between the hotbar and the rest of the
+---   pack, and asks for nothing if the pack has no slots beyond the hotbar.
 --- - A double click with a stack carried, on a slot that holds nothing, fills the carried stack
----   from every slot that holds its kind. Any other double click is a left click.
---- - A drag with a stack carried puts it down across the slots it crossed: in equal shares with
----   the left button, and one item in each with the right. With nothing carried, a drag that ends
----   on the slot it began on is a click, and any other drag asks for nothing.
+---   from every slot that holds its item. Any other double click is a left click.
+--- - A drag with a stack carried spreads the stack over the slots the drag crossed: in equal
+---   shares with the left button, and one item to each with the right. With nothing carried, a
+---   drag that ends on the slot it began on is a click, and any other drag asks for nothing.
 function InventoryControls.getRequestForGesture(screen: Screen, gesture: SlotGestures.Gesture): Request?
 	local first, releasedOn = gesture.slots[1], gesture.releasedOn
 	if gesture.kind == "drag" and screen.carriedStack ~= nil then
@@ -108,21 +113,22 @@ function InventoryControls.getRequestForGesture(screen: Screen, gesture: SlotGes
 	return forClick(screen, first, gesture.button)
 end
 
---- Returns the request that a number key asks for while the pointer is over a slot: the slot's
---- stack and the stack in the hotbar slot of that number change places.
+--- Returns the request that the number key `digit` asks for while the pointer is over the slot
+--- `over`: the request swaps the stack in `over` with the stack in the pack's slot `digit`.
 function InventoryControls.getRequestForDigitKeyOverSlot(over: Slot, digit: number): Request
 	return request("swapSlots", over.side, over.slot, "pack", digit)
 end
 
---- Returns the request that the drop key asks for while the pointer is over a slot: one item is
---- dropped from the slot, or the whole stack if `wholeStack` is `true`. `direction` is the way it
---- is thrown.
+--- Returns the request that the drop key asks for while the pointer is over the slot `over`: the
+--- request drops one item from the slot, or the whole stack if `wholeStack` is `true`, and throws
+--- it along `direction`.
 function InventoryControls.getRequestForDropKeyOverSlot(over: Slot, direction: Direction, wholeStack: boolean): Request
 	return request("dropFromSlot", over.side, over.slot, direction, if wholeStack then nil else 1)
 end
 
---- Returns the request that a click outside the screen asks for: the carried stack is dropped
---- with the left button, and one item of it with the right. `direction` is the way it is thrown.
+--- Returns the request that a click of `button` outside the panel of the screen asks for: the request drops the
+--- whole carried stack for the left button, and one item of it for the right, and throws it along
+--- `direction`.
 function InventoryControls.getRequestForOutsideClick(button: SlotGestures.Button, direction: Direction): Request
 	return request("dropCarriedStack", direction, if button == "left" then nil else 1)
 end

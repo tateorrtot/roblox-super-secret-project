@@ -1,8 +1,8 @@
 --!strict
 --- A see-through block that shows where an object would stand on a tile.
 ---
---- `show` puts the block on a tile, and `hide` takes it away. It is only a picture on this
---- client: showing it places nothing.
+--- `new` makes the block, `show` stands it on a tile, and `hide` removes it from the world. The
+--- block is a picture on the client and places nothing.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -10,8 +10,10 @@ local Plot = require(ReplicatedStorage:WaitForChild("Shared").plots.Plot)
 
 local PlacementGhost = {}
 
+--- A ghost: the block that `show` and `hide` move into and out of the world.
 export type PlacementGhost = {
-	--- The block. It is in the Workspace while shown, and has no parent while hidden.
+	--- The block: a grey cube of `Plot.TILE_SIZE` studs a side with a white outline. Its parent is
+	--- the Workspace while the ghost is shown, and `nil` while the ghost is hidden.
 	read part: Part,
 }
 
@@ -25,7 +27,7 @@ local function makeOutline(part: Part): SelectionBox
 	return outline
 end
 
---- Returns a new ghost, hidden.
+--- Returns a new ghost that is hidden.
 function PlacementGhost.new(): PlacementGhost
 	local side = Plot.TILE_SIZE
 	local part = Instance.new("Part")
@@ -43,14 +45,15 @@ function PlacementGhost.new(): PlacementGhost
 	return { part = part }
 end
 
---- Shows the ghost standing on the tile whose middle is at `tileCenter`.
+--- Puts the ghost's block in the Workspace, standing on `tileCenter`, the middle of a tile. Moves
+--- the block there if the ghost is shown already.
 function PlacementGhost.show(ghost: PlacementGhost, tileCenter: Vector3)
 	local part = ghost.part
 	part.Position = tileCenter + Vector3.new(0, part.Size.Y / 2, 0)
 	part.Parent = Workspace
 end
 
---- Hides the ghost. Does nothing if it is hidden already.
+--- Removes the ghost's block from the world. Does nothing if the ghost is hidden already.
 function PlacementGhost.hide(ghost: PlacementGhost)
 	ghost.part.Parent = nil
 end

@@ -1,11 +1,12 @@
 --!strict
---- Slots that hold stacks of items, such as a player's pack.
+--- Numbered slots that each hold one stack of items or nothing, such as a player's pack.
 ---
---- An inventory has a fixed number of slots, numbered from 1. Each slot holds one ItemStack or
---- nothing. `getStack`, `setStack`, `takeFromSlot` and `putInSlot` work on one slot. `addItems` and
---- `addStack` put items wherever they fit, and `takeEveryStack` empties the inventory. `addItems`
---- makes the items it adds, and `setStack` discards what the slot held. The other functions move
---- stacks between the inventory and the caller, so no item is made or lost.
+--- An inventory has a fixed number of slots, numbered from `1`. `getStack`, `setStack`,
+--- `takeFromSlot` and `putInSlot` act on one slot. `addItems` and `addStack` put items in whichever
+--- slots they fit, and `takeEveryStack` empties every slot. `addItems` makes the items that it
+--- adds, and `setStack` discards the stack that the slot held. Every other function that changes
+--- the inventory moves stacks between the inventory and its caller, so it makes no item and loses
+--- none.
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemStack = require("../items/ItemStack")
 
@@ -13,18 +14,21 @@ local Inventory = {}
 
 type ItemStack = ItemStack.ItemStack
 
+--- Slots that each hold one stack of items or nothing.
 export type Inventory = {
-	--- How many slots it has.
+	--- How many slots the inventory has, numbered from `1`.
 	read slotCount: number,
 	--- The stack in each slot, by slot number. A slot that holds nothing has no entry.
-	--- Note: the table has gaps, so `#` and `ipairs` do not work on it. Loop from 1 to `slotCount`.
+	--- Note: the table has gaps, so `#` and `ipairs` do not work on it. Loop from `1` to
+	--- `slotCount`.
 	read slots: { [number]: ItemStack? },
 }
 
---- An inventory as plain data, which a data store or a remote carries unchanged.
+--- An inventory as plain data. `encode` makes it, and `decode` reads it.
 export type EncodedInventory = {
+	--- How many slots the inventory has.
 	slotCount: number,
-	--- One entry for each slot that holds something, lowest slot first.
+	--- One entry for each slot that holds a stack, lowest slot first.
 	stacks: { { slot: number, itemId: string, count: number } },
 }
 
@@ -35,17 +39,18 @@ local function checkSlot(inventory: Inventory, slot: number)
 end
 
 --- Returns a new inventory of `slotCount` slots, all holding nothing.
+--- Note: `new` does not check that `slotCount` is a whole number of `1` or more.
 function Inventory.new(slotCount: number): Inventory
 	return table.freeze({ slotCount = slotCount, slots = {} })
 end
 
---- Returns `true` if `slot` is the number of one of the inventory's slots. `slot` may be any
---- value at all, so this is the check for a slot number that arrives from outside the game.
+--- Returns `true` if `slot` is a whole number from `1` to the inventory's `slotCount`. Accepts a
+--- value of any type, and never fails.
 function Inventory.hasSlot(inventory: Inventory, slot: unknown): boolean
 	return type(slot) == "number" and slot % 1 == 0 and slot >= 1 and slot <= inventory.slotCount
 end
 
---- Returns the number of every slot, lowest first.
+--- Returns a new list of the numbers of the inventory's slots, from `1` to `slotCount`.
 function Inventory.getSlotNumbers(inventory: Inventory): { number }
 	local slots = {}
 	for slot = 1, inventory.slotCount do
@@ -54,28 +59,29 @@ function Inventory.getSlotNumbers(inventory: Inventory): { number }
 	return slots
 end
 
---- Returns `true` if no slot holds anything.
+--- Returns `true` if no slot holds a stack.
 function Inventory.isEmpty(inventory: Inventory): boolean
 	return next(inventory.slots) == nil
 end
 
---- Returns the stack in a slot, or `nil` if the slot holds nothing. Fails if the inventory has no
---- such slot.
+--- Returns the stack in the slot `slot`, or `nil` if the slot holds nothing. Fails if the
+--- inventory has no slot `slot`.
 function Inventory.getStack(inventory: Inventory, slot: number): ItemStack?
 	checkSlot(inventory, slot)
 	return inventory.slots[slot]
 end
 
---- Makes a slot hold `stack`, or nothing if `stack` is `nil`. What the slot held before is
---- discarded. Fails if the inventory has no such slot.
+--- Makes the slot `slot` hold `stack`, or hold nothing if `stack` is `nil`. Discards the stack
+--- that the slot held. Fails, and changes nothing, if the inventory has no slot `slot`.
 function Inventory.setStack(inventory: Inventory, slot: number, stack: ItemStack?)
 	checkSlot(inventory, slot)
 	inventory.slots[slot] = stack
 end
 
---- Takes up to `count` items out of a slot and returns them as a stack. Takes everything in the
---- slot if `count` is left out or is more than the slot holds. Returns `nil` if nothing was taken,
---- because the slot holds nothing or `count` is 0. Fails if the inventory has no such slot.
+--- Takes up to `count` items out of the slot `slot` and returns them as a stack. Takes everything
+--- in the slot if `count` is `nil` or at least what the slot holds. Returns `nil` if the slot holds
+--- nothing or `count` is `0`. Fails if the inventory has no slot `slot`.
+--- Note: `takeFromSlot` does not check that `count` is a whole number of `0` or more.
 function Inventory.takeFromSlot(inventory: Inventory, slot: number, count: number?): ItemStack?
 	checkSlot(inventory, slot)
 	local stack = inventory.slots[slot]
@@ -91,10 +97,10 @@ function Inventory.takeFromSlot(inventory: Inventory, slot: number, count: numbe
 	return taken
 end
 
---- Puts a stack into a slot, and returns the part that did not fit, or `nil` if all of it went in.
---- A slot that holds nothing takes the whole stack. A slot holding the same item is topped up to
---- that item's stack size. A slot holding a different item takes nothing. Fails if the inventory
---- has no such slot.
+--- Puts `stack` into the slot `slot`, and returns the part that did not fit, or `nil` if all of it
+--- went in. A slot that holds nothing takes all of `stack`. A slot that holds the same item takes
+--- items until its stack reaches the item's `stackSize`. A slot that holds a different item takes
+--- nothing, and `putInSlot` returns `stack`. Fails if the inventory has no slot `slot`.
 function Inventory.putInSlot(inventory: Inventory, slot: number, stack: ItemStack): ItemStack?
 	checkSlot(inventory, slot)
 	local there = inventory.slots[slot]
@@ -113,11 +119,13 @@ local function addToSlot(inventory: Inventory, slot: number, itemId: string, cou
 	return offered - (if leftover then leftover.count else 0)
 end
 
---- Adds up to `count` of an item and returns how many were added. Stacks of the item are topped
---- up first, and then slots that hold nothing are filled, each in the order the slots are listed.
---- Only the slots in `intoSlots` are used, or every slot, lowest first, if it is left out. Fails
---- if no item has the id `itemId`, if `count` is not a whole number of 0 or more, or if the
---- inventory lacks a listed slot.
+--- Makes up to `count` items with the id `itemId`, adds them to the inventory, and returns how
+--- many were added. Tops up the stacks of the item first, and then fills the slots that hold
+--- nothing, each in the order of `intoSlots`. Uses only the slots in `intoSlots`, or every slot,
+--- lowest first, if `intoSlots` is `nil`. Fails, and changes nothing, if `count` is not a whole
+--- number of `0` or more, or if the inventory lacks a slot in `intoSlots`.
+--- Note: `addItems` does not check `itemId` if `count` is `0` or `intoSlots` is empty. In every
+--- other case, it fails for an `itemId` that no item has.
 function Inventory.addItems(inventory: Inventory, itemId: string, count: number, intoSlots: { number }?): number
 	if count % 1 ~= 0 or count < 0 then
 		error(`cannot add {count} items`, 2)
@@ -140,8 +148,9 @@ function Inventory.addItems(inventory: Inventory, itemId: string, count: number,
 	return count - left
 end
 
---- Adds the items of a stack as `addItems` does, and returns the part that did not fit, or `nil`
---- if all of it went in.
+--- Adds the items of `stack` to the inventory, in the slots and the order that `addItems` uses for
+--- `intoSlots`, and returns the part that did not fit, or `nil` if all of it went in. Fails, and
+--- changes nothing, if the inventory lacks a slot in `intoSlots`.
 function Inventory.addStack(inventory: Inventory, stack: ItemStack, intoSlots: { number }?): ItemStack?
 	local added = Inventory.addItems(inventory, stack.itemId, stack.count, intoSlots)
 	if added == stack.count then
@@ -150,8 +159,8 @@ function Inventory.addStack(inventory: Inventory, stack: ItemStack, intoSlots: {
 	return ItemStack.new(stack.itemId, stack.count - added)
 end
 
---- Takes every stack out of the inventory and returns them as a new list, the stack from the
---- lowest slot first. Every slot then holds nothing.
+--- Takes every stack out of the inventory and returns them as a new list, ordered by slot number,
+--- lowest first. Every slot then holds nothing.
 function Inventory.takeEveryStack(inventory: Inventory): { ItemStack }
 	local stacks = {}
 	for slot = 1, inventory.slotCount do
@@ -164,7 +173,7 @@ function Inventory.takeEveryStack(inventory: Inventory): { ItemStack }
 	return stacks
 end
 
---- Returns how many of an item the inventory holds, over all its slots.
+--- Returns how many items with the id `itemId` the inventory holds, over all its slots.
 function Inventory.countItems(inventory: Inventory, itemId: string): number
 	local total = 0
 	for _, stack in inventory.slots do
@@ -175,7 +184,7 @@ function Inventory.countItems(inventory: Inventory, itemId: string): number
 	return total
 end
 
---- Returns the inventory as plain data, which `decode` reads back.
+--- Returns the inventory as an `EncodedInventory`, which `decode` reads back.
 function Inventory.encode(inventory: Inventory): EncodedInventory
 	local stacks = {}
 	for slot = 1, inventory.slotCount do
@@ -220,9 +229,9 @@ local function addDecodedEntry(inventory: Inventory, index: number, entry: unkno
 	return nil
 end
 
---- Returns a new inventory read from data that `encode` made. If any part of the data is not
---- what `encode` would have written, returns `nil` and what is wrong with it, in words. The data
---- may be anything at all, so this is the check for an inventory that arrives from outside.
+--- Returns a new inventory read from `encoded`, and then `nil`, if `encoded` is what `encode`
+--- writes. Otherwise returns `nil`, and then what is wrong with `encoded`, in words. Accepts a
+--- value of any type, and never fails.
 function Inventory.decode(encoded: unknown): (Inventory?, string?)
 	if type(encoded) ~= "table" then
 		return nil, "an encoded inventory must be a table; got a " .. type(encoded)

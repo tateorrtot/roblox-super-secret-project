@@ -1,8 +1,8 @@
 --!strict
---- The character of the player at this machine, for the pieces that draw in the world.
+--- The local player's character, which the pieces that draw in the world ask about.
 ---
---- Note: what a character reaches is decided on the server, from where the server last saw the
---- character. `canReachPoint` says only what to show.
+--- Note: the server decides what a character reaches, from where the server last saw the
+--- character. `canReachPoint` answers from where the client has the character now.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -11,8 +11,8 @@ local World = require(ReplicatedStorage:WaitForChild("Shared").world.World)
 local LocalCharacter = {}
 
 --- Returns `true` if the character stands within `World.CHARACTER_REACH` of `point`, in studs
---- along the ground. Returns `false` while the player has no living character: none at all, one
---- with no root part, or one whose health is 0.
+--- along the ground. Returns `false` while the local player has no living character: none at all,
+--- one with no Humanoid or no root part, or one whose health is `0` or less.
 function LocalCharacter.canReachPoint(point: Vector3): boolean
 	local character = Players.LocalPlayer.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil

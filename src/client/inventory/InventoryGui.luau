@@ -1,13 +1,13 @@
 --!strict
---- The inventory screen, which shows the player's pack, another inventory beside it, and the stack
---- being carried.
+--- The screen that shows the player's pack, another inventory above it, and the stack being
+--- carried.
 ---
 --- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are
---- its bottom row, a little apart from the rest. The carried stack follows the pointer. The other
---- inventory's slots are drawn in rows, unless `show` is handed an `OtherLayout`, a piece that lays
---- them out its own way and may draw more beside them. `show` draws, `setHighlightedSlots`
---- brightens slots and `hide` closes the screen. The screen changes no inventory: it reports what
---- the player does on its slots through its `callbacks`.
+--- its bottom row, set apart from the rest. The carried stack follows the pointer. The other
+--- inventory's slots are drawn in rows, unless `show` is given an `OtherLayout`, which places them
+--- its own way and may draw more beside them. `show` opens and redraws the screen,
+--- `setHighlightedSlots` gives slots a bright edge, and `hide` closes the screen. The screen
+--- changes no inventory: it calls its `callbacks` when the player acts on it.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -22,61 +22,68 @@ local StackIcon = require(script.Parent.StackIcon)
 
 local InventoryGui = {}
 
---- Which inventory a slot belongs to: the player's pack, or the other inventory beside it.
+--- Which inventory a slot belongs to: the player's pack, or the other inventory above it.
 export type Side = "pack" | "other"
 
---- A mouse button, which a finger on a touch screen counts as the left one.
+--- A mouse button. A finger on a touch screen counts as `"left"`.
 export type Button = "left" | "right"
 
+--- The functions that the screen calls when the player acts on it.
 export type Callbacks = {
-	--- Called when a mouse button, or a finger, goes down on a slot.
+	--- Called with the slot's side, its number, and the button when a mouse button goes down on a
+	--- slot.
 	onSlotPressed: (side: Side, slot: number, button: Button) -> (),
-	--- Called when the pointer comes onto a slot while a mouse button is down.
+	--- Called with the slot's side and its number when the pointer comes onto a slot while a mouse
+	--- button is down.
 	onSlotEntered: (side: Side, slot: number) -> (),
-	--- Called when the player clicks outside the panel, on the dimmed world.
+	--- Called with the button when the player clicks outside the panel, on the dimmed world.
 	onOutsideClicked: (button: Button) -> (),
 	--- Called when the player clicks the panel's close button.
 	onCloseClicked: () -> (),
 }
 
---- How the other inventory is laid out when it is not rows of slots, and what is drawn beside it.
+--- A way to place the other inventory's slots on the panel when they are not drawn in rows, and to
+--- draw more beside them.
 export type OtherLayout = {
-	--- Puts `slots`, the other inventory's slots in order, where they belong on `panel`, and shows
-	--- whatever else the layout draws there. `origin` is the top left corner of the space on the
-	--- panel that is the other inventory's, and `step` is the distance from one slot to the next.
-	--- Returns how tall the space is that it took.
+	--- Places `slots`, the other inventory's slots in order, on `panel`, and shows whatever else the
+	--- layout draws there. `origin` is the top left corner of the space on `panel` that belongs to
+	--- the other inventory, and `step` is the distance from one slot to the next. Returns the height
+	--- of the space that the layout used, in pixels before the screen is scaled.
 	place: (panel: Frame, slots: { SlotGui.SlotGui }, origin: Vector2, step: number) -> number,
 	--- Hides whatever else the layout draws.
 	hide: () -> (),
 }
 
+--- An inventory screen: its `ScreenGui`, its panel, its slots, and the carried stack's icon.
 export type InventoryGui = {
-	--- The ScreenGui that holds the whole screen. It is enabled while the screen is open.
+	--- The `ScreenGui` that holds the whole screen. It is enabled while the screen is open.
 	read screenGui: ScreenGui,
-	--- The panel the slots are on.
+	--- The panel that the slots are on.
 	read panel: Frame,
-	--- The words at the top of the panel: the name of the other inventory, or "Pack" when the pack
-	--- is shown alone.
+	--- The label at the top of the panel that holds the name of the other inventory, or `"Pack"`
+	--- if the pack is shown alone.
 	read title: TextLabel,
-	--- The word "Pack" above the pack's slots, visible when another inventory is above them.
+	--- The label `"Pack"` above the pack's slots. It is visible while another inventory is above them.
 	read packTitle: TextLabel,
-	--- How many of the pack's first slots are its hotbar, drawn as the bottom row.
+	--- The number of the pack's first slots that are its hotbar, drawn as the bottom row.
 	read hotbarSlotCount: number,
-	--- What the screen reports to.
+	--- The functions that the screen calls when the player acts on it.
 	read callbacks: Callbacks,
-	--- The pack's slots, in order. They are made when the screen first shows a pack.
+	--- The pack's slots, in order. `show` makes them.
 	read packSlots: { SlotGui.SlotGui },
-	--- The other inventory's slots, in order. There are none when the pack is shown alone.
+	--- The other inventory's slots, in order. The list is empty if the pack is shown alone.
 	read otherSlots: { SlotGui.SlotGui },
-	--- The picture of the carried stack.
+	--- The icon of the carried stack.
 	read carriedIcon: StackIcon.StackIcon,
-	--- The frame that moves the carried stack's picture with the pointer.
+	--- The frame that holds `carriedIcon`, and that moves with the pointer.
 	read carriedFrame: Frame,
-	--- The connection that moves `carriedFrame` each frame, or `nil` while the screen is closed.
+	--- The connection that moves `carriedFrame` to the pointer each frame. `nil` before `show` first
+	--- opens the screen, and after `hide`.
 	pointerConnection: RBXScriptConnection?,
-	--- The slot the pointer is over, or `nil` when it is over none.
+	--- The slot that the pointer is over. `nil` if it is over none.
 	hoveredSlot: { side: Side, slot: number }?,
-	--- The piece that lays out the other inventory, or `nil` while it is drawn in rows.
+	--- The `OtherLayout` that places the other inventory's slots. `nil` while they are drawn in
+	--- rows.
 	otherLayout: OtherLayout?,
 }
 
@@ -197,7 +204,6 @@ local function makeBackdrop(screenGui: ScreenGui, callbacks: Callbacks)
 	outside.BackgroundTransparency = 0.5
 	outside.BorderSizePixel = 0
 	outside.AutoButtonColor = false
-	-- Note: a modal button frees the pointer even in first person.
 	outside.Modal = true
 	outside.Text = ""
 	outside.Parent = screenGui
@@ -302,8 +308,9 @@ local function makeCarried(screenGui: ScreenGui): (Frame, StackIcon.StackIcon)
 	return carriedFrame, carriedIcon
 end
 
---- Returns a new inventory screen, hidden, in a ScreenGui inside `parent`. `hotbarSlotCount` is how
---- many of the pack's first slots are its hotbar.
+--- Returns a new inventory screen in a `ScreenGui` inside `parent`, closed and with no slots.
+--- `hotbarSlotCount` is the number of the pack's first slots that are its hotbar. The screen calls
+--- `callbacks` when the player acts on it.
 function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: Callbacks): InventoryGui
 	local screenGui = makeScreenGui()
 	makeBackdrop(screenGui, callbacks)
@@ -329,12 +336,16 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	}
 end
 
---- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
---- there is one, and `otherInventory` above the pack if there is one. `otherInventoryName` is
---- written over the other inventory and is not used when there is none. The other inventory's
---- slots are drawn in rows, or laid out by `otherLayout` if one is given: its `place` is called
---- with the panel and the slots. A layout that was used before, and is not the one given now, has
---- its `hide` called first.
+--- Opens the screen if it is closed, or redraws it if it is open. Shows `pack`, `carriedStack` at
+--- the pointer if it is not `nil`, and `otherInventory` above the pack if it is not `nil`.
+--- `otherInventoryName` is the title of the other inventory. The title is `"Pack"` if
+--- `otherInventory` is `nil`. The other inventory's slots are drawn in rows, or placed by
+--- `otherLayout` if it is not `nil`. If `otherLayout` is not the layout that the screen used
+--- before, `show` calls the `hide` of the layout that the screen used before, if there was one.
+--- While the screen is open, the pointer moves freely, even in first person.
+--- Note: `show` adds or removes slots, and places them, only when the number of slots in the pack
+--- or in the other inventory changes, or when `otherLayout` changes. It calls `otherLayout.place`
+--- only then, and only if the other inventory has slots.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
@@ -372,8 +383,9 @@ function InventoryGui.show(
 	inventoryGui.screenGui.Enabled = true
 end
 
---- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An
---- empty list gives every slot its plain edge. A named slot that does not exist is ignored.
+--- Gives the slots in `screenSlots` a bright edge, and every other slot a plain edge. An empty
+--- list gives every slot a plain edge. A slot in the list that the screen does not have is
+--- ignored.
 function InventoryGui.setHighlightedSlots(
 	inventoryGui: InventoryGui,
 	screenSlots: { { read side: string, read slot: number } }
@@ -393,8 +405,9 @@ function InventoryGui.setHighlightedSlots(
 	end
 end
 
---- Closes the screen, clears the bright edges, forgets the slot under the pointer and stops moving
---- the carried stack. Does nothing if the screen is closed already.
+--- Closes the screen, gives every slot a plain edge, sets `hoveredSlot` to `nil`, and stops moving
+--- `carriedFrame` to the pointer. Changes nothing if the screen is closed already.
+--- Note: `hide` does not call the hide of `otherLayout`.
 function InventoryGui.hide(inventoryGui: InventoryGui)
 	inventoryGui.screenGui.Enabled = false
 	InventoryGui.setHighlightedSlots(inventoryGui, {})

@@ -2,9 +2,10 @@
 --- One player: their pack, their hotbar, the inventory screen they have open, and their character
 --- in the world.
 ---
---- `openScreen` opens the player's inventory screen and `closeScreen` closes it. Only a player
---- with a character can have a screen open, and `canOpenScreen` says whether one can be opened
---- now.
+--- `setCharacterPosition` gives the player a character, and `removeCharacter` removes it.
+--- `openScreen` opens the player's inventory screen, and `closeScreen` closes it. Only a player
+--- with a character can have a screen open, and `canOpenScreen` returns whether `openScreen` would
+--- succeed.
 local Hotbar = require("../inventory/Hotbar")
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
@@ -15,29 +16,30 @@ local PlayerState = {}
 
 --- A player's character in the world.
 export type Character = {
-	--- Where it is: the point at its feet.
+	--- The position of the character's feet.
 	read position: Position.Position,
 }
 
+--- A player: their pack, their hotbar, their open inventory screen, and their character.
 export type PlayerState = {
-	--- The player's own inventory, which goes where they go.
+	--- The player's inventory. `new` makes one of `PACK_SLOT_COUNT` slots if it is given none.
 	read pack: Inventory.Inventory,
-	--- The first slots of the pack, and which of them is selected.
+	--- The hotbar over the first `HOTBAR_SLOT_COUNT` slots of `pack`, and its selected slot.
 	read hotbar: Hotbar.Hotbar,
-	--- The inventory screen the player has open. `nil` when none is open.
+	--- The player's open inventory screen, or `nil` if none is open.
 	screen: InventoryScreen.InventoryScreen?,
-	--- The player's character. `nil` while they have no living character.
+	--- The player's character, or `nil` while they have none.
 	character: Character?,
 }
 
---- How many slots a new player's pack has.
+--- The number of slots in the pack that `new` makes for a player who is given none.
 PlayerState.PACK_SLOT_COUNT = 36
 
---- How many of the pack's slots, counting from slot 1, are the hotbar.
+--- The number of slots of the pack, counting from slot `1`, that `new` gives the hotbar.
 PlayerState.HOTBAR_SLOT_COUNT = 9
 
---- Returns a new player with hotbar slot 1 selected, no screen open and no character. They carry
---- `pack`, or a pack that holds nothing if none is given.
+--- Returns a new player with hotbar slot `1` selected, no screen open, and no character. The
+--- player's pack is `pack`, or an empty pack of `PACK_SLOT_COUNT` slots if `pack` is `nil`.
 function PlayerState.new(pack: Inventory.Inventory?): PlayerState
 	local playerPack = pack or Inventory.new(PlayerState.PACK_SLOT_COUNT)
 	return {
@@ -46,14 +48,14 @@ function PlayerState.new(pack: Inventory.Inventory?): PlayerState
 	}
 end
 
---- Sets where the player's character is, at its feet. A player who had no character has one from
---- now on.
+--- Sets the position of the player's character, at its feet, to `position`. Gives the player a
+--- character if they had none.
 function PlayerState.setCharacterPosition(player: PlayerState, position: Position.Position)
 	player.character = table.freeze({ position = position })
 end
 
---- Removes the player's character: they have none until `setCharacterPosition` is next called.
---- Does nothing if they have no character. Fails if the player has a screen open: close it first.
+--- Removes the player's character, so the player has none until `setCharacterPosition` runs. Does
+--- nothing if they have no character. Fails, and changes nothing, if the player has a screen open.
 function PlayerState.removeCharacter(player: PlayerState)
 	if player.screen ~= nil then
 		error("a player with a screen open must keep their character", 2)
@@ -61,17 +63,16 @@ function PlayerState.removeCharacter(player: PlayerState)
 	player.character = nil
 end
 
---- Returns `true` if a screen can be opened for the player: they have a character, and no
+--- Returns `true` if `openScreen` would succeed for the player: they have a character, and no
 --- screen open.
 function PlayerState.canOpenScreen(player: PlayerState): boolean
 	return player.screen == nil and player.character ~= nil
 end
 
 --- Opens the player's inventory screen on their pack. If `otherInventory` is given, the screen
---- shows that inventory beside the pack. `otherSlotAcceptsItem`, if given, says whether a slot of
---- `otherInventory` takes an item: it is called with the slot and the item's id. Fails if
---- `canOpenScreen` would return `false`: a screen opened over another would lose the stack that
---- was carried, and only a player with a character has a screen.
+--- shows that inventory beside the pack. `otherSlotAcceptsItem`, if given, takes a slot and an
+--- item's id and returns `true` if that slot of `otherInventory` takes that item. Fails, and
+--- changes nothing, if `canOpenScreen` would return `false`.
 function PlayerState.openScreen(
 	player: PlayerState,
 	otherInventory: Inventory.Inventory?,
@@ -83,9 +84,9 @@ function PlayerState.openScreen(
 	player.screen = InventoryScreen.new(player.pack, otherInventory, otherSlotAcceptsItem)
 end
 
---- Closes the player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit is returned. Returns `nil` if all of it fitted, if they carried nothing,
---- or if no screen was open.
+--- Closes the player's inventory screen and adds the stack that the screen carried to their pack.
+--- Returns the part of that stack that did not fit, or `nil` if all of it fitted, if the screen
+--- carried nothing, or if no screen was open.
 function PlayerState.closeScreen(player: PlayerState): ItemStack.ItemStack?
 	local screen = player.screen
 	if screen == nil then

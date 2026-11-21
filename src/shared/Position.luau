@@ -1,25 +1,27 @@
 --!strict
---- A point in the world, in studs.
+--- A point in the world, as a table of `x`, `y` and `z`, in studs.
 ---
---- A position is a table with numbers under `x`, `y` and `z`, where `y` is height. Any such table
---- is a position. `getDistance` and `getGroundDistance` measure between two of them.
+--- `y` is height. Any table of that shape is a position. `new` makes a frozen one, and
+--- `getDistance` and `getGroundDistance` measure the distance between two positions.
 local Position = {}
 
---- A point in the world: `x` and `z` run along the ground and `y` is height, all in studs.
+--- A point in the world: `x` and `z` run along the ground, and `y` is height, all in studs.
 export type Position = { read x: number, read y: number, read z: number }
 
---- Returns a position at `x`, `y`, `z` that cannot be changed.
+--- Returns a new position at `x`, `y`, `z`. The position is frozen, so nothing can assign its
+--- fields.
 function Position.new(x: number, y: number, z: number): Position
 	return table.freeze({ x = x, y = y, z = z })
 end
 
---- Returns the straight-line distance between `a` and `b`, in studs, counting height.
+--- Returns the length of the straight line from `a` to `b`, in studs. The length includes the
+--- difference in `y`.
 function Position.getDistance(a: Position, b: Position): number
 	return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 end
 
---- Returns the distance between `a` and `b` along the ground, in studs. This is `getDistance` with
---- height left out, so it is 0 for two positions directly above one another.
+--- Returns the distance from `a` to `b` along the ground, in studs. Ignores the difference in
+--- `y`, so returns `0` for two positions with the same `x` and `z`.
 function Position.getGroundDistance(a: Position, b: Position): number
 	return math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
 end

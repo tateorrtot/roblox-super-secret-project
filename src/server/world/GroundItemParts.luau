@@ -1,16 +1,16 @@
 --!strict
---- Shows the stacks loose in the world as blocks, which Roblox's physics moves.
+--- Shows each ground item as a block that Roblox's physics moves.
 ---
---- Each ground item gets one small, plain grey block, with a label that says what it is and how
---- many. `update` makes the blocks match a `GroundItems` as it is now: a block for each
---- new ground item, a changed label when a stack grew or shrank, and no block for what is gone. A
---- new block starts where its ground item is, moving as fast as the ground item was spawned. After
---- that it is an ordinary unanchored part: Roblox's physics makes it fall, land and come to rest,
---- and shows its motion to every player. Which machine works its motion out is left to Roblox,
---- which gives a part near a player to that player's machine. A block passes through the other
---- blocks and through characters, and collides with everything else. A pointer passes through it
---- too, to whatever is behind. `getMovedPositions` says where the blocks have got to. The blocks
---- are placeholders until items have models.
+--- Each ground item gets one small grey block, with a label that gives the item's name and, if the
+--- stack holds more than one, its count. `update` makes the blocks match a `GroundItems`: it makes
+--- a block for each ground item that has none, relabels a block whose stack changed in count, and
+--- destroys a block whose ground item is gone. A new block starts with its underside at the ground
+--- item's `position`, moving at the ground item's `spawnVelocity`. After that the block is an
+--- unanchored part: Roblox's physics makes it fall, land, and come to rest, and Roblox decides
+--- which client or the server works out its motion. A block passes through the other blocks and
+--- through characters, and collides with every other part. A raycast passes through a block.
+--- `getMovedPositions` returns where the blocks have got to. The grey blocks stand in until items
+--- have models.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -21,9 +21,10 @@ local CollisionGroups = require(script.Parent.CollisionGroups)
 
 local GroundItemParts = {}
 
---- The colour of every ground item's block: a plain grey, until items have models.
+--- The colour of every block that shows a ground item.
 local PLACEHOLDER_COLOR = Color3.fromRGB(110, 112, 120)
 
+--- The blocks that show the ground items, and the Folder that holds them.
 export type GroundItemParts = {
 	--- The folder that holds the blocks.
 	read folder: Folder,
@@ -31,6 +32,8 @@ export type GroundItemParts = {
 	read partsById: { [number]: Part },
 }
 
+--- How far a block's underside may be from its ground item's position along each axis, in studs,
+--- before `getMovedPositions` returns the block.
 local MOVE_TOLERANCE = 0.01
 
 local function makeLabel(part: Part)
@@ -91,9 +94,9 @@ local function hasMoved(from: GroundItems.Position, to: Vector3): boolean
 	return isFinite and isElsewhere
 end
 
---- Returns a new set of blocks, with none made yet, that will be kept in a folder called
---- `GroundItems` inside `parent`. `parent` must be in the Workspace, because only there does
---- Roblox's physics move a part.
+--- Returns a new `GroundItemParts` with no block made yet. Makes a Folder called `GroundItems`
+--- inside `parent`, for the blocks.
+--- Note: `parent` must be in the Workspace, because Roblox's physics moves a part only there.
 function GroundItemParts.new(parent: Instance): GroundItemParts
 	local folder = Instance.new("Folder")
 	folder.Name = "GroundItems"
@@ -101,9 +104,9 @@ function GroundItemParts.new(parent: Instance): GroundItemParts
 	return { folder = folder, partsById = {} }
 end
 
---- Makes the blocks match `groundItems` as it is now. A ground item with no block gets one, where
---- the ground item is and moving at its `spawnVelocity`. A block whose stack changed in size is
---- relabelled. A block whose ground item is gone is destroyed.
+--- Makes the blocks match `groundItems`. Gives each ground item that has no block one, with its
+--- underside at the ground item's `position` and moving at its `spawnVelocity`. Relabels a block
+--- whose ground item's stack changed in count. Destroys a block whose ground item is gone.
 function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: GroundItems.GroundItems)
 	local partsById = groundItemParts.partsById
 	for id, groundItem in groundItems.itemsById do
@@ -124,12 +127,12 @@ function GroundItemParts.update(groundItemParts: GroundItemParts, groundItems: G
 	end
 end
 
---- Returns where each block now is, by the id of its ground item, for every block that is more
---- than a hundredth of a stud, along any axis, from where `groundItems` says its ground item is.
---- A position returned is the point half a block below the block's middle: the middle of its
---- underside once it lies flat, as a ground item's position is. A block is returned on every call
---- until its ground item is moved to the position returned for it, so a block at rest is returned
---- once.
+--- Returns the position of each block that lies more than `MOVE_TOLERANCE` studs, along any axis,
+--- from the position that `groundItems` holds for its ground item. The table returned is by the
+--- ground item's id. A position returned is the point half a block below the block's middle, which
+--- is the middle of the block's underside once it lies flat. Leaves out a block at a position that
+--- is not finite, and a block whose ground item is not in `groundItems`. Returns a block on every
+--- call until its ground item is moved to the position returned for it.
 function GroundItemParts.getMovedPositions(
 	groundItemParts: GroundItemParts,
 	groundItems: GroundItems.GroundItems

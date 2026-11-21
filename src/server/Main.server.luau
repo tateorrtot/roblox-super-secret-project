@@ -1,11 +1,12 @@
 --!strict
---- Starts the game on the server and runs it. This is the only Script.
+--- The script that starts the game on the server and keeps it running.
 ---
---- The rules are in ReplicatedStorage.Shared, and one World holds the whole game. This script
---- tells the World what happens: a player joins or leaves, where each character is, where
---- Roblox's physics has carried each ground item, what a player's machine asks for, and that time
---- has passed. When time passes in the World, the script of each placed object is told. Then
---- this script draws the World, and tells each player's machine what that player holds.
+--- Builds one `World` from the modules in `ReplicatedStorage.Shared`, and tells it what happens: a
+--- player joins or leaves, where each character is, where Roblox's physics has carried each ground
+--- item, what each client asks for, and that time has passed. When time passes in the `World`,
+--- `PlacedObjectScripts.advancePlacedObjects` tells the script of each placed object. Then the
+--- script shows the `World` in the Workspace, and sends each client a `PlayerSnapshot` of its
+--- player.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,18 +33,19 @@ local PlotParts = require(script.Parent.world.PlotParts)
 local Remotes = require(script.Parent.Remotes)
 local StoveModel = require(script.Parent.content.StoveModel)
 
---- How long the server waits between advancing the World, in seconds.
+--- The time between two advances of the `World`, in seconds.
 local SECONDS_BETWEEN_ADVANCES = 0.1
 
---- How many requests one player's machine may make in a second. The rest of that second's are
---- ignored. A person clicking as fast as they can makes far fewer.
+--- How many requests from one player's client the server carries out in a second. It ignores the
+--- rest of the requests in that second.
 local REQUESTS_PER_SECOND = 60
 
---- How far below the bottom of its root part an R6 character's feet are, in studs. An R15
---- character's `HipHeight` says this already, and an R6 character's `HipHeight` is 0.
+--- The distance in studs from the bottom of an R6 character's root part to its feet, in addition
+--- to its `HipHeight`.
 local R6_LEG_LENGTH = 2
 
---- The piece that says how each kind of placed object is shown in the world, by the kind's id.
+--- The piece that shows each kind of placed object in the world, by the kind's id. The script
+--- fails at the start if a kind in `PlacedObjectKinds.ALL` has no piece.
 local placedObjectPieces: { [string]: PlotParts.PlacedObjectPiece } = {
 	[Crate.PLACED_OBJECT_KIND_ID] = CrateModel,
 	[Stove.PLACED_OBJECT_KIND_ID] = StoveModel,
@@ -66,11 +68,12 @@ Signal.connect(world.timePassed, function(seconds: number)
 end)
 PlaceholderWorld.placeStartingObjects(world)
 
---- What each player's machine was last told, as text, to tell whether it has changed since.
+--- The text of the snapshot that each player's client was last sent, to tell whether the snapshot
+--- has changed.
 local lastSent: { [Player]: string } = {}
---- How many requests each player's machine has made in the second now passing.
+--- How many requests the server has counted from each player's client in the second now passing.
 local requestsThisSecond: { [Player]: number } = {}
---- Whether anything has happened since the players were last shown the World.
+--- If `true`, a request has arrived since the `World` was last shown.
 local needsShow = false
 
 local function toPosition(point: Vector3): Position.Position

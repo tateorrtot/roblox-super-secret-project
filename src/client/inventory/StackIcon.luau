@@ -1,9 +1,9 @@
 --!strict
---- The picture of a stack on the screen: a plain grey block with the item's name across it and the
+--- The icon of a stack on the screen: a plain grey block with the item's name across it and the
 --- count in the corner.
 ---
---- `setStack` makes it show a stack, or nothing. A stack of one shows no count. The block stands in
---- for an icon until items have art.
+--- `setStack` shows a stack in the icon, or shows nothing. A stack of one item shows no count. The
+--- block stands in for art that the items do not have.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -12,17 +12,19 @@ local ItemStack = require(Shared.items.ItemStack)
 
 local StackIcon = {}
 
+--- A stack's icon: the grey block, and the two labels on it.
 export type StackIcon = {
-	--- The grey block. It is hidden while there is no stack to show.
+	--- The grey block. It is hidden while the icon shows nothing.
 	read block: Frame,
-	--- The item's name, across the block.
+	--- The label across the block that holds the item's name.
 	read nameLabel: TextLabel,
-	--- The number of items, in the corner of the block. It is empty for a stack of one.
+	--- The label in the corner of the block that holds the number of items. Its text is empty for a
+	--- stack of one item.
 	read countLabel: TextLabel,
 }
 
---- Returns a new picture inside `parent`, filling it to a little inside its edge, and showing
---- nothing yet.
+--- Returns a new icon in `parent`, showing nothing. The block is centered in `parent`, and is 10
+--- pixels narrower and 10 pixels shorter than `parent`.
 function StackIcon.new(parent: Instance): StackIcon
 	local block = Instance.new("Frame")
 	block.Name = "StackIcon"
@@ -70,7 +72,8 @@ function StackIcon.new(parent: Instance): StackIcon
 	return { block = block, nameLabel = nameLabel, countLabel = countLabel }
 end
 
---- Makes the picture show `stack`, or nothing if `stack` is `nil`.
+--- Shows `stack` in the icon: the name of its item, and its count if the count is above `1`. Shows
+--- nothing if `stack` is `nil`.
 function StackIcon.setStack(icon: StackIcon, stack: ItemStack.ItemStack?)
 	if stack == nil then
 		icon.block.Visible = false

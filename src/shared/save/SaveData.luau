@@ -2,34 +2,37 @@
 --- What is kept of a player between visits, as plain data: their pack, and the version of the
 --- save format it was written in.
 ---
---- `encode` writes the data and `decode` reads it back. When what is kept changes,
---- `CURRENT_VERSION` goes up by one and `decode` learns to read the older versions too.
+--- `encode` returns a player's pack as plain data, and `decode` reads the pack back from it.
+--- `decode` accepts every version from `1` to `CURRENT_VERSION`.
 local Inventory = require("../inventory/Inventory")
 local PlayerState = require("../players/PlayerState")
 
 local SaveData = {}
 
+--- A player's saved data: the version of the save format, and the player's pack.
 export type SavedPlayer = {
-	--- The version of the save format this was written in.
+	--- The version of the save format that the data was written in.
 	version: number,
+	--- The player's pack, as `Inventory.encode` returns it.
 	pack: Inventory.EncodedInventory,
 }
 
---- The version of the save format that `encode` writes.
+--- The version of the save format that `encode` writes, and the highest version that `decode`
+--- reads.
 SaveData.CURRENT_VERSION = 1
 
---- Returns a player's pack as data to save.
---- Note: a stack the player is carrying on an open inventory screen is not in their pack. Close
---- the screen first, or that stack is not saved.
+--- Returns `pack` as saved data, with the version `CURRENT_VERSION`.
+--- Note: `encode` does not save the stack that an open inventory screen carries, because that stack
+--- is not in the pack.
 function SaveData.encode(pack: Inventory.Inventory): SavedPlayer
 	return { version = SaveData.CURRENT_VERSION, pack = Inventory.encode(pack) }
 end
 
---- Returns the pack read from saved data. If the data is not something this version of the game can
---- read, returns `nil` and what is wrong with it, in words: it is not a table, its version is not a
---- whole number from 1 to `CURRENT_VERSION`, it has a field saved data does not have, or its pack
---- is not an inventory of `PlayerState.PACK_SLOT_COUNT` slots that `Inventory.decode` can read. The
---- data may be anything at all.
+--- Returns the pack that `saved` holds. Returns `nil` and what is wrong with `saved`, in words, if
+--- `saved` is not a table, its `version` is not a whole number from `1` to `CURRENT_VERSION`, it
+--- has a field other than `version` and `pack`, `Inventory.decode` cannot read its `pack`, or its
+--- `pack` does not have `PlayerState.PACK_SLOT_COUNT` slots. Accepts a value of any type for
+--- `saved`.
 function SaveData.decode(saved: unknown): (Inventory.Inventory?, string?)
 	if type(saved) ~= "table" then
 		return nil, "saved data must be a table; got a " .. type(saved)

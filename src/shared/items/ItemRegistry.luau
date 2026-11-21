@@ -1,17 +1,18 @@
 --!strict
 --- Every kind of item the game has, looked up by id.
 ---
---- An item definition says what one kind of thing is: a log, a crate, a stove. There is one
---- definition for "log" however many logs exist. Definitions are registered once, when the game
---- starts, and never change. There is one registry for the whole game.
+--- An `ItemDefinition` says what one kind of item is, such as a log. The registry holds one
+--- definition for the id `"log"`, and that definition serves every log. `register` adds a
+--- definition, and `get`, `has` and `getAll` read them. A registered definition never changes. The
+--- game has one registry.
 local ItemRegistry = {}
 
 --- What one kind of item is.
 export type ItemDefinition = {
-	--- The name the item goes by in code and in saved data, such as `"log"`: lowercase letters,
-	--- digits and underscores, starting with a letter.
+	--- The item's id, such as `"log"`: lowercase letters, digits and underscores, starting with a
+	--- letter.
 	read id: string,
-	--- The most of this item that one inventory slot can hold: a whole number, 1 or more.
+	--- The most items that one stack of the item can hold: a whole number of `1` or more.
 	read stackSize: number,
 }
 
@@ -21,11 +22,10 @@ local function isCount(value: unknown): boolean
 	return type(value) == "number" and value >= 1 and value < math.huge and value % 1 == 0
 end
 
---- Adds the item that `definition` describes to the registry. Only the two fields of
---- `ItemDefinition` are copied, into a table that is frozen. So `definition` may be a table with
---- more fields, which the registry does not keep, and changing it afterwards changes nothing.
---- Fails if `id` or `stackSize` is not what `ItemDefinition` says it must be, or if an item with
---- that id is already registered.
+--- Adds the item that `definition` describes to the registry. Copies `id` and `stackSize` into a
+--- new frozen table, so the registry keeps no other field of `definition`, and a later change to
+--- `definition` does not reach the registry. Fails, and changes nothing, if `id` or `stackSize` is
+--- not what `ItemDefinition` says it is, or if an item with the id `id` is registered already.
 function ItemRegistry.register(definition: ItemDefinition)
 	local id = definition.id
 	assert(
@@ -37,17 +37,17 @@ function ItemRegistry.register(definition: ItemDefinition)
 	definitions[id] = table.freeze({ id = id, stackSize = definition.stackSize })
 end
 
---- Returns the definition of the item with the id `id`. Fails if no item has that id.
+--- Returns the definition of the item with the id `id`. Fails if no item has the id `id`.
 function ItemRegistry.get(id: string): ItemDefinition
 	return definitions[id] or error(`no item has the id "{id}"`, 2)
 end
 
---- Returns `true` if an item with the id `id` has been registered.
+--- Returns `true` if an item with the id `id` is registered.
 function ItemRegistry.has(id: string): boolean
 	return definitions[id] ~= nil
 end
 
---- Returns a new list of the definition of every registered item, ordered by id.
+--- Returns a new list of the definitions of every registered item, ordered by `id`.
 function ItemRegistry.getAll(): { ItemDefinition }
 	local all: { ItemDefinition } = {}
 	for _, definition in definitions do

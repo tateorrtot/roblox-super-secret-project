@@ -1,8 +1,9 @@
 --!strict
---- The first slots of a player's pack, and which of them is selected.
+--- The first slots of a player's pack, and which one is selected.
 ---
---- A hotbar holds no items of its own: an item on the hotbar is in the pack. The stack in the
---- selected slot is what the player has in their hand.
+--- A hotbar holds no items: its slots are the first `slotCount` slots of `inventory`.
+--- `selectSlot` selects a slot. `getSelectedStack` and `takeFromSelectedSlot` act on the selected
+--- slot, and the stack in it is in the player's hand.
 local Inventory = require("./Inventory")
 local ItemStack = require("../items/ItemStack")
 
@@ -11,39 +12,44 @@ local Hotbar = {}
 type ItemStack = ItemStack.ItemStack
 type Inventory = Inventory.Inventory
 
+--- The first slots of an inventory, and which one is selected.
 export type Hotbar = {
-	--- The inventory whose first slots these are.
+	--- The inventory whose first slots the hotbar covers.
 	read inventory: Inventory,
-	--- How many of the inventory's slots the hotbar covers, counting from slot 1.
+	--- How many slots the hotbar covers, counting from slot `1`.
 	read slotCount: number,
-	--- The number of the selected slot.
+	--- The number of the selected slot. `selectSlot` assigns it.
 	selectedSlot: number,
 }
 
---- Returns a hotbar over the first `slotCount` slots of `inventory`, with slot 1 selected.
+--- Returns a new hotbar over the first `slotCount` slots of `inventory`, with slot `1` selected.
+--- Note: `new` does not check that `inventory` has `slotCount` slots.
 function Hotbar.new(inventory: Inventory, slotCount: number): Hotbar
 	return { inventory = inventory, slotCount = slotCount, selectedSlot = 1 }
 end
 
---- Returns `true` if `slot` is the number of one of the hotbar's slots. `slot` may be any value
---- at all, so this is the check for a slot number that arrives from outside the game.
+--- Returns `true` if `slot` is a whole number from `1` to the hotbar's `slotCount`, and the
+--- hotbar's inventory has that slot. Accepts a value of any type, and never fails.
 function Hotbar.hasSlot(hotbar: Hotbar, slot: unknown): boolean
 	return Inventory.hasSlot(hotbar.inventory, slot) and (slot :: number) <= hotbar.slotCount
 end
 
---- Selects a slot. Fails if the hotbar has no such slot.
+--- Makes `slot` the selected slot. Fails, and changes nothing, if `hasSlot` returns `false` for
+--- `slot`.
 function Hotbar.selectSlot(hotbar: Hotbar, slot: number)
 	assert(Hotbar.hasSlot(hotbar, slot), `the hotbar has no slot {slot}`)
 	hotbar.selectedSlot = slot
 end
 
---- Returns the stack in the selected slot, or `nil` if that slot holds nothing.
+--- Returns the stack in the selected slot, or `nil` if the slot holds nothing.
 function Hotbar.getSelectedStack(hotbar: Hotbar): ItemStack?
 	return Inventory.getStack(hotbar.inventory, hotbar.selectedSlot)
 end
 
---- Takes up to `count` items out of the selected slot and returns them as a stack. Takes
---- everything in the slot if `count` is left out. Returns `nil` if nothing was taken.
+--- Takes up to `count` items out of the selected slot and returns them as a stack. Takes everything
+--- in the slot if `count` is `nil` or at least what the slot holds. Returns `nil` if the slot holds
+--- nothing or `count` is `0`.
+--- Note: `takeFromSelectedSlot` does not check that `count` is a whole number of `0` or more.
 function Hotbar.takeFromSelectedSlot(hotbar: Hotbar, count: number?): ItemStack?
 	return Inventory.takeFromSlot(hotbar.inventory, hotbar.selectedSlot, count)
 end

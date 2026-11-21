@@ -1,18 +1,17 @@
 --!strict
---- Everything in one running copy of the game: the plot, the stacks loose in the world, and the
---- players.
+--- Everything in one running game: its plot, the stacks loose in it, its players, and its clock.
 ---
---- The server keeps one world. It adds and removes players, says where each player's character is
---- with `setCharacterPosition` and where each ground item has got to with
---- `setGroundItemPosition`, and moves time on with `advanceTo`. The other functions are what can
---- be done in the world: spawning a stack, throwing one from a character or from a tile, and
---- opening and closing a player's screen.
+--- `addPlayer` and `removePlayer` add and remove players. `setCharacterPosition` sets where a
+--- player's character is, `setGroundItemPosition` sets where a ground item has got to, and
+--- `advanceTo` moves time on. `spawnStack`, `throwStackFromCharacter`, and `throwStacksFromTile`
+--- put stacks into the world. `openPlacedObjectScreen` and `closeScreen` open and close a player's
+--- screen. `canReachTile`, `isTileStoodOn`, and `canPlaceObject` answer questions about a tile.
 ---
---- A world listens to its plot, and objects are placed and removed with the plot's own
---- `Plot.placeObject` and `Plot.removePlacedObject`. When an object is placed, the world pushes
---- the ground items out of its tile. When one is taken off, the world closes every screen open on
---- it. A world knows nothing else of what stands on its plot. Each time it is moved on it fires
---- `timePassed`, with the seconds that passed, for whatever does something as time passes.
+--- A world connects to its plot's two signals. After `Plot.placeObject` adds a placed object, the
+--- world pushes the ground items out of its tile. After `Plot.removePlacedObject` removes one, the
+--- world closes every screen open on it. A world reads nothing else of what stands on its plot.
+--- `advanceTo` fires `timePassed`, with the seconds that passed, for whatever does something as
+--- time passes.
 local Direction = require("../Direction")
 local GroundItems = require("../groundItems/GroundItems")
 local Inventory = require("../inventory/Inventory")
@@ -33,52 +32,56 @@ type PlayerState = PlayerState.PlayerState
 type Position = Position.Position
 type Direction = Direction.Direction
 
+--- One running game: its plot, its ground items, its players, and its clock.
 export type World = {
-	--- The one plot there is for now, shared by every player.
+	--- The world's plot, shared by every player.
 	read plot: Plot.Plot,
-	--- The point in the world at the outer corner of the plot's tile x 1, z 1.
+	--- The position of the outer corner of the plot's tile x `1`, z `1`.
 	read plotCorner: Position,
-	--- The stacks loose in the world.
+	--- The ground items in the world.
 	read groundItems: GroundItems.GroundItems,
-	--- Every player in the world, by id. On Roblox the id is the UserId.
+	--- Every player in the world, by the id that `addPlayer` was given.
 	read players: { [number]: PlayerState },
-	--- Fired by `advanceTo` when the world has been moved on, with the seconds that passed.
+	--- Fires during `advanceTo`. Passes the seconds since the time `advanceTo` was last given, or
+	--- `0` if `now` is no later than that time.
 	read timePassed: Signal.Signal<number>,
-	--- The id of the placed object that each open inventory screen was opened on, by the screen. A
-	--- screen that is open on a pack alone has no entry.
+	--- The id of the placed object that each screen is open on, by screen. A screen open on a pack
+	--- alone has no entry.
 	read placedObjectIdsByScreen: { [InventoryScreen]: number },
-	--- The time `advanceTo` was last given, in seconds.
+	--- The time that `advanceTo` was last given, in seconds. `new` sets it to the time it is given.
 	now: number,
 }
 
---- How far a player's character may stand from the middle of a tile and still reach it, in
---- studs along the ground.
+--- The greatest distance between a character and the middle of a tile at which the character
+--- reaches the tile, in studs along the ground.
 World.CHARACTER_REACH = 16
 
---- How far a player may walk from a placed object they have open before its screen closes, in
---- studs along the ground. It is a little more than `CHARACTER_REACH`, so that a screen opened
---- from the edge of reach does not close at the first step back.
+--- The distance from the middle of a placed object's tile, in studs along the ground, beyond which
+--- `advanceTo` closes a player's screen that is open on the placed object. It is four studs more
+--- than `CHARACTER_REACH`.
 World.SCREEN_CLOSES_BEYOND = World.CHARACTER_REACH + 4
 
---- A player standing this near the middle of a tile, in studs along the ground, stands on it.
+--- The greatest distance between a character and the middle of a tile at which `isTileStoodOn`
+--- counts the character as standing on the tile, in studs along the ground.
 World.TILE_STOOD_ON_WITHIN = Plot.TILE_SIZE * 0.75
 
---- How far above a character's feet a stack that the character throws starts, in studs.
+--- The height above a character's feet at which a stack spawns when `throwStackFromCharacter`
+--- throws it or `closeScreen` spawns it, in studs.
 World.CHARACTER_THROW_START_HEIGHT = 3
 
---- How fast a stack that a character throws starts moving the way it is thrown, in studs a
---- second.
+--- The speed in the direction of the throw, in studs a second, that `throwStackFromCharacter`
+--- gives a stack.
 World.CHARACTER_THROW_FORWARD_SPEED = 24
 
---- How fast a stack that a character throws starts moving straight up, on top of its speed the
---- way it is thrown, in studs a second.
+--- The speed straight up, in studs a second, that `throwStackFromCharacter` adds to the velocity of
+--- a stack.
 World.CHARACTER_THROW_UPWARD_SPEED = 8
 
---- How fast a stack that `throwStacksFromTile` throws starts moving outwards along the ground, in
---- studs a second.
+--- The speed outwards along the ground, in studs a second, that `throwStacksFromTile` gives a
+--- stack.
 World.TILE_THROW_OUTWARD_SPEED = 6
 
---- How fast a stack that `throwStacksFromTile` throws starts moving upwards, in studs a second.
+--- The speed straight up, in studs a second, that `throwStacksFromTile` gives a stack.
 World.TILE_THROW_UPWARD_SPEED = 20
 
 local RADIANS_BETWEEN_THROWN_STACKS = 2.4
@@ -127,15 +130,14 @@ local function onPlacedObjectRemoved(world: World, placedObjectId: number)
 	closeScreensOn(world, placedObjectId)
 end
 
---- Returns a new world with no players and nothing on the ground, at the time `now`. `plot` is
---- the plot, and `plotCorner` is the outer corner of its tile x 1, z 1.
+--- Returns a new world on `plot`, whose tile x `1`, z `1` has its outer corner at `plotCorner`,
+--- with no players, no ground items, and the time `now`.
 ---
---- The world connects to the plot's two signals, and from then on:
---- - When an object is placed on the plot, the ground items that lie where it now stands are
----   pushed out of its tile: each is taken out of the world and its stack is spawned again, as a
----   new ground item with a new id, just outside the tile and moving away from it along the
----   ground, or on top of the placed object, not moving, if it is closed in on all four sides.
---- - A placed object taken off the plot has every screen open on it closed, as `closeScreen` does.
+--- `new` connects the world to the plot's two signals:
+--- - After `plot` fires `placedObjectAdded`, the world pushes the ground items out of the placed
+---   object's tile, as `PlotCollision.pushGroundItemsOutOfTile` does, at the world's `now`.
+--- - After `plot` fires `placedObjectRemoved`, the world closes every screen open on that placed
+---   object, as `closeScreen` does, the player with the lowest id first.
 function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	local world: World = {
 		plot = plot,
@@ -155,8 +157,9 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	return world
 end
 
---- Adds a new player to the world and returns them. They have no character yet. They carry
---- `pack`, or a pack that holds nothing if none is given. Fails if a player already has that id.
+--- Adds a new player with the id `playerId` to the world and returns them. The player has no
+--- character. Their pack is `pack`, or an empty pack if `pack` is `nil`. Fails, and changes
+--- nothing, if a player already has the id `playerId`.
 function World.addPlayer(world: World, playerId: number, pack: Inventory?): PlayerState
 	assert(world.players[playerId] == nil, `player {playerId} is already in the world`)
 	local player = PlayerState.new(pack)
@@ -164,8 +167,9 @@ function World.addPlayer(world: World, playerId: number, pack: Inventory?): Play
 	return player
 end
 
---- Takes a player out of the world and returns them, or `nil` if no player has that id. Their
---- inventory screen is closed first, as `closeScreen` does.
+--- Removes the player with the id `playerId` from the world, after closing their screen as
+--- `closeScreen` does, and returns them. Returns `nil` and changes nothing if no player has the id
+--- `playerId`.
 function World.removePlayer(world: World, playerId: number): PlayerState?
 	local player = world.players[playerId]
 	if player == nil then
@@ -176,15 +180,15 @@ function World.removePlayer(world: World, playerId: number): PlayerState?
 	return player
 end
 
---- Spawns a stack into the world as a new ground item at `position`, moving at `velocity`, at
---- the world's time, and returns the ground item's id.
---- Note: `spawnStack` does not take the stack from anywhere.
+--- Spawns `stack` as a ground item at `position`, with the spawn velocity `velocity` and the
+--- world's `now` as its spawn time, as `GroundItems.spawnStack` does. Returns the ground item's id.
+--- Note: `spawnStack` takes `stack` from nowhere.
 function World.spawnStack(world: World, stack: ItemStack, position: Position, velocity: GroundItems.Velocity): number
 	return GroundItems.spawnStack(world.groundItems, stack, position, velocity, world.now)
 end
 
---- Records that a ground item is now at `position`, the middle of its underside. Does nothing if
---- no ground item has that id.
+--- Sets the position of the ground item `groundItemId` to `position`, the middle of its underside,
+--- as `GroundItems.setItemPosition` does. Does nothing if no ground item has that id.
 function World.setGroundItemPosition(world: World, groundItemId: number, position: Position)
 	GroundItems.setItemPosition(world.groundItems, groundItemId, position)
 end
@@ -194,11 +198,11 @@ local function getThrowStart(characterPosition: Position): Position
 	return Position.new(characterPosition.x, height, characterPosition.z)
 end
 
---- Throws a stack into the world from a character whose feet are at `characterPosition`: it
---- spawns `CHARACTER_THROW_START_HEIGHT` above them, moving the way `direction` points at
---- `CHARACTER_THROW_FORWARD_SPEED`, with `CHARACTER_THROW_UPWARD_SPEED` straight up added to that.
---- A `direction` that points up or down throws it up or down.
---- Note: it does not take the stack from anywhere.
+--- Spawns `stack` as a ground item `CHARACTER_THROW_START_HEIGHT` above `characterPosition`, the
+--- position of a character's feet. The ground item moves along `direction` at
+--- `CHARACTER_THROW_FORWARD_SPEED`, with `CHARACTER_THROW_UPWARD_SPEED` straight up added. A
+--- `direction` that points up or down throws the stack up or down.
+--- Note: `throwStackFromCharacter` takes `stack` from nowhere.
 function World.throwStackFromCharacter(
 	world: World,
 	stack: ItemStack,
@@ -212,8 +216,8 @@ function World.throwStackFromCharacter(
 	})
 end
 
---- Closes a player's inventory screen. The stack they were carrying goes back into their pack,
---- and what does not fit is dropped: it spawns `CHARACTER_THROW_START_HEIGHT` above their
+--- Closes the player's inventory screen and adds the stack that it carried to their pack. The part
+--- that does not fit spawns as a ground item `CHARACTER_THROW_START_HEIGHT` above their
 --- character's feet, not moving. Does nothing if they have no screen open.
 function World.closeScreen(world: World, player: PlayerState)
 	local screen = player.screen
@@ -228,30 +232,29 @@ function World.closeScreen(world: World, player: PlayerState)
 	end
 end
 
---- Sets where a player's character is, at its feet. A player who had no character has one from
---- now on. Fails if no player has that id.
+--- Sets the position, at its feet, of the character of the player with the id `playerId` to
+--- `position`, and gives the player a character if they had none. Fails if no player has that id.
 function World.setCharacterPosition(world: World, playerId: number, position: Position)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	PlayerState.setCharacterPosition(player, position)
 end
 
---- Removes a player's character: they have none until `setCharacterPosition` is next called for
---- them. Their screen is closed first, as `closeScreen` does, while there is still a character to
---- drop the carried stack at. Does nothing if they have no character. Fails if no player has that
---- id.
+--- Closes the screen of the player with the id `playerId`, as `closeScreen` does, and then removes
+--- their character, so they have none until `setCharacterPosition` runs. Does nothing if they have
+--- no character. Fails if no player has that id.
 function World.removeCharacter(world: World, playerId: number)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	World.closeScreen(world, player)
 	PlayerState.removeCharacter(player)
 end
 
---- Opens a player's inventory screen on their pack with `inventory` beside it, as the screen of
---- the placed object with the id `placedObjectId`. Any screen they had open is closed first, as
---- `closeScreen` does. `slotAcceptsItem`, if given, says whether a slot of `inventory` takes an
---- item: it is called with the slot and the item's id. The screen is closed when that placed
---- object is taken off the plot, and when `advanceTo` finds the player more than
---- `SCREEN_CLOSES_BEYOND` from it. Fails, changing nothing, if no placed object has that id or if
---- the player has no character.
+--- Opens the player's inventory screen on their pack with `inventory` beside it, as the screen of
+--- the placed object with the id `placedObjectId`. Closes any screen they had open first, as
+--- `closeScreen` does. `slotAcceptsItem`, if given, takes a slot and an item's id and returns
+--- `true` if that slot of `inventory` takes that item. The screen closes when
+--- `Plot.removePlacedObject` removes that placed object, and when `advanceTo` finds the player's
+--- character more than `SCREEN_CLOSES_BEYOND` from it. Fails, and changes nothing, if no placed
+--- object has the id `placedObjectId` or if the player has no character.
 function World.openPlacedObjectScreen(
 	world: World,
 	player: PlayerState,
@@ -268,16 +271,16 @@ function World.openPlacedObjectScreen(
 	world.placedObjectIdsByScreen[player.screen :: InventoryScreen] = placedObjectId
 end
 
---- Returns the id of the placed object that a player's screen was opened on. Returns `nil` if
---- their screen is open on their pack alone, or if they have no screen open.
+--- Returns the id of the placed object that the player's screen is open on. Returns `nil` if their
+--- screen is open on their pack alone, or if they have no screen open.
 function World.getOpenedPlacedObjectId(world: World, player: PlayerState): number?
 	local screen = player.screen
 	return if screen ~= nil then world.placedObjectIdsByScreen[screen] else nil
 end
 
---- Returns `true` if a player's character stands within `CHARACTER_REACH` of the middle of the
---- tile `tileX`, `tileZ` of the plot, in studs along the ground. A player with no character
---- reaches nothing.
+--- Returns `true` if the player's character stands within `CHARACTER_REACH` of the middle of the
+--- tile `tileX`, `tileZ` of the plot, along the ground. Returns `false` for a player with no
+--- character.
 function World.canReachTile(world: World, player: PlayerState, tileX: number, tileZ: number): boolean
 	local character = player.character
 	local center = tileCenter(world, tileX, tileZ)
@@ -299,20 +302,20 @@ function World.isTileStoodOn(world: World, tileX: number, tileZ: number): boolea
 	return false
 end
 
---- Returns `true` if an object can be placed on the tile `tileX`, `tileZ` of the plot:
---- `Plot.canPlaceObject` says the plot can take one there, and no player's character stands on the
---- tile.
---- Note: `Plot.placeObject` does not ask this. Whoever places an object asks it first, if a
---- player standing on the tile should stop them.
+--- Returns `true` if `Plot.canPlaceObject` returns `true` for the tile `tileX`, `tileZ` of the
+--- plot, and `isTileStoodOn` returns `false` for it.
+--- Note: `Plot.placeObject` does not check `isTileStoodOn`, so it places an object on a tile that a
+--- character stands on.
 function World.canPlaceObject(world: World, tileX: number, tileZ: number): boolean
 	return Plot.canPlaceObject(world.plot, tileX, tileZ) and not World.isTileStoodOn(world, tileX, tileZ)
 end
 
---- Throws each stack of `stacks` into the world from the tile `tileX`, `tileZ` of the plot. Each
---- is spawned as `spawnStack` does, in the middle of the cube that a placed object fills on that
---- tile, moving upwards at `TILE_THROW_UPWARD_SPEED` and outwards along the ground at
---- `TILE_THROW_OUTWARD_SPEED`, each a different way from the one before.
---- Note: it does not take the stacks from anywhere.
+--- Spawns each stack of `stacks`, as `spawnStack` does, as a ground item that lies in the middle of
+--- the cube that a placed object fills on the tile `tileX`, `tileZ` of the plot. Each ground item
+--- moves up at `TILE_THROW_UPWARD_SPEED` and outwards along the ground at
+--- `TILE_THROW_OUTWARD_SPEED`. The first goes 2.4 radians from the direction of greater x towards
+--- greater z, and each later one 2.4 radians further round than the one before.
+--- Note: `throwStacksFromTile` takes `stacks` from nowhere.
 function World.throwStacksFromTile(world: World, stacks: { ItemStack }, tileX: number, tileZ: number)
 	local center = tileCenter(world, tileX, tileZ)
 	local middle = Position.new(center.x, center.y + (Plot.TILE_SIZE - GroundItems.ITEM_WIDTH) / 2, center.z)
@@ -352,22 +355,21 @@ local function closeScreenIfOutOfReach(world: World, player: PlayerState)
 end
 
 --- Moves the world on to the time `now`, in this order:
---- - Ground items of the same item that lie close together merge. Each one that was spawned or
----   given a new position since the world was last moved on gets a merge check, and so does each
----   one that has been in the world for another `GroundItems.MERGE_CHECK_SECONDS`. Of two whose
----   stacks fit in one stack, the bigger takes in the smaller, and stays where it is.
---- - Each player with a character, the one with the lowest id first, picks up the ground items
----   that `GroundItems.getIdsInPickupReach` returns for where their character stands, in the
----   order it returns them. As many of each one's stack go into their pack as `Inventory.addItems`
----   adds, and those are taken out of the ground item. What did not fit stays on the ground, in
----   the same ground item, and one that none of fitted is left as it was. If their screen is open
----   on a placed object that they stand more than `SCREEN_CLOSES_BEYOND` from, it is then closed,
----   as `closeScreen` does.
---- - `timePassed` is fired, with the seconds that have passed since the time `advanceTo` was last
----   given: 0 if `now` is no later than that time.
---- - Ground items that have been in the world too long are removed.
---- Note: if a callback connected to `timePassed` fails, the error passes out of `advanceTo`. The
---- world is at the time `now` by then, and what comes after `timePassed` in this list is not done.
+--- - `GroundItems.mergeItems` merges the ground items of the same item that lie close together.
+--- - For each player with a character, the player with the lowest id first, the world adds the
+---   stacks of the ground items that `GroundItems.getIdsInPickupReach` returns for the
+---   character's position to the player's pack, in the order it returns them. `Inventory.addItems`
+---   adds as many items of each stack as fit, and `GroundItems.takeFromItem` takes that many out of
+---   the ground item. What did not fit stays in the same ground item, and a ground item of which
+---   no item fits stays as it was. Then, if the player's screen is open on a placed object that the
+---   character stands more than `SCREEN_CLOSES_BEYOND` from, the world closes the screen, as
+---   `closeScreen` does.
+--- - `timePassed` fires, passing the seconds since the time `advanceTo` was last given, or `0` if
+---   `now` is no later than that time.
+--- - `GroundItems.removeExpiredItems` removes every ground item that was spawned
+---   `GroundItems.LIFETIME_SECONDS` or more before `now`.
+--- Note: an error in a callback connected to `timePassed` passes out of `advanceTo`. By then
+--- `advanceTo` has set the world's `now` to `now`, and it does not do the step after `timePassed`.
 function World.advanceTo(world: World, now: number)
 	local elapsed = math.max(now - world.now, 0)
 	world.now = now

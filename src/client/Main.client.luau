@@ -1,5 +1,5 @@
 --!strict
---- Starts the game on a player's machine. This is the only LocalScript.
+--- The LocalScript that starts the game on the client. It is the only LocalScript.
 ---
 --- It draws what the server says the player holds, and turns what the player does with the keys
 --- and the mouse into requests to the server. It decides nothing about the game by itself.
@@ -51,7 +51,7 @@ type SelectedItemPiece = {
 	--- Called every frame while the item is in the selected hotbar slot, with what the pointer is
 	--- over, or `nil` if it is over nothing.
 	update: (pointerTarget: PlotPointer.Target?) -> (),
-	--- Called once when the item is in the selected hotbar slot no longer.
+	--- Called once after the item leaves the selected hotbar slot.
 	hide: () -> (),
 }
 
@@ -64,7 +64,7 @@ local selectedItemPieces: { [string]: SelectedItemPiece } = {
 --- How the screen of one kind of placed object is laid out, and what moves on it.
 type PlacedObjectScreenPiece = InventoryGui.OtherLayout & {
 	--- Called every frame while the screen of a placed object of the kind is open, with what the
-	--- kind's script told this machine of that placed object, and the time on the world's clock.
+	--- kind's script told the client of that placed object, and the time on the world's clock.
 	update: (screenData: unknown, now: number) -> (),
 }
 
@@ -85,7 +85,8 @@ local snapshot: PlayerSnapshot.PlayerSnapshot = {
 	pack = Inventory.new(PlayerState.PACK_SLOT_COUNT),
 	selectedHotbarSlot = 1,
 }
---- How far the world's clock is ahead of this machine's own, in seconds, as of the last snapshot.
+--- How far the world's clock is ahead of the client's `os.clock`, in seconds, as of the last
+--- snapshot.
 local worldClockLead = 0
 local gestures = SlotGestures.new()
 --- The piece of `selectedItemPieces` that was last updated. `nil` while the item in the selected
@@ -115,18 +116,17 @@ local mouseButtons: { [Enum.UserInputType]: SlotGestures.Button } = {
 
 --- The camera is in first person when it is nearer than this to the point it turns about, in
 --- studs.
---- Note: no property of the camera says that it is in first person. Roblox's own camera scripts
---- go into first person below this distance, and then hold the camera half a stud from that point.
+--- Note: no property of the camera says that it is in first person, so the distance decides.
 local CAMERA_IN_FIRST_PERSON_WITHIN = 1
 
 local function isCameraInFirstPerson(camera: Camera): boolean
 	return (camera.Focus.Position - camera.CFrame.Position).Magnitude < CAMERA_IN_FIRST_PERSON_WITHIN
 end
 
---- The way a stack the player drops is thrown. In first person it is the way the camera looks, up
---- and down as well. Otherwise it is the way the camera looks along the ground, or the way the
---- player's character faces if the camera looks straight up or straight down. `nil` if it cannot
---- be told.
+--- Returns the way a stack that the player drops is thrown. In first person, that is the way the
+--- camera looks, up and down as well. Otherwise it is the way the camera looks along the ground, or
+--- the way the player's character faces if the camera looks straight up or straight down. Returns
+--- `nil` if neither the camera nor the character gives a way.
 local function getThrowDirection(): Direction.Direction?
 	local camera = Workspace.CurrentCamera
 	local look = if camera then camera.CFrame.LookVector else Vector3.zero
@@ -253,7 +253,7 @@ RunService.RenderStepped:Connect(function()
 end)
 remotes.askForSnapshot:FireServer()
 
--- Roblox's own backpack bar would sit on top of ours, and its tools are not our items.
+-- Hides Roblox's own backpack bar, which would lie over the hotbar.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
 --- A white outline around the placed object that the pointer is over, while the player's
@@ -265,8 +265,9 @@ pointerOutline.LineThickness = 0.05
 pointerOutline.Color3 = Color3.new(1, 1, 1)
 pointerOutline.Parent = Workspace
 
---- What the point `viewportPoint` of the screen is over in the world. `nil` while the inventory
---- screen is open: the pointer is then over the screen.
+--- Returns what the point `viewportPoint` of the screen is over in the world, or `nil` if it is
+--- over nothing. Returns `nil` while the inventory screen is open, since the point is then over the
+--- screen.
 local function getWorldTargetAt(viewportPoint: Vector2): PlotPointer.Target?
 	return if snapshot.screen == nil then PlotPointer.getTargetAt(viewportPoint) else nil
 end
@@ -304,7 +305,8 @@ UserInputService.TouchTapInWorld:Connect(function(position: Vector2, handledElse
 	end
 end)
 
--- A machine with no mouse has no pointer to mark the place of.
+-- Every frame, outlines the placed object under the pointer and updates the selected item's piece.
+-- A client with no mouse has no pointer, so its target is `nil`.
 RunService.RenderStepped:Connect(function()
 	local hasPointer = UserInputService.MouseEnabled
 	local target = if hasPointer then getWorldTargetAt(UserInputService:GetMouseLocation()) else nil

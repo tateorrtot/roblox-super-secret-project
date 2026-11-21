@@ -1,14 +1,15 @@
 --!strict
 --- A plain block with a name above it, standing in for a model that has not been made yet.
 ---
---- `make` returns one as a Model. It goes when the game's things have models of their own.
+--- `make` returns the block as a Model. Every block has the colour `COLOR`, whatever it stands in
+--- for.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Plot = require(ReplicatedStorage:WaitForChild("Shared").plots.Plot)
 
 local PlaceholderBlock = {}
 
---- The colour of every placeholder block: a plain grey, whatever the block stands in for.
+--- The colour of every block that `make` returns, a grey.
 PlaceholderBlock.COLOR = Color3.fromRGB(110, 112, 120)
 
 local function makeLabel(block: Part, text: string)
@@ -30,10 +31,10 @@ local function makeLabel(block: Part, text: string)
 	label.Parent = billboard
 end
 
---- Returns a new Model that holds one anchored block, a tile wide, deep and tall, in the colour
---- `COLOR`, with `name` written above it. The block is the Model's `PrimaryPart` and is called
---- `Block`. The Model's pivot is the middle of the block's underside, so a Model pivoted to a
---- point stands on that point.
+--- Returns a new Model that holds one anchored block, `Plot.TILE_SIZE` studs wide, deep, and tall,
+--- in the colour `COLOR`, with `name` written above it. The block is called `Block` and is the
+--- Model's `PrimaryPart`. The Model's pivot is the middle of the block's underside, so a Model
+--- pivoted to a point stands on that point.
 function PlaceholderBlock.make(name: string): Model
 	local side = Plot.TILE_SIZE
 	local block = Instance.new("Part")

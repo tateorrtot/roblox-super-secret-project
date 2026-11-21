@@ -1,11 +1,10 @@
 --!strict
---- Works out what a point on the screen is over: an object placed on a plot, or a tile of a plot
---- that nothing stands on.
+--- Finds what a point on the screen is over: a placed object, or a tile of a plot.
 ---
---- `getTargetAt` looks through the camera at a point and reads what it hits. A part inside a
---- Model that has the attribute `placedObjectId` is a placed object, whatever the Model holds.
---- The top of a slab tagged `Plot`, which has the attributes `cornerX`, `cornerY`, `cornerZ`,
---- `widthInTiles` and `depthInTiles`, is a grid of tiles.
+--- `getTargetAt` casts a ray through the camera at a point and reads the part that it hits. A part
+--- inside a Model that has the attribute `placedObjectId` is a placed object, whatever else the
+--- Model holds. The top of a part tagged `Plot`, which has the attributes `cornerX`, `cornerY`,
+--- `cornerZ`, `widthInTiles` and `depthInTiles`, is a grid of tiles.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,8 +15,10 @@ local Plot = require(Shared.plots.Plot)
 
 local PlotPointer = {}
 
---- What a point on the screen is over. `center` is the middle of the bare tile, or the middle of
---- the box that the placed object's Model fills.
+--- What a point on the screen is over: a placed object or a tile. A placed object has its id,
+--- `placedObjectId`, and its `model`. A tile has its numbers `x` along x and `z` along z, each
+--- counted from `1`. `center` is the middle of the tile, at the height of the plot's corner, or the
+--- middle of the box that the placed object's Model fills.
 export type Target =
 	{ kind: "placedObject", placedObjectId: number, model: Model, center: Vector3 }
 	| { kind: "tile", x: number, z: number, center: Vector3 }
@@ -68,9 +69,9 @@ local function tileTarget(hit: RaycastResult): Target?
 end
 
 --- Returns what the point `viewportPoint` is over, or `nil` if it is over neither a placed object
---- nor a bare tile of a plot. The player's own character is looked through. Anything else in the
---- way hides what is behind it. Only the top of a plot's slab counts as tiles, not its sides. A
---- point that is not on the screen is over nothing.
+--- nor a tile of a plot. The ray passes through the local player's character, and anything else in
+--- its way hides what is behind it. Only the top of a plot counts as tiles, not its sides. A point
+--- outside the viewport, and a point over a plot's top outside its tiles, are over nothing.
 ---
 --- Note: `viewportPoint` is in pixels from the top left of the whole window, which includes the
 --- strip along the top of the screen.

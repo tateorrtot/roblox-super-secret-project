@@ -1,11 +1,10 @@
 --!strict
---- How a stove's screen is laid out on the player's machine: its three slots, a fire gauge and a
---- work gauge.
+--- The layout of a stove's screen: its three slots, a fire gauge, and a work gauge.
 ---
---- The stove's input slot is drawn above its fuel slot, with the fire gauge between them, and its
---- output slot to the right, past the work gauge. `place` lays that out on the inventory screen's
---- panel, `hide` puts the gauges and the words away, and `update` fills the two gauges. It is only
---- a picture on this player's machine: what a stove does is for `Stove` to say, on the server.
+--- The stove's input slot is above its fuel slot, with the fire gauge between them, and its output
+--- slot is to the right, past the work gauge. `place` lays that out on the inventory screen's
+--- panel, `hide` hides the gauges and the words, and `update` fills the two gauges. The layout is
+--- a picture on the client: `Stove` runs on the server and says what a stove does.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -25,8 +24,8 @@ type Parts = {
 local FIRE_GAUGE_SIZE = Vector2.new(14, 40)
 local WORK_GAUGE_HEIGHT = 12
 
---- The gauges and the words beside the slots. They are made when a stove's screen is first laid
---- out, on the panel it is laid out on, and are `nil` until then.
+--- The gauges and the words beside the slots. `place` makes them on its first call, on the panel
+--- it is given, and they are `nil` until then.
 local parts: Parts? = nil
 
 local function makeGauge(panel: Frame, name: string, fill: Color3): (Frame, Frame)
@@ -93,10 +92,12 @@ local function setVisible(shown: Parts, visible: boolean)
 	end
 end
 
---- Lays out a stove's three slots on `panel`, with the two gauges and a word beside each slot, and
---- shows them. `slots` are the slots of the stove's inventory, in order. `origin` is the top left
---- corner of the space on the panel that is the stove's, and `step` is the distance from one slot
---- to the next. Returns how tall the space is that the stove's slots take: three slots.
+--- Moves the stove's three slots to their places on `panel`, shows the two gauges and a word beside
+--- each slot, and returns the height that the three slots take, in pixels. `slots` holds the slots
+--- of the stove's inventory, by slot number. `origin` is the top left corner of the space that the
+--- stove's slots take on `panel`, and `step` is the distance from one slot to the next, in pixels.
+--- Note: `place` makes the gauges and the words on the first `panel` that it is given. They stay on
+--- that panel, whatever `panel` a later call is given.
 function StoveScreen.place(panel: Frame, slots: { SlotGui.SlotGui }, origin: Vector2, step: number): number
 	local shown = parts or makeParts(panel, step)
 	parts = shown
@@ -124,7 +125,7 @@ function StoveScreen.place(panel: Frame, slots: { SlotGui.SlotGui }, origin: Vec
 	return 2 * step + SlotGui.SIZE
 end
 
---- Puts the gauges and the words away. Does nothing if no stove's screen was ever laid out.
+--- Hides the gauges and the words. Does nothing if `place` was never called.
 function StoveScreen.hide()
 	if parts ~= nil then
 		setVisible(parts, false)
@@ -132,9 +133,9 @@ function StoveScreen.hide()
 end
 
 --- Fills the fire gauge and the work gauge as they stand at the time `now` on the world's clock,
---- in seconds. `screenData` is what the stove's script told this machine of the stove whose screen
---- is open: a `Stove.Progress`. Does nothing if it is `nil`, or if no stove's screen was ever laid
---- out.
+--- in seconds. `screenData` is a `Stove.Progress`: what the stove's script told the client of the
+--- stove whose screen is open. Does nothing if `screenData` is `nil`, or if `place` was never
+--- called.
 function StoveScreen.update(screenData: unknown, now: number)
 	if parts == nil or screenData == nil then
 		return

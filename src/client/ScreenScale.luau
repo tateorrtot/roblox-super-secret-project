@@ -1,9 +1,9 @@
 --!strict
---- Keeps the game's own screens the right size for the window they are in.
+--- A scale that fits the screens to the window they are in.
 ---
 --- The screens are laid out in pixels for a window 900 wide and 620 tall. `applyTo` makes a screen
---- shrink in a smaller window and grow a little in a larger one, and keeps it fitted when the
---- window changes size. `getFactor` returns the factor that is used.
+--- shrink in a smaller window and grow in a larger one, and keeps it fitted when the window changes
+--- size. `getFactor` returns the factor that `applyTo` scales by.
 local Workspace = game:GetService("Workspace")
 
 local ScreenScale = {}
@@ -13,9 +13,10 @@ local DESIGN_HEIGHT = 620
 local SMALLEST = 0.45
 local LARGEST = 1.3
 
---- Returns the factor the screens are scaled by in this window now: 1 draws them at their laid-out
---- size, and 0.5 at half of it. The factor is never below 0.45 or above 1.3, and is 1 while there
---- is no camera.
+--- Returns the factor that the screens are scaled by for the camera's current viewport: `1` draws
+--- them at their laid-out size, and `0.5` at half of it. The factor is the smaller of the
+--- viewport's width over 900 and its height over 620, never below `0.45` or above `1.3`. Returns
+--- `1` while there is no camera.
 function ScreenScale.getFactor(): number
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
@@ -50,8 +51,9 @@ end
 Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(followCamera)
 followCamera()
 
---- Scales `guiObject`, and everything inside it, to fit this window, and keeps it fitted when the
---- window changes size. Returns the `UIScale` that does it, which is now a child of `guiObject`.
+--- Adds a `UIScale` to `guiObject` that scales `guiObject`, and everything inside it, by
+--- `getFactor`, and keeps its `Scale` equal to `getFactor` as the viewport changes size. Returns
+--- the `UIScale`.
 function ScreenScale.applyTo(guiObject: GuiObject): UIScale
 	local uiScale = Instance.new("UIScale")
 	uiScale.Scale = ScreenScale.getFactor()

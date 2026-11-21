@@ -1,10 +1,9 @@
 --!strict
---- How a stove looks in the world, and how it shows its fire.
+--- The Model that shows a stove in the world, and glows while the stove's fire burns.
 ---
---- `make` returns the Model of one stove, and `update` makes a stove's Model glow while its fire
---- is burning. The Model has the attribute `burning`, which is `true` while it glows. It is a
---- plain block until stoves have a model of their own: nothing else in the game knows what a
---- stove looks like.
+--- `make` returns a `PlaceholderBlock` named for the stove. `update` makes the Model glow while the
+--- stove's fire is burning, and sets the Model's attribute `burning` to `true` or `false` to match.
+--- Nothing else in the game knows what a stove looks like.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -14,7 +13,10 @@ local Stove = require(Shared.content.Stove)
 
 local StoveModel = {}
 
+--- The colour of the block while the stove's fire is out.
 local UNLIT_COLOR = PlaceholderBlock.COLOR
+--- The colour of the block while the stove's fire is burning: `UNLIT_COLOR`, 60 percent of the way
+--- to orange.
 local LIT_COLOR = UNLIT_COLOR:Lerp(Color3.fromRGB(255, 140, 40), 0.6)
 
 local function showFire(block: BasePart, burning: boolean)
@@ -33,14 +35,16 @@ local function showFire(block: BasePart, burning: boolean)
 	end
 end
 
---- Returns a new Model that shows one stove, with no fire, standing on its pivot.
+--- Returns a new Model that shows one stove, standing on its pivot, with the label `Stove.NAME`.
+--- The Model does not glow until `update` finds the stove's fire burning.
 function StoveModel.make(): Model
 	return PlaceholderBlock.make(Stove.NAME)
 end
 
---- Makes `model` glow if the fire of the stove that has the id `placedObjectId` on `plot` is
---- burning, and not if it is out. `model` is the Model that `make` returned for that stove.
---- Changes nothing if the Model shows that already.
+--- Makes `model` glow if the stove's fire is burning, and stop glowing if it is out. The stove is
+--- the placed object with the id `placedObjectId` on `plot`, and `model` is the Model that `make`
+--- returned for it. Changes nothing if `model` shows the fire's state already. Fails if
+--- `Stove.get` fails for `plot` and `placedObjectId`.
 function StoveModel.update(model: Model, plot: Plot.Plot, placedObjectId: number)
 	local burning = Stove.isBurning(Stove.get(plot, placedObjectId))
 	if model:GetAttribute("burning") ~= burning then

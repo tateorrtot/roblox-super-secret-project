@@ -1,15 +1,14 @@
 --!strict
---- What shows a plot in the world: the lines between its tiles, and a Model for each object
---- standing on it.
+--- The lines between a plot's tiles, and a Model for each placed object that stands on the plot.
 ---
---- Draws thin lines on the plot's slab to mark the tiles. `update` makes the Models match what is
---- placed: a new Model for each newly placed object and none for one that was removed. What a
---- Model is, is not decided here: each kind of placed object has a piece of its own that makes
---- its Model, and `update` is handed those pieces. The slab is tagged `Plot` and has the
---- attributes `widthInTiles` and `depthInTiles`, and `cornerX`, `cornerY` and `cornerZ`, the
---- plot's corner as `Plot.getTileAt` wants it. Each Model has the attribute `placedObjectId`, the
---- id of its placed object, and is named for the id of its kind. The plot must lie square to the
---- world's x and z axes.
+--- `new` draws thin lines on the plot's slab to mark the tiles. `update` makes the Models match
+--- the placed objects: it makes a Model for each placed object that has none, and destroys the
+--- Model of each placed object that is gone. Each kind of placed object has a `PlacedObjectPiece`
+--- that makes its Model, and `update` is handed those pieces. `new` tags the slab `Plot` and gives
+--- it the attributes `widthInTiles`, `depthInTiles`, `cornerX`, `cornerY`, and `cornerZ`, the last
+--- three being the plot's corner as `Plot.getTileAt` takes it. Each Model has the attribute
+--- `placedObjectId`, the id of its placed object, and is named for the id of its kind. The plot
+--- must be aligned with the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -18,26 +17,27 @@ local Plot = require(Shared.plots.Plot)
 
 local PlotParts = {}
 
+--- What shows one plot: its slab, its corner, and the Models of its placed objects.
 export type PlotParts = {
-	--- The part the plot lies on. Its top is the plot's surface.
+	--- The part that the plot lies on. Its top is the plot's surface.
 	read slab: Part,
-	--- The position of the plot's corner: the outer corner of tile x 1, z 1, on the slab's top.
+	--- The position of the outer corner of the plot's tile x `1`, z `1`, on the slab's top.
 	read corner: Plot.Position,
-	--- The folder that holds the Models, and the lines between the tiles.
+	--- The Folder that holds the Models and the lines between the tiles.
 	read folder: Folder,
 	--- The Model that shows each placed object, by the placed object's id.
 	read modelsById: { [number]: Model },
 }
 
---- How one kind of placed object is shown in the world: a piece of that kind's own.
+--- The piece that shows one kind of placed object in the world.
 export type PlacedObjectPiece = {
-	--- Returns a new Model that shows one placed object of the kind. The Model's pivot is put on
-	--- the middle of the placed object's tile, on the plot's surface, so the Model is built
-	--- standing on its pivot. What is in the Model is the kind's own business.
+	--- Returns a new Model that shows one placed object of the kind, built standing on its pivot.
+	--- `PlotParts.update` puts the pivot on the middle of the placed object's tile, on the plot's
+	--- surface. The Model may hold anything.
 	read make: () -> Model,
-	--- Called each time the Models are updated, with the Model of one placed object of the kind,
-	--- the plot that placed object stands on, and its id. A kind whose look never changes has no
-	--- `update`.
+	--- `PlotParts.update` calls `update` once for each Model of the kind, each time
+	--- `PlotParts.update` runs, with the Model, the plot that the placed object stands on, and the
+	--- placed object's id. A kind whose Model never changes has no `update`.
 	read update: ((model: Model, plot: Plot.Plot, placedObjectId: number) -> ())?,
 }
 
@@ -78,10 +78,11 @@ local function makeTileLines(folder: Folder, corner: Plot.Position, plot: Plot.P
 	end
 end
 
---- Returns what shows the plot that lies on `slab`, with no Model made yet, and draws the lines
---- between the plot's tiles. The Models and the lines are kept in a folder called
---- `PlacedObjects` beside the slab. `plot` is read once, for its size. The plot starts at the
---- slab's corner of least x and z, and the slab's top must be at least as large as the plot.
+--- Returns a new `PlotParts` for `plot`, which lies on `slab`, with no Model made yet. Draws the
+--- lines between the plot's tiles, tags `slab` `Plot`, and gives it the attributes `widthInTiles`,
+--- `depthInTiles`, `cornerX`, `cornerY`, and `cornerZ`. Keeps the Models and the lines in a Folder
+--- called `PlacedObjects`, beside `slab`. Reads `plot` once, for its size. The plot starts at the
+--- slab's corner of least x and least z, and the slab's top must be at least as large as the plot.
 function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	local corner = table.freeze({
 		x = slab.Position.X - slab.Size.X / 2,
@@ -138,13 +139,13 @@ local function updateModels(plotParts: PlotParts, plot: Plot.Plot, piecesByKindI
 	end
 end
 
---- Makes the Models match what is placed on `plot` now. `piecesByKindId` holds the piece of each
---- kind of placed object, by the kind's id. A placed object with no Model gets one, which the
---- piece of its kind makes: it is named for the kind's id, given the attribute `placedObjectId`,
---- and its pivot is put on the middle of the placed object's tile, on the plot's surface. The
---- Model of a placed object that is gone is destroyed. Then, for each Model whose kind's piece
---- has an `update`, that is called with the Model, `plot` and the placed object's id. A placed
---- object whose kind has no piece is not shown.
+--- Makes the Models match the placed objects on `plot`. `piecesByKindId` holds the piece of each
+--- kind of placed object, by the kind's id. Gives each placed object that has no Model one, which
+--- the piece of its kind makes: named for the kind's id, with the attribute `placedObjectId`, and
+--- with its pivot on the middle of the placed object's tile, on the plot's surface. Destroys the
+--- Model of each placed object that is gone. Then calls the `update` of the piece of each Model's
+--- kind, if the piece has one, with the Model, `plot`, and the placed object's id. Shows no Model
+--- for a placed object whose kind has no piece.
 function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: { [string]: PlacedObjectPiece })
 	addMissingModels(plotParts, plot, piecesByKindId)
 	removeStaleModels(plotParts, plot)
