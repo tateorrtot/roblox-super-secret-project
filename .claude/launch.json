@@ -6,6 +6,18 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "mkdocs", "serve", "-f", "main-project/build/reference/mkdocs.yml", "-a", "127.0.0.1:8123"],
       "port": 8123
+    },
+    {
+      "name": "inventory-reference",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "mkdocs", "serve", "-f", "inventory/build/reference/mkdocs.yml", "-a", "127.0.0.1:8124"],
+      "port": 8124
+    },
+    {
+      "name": "ground-items-reference",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "mkdocs", "serve", "-f", "ground-items/build/reference/mkdocs.yml", "-a", "127.0.0.1:8125"],
+      "port": 8125
     }
   ]
 }

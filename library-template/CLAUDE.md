@@ -31,7 +31,7 @@ This folder is one library. It works in any game, and it knows nothing of who us
 | `python tools/outline.py` | Prints every public function |
 | `python tools/metrics.py --functions` | Shows each function's length and depth |
 | `python tools/mutate.py` | Changes the code a little at a time and shows which changes no test notices |
-| `python tools/unused.py` | Lists public functions that nothing uses |
+| `python tools/unused.py` | Lists public functions that no case of the page needs |
 
 ## Where things stand
 NOTHING IS BUILT YET. Keep this section true: what is built, what is checked, what is open, and what waits on Tate.

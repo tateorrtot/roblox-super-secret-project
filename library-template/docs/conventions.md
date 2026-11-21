@@ -61,7 +61,7 @@ Tate, 2026-11-20: "if you say "jump" dont have a check inside that method. Check
 1. `README.md` says what the library is, and the code does what the page says.
 2. Every check passes: `lune run tools/check`.
 3. A mutation run (`python tools/mutate.py`) leaves only changes no caller could see.
-4. `python tools/unused.py` lists no public function that nothing uses.
+4. `python tools/unused.py` lists no function: every public function is called in `src`, in a demo, or in a case of the page.
 5. Its names pass the names test in `names.md`.
 6. A cold reader, shown one page of the reference and nothing else, can say what each member does.
 
