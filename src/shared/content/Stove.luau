@@ -36,7 +36,8 @@ end
 --- object's id. The stove is made a station of the kind `STATION_KIND_ID`, with no fire and with
 --- slots that hold nothing. Fails if `Plot.canPlaceObject` would return `false` for that tile.
 function Stove.place(world: World.World, tileX: number, tileZ: number): number
-	local placedObjectId = Plot.placeObject(world.plot, Stove.PLACED_OBJECT_KIND_ID, tileX, tileZ)
+	local placedObjectId =
+		Plot.placeObject(world.plot, { kindId = Stove.PLACED_OBJECT_KIND_ID, tileX = tileX, tileZ = tileZ })
 	local station = Station.new(Stove.STATION_KIND_ID, Inventory.new(Station.SLOT_COUNT))
 	World.addStation(world, placedObjectId, station)
 	return placedObjectId

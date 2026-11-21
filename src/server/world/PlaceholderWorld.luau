@@ -121,8 +121,8 @@ end
 --- Stands a crate and a stove on the plot of `world`, and puts a few stacks in the crate. Call it
 --- once, on the world made over the plot that `build` returned.
 function PlaceholderWorld.placeStartingObjects(world: World.World)
-	local crateId = Crate.place(world, 13, 7)
-	local inCrate = world.placedObjectInventories[crateId]
+	local crateId = Crate.place(world.plot, 13, 7)
+	local inCrate = (world.plot.placedObjectsById[crateId] :: Crate.Crate).inventory
 	Inventory.addItems(inCrate, "cheese", 8)
 	Inventory.addItems(inCrate, "fish", 5)
 	Inventory.addItems(inCrate, "crystal", 40)

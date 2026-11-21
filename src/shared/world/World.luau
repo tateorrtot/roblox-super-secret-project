@@ -10,10 +10,9 @@
 ---
 --- A world listens to its plot, and objects are placed and removed with the plot's own
 --- `Plot.placeObject` and `Plot.removePlacedObject`. When an object is placed, the world pushes
---- the ground items out of its tile. A placed object has nothing but its tile until it is given
---- more: `addPlacedObjectInventory` gives it an inventory, and `addStation` makes it work as a
---- station. When a placed object is taken off, the world closes every screen open on it, and the
---- inventory and the station it was given go with it.
+--- the ground items out of its tile. `addStation` makes a placed object work as a station. When a
+--- placed object is taken off, the world closes every screen open on it, and the station it was
+--- made goes with it.
 local Direction = require("../Direction")
 local GroundItems = require("../groundItems/GroundItems")
 local Inventory = require("../inventory/Inventory")
@@ -44,8 +43,6 @@ export type World = {
 	read groundItems: GroundItems.GroundItems,
 	--- Every player in the world, by id. On Roblox the id is the UserId.
 	read players: { [number]: PlayerState },
-	--- The inventory of each placed object that was given one, by the placed object's id.
-	read placedObjectInventories: { [number]: Inventory },
 	--- The station that each placed object which was made one works as, by the placed object's id.
 	read stations: { [number]: Station.Station },
 	--- The id of the placed object that each open inventory screen was opened on, by the screen. A
@@ -129,14 +126,13 @@ end
 
 local function onPlacedObjectRemoved(world: World, placedObjectId: number)
 	closeScreensOn(world, placedObjectId)
-	world.placedObjectInventories[placedObjectId] = nil
 	world.stations[placedObjectId] = nil
 end
 
 --- Returns a new world with no players and nothing on the ground, at the time `now`. `plot` is
 --- the plot, and `plotCorner` is the outer corner of its tile x 1, z 1.
---- Note: a placed object that already stands on `plot` has no inventory and is no station in the
---- new world, until `addPlacedObjectInventory` or `addStation` is called for it.
+--- Note: a placed object that already stands on `plot` is no station in the new world, until
+--- `addStation` is called for it.
 ---
 --- The world connects to the plot's two signals, and from then on:
 --- - When an object is placed on the plot, the ground items that lie where it now stands are
@@ -144,15 +140,14 @@ end
 ---   new ground item with a new id, just outside the tile and moving away from it along the
 ---   ground, or on top of the placed object, not moving, if it is closed in on all four sides.
 --- - A placed object taken off the plot has every screen open on it closed, as `closeScreen` does.
----   The inventory it was given is the world's no longer. If it was made a station it is one no
----   longer: its fire is out, and the fuel that was burning is lost.
+---   If it was made a station it is one no longer: its fire is out, and the fuel that was burning
+---   is lost.
 function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 	local world: World = {
 		plot = plot,
 		plotCorner = plotCorner,
 		groundItems = GroundItems.new(),
 		players = {},
-		placedObjectInventories = {},
 		stations = {},
 		placedObjectIdsByScreen = {},
 		now = now,
@@ -254,17 +249,6 @@ function World.removeCharacter(world: World, playerId: number)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	World.closeScreen(world, player)
 	PlayerState.removeCharacter(player)
-end
-
---- Gives the placed object with the id `placedObjectId` the inventory `inventory`. The world keeps
---- it for as long as that placed object stands on the plot. Fails if no placed object has that id,
---- or if that placed object was given an inventory already.
-function World.addPlacedObjectInventory(world: World, placedObjectId: number, inventory: Inventory)
-	checkPlacedObjectId(world, placedObjectId)
-	if world.placedObjectInventories[placedObjectId] ~= nil then
-		error(`the placed object {placedObjectId} was given an inventory already`, 2)
-	end
-	world.placedObjectInventories[placedObjectId] = inventory
 end
 
 --- Makes the placed object with the id `placedObjectId` work as `station`: `advanceTo` burns its

@@ -35,6 +35,11 @@ local function placedCount(world: World.World): number
 	return count
 end
 
+-- The inventory of the crate that has the id `crateId` on a world's plot.
+local function inventoryOf(world: World.World, crateId: number): Inventory.Inventory
+	return (world.plot.placedObjectsById[crateId] :: Crate.Crate).inventory
+end
+
 -- How many ground items a world has.
 local function groundItemCount(world: World.World): number
 	local count = 0
@@ -49,7 +54,7 @@ end
 -- stands at 6, 0, 0 with a pack that holds nothing.
 local function newWorld(): (World.World, PlayerState.PlayerState, number)
 	local world = World.new(Plot.new(4, 4), at(0, 0, 0), 50)
-	local crateId = Crate.place(world, 2, 2)
+	local crateId = Crate.place(world.plot, 2, 2)
 	local player = World.addPlayer(world, 1)
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 	return world, player, crateId
@@ -76,47 +81,51 @@ end
 
 do -- place
 	local world = World.new(Plot.new(4, 4), at(0, 0, 0), 0)
-	local id = Crate.place(world, 2, 3)
+	local id = Crate.place(world.plot, 2, 3)
 	local placed = world.plot.placedObjectsById[id]
 	check(
 		placed ~= nil and placed.kindId == Crate.PLACED_OBJECT_KIND_ID and placed.tileX == 2 and placed.tileZ == 3,
 		"place: a placed object of the crate's kind stands on the tile, and its id is returned"
 	)
-	local inventory = world.placedObjectInventories[id]
+	local inventory = inventoryOf(world, id)
 	check(
 		inventory ~= nil and inventory.slotCount == Crate.SLOT_COUNT and Inventory.isEmpty(inventory),
-		"place: the crate is given an inventory of SLOT_COUNT slots, holding nothing"
+		"place: the crate has an inventory of SLOT_COUNT slots on it, holding nothing"
 	)
 	check(world.stations[id] == nil, "place: a crate is no station")
 
-	local second = Crate.place(world, 1, 1)
+	local second = Crate.place(world.plot, 1, 1)
 	check(
-		second ~= id and world.placedObjectInventories[second] ~= inventory,
+		second ~= id and inventoryOf(world, second) ~= inventory,
 		"place: each crate has an id and an inventory of its own"
+	)
+
+	local bare = Plot.new(2, 2)
+	local onBare = Crate.place(bare, 1, 2)
+	check(
+		bare.placedObjectsById[onBare].kindId == Crate.PLACED_OBJECT_KIND_ID
+			and (bare.placedObjectsById[onBare] :: Crate.Crate).inventory.slotCount == Crate.SLOT_COUNT,
+		"place: a crate is placed on a plot that no world was made over"
 	)
 
 	check(
 		string.find(Check.errorFrom(function()
-			Crate.place(world, 2, 3)
+			Crate.place(world.plot, 2, 3)
 		end) or "", "nothing can be placed on the tile 2, 3", 1, true) ~= nil,
 		"place: fails on a tile that is taken, saying so"
 	)
 	check(
 		string.find(Check.errorFrom(function()
-			Crate.place(world, 5, 1)
+			Crate.place(world.plot, 5, 1)
 		end) or "", "nothing can be placed on the tile 5, 1", 1, true) ~= nil,
 		"place: fails on a tile the plot does not have, saying so"
 	)
 	check(placedCount(world) == 2 and world.plot.nextId == second + 1, "place: a placing that fails places nothing")
-	check(
-		world.placedObjectInventories[second + 1] == nil,
-		"place: and gives no inventory to an id that no placed object has"
-	)
 end
 
 do -- interact
 	local world, player, crateId = newWorld()
-	local inventory = world.placedObjectInventories[crateId]
+	local inventory = inventoryOf(world, crateId)
 	Inventory.addItems(inventory, "fish", 5)
 	Crate.interact(world, player, crateId)
 	local screen = player.screen :: InventoryScreen.InventoryScreen
@@ -147,10 +156,10 @@ do -- interact
 	)
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
 
-	local otherCrateId = Crate.place(world, 3, 3)
+	local otherCrateId = Crate.place(world.plot, 3, 3)
 	Crate.interact(world, player, otherCrateId)
 	check(
-		(player.screen :: InventoryScreen.InventoryScreen).otherInventory == world.placedObjectInventories[otherCrateId]
+		(player.screen :: InventoryScreen.InventoryScreen).otherInventory == inventoryOf(world, otherCrateId)
 			and World.getOpenedPlacedObjectId(world, player) == otherCrateId,
 		"interact: each crate opens its own inventory"
 	)
@@ -175,7 +184,7 @@ end
 
 do -- breakPlacedObject
 	local world, breaker, crateId = newWorld()
-	local inventory = world.placedObjectInventories[crateId]
+	local inventory = inventoryOf(world, crateId)
 	Inventory.setStack(inventory, 3, ItemStack.new("fish", 5))
 	Inventory.setStack(inventory, 20, ItemStack.new("log", 4))
 	local watcher = World.addPlayer(world, 2)
@@ -190,10 +199,7 @@ do -- breakPlacedObject
 		"breakPlacedObject: the crate is off the plot, though no player stands near it"
 	)
 	check(Plot.canPlaceObject(world.plot, 2, 2), "breakPlacedObject: and its tile holds nothing")
-	check(
-		world.placedObjectInventories[crateId] == nil and Inventory.isEmpty(inventory),
-		"breakPlacedObject: the crate's inventory is the world's no longer, and holds nothing"
-	)
+	check(Inventory.isEmpty(inventory), "breakPlacedObject: the crate's inventory holds nothing")
 	check(
 		watcher.screen == nil and World.getOpenedPlacedObjectId(world, watcher) == nil,
 		"breakPlacedObject: a screen that was open on the crate is closed"
@@ -243,7 +249,7 @@ do -- breakPlacedObject
 		"breakPlacedObject: the player who broke it is given nothing and has no screen opened"
 	)
 
-	local emptyCrateId = Crate.place(world, 4, 4)
+	local emptyCrateId = Crate.place(world.plot, 4, 4)
 	World.removeCharacter(world, 1)
 	Crate.breakPlacedObject(world, emptyCrateId)
 	check(
@@ -253,22 +259,36 @@ do -- breakPlacedObject
 	check(placedCount(world) == 0, "breakPlacedObject: and no crate is left standing")
 end
 
-do -- a placed object of the crate's kind that `place` did not place
+do -- an id that no placed object has
 	local world, player = newWorld()
-	local bareId = Plot.placeObject(world.plot, Crate.PLACED_OBJECT_KIND_ID, 1, 1)
+	local message = "the placed object 99 is not a crate that Crate.place placed"
+	check(Check.raises(message, function()
+		Crate.interact(world, player, 99)
+	end) and player.screen == nil, "interact: fails for an id that no placed object has, and opens no screen")
+	check(
+		Check.raises(message, function()
+			Crate.breakPlacedObject(world, 99)
+		end) and groundItemCount(world) == 0,
+		"breakPlacedObject: fails for an id that no placed object has, with nothing thrown"
+	)
+end
+
+do -- a placed object of the crate's kind that has no inventory on it
+	local world, player = newWorld()
+	local bareId = Plot.placeObject(world.plot, { kindId = Crate.PLACED_OBJECT_KIND_ID, tileX = 1, tileZ = 1 })
 	local message = "the placed object " .. bareId .. " is not a crate that Crate.place placed"
 	check(
 		Check.raises(message, function()
 			Crate.interact(world, player, bareId)
 		end),
-		"interact: fails for a placed object of the crate's kind that place did not place"
+		"interact: fails for a placed object of the crate's kind that has no inventory on it"
 	)
 	check(player.screen == nil, "interact: and opens no screen for it")
 	check(
 		Check.raises(message, function()
 			Crate.breakPlacedObject(world, bareId)
 		end),
-		"breakPlacedObject: fails for a placed object of the crate's kind that place did not place"
+		"breakPlacedObject: fails for a placed object of the crate's kind that has no inventory on it"
 	)
 	check(
 		world.plot.placedObjectsById[bareId] ~= nil and groundItemCount(world) == 0,

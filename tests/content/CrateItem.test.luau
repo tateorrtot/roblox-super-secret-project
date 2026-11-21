@@ -58,10 +58,10 @@ do -- interactWithTile
 			and placed.tileZ == 1,
 		"interactWithTile: a crate stands on the tile, in a world with no player to hold the item"
 	)
-	local inventory = world.placedObjectInventories[placedObjectId]
+	local inventory = (placed :: Crate.Crate).inventory
 	check(
 		inventory ~= nil and inventory.slotCount == Crate.SLOT_COUNT and Inventory.isEmpty(inventory),
-		"interactWithTile: placed as Crate.place does, with an inventory that holds nothing"
+		"interactWithTile: placed as Crate.place does, with an inventory on it that holds nothing"
 	)
 	check(usedUp == 1, "interactWithTile: returns 1, since one crate item was used up")
 	check(next(world.groundItems.itemsById) == nil, "interactWithTile: and nothing is left lying on the ground")

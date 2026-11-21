@@ -82,11 +82,15 @@ local function onGround(world: World.World, itemId: string): number
 	return total
 end
 
--- The inventory that a placed object was given, or the inventory of the station it was made. Nil
--- if it was given neither.
+-- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
+-- if it has neither.
 local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
 	local station = world.stations[placedObjectId]
-	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
+	if station ~= nil then
+		return station.inventory
+	end
+	return if placedObject ~= nil then placedObject.inventory else nil
 end
 
 -- The inventory inside a placed object that is known to have one.
@@ -124,14 +128,16 @@ local function placedIds(world: World.World): { number }
 	return ids
 end
 
--- Stands an object of the kind `kindId` on a tile of the world's plot, and gives it what these
--- tests give one of that kind: a crate an inventory of 27 slots, and an oven a station of its own.
--- Any other kind is given nothing.
+-- Stands an object of the kind `kindId` on a tile of the world's plot, with what these tests give
+-- one of that kind: a crate has an inventory of 27 slots on it, and an oven is made a station of
+-- its own. Any other kind has nothing.
 local function place(world: World.World, kindId: string, tileX: number, tileZ: number): number
-	local placedObjectId = Plot.placeObject(world.plot, kindId, tileX, tileZ)
 	if kindId == "crate" then
-		World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(27))
-	elseif kindId == "oven" then
+		local crate = { kindId = kindId, tileX = tileX, tileZ = tileZ, inventory = Inventory.new(27) }
+		return Plot.placeObject(world.plot, crate)
+	end
+	local placedObjectId = Plot.placeObject(world.plot, { kindId = kindId, tileX = tileX, tileZ = tileZ })
+	if kindId == "oven" then
 		World.addStation(world, placedObjectId, Station.new("oven", Inventory.new(3)))
 	end
 	return placedObjectId
@@ -193,47 +199,23 @@ do -- a new world
 	check(world.now == 50, "new: starts at the time it was given")
 	check(next(world.players) == nil, "new: has no players")
 	check(next(world.groundItems.itemsById) == nil, "new: has nothing on the ground")
-	check(
-		next(world.placedObjectInventories) == nil and next(world.stations) == nil,
-		"new: no placed object has an inventory or is a station"
-	)
+	check(next(world.stations) == nil, "new: no placed object is a station")
 end
 
-do -- what a placed object is given
+do -- a placed object that is made a station
 	local plot = Plot.new(4, 4)
-	local early = Plot.placeObject(plot, "crate", 1, 1)
-	local world = World.new(plot, at(0, 0, 0), 0)
-	check(
-		world.placedObjectInventories[early] == nil and world.stations[early] == nil,
-		"new: a placed object that already stood on the plot has no inventory and is no station"
-	)
 	local inventory = Inventory.new(27)
-	World.addPlacedObjectInventory(world, early, inventory)
-	check(
-		world.placedObjectInventories[early] == inventory,
-		"addPlacedObjectInventory: the world keeps the inventory given, by the placed object's id"
-	)
-	check(world.stations[early] == nil, "addPlacedObjectInventory: and the placed object is no station for it")
-	check(
-		Check.raises("the placed object 1 was given an inventory already", function()
-			World.addPlacedObjectInventory(world, early, Inventory.new(3))
-		end) and world.placedObjectInventories[early] == inventory,
-		"addPlacedObjectInventory: fails for a placed object that was given one, which keeps the one it had"
-	)
-	check(
-		Check.raises("no placed object has the id 99", function()
-			World.addPlacedObjectInventory(world, 99, Inventory.new(3))
-		end) and world.placedObjectInventories[99] == nil,
-		"addPlacedObjectInventory: fails for an id that no placed object has"
-	)
+	local early = Plot.placeObject(plot, { kindId = "crate", tileX = 1, tileZ = 1, inventory = inventory })
+	local world = World.new(plot, at(0, 0, 0), 0)
+	check(world.stations[early] == nil, "new: a placed object that already stood on the plot is no station")
 
-	local ovenId = Plot.placeObject(plot, "oven", 2, 1)
+	local ovenId = Plot.placeObject(plot, { kindId = "oven", tileX = 2, tileZ = 1 })
 	local station = Station.new("oven", Inventory.new(3))
 	World.addStation(world, ovenId, station)
 	check(world.stations[ovenId] == station, "addStation: the world keeps the station given, by the placed object's id")
 	check(
-		world.placedObjectInventories[ovenId] == nil,
-		"addStation: and the placed object is given no inventory besides the station's own"
+		(plot.placedObjectsById[ovenId] :: any).inventory == nil,
+		"addStation: and puts nothing on the placed object itself"
 	)
 	check(
 		Check.raises("the placed object 2 was made a station already", function()
@@ -246,29 +228,33 @@ do -- what a placed object is given
 	end) and world.stations[99] == nil, "addStation: fails for an id that no placed object has")
 	World.addStation(world, early, Station.new("oven", inventory))
 	check(
-		world.stations[early] ~= nil and world.placedObjectInventories[early] == inventory,
-		"addStation: a placed object that was given an inventory may be made a station too"
+		world.stations[early] ~= nil and (plot.placedObjectsById[early] :: any).inventory == inventory,
+		"addStation: a placed object that has an inventory on it may be made a station too"
 	)
 
-	local plain = Plot.placeObject(plot, "stove", 3, 1)
+	local plain = Plot.placeObject(plot, { kindId = "stove", tileX = 3, tileZ = 1 })
 	check(
-		world.placedObjectInventories[plain] == nil and world.stations[plain] == nil,
-		"Plot.placeObject on the world's plot: a placed object is given nothing by being placed"
+		world.stations[plain] == nil,
+		"Plot.placeObject on the world's plot: a placed object is not made a station by being placed"
 	)
 
-	Plot.removePlacedObject(plot, early)
+	local removed = Plot.removePlacedObject(plot, early)
 	check(
-		world.placedObjectInventories[early] == nil and world.stations[early] == nil,
-		"Plot.removePlacedObject on the world's plot: the inventory and the station it was given go with it"
+		world.stations[early] == nil,
+		"Plot.removePlacedObject on the world's plot: the station it was made goes with it"
+	)
+	check(
+		removed ~= nil and (removed :: any).inventory == inventory,
+		"Plot.removePlacedObject on the world's plot: and what it had on it is still on it"
 	)
 	check(
 		world.stations[ovenId] == station,
-		"Plot.removePlacedObject on the world's plot: and another placed object keeps what it was given"
+		"Plot.removePlacedObject on the world's plot: and another placed object stays the station it was made"
 	)
-	local again = Plot.placeObject(plot, "crate", 1, 1)
+	local again = Plot.placeObject(plot, { kindId = "crate", tileX = 1, tileZ = 1 })
 	check(
-		world.placedObjectInventories[again] == nil and world.stations[again] == nil,
-		"Plot.placeObject on the world's plot: an object placed where one stood before is given nothing of the old one's"
+		world.stations[again] == nil,
+		"Plot.placeObject on the world's plot: an object placed where one stood before is not the station the old one was"
 	)
 end
 
@@ -761,7 +747,7 @@ end
 
 do -- placing an object
 	local world = newWorld()
-	local placedObjectId = Plot.placeObject(world.plot, "crate", 1, 1)
+	local placedObjectId = Plot.placeObject(world.plot, { kindId = "crate", tileX = 1, tileZ = 1 })
 	check(
 		placedObjectId ~= nil and world.plot.placedObjectsById[placedObjectId].kindId == "crate",
 		"Plot.placeObject on the world's plot: returns the id of the placed object"
@@ -773,10 +759,8 @@ do -- placing an object
 		"Plot.placeObject on the world's plot: on the tile it was asked for"
 	)
 	check(
-		placedObjectId ~= nil
-			and world.placedObjectInventories[placedObjectId] == nil
-			and world.stations[placedObjectId] == nil,
-		"Plot.placeObject on the world's plot: and it is given nothing by being placed"
+		placedObjectId ~= nil and world.stations[placedObjectId] == nil,
+		"Plot.placeObject on the world's plot: and it is not made a station by being placed"
 	)
 	check(
 		World.canPlaceObject(world, 1, 2) and not World.canPlaceObject(world, 1, 1),
@@ -784,7 +768,7 @@ do -- placing an object
 	)
 	check(not World.canPlaceObject(world, 7, 1), "canPlaceObject: false for a tile the plot does not have")
 	check(Check.errorFrom(function()
-		Plot.placeObject(world.plot, "crate", 1, 1)
+		Plot.placeObject(world.plot, { kindId = "crate", tileX = 1, tileZ = 1 })
 	end) ~= nil, "Plot.placeObject on the world's plot: fails where the plot cannot take an object")
 	check(
 		world.plot.nextId == (placedObjectId :: number) + 1,
@@ -797,7 +781,7 @@ do -- placing an object
 	World.setCharacterPosition(world, 1, at(13.01, 0, 10))
 	check(World.canPlaceObject(world, 3, 3), "canPlaceObject: true once the player has stepped off")
 	World.setCharacterPosition(world, 1, at(13, 0, 10))
-	local forced = Plot.placeObject(world.plot, "stove", 3, 3)
+	local forced = Plot.placeObject(world.plot, { kindId = "stove", tileX = 3, tileZ = 3 })
 	check(
 		world.plot.placedObjectsById[forced].kindId == "stove",
 		"Plot.placeObject on the world's plot: it does not ask whether a player stands on the tile"
@@ -806,13 +790,14 @@ do -- placing an object
 	-- A world needs no player to place in it.
 	local empty = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	check(
-		World.canPlaceObject(empty, 2, 2) and Plot.placeObject(empty.plot, "post", 2, 2) == 1,
+		World.canPlaceObject(empty, 2, 2)
+			and Plot.placeObject(empty.plot, { kindId = "post", tileX = 2, tileZ = 2 }) == 1,
 		"canPlaceObject, Plot.placeObject: work with no player in the world"
 	)
 	local nowhere = World.new(Plot.new(2, 2), at(0, 0, 0), 0)
 	local lost = World.addPlayer(nowhere, 1)
 	check(
-		lost.character == nil and Plot.placeObject(nowhere.plot, "post", 1, 1) == 1,
+		lost.character == nil and Plot.placeObject(nowhere.plot, { kindId = "post", tileX = 1, tileZ = 1 }) == 1,
 		"Plot.placeObject on the world's plot: a player with no character stands on nothing"
 	)
 end
@@ -824,7 +809,7 @@ do -- placing an object where ground items lie
 	local inside = GroundItems.spawnStack(world.groundItems, ItemStack.new("apple", 1), at(9, 0, 10.5), STILL, 0)
 	World.advanceTo(world, 140)
 	check(
-		Plot.placeObject(world.plot, "crate", 3, 3) ~= nil,
+		Plot.placeObject(world.plot, { kindId = "crate", tileX = 3, tileZ = 3 }) ~= nil,
 		"Plot.placeObject on the world's plot: (set up) a crate is placed where an apple lies"
 	)
 	local apples = groundStacks(world, "apple")
@@ -841,8 +826,10 @@ do -- placing an object where ground items lie
 	local stays = GroundItems.spawnStack(refused.groundItems, ItemStack.new("apple", 1), at(6, 0, 6.5), STILL, 0)
 	check(
 		Check.errorFrom(function()
-				Plot.placeObject(refused.plot, "post", 2, 2)
-			end) ~= nil and refused.groundItems.itemsById[stays] ~= nil,
+			Plot.placeObject(refused.plot, { kindId = "post", tileX = 2, tileZ = 2 })
+		end)
+				~= nil
+			and refused.groundItems.itemsById[stays] ~= nil,
 		"Plot.placeObject on the world's plot: a placing that fails pushes nothing"
 	)
 end
@@ -906,7 +893,8 @@ do -- taking a placed object off
 	)
 	check(inWorld(world, "fish") == 5 and inWorld(world, "crate") == 1, "throwStacksFromTile: nothing was made or lost")
 	check(
-		Plot.canPlaceObject(world.plot, 2, 2) and Plot.placeObject(world.plot, "stove", 2, 2) ~= nil,
+		Plot.canPlaceObject(world.plot, 2, 2)
+			and Plot.placeObject(world.plot, { kindId = "stove", tileX = 2, tileZ = 2 }) ~= nil,
 		"Plot.removePlacedObject on the world's plot: the tile holds nothing, so another object can be placed there"
 	)
 
@@ -1004,8 +992,8 @@ do -- taking a placed object off the plot, and throwing stacks from a tile, each
 		"Plot.removePlacedObject on the world's plot: returns the placed object"
 	)
 	check(
-		world.placedObjectInventories[ids.crate] == nil and Inventory.countItems(inside, "fish") == 5,
-		"Plot.removePlacedObject on the world's plot: the inventory it was given is the world's no longer, and holds what it held"
+		taken ~= nil and (taken :: any).inventory == inside and Inventory.countItems(inside, "fish") == 5,
+		"Plot.removePlacedObject on the world's plot: the inventory it had on it is on it still, and holds what it held"
 	)
 	check(groundItemCount(world) == 0, "Plot.removePlacedObject on the world's plot: nothing is thrown into the world")
 	check(

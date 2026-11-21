@@ -70,11 +70,15 @@ local function carriedBy(state: PlayerState.PlayerState): ItemStack.ItemStack?
 	return screenOf(state).carriedStack
 end
 
--- The inventory that a placed object was given, or the inventory of the station it was made. Nil
--- if it was given neither.
+-- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
+-- if it has neither.
 local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
 	local station = world.stations[placedObjectId]
-	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
+	if station ~= nil then
+		return station.inventory
+	end
+	return if placedObject ~= nil then placedObject.inventory else nil
 end
 
 -- The inventory inside a placed object that is known to have one.
@@ -83,15 +87,15 @@ local function insideOf(world: World.World, placedObjectId: number): Inventory.I
 end
 
 -- Stands an object of the kind `kindId` on a tile of the world's plot. An oven is made a station,
--- and any other kind is given an inventory of 3 slots.
+-- and any other kind has an inventory of 3 slots on it.
 local function place(world: World.World, kindId: string, tileX: number, tileZ: number): number
-	local placedObjectId = Plot.placeObject(world.plot, kindId, tileX, tileZ)
 	if kindId == "oven" then
-		World.addStation(world, placedObjectId, Station.new("oven", Inventory.new(3)))
-	else
-		World.addPlacedObjectInventory(world, placedObjectId, Inventory.new(3))
+		local ovenId = Plot.placeObject(world.plot, { kindId = kindId, tileX = tileX, tileZ = tileZ })
+		World.addStation(world, ovenId, Station.new("oven", Inventory.new(3)))
+		return ovenId
 	end
-	return placedObjectId
+	local placedObject = { kindId = kindId, tileX = tileX, tileZ = tileZ, inventory = Inventory.new(3) }
+	return Plot.placeObject(world.plot, placedObject)
 end
 
 -- Opens a placed object on a player's screen, beside their pack. The slots of one that is a station

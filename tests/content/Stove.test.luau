@@ -105,7 +105,7 @@ do -- place
 		station ~= nil and not Station.isBurning(station) and station.workedSeconds == 0,
 		"place: and with no fire and no work done"
 	)
-	check(world.placedObjectInventories[id] == nil, "place: a stove is given no inventory besides its station's own")
+	check((placed :: any).inventory == nil, "place: a stove has no inventory on it besides its station's own")
 
 	local second = Stove.place(world, 1, 1)
 	check(
@@ -285,7 +285,7 @@ end
 
 do -- a placed object of the stove's kind that `place` did not place
 	local world, player = newWorld()
-	local bareId = Plot.placeObject(world.plot, Stove.PLACED_OBJECT_KIND_ID, 1, 1)
+	local bareId = Plot.placeObject(world.plot, { kindId = Stove.PLACED_OBJECT_KIND_ID, tileX = 1, tileZ = 1 })
 	local message = "the placed object " .. bareId .. " is not a stove that Stove.place placed"
 	check(
 		Check.raises(message, function()

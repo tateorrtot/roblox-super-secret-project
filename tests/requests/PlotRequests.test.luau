@@ -127,11 +127,11 @@ end
 local function newWorld(): (World.World, PlayerState.PlayerState, PlacedObjectIds)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
 	local ids = {
-		bell = Plot.placeObject(world.plot, "bell", 2, 2),
-		gong = Plot.placeObject(world.plot, "gong", 3, 2),
-		vase = Plot.placeObject(world.plot, "vase", 4, 2),
-		post = Plot.placeObject(world.plot, "post", 2, 3),
-		rock = Plot.placeObject(world.plot, "rock", 3, 3),
+		bell = Plot.placeObject(world.plot, { kindId = "bell", tileX = 2, tileZ = 2 }),
+		gong = Plot.placeObject(world.plot, { kindId = "gong", tileX = 3, tileZ = 2 }),
+		vase = Plot.placeObject(world.plot, { kindId = "vase", tileX = 4, tileZ = 2 }),
+		post = Plot.placeObject(world.plot, { kindId = "post", tileX = 2, tileZ = 3 }),
+		rock = Plot.placeObject(world.plot, { kindId = "rock", tileX = 3, tileZ = 3 }),
 	}
 	local player = World.addPlayer(world, 1)
 	Inventory.setStack(player.pack, 1, ItemStack.new("wand", 1))

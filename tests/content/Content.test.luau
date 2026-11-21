@@ -130,11 +130,15 @@ local function onGround(world: World.World, itemId: string): number
 	return count
 end
 
--- The inventory that a placed object was given, or the inventory of the station it was made. Nil
--- if it was given neither.
+-- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
+-- if it has neither.
 local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
 	local station = world.stations[placedObjectId]
-	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
+	if station ~= nil then
+		return station.inventory
+	end
+	return if placedObject ~= nil then placedObject.inventory else nil
 end
 
 -- How many of one item the world holds in all: in packs, carried, standing on the plot, inside what
@@ -196,13 +200,13 @@ do -- the crate item and the crate, through the requests
 	local screen = player.screen
 	check(
 		screen ~= nil
-			and screen.otherInventory == world.placedObjectInventories[crateId]
+			and screen.otherInventory == findInside(world, crateId)
 			and World.getOpenedPlacedObjectId(world, player) == crateId,
 		"interactWithPlacedObject: the crate's inventory opens on the player's screen"
 	)
 	carryOut(world, 1, "moveFromSlotToInventory", "pack", 4, "other", 1, Crate.SLOT_COUNT)
 	check(
-		Inventory.countItems(world.placedObjectInventories[crateId], "fish") == 5,
+		Inventory.countItems(findInside(world, crateId) :: Inventory.Inventory, "fish") == 5,
 		"an inventory request puts the player's fish in the crate"
 	)
 	carryOut(world, 1, "closeScreen")
@@ -351,8 +355,8 @@ do -- whatever players' machines send, nothing raises an error and no item is ma
 	for _ = 1, 40 do
 		-- A crate holding 5 fish stands on tile 2, 2, and a stove holding 3 fish and 2 logs on tile 4, 4.
 		local world = newWorld()
-		local crateId = Crate.place(world, 2, 2)
-		Inventory.addItems(world.placedObjectInventories[crateId], "fish", 5)
+		local crateId = Crate.place(world.plot, 2, 2)
+		Inventory.addItems(findInside(world, crateId) :: Inventory.Inventory, "fish", 5)
 		local stoveId = Stove.place(world, 4, 4)
 		Inventory.setStack(world.stations[stoveId].inventory, Station.INPUT_SLOT, ItemStack.new("fish", 3))
 		Inventory.setStack(world.stations[stoveId].inventory, Station.FUEL_SLOT, ItemStack.new("log", 2))

@@ -77,7 +77,7 @@ end
 -- slot 3.
 local function newWorld(): (World.World, PlayerState.PlayerState, PlayerState.PlayerState, number)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
-	local bellId = Plot.placeObject(world.plot, "bell", 2, 2)
+	local bellId = Plot.placeObject(world.plot, { kindId = "bell", tileX = 2, tileZ = 2 })
 	local players = {}
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10) } do
 		local state = World.addPlayer(world, playerId)

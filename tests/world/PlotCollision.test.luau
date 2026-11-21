@@ -73,7 +73,7 @@ end
 
 -- Places a crate on tile 3, 3 and pushes the ground items out of that tile at the time `now`.
 local function placeCrateAndPush(plot: Plot.Plot, groundItems: GroundItems.GroundItems, now: number)
-	Plot.placeObject(plot, "crate", 3, 3)
+	Plot.placeObject(plot, { kindId = "crate", tileX = 3, tileZ = 3 })
 	PlotCollision.pushGroundItemsOutOfTile(groundItems, plot, CORNER, 3, 3, now)
 end
 
@@ -120,7 +120,7 @@ end
 do -- which side a ground item is pushed out of
 	-- The nearest side has a placed object against it, so the next nearest is used.
 	local plot, groundItems = newPlot()
-	Plot.placeObject(plot, "post", 2, 3)
+	Plot.placeObject(plot, { kindId = "post", tileX = 2, tileZ = 3 })
 	lyingAt(groundItems, "apple", 9, 0, 10.5)
 	placeCrateAndPush(plot, groundItems, 0)
 	local pushed = groundStacks(groundItems, "apple")[1]
@@ -159,7 +159,7 @@ do -- which side a ground item is pushed out of
 
 	-- A side along z has a placed object against it, so it is not used either.
 	local alongZPlot, alongZ = newPlot()
-	Plot.placeObject(alongZPlot, "post", 3, 4)
+	Plot.placeObject(alongZPlot, { kindId = "post", tileX = 3, tileZ = 4 })
 	lyingAt(alongZ, "apple", 10, 0, 11)
 	placeCrateAndPush(alongZPlot, alongZ, 0)
 	check(
@@ -170,7 +170,7 @@ do -- which side a ground item is pushed out of
 	-- Every side has a placed object against it, so the stack is spawned on top.
 	local walledPlot, walled = newPlot()
 	for _, tile in { { 2, 3 }, { 4, 3 }, { 3, 2 }, { 3, 4 } } do
-		Plot.placeObject(walledPlot, "post", tile[1], tile[2])
+		Plot.placeObject(walledPlot, { kindId = "post", tileX = tile[1], tileZ = tile[2] })
 	end
 	lyingAt(walled, "apple", 9, 0, 10.5)
 	placeCrateAndPush(walledPlot, walled, 0)
@@ -185,7 +185,7 @@ do -- which side a ground item is pushed out of
 	local function pushedFromMiddle(blocked: { { number } }): GroundItems.GroundItem
 		local tiePlot, tie = newPlot()
 		for _, tile in blocked do
-			Plot.placeObject(tiePlot, "post", tile[1], tile[2])
+			Plot.placeObject(tiePlot, { kindId = "post", tileX = tile[1], tileZ = tile[2] })
 		end
 		lyingAt(tie, "fish", 10, 0, 10)
 		placeCrateAndPush(tiePlot, tie, 0)
@@ -220,7 +220,7 @@ do -- which side a ground item is pushed out of
 	-- The edge of the plot: there is nothing off the plot to be in the way.
 	local cornerPlot, corner = newPlot()
 	lyingAt(corner, "apple", 0.5, 0, 2)
-	Plot.placeObject(cornerPlot, "crate", 1, 1)
+	Plot.placeObject(cornerPlot, { kindId = "crate", tileX = 1, tileZ = 1 })
 	PlotCollision.pushGroundItemsOutOfTile(corner, cornerPlot, CORNER, 1, 1, 0)
 	check(
 		isAt(groundStacks(corner, "apple")[1], 2 - TOUCHING, 0, 2),
@@ -230,7 +230,7 @@ do -- which side a ground item is pushed out of
 	-- The plot's corner is not at the origin.
 	local movedPlot, moved = newPlot()
 	lyingAt(moved, "apple", 109, 50, 210.5)
-	Plot.placeObject(movedPlot, "crate", 3, 3)
+	Plot.placeObject(movedPlot, { kindId = "crate", tileX = 3, tileZ = 3 })
 	PlotCollision.pushGroundItemsOutOfTile(moved, movedPlot, at(100, 50, 200), 3, 3, 0)
 	check(
 		isAt(groundStacks(moved, "apple")[1], 110 - TOUCHING, 50, 210.5),

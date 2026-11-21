@@ -70,11 +70,15 @@ local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): b
 	return stack ~= nil and stack.itemId == itemId and stack.count == count
 end
 
--- The inventory that a placed object was given, or the inventory of the station it was made. Nil
--- if it was given neither.
+-- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
+-- if it has neither.
 local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
 	local station = world.stations[placedObjectId]
-	return if station ~= nil then station.inventory else world.placedObjectInventories[placedObjectId]
+	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
+	if station ~= nil then
+		return station.inventory
+	end
+	return if placedObject ~= nil then placedObject.inventory else nil
 end
 
 -- The inventory inside a placed object that is known to have one.
@@ -91,10 +95,10 @@ end
 -- with 12 logs and 4 apples in their pack.
 local function newWorld(): (World.World, number, number)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 0)
-	local crateId = Plot.placeObject(world.plot, "crate", 2, 2)
-	World.addPlacedObjectInventory(world, crateId, Inventory.new(27))
+	local crate = { kindId = "crate", tileX = 2, tileZ = 2, inventory = Inventory.new(27) }
+	local crateId = Plot.placeObject(world.plot, crate)
 	Inventory.setStack(insideOf(world, crateId), 1, ItemStack.new("fish", 5))
-	local ovenId = Plot.placeObject(world.plot, "oven", 4, 2)
+	local ovenId = Plot.placeObject(world.plot, { kindId = "oven", tileX = 4, tileZ = 2 })
 	World.addStation(world, ovenId, Station.new("oven", Inventory.new(3)))
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
