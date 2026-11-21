@@ -13,7 +13,7 @@ local ItemStack = require(Shared.items.ItemStack)
 local StackIcon = {}
 
 export type StackIcon = {
-	--- The coloured block. It is hidden while there is no stack to show.
+	--- The grey block. It is hidden while there is no stack to show.
 	read block: Frame,
 	--- The item's name, across the block.
 	read nameLabel: TextLabel,
