@@ -7,17 +7,18 @@ As of the end of 2026-11-20. This file holds only what is true now. What is over
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | On the branch `placed-objects`, cut from `dropped-items`, which was cut from `first-pieces`. None is merged, and nothing is pushed |
-| **Checked** | `lune run tools/check` passes, with 2,244 test checks. The play test passed 93 of 93 in Studio on the last commit that touched the server's or the client's scripts. The rules have changed since, and it was not run again |
+| **Checked** | `lune run tools/check` passes, with 2,247 test checks. The play test passed 93 of 93 in Studio one commit before the last. The last commit changed only the rules, and it was not run again |
 | **Not checked** | A phone. A gamepad. Two players. A real server. How a thrown item looks from another player's machine |
 | **Waiting on the user** | To read the code. Then their feedback on the game. The open questions are in `asked-of-the-user.md` |
 | **Approved, not built** | Prediction on the player's machine (`next.md`) |
 
 ## With the user
-- **They have reviewed the code eleven times,** ten of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
-- **The eleventh was of one script, `CrateItem`:** "who said an item was always going to be tied to a player. Or a hotbar?" It now knows neither. In the same message they proposed that what a character holds be a Roblox `Tool`, apart from the items; asked who said tiles were flat; and asked to be shown what moving a placed object's things out of `World` would look like. Claude showed it. None of the three is built, and each waits on their word (`asked-of-the-user.md`).
+- **They have reviewed the code twelve times,** eleven of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **The twelfth was of Claude's answers to the eleventh.** They approved a crate carrying its own inventory, which is built. They asked what a station is and why the word is in the code; why `CrateItem` does not hold the crate item's id, stack size and look; whether picking up could leave the ground items' module, which it has; and how free placement would work. Claude proposed two next pieces and asked which comes first (`asked-of-the-user.md`).
+- **The eleventh was of one script, `CrateItem`:** "who said an item was always going to be tied to a player. Or a hotbar?" It now knows neither. In the same message they proposed that what a character holds be a Roblox `Tool`, apart from the items, and asked who said tiles were flat. Neither is built, and each waits on their word (`asked-of-the-user.md`).
 - **The tenth was about how Claude breaks a problem up:** "Systems shouldnt know about eachother. Dont pull out abstractions. ... You compose simple things and systems together and use glue code." It began with a table Claude had kept, `PlaceableItems`, which let an item in the hand do one thing only.
 - **What was built in answer** is in `history/2026-11-20-scripts-and-input.md`: a script for each item and for each kind of placed object, the game's own things in a folder that no system requires, and the clicks on the world on Roblox's input actions. They have read none of it. Its shared machinery was written without being shown first, on their "Just keep it generic" and "Yes that sounds good": the names and shapes that are Claude's are in `claudes-calls.md`.
-- **What they said to leave is left:** `World` stays one big piece of glue, and `Station` stays a furnace until a second process shows what the kinds share. A reviewer who applied their own test found `World` to be the largest thing still fused (below).
+- **`World` stays one piece of glue,** by their word, and is getting smaller: it no longer keeps a crate's inventory. `Station` was to stay a furnace until a second process showed what the kinds share; they have since asked why the word is in the code.
 - **They said yes to prediction on the player's machine,** "As long as its following the rest of the codebases standards".
 - **Quality comes before speed.** Their words are at the top of `docs/working/engineering-rules.md`.
 - **They judge the code by tests of their own:** a class must make sense from its bare names with no context; deleting one directory must not break the one beside it; each piece could be a decoupled FoxFabric addon.
@@ -40,12 +41,13 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 - **Break.** A short right click on a crate or a stove breaks it. It comes off the plot and leaves a crate or a stove on the ground as an item, thrown upwards and a little outwards, and so is each stack that was in it. Holding the right button, or turning the camera with it, breaks nothing.
 
 ## What has been checked
-- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,244 test checks in 33 files, and the demo.
-- **The folders are systems, glue and things** (`docs/code/pieces.md`). `python tools/delete_directory_test.py`: deleting `content` breaks none of the rules; deleting `plots`, `stations`, `groundItems` or `players` breaks only `world`, `requests` and `content`, which are built on them.
+- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,247 test checks in 33 files, and the demo.
+- **The folders are systems, glue and things** (`docs/code/pieces.md`). `python tools/delete_directory_test.py`: deleting `content` breaks none of the rules; deleting a system breaks only the glue and the things built on it; and deleting `inventory` no longer breaks `groundItems`.
 - **A script is held to its functions by the type checker.** A stove whose `interact` took a string was refused at the line that registers it.
-- **Mutation testing** of each piece changed on 2026-11-20 leaves only changes no caller could see. From the scripts and the input: 146 of 146 planted bugs caught, in `PlotRequests`, `Crate`, `Stove`, `ItemScripts`, `PlacedObjectScripts`, `Content`, `CrateItem` and `StoveItem`. From the split before it: `PlayerState` 36 of 36, `RecipeRegistry` 38 of 38, `Plot` 80 of 81, `World` 159 of 161, `PlayerSnapshot` 25 of 27, `Inventory` 202 of 209. Earlier that day: `GroundItems` 133 of 136, `Direction` 13 of 13, `PlotCollision` 80 of 81, `InventoryRequests` 136 of 140, `Signal` 22 of 22.
-- **The play test** (`python tools/playtest.py`) passed 93 of 93 in Studio on 2026-11-20, on the last code commit. It drives a test character through every action in the list above, checks what the item in hand shows and what the outline is around, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
+- **Mutation testing** of each piece changed on 2026-11-20 leaves only changes no caller could see. The last run of each: `Crate` 32 of 32, `CrateItem` 10 of 10, `Stove` 27 of 27, `StoveItem` 10 of 10, `Plot` 80 of 81, `GroundItems` 140 of 141, `World` 153 of 155, `PlotRequests` 46 of 46, `ItemScripts` 14 of 14, `PlacedObjectScripts` 10 of 10, `Content` 9 of 9, `PlayerState` 36 of 36, `RecipeRegistry` 38 of 38, `PlayerSnapshot` 25 of 27, `Inventory` 202 of 209, `Direction` 13 of 13, `PlotCollision` 80 of 81, `InventoryRequests` 136 of 140, `Signal` 22 of 22.
+- **The play test** (`python tools/playtest.py`) passed 93 of 93 in Studio on 2026-11-20, on the commit that moved picking up into the world. The commit after it changed only the rules. It drives a test character through every action in the list above, checks what the item in hand shows and what the outline is around, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
 - **Six classes were read by helpers shown nothing but their names,** and three reviewers read the work. 28 findings: 14 mended, 1 corrected in the notes, 13 left. What was left is below, and the whole account is in `history/2026-11-20-scripts-and-input.md`. The user is stricter than any reader: the names are for their read.
+- **The crate and the pick-up were reviewed by two helpers, and three classes read cold:** 16 findings, 7 mended, 8 left, 1 not agreed with (`history/2026-11-20-crate-and-pick-up.md`). What was left is below.
 - **The server's and the client's scripts** were type-checked by hand with Roblox's definitions: seven reports in two places, all older than this work (`docs/code/checks.md`).
 - **What Roblox's input actions do** was measured in Studio before they were used (`docs/roblox/input.md`).
 - **By hand, on 2026-11-19,** driving a test character through Studio's connector: that a player keeps their pack when their character dies; that ground items vanish after five minutes; that a player who leaves while carrying a stack causes no error.
@@ -60,15 +62,20 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 
 ## Where general code still decides for every kind of thing
 Found by the reviewer who applied the user's test, and left. Each is a place where adding a thing would mean changing a system or the glue.
-- **`World` keeps a store for each sort of thing a placed object can be given:** inventories, stations. A kind that keeps or does something new over time needs four changes to `World`. This is the largest. The user said to leave `World` as one piece of glue; the shape that would mend it is in `docs/game/placed-objects.md`.
+- **`World` keeps a station for each stove, and advances every one.** A crate carries its own inventory; a stove does not yet carry what it is made of. A kind that does something new as time passes needs `World` changed. It is the next piece (`next.md`).
+- **The word `station` is in the code for one furnace:** a folder, a type, two registries keyed by a kind of station, `Stove.STATION_KIND_ID`, a store in `World`, and a field in what a player's machine is told. The user asked why.
 - **What a player's machine is told has a field for a station's progress,** and the inventory screen draws the furnace's gauges for any other inventory of three slots. A second kind of screen needs the screens to be the kind's own.
 - **The server's `PlotParts` makes any station that burns glow.**
 - **An item's script is told of one thing: a bare tile interacted with.** An item used on the open air, or on a placed object, needs a new request and a new function of the script. That is one change for each new sort of target, and none for each new item.
 - **An item's script can say only how many of itself were used up.** A bucket that fills, or a tool that wears, needs more.
 - **How far a character reaches is one number in the request, for every thing.**
 - **The two ghosts on the player's machine each ask reach for themselves,** while the server asks it once in the request. `Main.client` already works out what is in reach, for the outline.
-- **A tile is two loose numbers, `tileX` and `tileZ`, in twelve files,** and a placed object is a cube on one tile. The user asked who said tiles were flat: Claude did.
-- **`GroundItems.moveNearbyStacksToInventory` joins two systems in one function,** so `groundItems` requires `inventory`. Picking up belongs in the glue.
+- **A tile is two loose numbers, `tileX` and `tileZ`, in twelve files,** and a placed object is a cube on one whole-numbered tile. The user asked who said tiles were flat: Claude did. They had said the grid should be a guide and not a boundary (`docs/game/decisions.md`).
+- **An item's facts are in three files, joined by its id as a string:** its row in `ItemDefinitions`, its look in `ItemLooks`, and its script. `Crate.ITEM_ID_WHEN_BROKEN` spells the id again. The user looked for them in `CrateItem`.
+- **Picking up is eight private lines of `World`,** which grew by them.
+- **`GroundItems` holds how near a picker must be, and how long a ground item waits.** A second thing that picks up, with a reach of its own, would need them handed in.
+- **`World` decides when a screen on any placed object closes:** when the object is taken off the plot, and when the player walks away.
+- **`PlaceholderWorld` casts a placed object to a crate** to reach its inventory. A lookup in `Crate` would spare it, with the next change to the server's scripts.
 - **`PlayerState` is a pack, a hotbar, an open screen and a character's position in one record.**
 - **`PlaceholderWorld`, on the server, names the crate, the stove and five items.** It goes when there is a real map.
 - **What each item shows while selected is a table in `Main.client`,** asked every frame. It is a second list of the game's things, beside `Content.register`.

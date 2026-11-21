@@ -12,13 +12,13 @@ SYSTEMS: each does one job and knows no other system
   plots        Plot                                 a grid of tiles and the objects placed on it
   stations     Station, StationProgress,            a fire and a recipe worked over time: a furnace, and no more
                RecipeRegistry, FuelRegistry         general than that; which item cooks into which, and what burns
-  groundItems  GroundItems                          stacks loose in the world: spawned, merged, picked up, expired
+  groundItems  GroundItems                          stacks loose in the world: spawned, merged, taken from, expired
   players      PlayerState                          one player: pack, hotbar, open screen, where their character is
   (top level)  Position, Direction, Signal          a point; a way; the callbacks a thing calls when it changes
 
 GLUE: joins systems, and holds no thing of the game
-  world        World            one running game: the plot, the ground items, the players, and what each
-                                placed object was given
+  world        World            one running game: the plot, the ground items, the players, picking up,
+                                and the station that each stove was made
                PlotCollision    what gives way when an object is placed: ground items leave the tile
                PlayerSnapshot   what a player's machine is told
   requests     InventoryRequests, PlotRequests, Requests, Messages   what a player's machine may ask for
@@ -27,7 +27,7 @@ GLUE: joins systems, and holds no thing of the game
   save         SaveData         a player's pack as stored data. Nothing stores it yet
 
 THINGS: the game's own, and the one place that names them
-  content      Crate, Stove                         a kind of placed object each: what it is given, and its script
+  content      Crate, Stove                         a kind of placed object each: what it has on it, and its script
                CrateItem, StoveItem                 an item's script each
                ItemDefinitions, RecipeDefinitions, FuelDefinitions   written rows, placeholders
                ItemLooks, PlacedObjectLooks         how each is shown while it has no art
@@ -50,7 +50,7 @@ THINGS: the game's own, and the one place that names them
    - For a placed object: it asks `PlacedObjectScripts` for the script of the object's kind, and calls its `interact` or `breakPlacedObject`.
    - For a tile: it asks `ItemScripts` for the script of the item in the selected hotbar slot, calls its `interactWithTile`, and takes out of that slot as many items as the script says were used up.
 3. The script does the rest, by calling systems. `CrateItem.interactWithTile` asks whether an object can stand on the tile, calls `Crate.place`, and returns 1. It knows no player and no hotbar. `Crate.breakPlacedObject` takes every stack out of the crate's inventory, takes the crate off the plot, and has the world throw a crate item and those stacks from its tile.
-4. The plot fires `placedObjectRemoved`. The world closes the screens open on the crate, and drops the inventory it kept for it.
+4. The plot fires `placedObjectRemoved`. The world closes the screens open on the crate. The crate's inventory was on the crate itself, and goes with it.
 
 Nothing happens for a thing with no script, or whose script lacks the function. A request, a registry and a system each know nothing of crates.
 
@@ -80,11 +80,14 @@ On the server:
 
 `PlotCollision.pushGroundItemsOutOfTile` is the one rule about motion that is ours: when an object is placed, it takes each ground item lying where the object now stands and spawns it again just outside the nearest free side. The world calls it when its plot says that an object was placed.
 
+## How a ground item is picked up
+`World.advanceTo` asks `GroundItems.getIdsInPickupReach` for the ground items in pickup reach of each character, nearest first. For each one it adds the stack to the player's pack with `Inventory.addItems`, and takes as many as went in out of the ground item with `GroundItems.takeFromItem`. `groundItems` and `inventory` do not require each other.
+
 ## How one rule tells another
-`Plot.placeObject` and `Plot.removePlacedObject` fire the plot's two signals, `placedObjectAdded` and `placedObjectRemoved`. The world connected to both when it was made: for an object placed it pushes ground items out of the tile, and for one taken off it closes the screens open on it and drops the inventory and the station it was given. The plot knows nothing of screens, stations, inventories or ground items.
+`Plot.placeObject` and `Plot.removePlacedObject` fire the plot's two signals, `placedObjectAdded` and `placedObjectRemoved`. The world connected to both when it was made: for an object placed it pushes ground items out of the tile, and for one taken off it closes the screens open on it and drops the station it was made. The plot knows nothing of screens, stations, inventories or ground items.
 
 ## What is not yet a system of its own
-`World` is the only piece of the rules that knows `players`, `plots`, `stations` and `groundItems` together. It holds rules that could live in smaller pieces: reach, that every station is advanced, and a store for each sort of thing a placed object can be given. The user said to leave it as one piece of glue for now. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list, and `docs/game/placed-objects.md` ends with what the game still decides for every kind of placed object.
+`World` is the only piece of the rules that knows `players`, `plots`, `stations` and `groundItems` together. It holds rules that could live in smaller pieces: reach, picking up, and that every stove's station is kept and advanced. The user said to leave it as one piece of glue for now. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list, and `docs/game/placed-objects.md` ends with what the game still decides for every kind of placed object.
 
 Nothing on the server knows that a mouse exists. Nothing is applied on the player's machine before the server answers (`docs/status/next.md`).
 

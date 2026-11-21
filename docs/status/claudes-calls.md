@@ -48,14 +48,21 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
 - **Items and placed objects as two systems, 2026-11-20.** The direction, the name `PlacedObject` and a script for each kind are the user's (`docs/game/placed-objects.md`). These details are Claude's.
   - **A kind is a module with `place`, `interact` and `breakPlacedObject`.** The last two are its script: they are what happens when a player interacts with an object of the kind or breaks one, so a kind decides whether its object comes off the plot at all.
   - **A kind's objects are made by its own `place`,** called directly. The kind is not told by a signal that one was placed. An object put on the plot some other way has nothing, and its kind's other functions fail for it.
-  - **What a kind gives an object is kept by the world, by the placed object's id,** in a store for each sort of thing: inventories, stations. A new sort of thing needs a new store in `World`. The world drops them when the object leaves the plot, whatever took it off.
+  - **What a kind gives an object is kept by the world, by the placed object's id,** in a store: stations, and since 2026-11-20 no longer inventories, which a crate carries itself. The world drops them when the object leaves the plot, whatever took it off.
   - **What breaking leaves is the kind's to throw:** it takes the stacks out before it takes the object off the plot.
   - **Which placed object a screen was opened on is the world's to remember, by the screen,** so that `PlayerState` names no placed object. `PlayerState.openScreen` is one function, with another inventory beside the pack if one is given.
   - **`PlaceableItems` was a table of item id and kind id.** The user asked why it still existed, and it is gone (below).
   - **`PlacedObjectLooks` is kept apart from the kinds,** as `ItemLooks` is from the items. Both go when there is art.
   - **A stove's station has a kind of its own,** `STATION_KIND_ID`. Recipes are written for a kind of station, and the registry no longer checks that a station is an item.
-  - **The names:** `kindId`; `tileX` and `tileZ`; `widthInTiles` and `depthInTiles`; `CHARACTER_REACH`; `PLACED_OBJECT_KIND_ID` and `ITEM_ID_WHEN_BROKEN`; `throwStacksFromTile` and its two speeds; `addPlacedObjectInventory`, `addStation`, `openPlacedObjectScreen`, `getOpenedPlacedObjectId`; `Inventory.takeEveryStack`.
+  - **The names:** `kindId`; `tileX` and `tileZ`; `widthInTiles` and `depthInTiles`; `CHARACTER_REACH`; `PLACED_OBJECT_KIND_ID` and `ITEM_ID_WHEN_BROKEN`; `throwStacksFromTile` and its two speeds; `addStation`, `openPlacedObjectScreen`, `getOpenedPlacedObjectId`; `Inventory.takeEveryStack`.
   - **The work is on a branch of its own,** `placed-objects`, cut from `dropped-items`.
+- **A crate carries its inventory, and picking up is the world's, 2026-11-20.** The direction is the user's, in their twelfth review. These details are Claude's.
+  - **`Plot.placeObject` takes the placed object's table and keeps it,** frozen. A kind may put more fields on it. The plot reads `tileX` and `tileZ` only, and `kindId` is on every placed object for whoever finds its script.
+  - **`Crate.Crate` is `Plot.PlacedObject & { inventory }`,** and a crate is known by its kind and by the inventory on it. Nothing but the field gives a crate's inventory.
+  - **`Crate.place` takes the plot, not the world.** `Stove.place` still takes the world.
+  - **`GroundItems.getIdsInPickupReach` and `GroundItems.takeFromItem`,** in place of the function that filled an inventory. The pick-up delay is inside the first, as a rule of the game. The second fails for an id that no ground item has, as `Inventory.takeFromSlot` fails for a slot.
+  - **Picking up is private to `World`,** not a module of its own beside `PlotCollision`.
+  - **How near a picker must be, and the delay, stayed in `GroundItems`.**
 - **A script for each thing, and the world's input, 2026-11-20.** The direction is the user's, in their tenth review. The machinery was written without being shown first, on "Just keep it generic", so every detail here is Claude's.
   - **The word `script`,** for the functions that say what one item or one kind of placed object does: `ItemScript`, `PlacedObjectScript`. It is the user's word for it, and in Roblox a `Script` is an Instance, which a reviewer flagged.
   - **Two registries, `ItemScripts` and `PlacedObjectScripts`, each with `register` and `find`,** kept beside the requests that call them. A script's functions may each be left out. The other shape considered was one registry for each thing a player can do.

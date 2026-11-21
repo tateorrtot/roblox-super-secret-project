@@ -34,6 +34,7 @@ Claude was building dropped items and was about to add a lighter gravity, custom
 
 - **The fast checks run after every change.** `lune run tools/check` takes under a minute and does not touch Studio.
 - **The play test runs once, when a turn's code changes are done.** It takes about four minutes and drives Studio with the mouse and the keyboard, so the user sees it, and their own use of the PC can spoil it. Say so before starting it, and say what to look for: they offered to watch with their hands off ("Go ahead ill watch you").
+- **The play test comes last: after the helpers have reviewed the work and what they found is mended.** On 2026-11-20 Claude started it while two reviewers were still reading, and their findings then asked for changes. A change to a server or client script after the play test needs it run again.
 - **Commits are the checkpoints.** If the play test fails, find the cause before running it again. A short trace of the one thing that failed takes half a minute, where the whole test takes four. On 2026-11-20 two such traces showed that a failure came from where the test character had spawned, and not from the code.
 - **Read a result before building on it.** Claude once chained a commit after a play test run and committed a failure unread.
 - **Quality comes before speed.** The user, later that day: "quality is a lot more important than speed!" Their words are at the top of `engineering-rules.md`. A turn may be long when the work needs it: say early what is taking the time, and keep saying where things are.

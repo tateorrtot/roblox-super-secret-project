@@ -35,7 +35,7 @@ How they picture the furnace's screen: a background, three slots laid out as fue
 ## What follows
 - **Items and placed objects are two systems.** A thing in a slot is an item. A thing standing on a plot is a placed object. Neither knows the other.
 - **Each kind of placed object has a script of its own,** and what that kind does stays inside it. The rest of the game knows that a placed object was interacted with or broken, and nothing of what follows.
-- **A placed object has nothing but its kind and its tile.** Its kind's script gives it more: an inventory, a station, or anything else.
+- **A placed object has its kind and its tile, and what its kind composes it of:** an inventory, a process, or anything else.
 - **A thing held in the hand can open a screen too,** or show something with no screen at all.
 - **Nothing is made general ahead of the things that need it.**
 - **A crate that is broken spills what is in it.** That is the crate's own doing, and says nothing of a sack or a cage.
@@ -47,14 +47,14 @@ Three kinds, then: one that works on what is inside it; one that is worked on by
 
 ## Where the code is
 Built on 2026-11-20, on the branch `placed-objects`. How it is put together is in `docs/code/pieces.md`.
-- **A placed object is a kind and a tile.** `plots` requires neither `items` nor `inventory`.
+- **A placed object is a kind, a tile, and whatever its kind put on it.** The plot keeps the whole table and reads only the tile. `plots` requires neither `items` nor `inventory`.
 - **Each kind is a module in `src/shared/content`:** `Crate` and `Stove`. Each has `place`, `interact` and `breakPlacedObject`, and says in its own file what they do. The last two are the kind's script, which `PlacedObjectScripts` holds and the requests call.
-- **What a kind gives its objects is kept by the world,** by the placed object's id, and goes when the object is taken off the plot.
+- **A crate carries its own inventory,** on the placed object that `Crate.place` builds. The user, 2026-11-20: "a crate basically being composed to have an inventory is fantastic." A stove's station is still kept by the world, by the placed object's id.
 - **An item that places an object has a script of its own:** `CrateItem` and `StoveItem`, which `ItemScripts` holds. No table says which items place. The user asked why one still did, on 2026-11-20 (`docs/working/code-reviews/2026-11-20-9-simple-things-and-glue.md`).
 
 What the game still decides for every kind alike, each for the piece named:
 - **A screen is a pack, another inventory and a furnace's gauges.** The player's machine draws a grid, or the furnace if the inventory has three slots. Any other screen needs the screens to be the kind's own.
-- **Over time, the one thing a placed object can do is be a furnace:** the world advances every `Station`. `Station` is a furnace under a general name, and the user said to leave it until a second process shows what the kinds share.
+- **Over time, the one thing a placed object can do is be a furnace:** the world advances every `Station`. `Station` is a furnace under a general name, and the user said to leave it until a second process shows what the kinds share. On 2026-11-20 they asked why the noun is in the code at all (`docs/working/code-reviews/2026-11-20-11-where-is-the-item.md`).
 - **A placed object is a cube that fills one tile.**
 - **An item's script is told of one thing only: that a bare tile was interacted with.** That was all the crate and the stove needed. A wand cast at a creature, at a placed object or at nothing needs a function for each, added when the wand is.
 - **The item in hand takes no part when a placed object is interacted with or broken,** though the kind's script is handed the player and could look. Which of the two answers first, the object or the item, is not decided: nothing needs it yet.

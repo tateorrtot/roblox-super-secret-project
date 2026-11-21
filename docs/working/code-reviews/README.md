@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code eleven times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code twelve times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 The number in a file's name counts the reviews of 2026-11-20, so it is one less than the review's place in this list.
 
@@ -16,14 +16,18 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 | 8 | `2026-11-20-7-the-item-decides.md` | "Shouldnt it be the item itself that determines what happens when it breaks?" Composition, not inheritance. "You cant just... invent nouns out of nowhere". Roblox's word, or Godot's. "Did you fix what they found?" |
 | 9 | `2026-11-20-8-two-systems.md` | Items and placed objects are "two v e r y different systems that shouldnt rely on or mention eachother". Glue lives outside both. Roblox's style. "Why? Just why this class name?" A question they could not read: "Uh what? Im confused" |
 | 10 | `2026-11-20-9-simple-things-and-glue.md` | "why do PlaceableItems still exist". Items, and events that code is attached to: "Just keep it generic." "Systems shouldnt know about eachother. Dont pull out abstractions." Compose with glue; the FoxFabric-addon test; "You dont make something for every combination" |
+| 12 | `2026-11-20-11-where-is-the-item.md` | "Does CrateItem not like, extend Item?" An item's id, stack size and look were not in its file. "what is a station...? ... Is it defined in the codebase? If it is, where? Why?" A crate composed with an inventory: "fantastic". The rigid grid is "Bloxburg's greatest flaw" |
 | 11 | `2026-11-20-10-who-said.md` | "who said an item was always going to be tied to a player. Or a hotbar?" Things stay dumb. The tool in the hand is not the item. Glue is fine; one module requiring another is not. "who said tiles werent 3D?" Two sentences they could not read |
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
-Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read.
+Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh.
 
 ## What to check before showing them code
-These are Claude's readings of the eleven reviews. The quotes are in the files.
+These are Claude's readings of the twelve reviews. The quotes are in the files.
+
+- **Say where every fact of a thing lives.** They looked in `CrateItem` for the crate item's stack size, and it was a row in another file. A thing spread over files and joined by a string is hard to find, however decoupled the files are.
+- **No noun for a category before the category has things in it.** `Station` was their word for an idea, and Claude made it a folder and a type for one furnace: "the noun station would be more like a vague idea than actually in the codebase?" Name a piece for what it is.
 
 - **Read each class alone,** as `python tools/bare_names.py <Module>` prints it: its name and its members' names, and nothing else. Each name must say what it is, or what it acts on and where. If you would have to ask "... what?", so will they. A guess is a failure.
 - **A class is a noun.** If no noun works, the class is wrong.

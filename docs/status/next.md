@@ -4,16 +4,31 @@ The work that is approved or owed, in the order Claude means to do it. What is o
 
 On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
-## 0. If the user says so: `World` stops keeping what a placed object is given
-Shown to them on 2026-11-20, when they asked to see it (`asked-of-the-user.md`). They had said to leave `World` as one piece of glue. A reviewer applying their tenth review found it the largest thing still fused: a store for inventories, a store for stations, and a loop that advances every station.
-- **Step 1, what was shown:** a kind's `place` makes the object itself, with what it has on it, and hands it to the plot. The plot reads only its kind and its tile. `World` loses its two stores, the two functions that fill them, and the two lines that empty them.
-- **Step 2, time:** a kind's script may have a third function, called when time passes, as a Godot node may have `_process`. `World` says that time passed and no longer knows what a station is. Who calls the function is the one choice left in it.
+## 0. The stove carries what it is made of, and `station` leaves the code
+The user approved the first half on 2026-11-20, and it is built: a crate carries its inventory. Of the second half they asked what a station is, and why the code has the word. Claude asked whether this or 0a comes first (`asked-of-the-user.md`).
+- **What it should leave:** a stove that `Stove.place` builds as a placed object with its fire and its three slots on it; `World` with no store of stations and no loop over them; the furnace named for what it is; no "kind of station".
+- **Time:** a kind's script may have a function that is called when time passes, as a Godot node may have `_process`. Who calls it is the one choice in it.
+- **It is shared machinery,** so its shape is shown to the user before it is written.
 - **Later, with screens:** what a player's machine is told of a stove, and the glow, become the stove's own.
+
+## 0a. If the user says so: one table for each item
+Proposed on 2026-11-20, when they looked in `CrateItem` for the crate item's stack size and did not find it.
+- **An item is one table:** its id, its stack size, its name and colour, and its functions if it has any. One that does something has a file of its own, and the rest are rows in one list.
+- `Content.register` hands each registry the part it keeps. `ItemDefinitions`, `ItemLooks` and the `ITEM_ID` constants go.
+- **Roblox's own answer** is an Instance with Attributes and a script beneath it, edited in Studio as a Godot resource is in the Inspector. It will not do while the rules are plain Luau, tested outside Studio, and the place is not saved.
 
 ## 0b. If the user says so: what a character holds is a Roblox `Tool`
 Their proposal of 2026-11-20. Items stay a system of their own; the held tool is another; glue says which tool a selected stack puts in the hand.
 - **First, measure in Studio** the five things Roblox's documentation leaves unsaid (`docs/roblox/input.md`). It takes the mouse for a few minutes.
 - It would give a thing shown in the hand to every player, and `Activated` on a mouse, a touch screen and a gamepad, which the game's own input does not cover.
+
+## 0c. When the user decides it: where a placed object stands
+They asked how free placement would work, and called the rigid grid Bloxburg's greatest flaw. They had already said the grid should be "a pure guideline rather than a set boundary" (`docs/game/decisions.md`).
+- **Free placement:** a placed object has a position, a turn and a size, and it can stand where its box overlaps no other. Snapping to a grid, to a neighbour's edge or to a socket is a help for the hand, worked out on the player's machine. The server asks only whether the box is free.
+- **A finer grid** keeps whole numbers and right angles: smaller cells, and an object that covers several.
+- **What Roblox has:** every part has a `CFrame` and a `Size`, and `Workspace:GetPartBoundsInBox` says what a box overlaps. The rules are plain Luau with no Roblox calls, so either the overlap test is ours, about thirty lines for boxes turned about the vertical, or the server's Roblox side answers it.
+- **What it costs:** "what stands over this" and "what is in front of this", which the processes they want lean on, are neighbouring cells on a grid, and a search in a box without one. Helpers walking a plot need another way to find their path.
+- **The first step is the same either way:** where a placed object stands becomes one value that only `Plot` looks inside. Today `tileX` and `tileZ` pass through twelve files.
 
 ## 1. The keys onto Roblox's input actions
 The clicks on the world are input actions; E, Q, 1 to 9 and the mouse on the inventory screen still go through `UserInputService` (`docs/roblox/input.md`).
@@ -46,7 +61,6 @@ Each starts with one precise question to them, and is built as small pieces. The
 ## 5. Small things owed to the rules
 - **The server's and the client's scripts in `lune run tools/check`.** They can be type-checked now, and a run on 2026-11-20 found nothing new: seven reports in two places, both older (`docs/roblox/studio.md`). Mend those two, then add the check.
 - **A pass over the names the audit of 2026-11-20 found,** in what was not rewritten: `Main.server`, `Main.client`, `PlaceholderWorld` and the private helpers. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
-- **Picking up, moved into the glue.** `GroundItems.moveNearbyStacksToInventory` joins two systems in one function, so `groundItems` requires `inventory`. `World` already calls it for each player: the ground items could hand over a stack and take back what did not fit. About fifty checks in `tests/groundItems` follow it.
 - **`PlaceholderWorld`'s starting crate, stove and items** belong with the game's things in `src/shared/content`, or go with the placeholder map.
 - **Five comments in the systems that use the game's own things as examples:** `ItemRegistry`, `Plot`, `Station`, `RecipeRegistry` and `PlayerSnapshot`.
 - **A phone.** Whether a tap also fires the input action bound to the left mouse button, which would interact twice.
