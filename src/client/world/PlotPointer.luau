@@ -2,8 +2,9 @@
 --- Works out what a point on the screen is over: an object placed on a plot, or a tile of a plot
 --- that nothing stands on.
 ---
---- `getTargetAt` looks through the camera at a point and reads what it hits. A block with the
---- attribute `placedObjectId` is a placed object. The top of a slab tagged `Plot`, which has the
+--- `getTargetAt` looks through the camera at a point and reads what it hits. A part inside a
+--- Model that has the attribute `placedObjectId` is a placed object, whatever the Model holds.
+--- The top of a slab tagged `Plot`, which has the
 --- attributes `cornerX`, `cornerY`, `cornerZ`, `widthInTiles` and `depthInTiles`, is a grid of
 --- tiles.
 local CollectionService = game:GetService("CollectionService")
@@ -17,9 +18,9 @@ local Plot = require(Shared.plots.Plot)
 local PlotPointer = {}
 
 --- What a point on the screen is over. `center` is the middle of the bare tile, or the middle of
---- the placed object's block.
+--- the box that the placed object's Model fills.
 export type Target =
-	{ kind: "placedObject", placedObjectId: number, part: BasePart, center: Vector3 }
+	{ kind: "placedObject", placedObjectId: number, model: Model, center: Vector3 }
 	| { kind: "tile", x: number, z: number, center: Vector3 }
 
 --- How far from the camera a thing may be and still be a target, in studs.
@@ -40,6 +41,14 @@ local function raycastThroughPoint(camera: Camera, viewportPoint: Vector2): Rayc
 	local character = Players.LocalPlayer.Character
 	params.FilterDescendantsInstances = if character ~= nil then { character } else {}
 	return Workspace:Raycast(ray.Origin, ray.Direction * FARTHEST, params)
+end
+
+local function findPlacedObjectModel(part: BasePart): Model?
+	local model = part:FindFirstAncestorOfClass("Model")
+	while model ~= nil and type(model:GetAttribute("placedObjectId")) ~= "number" do
+		model = model:FindFirstAncestorOfClass("Model")
+	end
+	return model
 end
 
 local function tileTarget(hit: RaycastResult): Target?
@@ -76,9 +85,11 @@ function PlotPointer.getTargetAt(viewportPoint: Vector2): Target?
 		return nil
 	end
 	local part = hit.Instance
-	local placedObjectId = part:GetAttribute("placedObjectId")
-	if type(placedObjectId) == "number" then
-		return { kind = "placedObject", placedObjectId = placedObjectId, part = part, center = part.Position }
+	local model = findPlacedObjectModel(part)
+	if model ~= nil then
+		local placedObjectId = model:GetAttribute("placedObjectId") :: number
+		local center = model:GetBoundingBox().Position
+		return { kind = "placedObject", placedObjectId = placedObjectId, model = model, center = center }
 	end
 	if hit.Normal.Y > FLAT and CollectionService:HasTag(part, "Plot") then
 		return tileTarget(hit)

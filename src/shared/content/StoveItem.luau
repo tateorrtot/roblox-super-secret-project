@@ -9,7 +9,7 @@ local World = require("../world/World")
 local StoveItem = {
 	id = "stove",
 	stackSize = 1,
-	name = "Stove",
+	name = Stove.NAME,
 	color = { 60, 60, 70 },
 }
 

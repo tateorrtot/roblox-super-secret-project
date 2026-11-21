@@ -1,20 +1,19 @@
 --!strict
---- Blocks that show a plot in the world.
+--- What shows a plot in the world: the lines between its tiles, and a Model for each object
+--- standing on it.
 ---
---- Draws thin lines on the plot's slab to mark the tiles, and one block a tile wide for each
---- object standing on the plot, in the colour of its kind and with the kind's name above it.
---- `update` makes the blocks match what is placed: a new block for each newly placed object and
---- none for one that was removed. The slab is tagged `Plot` and has the attributes `widthInTiles`
---- and `depthInTiles`, and `cornerX`, `cornerY` and `cornerZ`, the plot's corner as
---- `Plot.getTileAt` wants it. Each block has the attribute `placedObjectId`, the id of its placed
---- object. What a kind of placed object shows beyond its block is a piece of that kind's own,
---- which `update` is handed and calls. The blocks are placeholders until placed objects have
---- models, and the plot must lie square to the world's x and z axes.
+--- Draws thin lines on the plot's slab to mark the tiles. `update` makes the Models match what is
+--- placed: a new Model for each newly placed object and none for one that was removed. What a
+--- Model is, is not decided here: each kind of placed object has a piece of its own that makes
+--- its Model, and `update` is handed those pieces. The slab is tagged `Plot` and has the
+--- attributes `widthInTiles` and `depthInTiles`, and `cornerX`, `cornerY` and `cornerZ`, the
+--- plot's corner as `Plot.getTileAt` wants it. Each Model has the attribute `placedObjectId`, the
+--- id of its placed object, and is named for the id of its kind. The plot must lie square to the
+--- world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local Plot = require(Shared.plots.Plot)
 
 local PlotParts = {}
@@ -24,55 +23,23 @@ export type PlotParts = {
 	read slab: Part,
 	--- The position of the plot's corner: the outer corner of tile x 1, z 1, on the slab's top.
 	read corner: Plot.Position,
-	--- The folder that holds the blocks, and the lines between the tiles.
+	--- The folder that holds the Models, and the lines between the tiles.
 	read folder: Folder,
-	--- The block that shows each placed object, by the placed object's id.
-	read partsById: { [number]: Part },
+	--- The Model that shows each placed object, by the placed object's id.
+	read modelsById: { [number]: Model },
 }
 
---- What one kind of placed object shows on its block beyond the block itself.
+--- How one kind of placed object is shown in the world: a piece of that kind's own.
 export type PlacedObjectPiece = {
-	--- Called each time the blocks are updated, with the block of one placed object of the kind,
-	--- the plot that placed object stands on, and its id.
-	update: (part: Part, plot: Plot.Plot, placedObjectId: number) -> (),
+	--- Returns a new Model that shows one placed object of the kind. The Model's pivot is put on
+	--- the middle of the placed object's tile, on the plot's surface, so the Model is built
+	--- standing on its pivot. What is in the Model is the kind's own business.
+	read make: () -> Model,
+	--- Called each time the Models are updated, with the Model of one placed object of the kind,
+	--- the plot that placed object stands on, and its id. A kind whose look never changes has no
+	--- `update`.
+	read update: ((model: Model, plot: Plot.Plot, placedObjectId: number) -> ())?,
 }
-
-local function makeLabel(part: Part, text: string, side: number)
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(200, 26)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, side / 2 + 1.2, 0)
-	billboard.MaxDistance = 70
-	billboard.Parent = part
-	local label = Instance.new("TextLabel")
-	label.Name = "Text"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 17
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.2
-	label.Text = text
-	label.Parent = billboard
-end
-
-local function makePart(kindId: string, id: number, center: Plot.Position): Part
-	local look = PlacedObjectLooks[kindId]
-	local side = Plot.TILE_SIZE
-	local part = Instance.new("Part")
-	part.Name = kindId
-	part.Anchored = true
-	part.Size = Vector3.new(side, side, side)
-	part.Position = Vector3.new(center.x, center.y + side / 2, center.z)
-	part.Material = Enum.Material.SmoothPlastic
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	part.Color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
-	part:SetAttribute("placedObjectId", id)
-
-	makeLabel(part, look.name, side)
-	return part
-end
 
 local function makeTileLine(folder: Folder, color: Color3, size: Vector3, position: Vector3)
 	local line = Instance.new("Part")
@@ -111,8 +78,8 @@ local function makeTileLines(folder: Folder, corner: Plot.Position, plot: Plot.P
 	end
 end
 
---- Returns a new set of blocks for the plot that lies on `slab`, with no block made yet, and draws
---- the lines between the plot's tiles. The blocks and the lines are kept in a folder called
+--- Returns what shows the plot that lies on `slab`, with no Model made yet, and draws the lines
+--- between the plot's tiles. The Models and the lines are kept in a folder called
 --- `PlacedObjects` beside the slab. `plot` is read once, for its size. The plot starts at the
 --- slab's corner of least x and z, and the slab's top must be at least as large as the plot.
 function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
@@ -132,46 +99,56 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	folder.Name = "PlacedObjects"
 	makeTileLines(folder, corner, plot, slab.Color:Lerp(Color3.new(0, 0, 0), 0.18))
 	folder.Parent = slab.Parent
-	return { slab = slab, corner = corner, folder = folder, partsById = {} }
+	return { slab = slab, corner = corner, folder = folder, modelsById = {} }
 end
 
-local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
+type Pieces = { [string]: PlacedObjectPiece }
+
+local function addMissingModels(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: Pieces)
 	for id, placedObject in plot.placedObjectsById do
-		if plotParts.partsById[id] == nil then
+		local piece = piecesByKindId[placedObject.kindId]
+		if plotParts.modelsById[id] == nil and piece ~= nil then
 			local center = Plot.getTileCenter(plotParts.corner, placedObject.tileX, placedObject.tileZ)
-			local part = makePart(placedObject.kindId, id, center)
-			plotParts.partsById[id] = part
-			part.Parent = plotParts.folder
+			local model = piece.make()
+			model.Name = placedObject.kindId
+			model:SetAttribute("placedObjectId", id)
+			model:PivotTo(CFrame.new(center.x, center.y, center.z))
+			plotParts.modelsById[id] = model
+			model.Parent = plotParts.folder
 		end
 	end
 end
 
-local function removeStaleParts(plotParts: PlotParts, plot: Plot.Plot)
-	for id, part in plotParts.partsById do
+local function removeStaleModels(plotParts: PlotParts, plot: Plot.Plot)
+	for id, model in plotParts.modelsById do
 		if plot.placedObjectsById[id] == nil then
-			part:Destroy()
-			plotParts.partsById[id] = nil
+			model:Destroy()
+			plotParts.modelsById[id] = nil
 		end
 	end
 end
 
-local function updatePieces(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: { [string]: PlacedObjectPiece })
-	for id, part in plotParts.partsById do
+local function updateModels(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: Pieces)
+	for id, model in plotParts.modelsById do
 		local piece = piecesByKindId[plot.placedObjectsById[id].kindId]
-		if piece ~= nil then
-			piece.update(part, plot, id)
+		local update = if piece ~= nil then piece.update else nil
+		if update ~= nil then
+			update(model, plot, id)
 		end
 	end
 end
 
---- Makes the blocks match what is placed on `plot` now: a new block for each placed object that has
---- none, and no block for one that is gone. Then, for each placed object whose kind has a piece in
---- `piecesByKindId`, which is keyed by the kind's id, that piece's `update` is called with the
---- placed object's block, `plot` and the placed object's id.
+--- Makes the Models match what is placed on `plot` now. `piecesByKindId` holds the piece of each
+--- kind of placed object, by the kind's id. A placed object with no Model gets one, which the
+--- piece of its kind makes: it is named for the kind's id, given the attribute `placedObjectId`,
+--- and its pivot is put on the middle of the placed object's tile, on the plot's surface. The
+--- Model of a placed object that is gone is destroyed. Then, for each Model whose kind's piece
+--- has an `update`, that is called with the Model, `plot` and the placed object's id. A placed
+--- object whose kind has no piece is not shown.
 function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: { [string]: PlacedObjectPiece })
-	addMissingParts(plotParts, plot)
-	removeStaleParts(plotParts, plot)
-	updatePieces(plotParts, plot, piecesByKindId)
+	addMissingModels(plotParts, plot, piecesByKindId)
+	removeStaleModels(plotParts, plot)
+	updateModels(plotParts, plot, piecesByKindId)
 end
 
 return PlotParts

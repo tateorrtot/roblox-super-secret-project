@@ -17,7 +17,7 @@ CALLED_BY_NAME = {'InventoryRequests', 'PlotRequests'}
 CALLED_THROUGH_A_TABLE = {
     'src/shared/content/': {'interact', 'breakPlacedObject', 'interactWithTile', 'advance', 'getScreenData'},
     'src/client/content/': {'update', 'hide', 'place'},
-    'src/server/content/': {'update'},
+    'src/server/content/': {'make', 'update'},
 }
 
 sources = {}

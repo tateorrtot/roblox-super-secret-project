@@ -123,6 +123,7 @@ end
 do -- a stove as names, and its rows
 	check(Stove.PLACED_OBJECT_KIND_ID == "stove", 'PLACED_OBJECT_KIND_ID: a stove is of the kind "stove"')
 	check(Stove.ITEM_ID_WHEN_BROKEN == "stove", 'ITEM_ID_WHEN_BROKEN: a broken stove leaves the item "stove"')
+	check(Stove.NAME == "Stove", 'NAME: a stove is shown as "Stove"')
 	check(INPUT == 1 and FUEL == 2 and OUTPUT == 3, "INPUT_SLOT: the slots are what goes in, fuel, what comes out")
 	check(Stove.SLOT_COUNT == 3, "SLOT_COUNT: a stove has three slots")
 end

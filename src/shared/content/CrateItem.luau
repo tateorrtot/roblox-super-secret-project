@@ -9,7 +9,7 @@ local World = require("../world/World")
 local CrateItem = {
 	id = "crate",
 	stackSize = 1,
-	name = "Crate",
+	name = Crate.NAME,
 	color = { 170, 130, 80 },
 }
 

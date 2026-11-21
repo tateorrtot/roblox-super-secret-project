@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Content = require(Shared.content.Content)
+local Crate = require(Shared.content.Crate)
 local PlacedObjectScripts = require(Shared.requests.PlacedObjectScripts)
 local PlayerSnapshot = require(Shared.requests.PlayerSnapshot)
 local Position = require(Shared.Position)
@@ -23,11 +24,12 @@ local Stove = require(Shared.content.Stove)
 local World = require(Shared.world.World)
 
 local CollisionGroups = require(script.Parent.world.CollisionGroups)
+local CrateModel = require(script.Parent.content.CrateModel)
 local GroundItemParts = require(script.Parent.world.GroundItemParts)
 local PlaceholderWorld = require(script.Parent.world.PlaceholderWorld)
 local PlotParts = require(script.Parent.world.PlotParts)
 local Remotes = require(script.Parent.Remotes)
-local StoveGlow = require(script.Parent.content.StoveGlow)
+local StoveModel = require(script.Parent.content.StoveModel)
 
 --- How long the server waits between advancing the World, in seconds.
 local SECONDS_BETWEEN_ADVANCES = 0.1
@@ -40,9 +42,10 @@ local REQUESTS_PER_SECOND = 60
 --- character's `HipHeight` says this already, and an R6 character's `HipHeight` is 0.
 local R6_LEG_LENGTH = 2
 
---- The piece of each kind of placed object that shows more than its block, by the kind's id.
+--- The piece that says how each kind of placed object is shown in the world, by the kind's id.
 local placedObjectPieces: { [string]: PlotParts.PlacedObjectPiece } = {
-	[Stove.PLACED_OBJECT_KIND_ID] = StoveGlow,
+	[Crate.PLACED_OBJECT_KIND_ID] = CrateModel,
+	[Stove.PLACED_OBJECT_KIND_ID] = StoveModel,
 }
 
 Content.register()

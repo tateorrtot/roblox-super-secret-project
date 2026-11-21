@@ -71,6 +71,9 @@ export type Progress = {
 --- The id of the kind of placed object that a stove is.
 Stove.PLACED_OBJECT_KIND_ID = "stove"
 
+--- The name shown for a stove.
+Stove.NAME = "Stove"
+
 --- The id of the item that a broken stove leaves.
 Stove.ITEM_ID_WHEN_BROKEN = "stove"
 

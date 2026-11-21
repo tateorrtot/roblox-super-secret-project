@@ -27,6 +27,9 @@ export type Crate = Plot.PlacedObject & {
 --- The id of the kind of placed object that a crate is.
 Crate.PLACED_OBJECT_KIND_ID = "crate"
 
+--- The name shown for a crate.
+Crate.NAME = "Crate"
+
 --- The id of the item that a broken crate leaves.
 Crate.ITEM_ID_WHEN_BROKEN = "crate"
 

@@ -12,7 +12,7 @@ local Items = require("../../src/shared/content/Items")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemScripts = require("../../src/shared/requests/ItemScripts")
 local ItemStack = require("../../src/shared/items/ItemStack")
-local PlacedObjectLooks = require("../../src/shared/content/PlacedObjectLooks")
+local PlacedObjectKinds = require("../../src/shared/content/PlacedObjectKinds")
 local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
 local PlayerSnapshot = require("../../src/shared/requests/PlayerSnapshot")
 local PlayerState = require("../../src/shared/players/PlayerState")
@@ -83,31 +83,19 @@ do -- what must agree between the things
 		Crate.PLACED_OBJECT_KIND_ID ~= Stove.PLACED_OBJECT_KIND_ID,
 		"PLACED_OBJECT_KIND_ID: each kind of placed object has an id of its own"
 	)
-	check(table.isfrozen(PlacedObjectLooks), "PlacedObjectLooks: the rows cannot be changed")
 	for kindId, itemId in itemIdWhenBroken do
 		check(ItemRegistry.has(itemId), 'ITEM_ID_WHEN_BROKEN: what a broken "' .. kindId .. '" leaves is an item')
-		local look = PlacedObjectLooks[kindId]
-		check(look ~= nil, 'PlacedObjectLooks: the kind "' .. kindId .. '" has a look')
-		if look ~= nil then
-			check(type(look.name) == "string" and #look.name > 0, 'the look of the kind "' .. kindId .. '" has a name')
-			local color = look.color
-			local isColor = type(color) == "table" and #color == 3
-			if isColor then
-				for _, part in color do
-					if type(part) ~= "number" or part ~= math.floor(part) or part < 0 or part > 255 then
-						isColor = false
-					end
-				end
-			end
-			check(isColor, 'the colour of the kind "' .. kindId .. '" is three whole numbers from 0 to 255')
-		end
 	end
-	for kindId in PlacedObjectLooks do
+	for _, kind in PlacedObjectKinds.ALL do
 		check(
-			PlacedObjectScripts.find(kindId) ~= nil,
-			'PlacedObjectLooks: the look "' .. kindId .. '" belongs to a kind that has a script'
+			PlacedObjectScripts.find(kind.PLACED_OBJECT_KIND_ID) == kind :: any,
+			'register: the kind "' .. kind.PLACED_OBJECT_KIND_ID .. '" is registered as the script of its own kind'
 		)
 	end
+	check(
+		CrateItem.name == Crate.NAME and StoveItem.name == Stove.NAME,
+		"name: the crate item and the stove item are each called what a placed one is called"
+	)
 end
 
 -- True if `stack` is `count` of the item `itemId`.

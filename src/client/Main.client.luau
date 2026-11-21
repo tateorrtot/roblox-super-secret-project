@@ -26,7 +26,7 @@ local CrateItem = require(Shared.content.CrateItem)
 local Direction = require(Shared.Direction)
 local Inventory = require(Shared.inventory.Inventory)
 local InventoryScreen = require(Shared.inventory.InventoryScreen)
-local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
+local PlacedObjectKinds = require(Shared.content.PlacedObjectKinds)
 local PlayerState = require(Shared.players.PlayerState)
 local PlayerSnapshot = require(Shared.requests.PlayerSnapshot)
 local Stove = require(Shared.content.Stove)
@@ -229,7 +229,7 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 	end
 	if screen ~= nil then
 		local kindId = snapshot.placedObjectKindId
-		local otherName = if kindId ~= nil then PlacedObjectLooks[kindId].name else ""
+		local otherName = if kindId ~= nil then PlacedObjectKinds.get(kindId).NAME else ""
 		InventoryGui.show(
 			inventoryGui,
 			snapshot.pack,
@@ -309,7 +309,7 @@ RunService.RenderStepped:Connect(function()
 	local hasPointer = UserInputService.MouseEnabled
 	local target = if hasPointer then getWorldTargetAt(UserInputService:GetMouseLocation()) else nil
 	local reached = if target ~= nil and LocalCharacter.canReachPoint(target.center) then target else nil
-	pointerOutline.Adornee = if reached ~= nil and reached.kind == "placedObject" then reached.part else nil
+	pointerOutline.Adornee = if reached ~= nil and reached.kind == "placedObject" then reached.model else nil
 	updateSelectedItemPiece(target)
 end)
 

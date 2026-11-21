@@ -62,6 +62,7 @@ end
 
 do -- a crate as numbers and names
 	check(Crate.PLACED_OBJECT_KIND_ID == "crate", 'PLACED_OBJECT_KIND_ID: a crate is of the kind "crate"')
+	check(Crate.NAME == "Crate", 'NAME: a crate is shown as "Crate"')
 	check(Crate.SLOT_COUNT == 27, "SLOT_COUNT: a crate has 27 slots")
 	check(Crate.ITEM_ID_WHEN_BROKEN == "crate", 'ITEM_ID_WHEN_BROKEN: a broken crate leaves the item "crate"')
 end

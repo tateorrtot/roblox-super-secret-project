@@ -102,7 +102,8 @@ if placedFolder then
 	for _, part in placedFolder:GetChildren() do
 		local id = part:GetAttribute("placedObjectId")
 		if id ~= nil then
-			table.insert(world.placed, { item = part.Name, id = id, x = part.Position.X, y = part.Position.Y, z = part.Position.Z, burning = part:GetAttribute("burning") })
+			local middle = part:GetBoundingBox().Position
+			table.insert(world.placed, { item = part.Name, id = id, x = middle.X, y = middle.Y, z = middle.Z, burning = part:GetAttribute("burning") })
 		end
 	end
 end
@@ -213,24 +214,18 @@ table.sort(found)
 return table.concat(found, " ")
 '''
 
-# The see-through blocks that show where an object would stand, as a list of where each is and which kind's
-# colour it has; the id of the placed object that the white outline is around, if any; and the id of the
+# The see-through blocks that show where an object would stand, as a list of where each is and which item's
+# ghost it is; the id of the placed object that the white outline is around, if any; and the id of the
 # placed object that the pointer is over, as the game's own PlotPointer has it, whether in reach or not.
 POINTER_MARKS = '''
 local HttpService = game:GetService("HttpService")
-local PlacedObjectLooks = require(game:GetService("ReplicatedStorage").Shared.content.PlacedObjectLooks)
 local PlotPointer = require(game:GetService("Players").LocalPlayer.PlayerScripts.Client.world.PlotPointer)
 local marks = { ghosts = {} }
 local target = PlotPointer.getTargetAt(game:GetService("UserInputService"):GetMouseLocation())
 marks.over = if target ~= nil and target.kind == "placedObject" then target.placedObjectId else nil
 for _, child in workspace:GetChildren() do
 	if child.Name == "PlacementGhost" and child:IsA("BasePart") then
-		local kind = "unknown"
-		for kindId, look in PlacedObjectLooks do
-			if child.Color == Color3.fromRGB(look.color[1], look.color[2], look.color[3]) then
-				kind = kindId
-			end
-		end
+		local kind = child:GetAttribute("itemId") or "unknown"
 		table.insert(marks.ghosts, { x = child.Position.X, z = child.Position.Z, kind = kind })
 	end
 end
@@ -879,7 +874,7 @@ class Playtest:
               {'studs away': self.distance_to(crate), 'title': view['title']})
         self.keys('E')
 
-        # The stove works as a furnace. The apples that spilled from the broken crate are picked up to bake.
+        # The stove cooks. The apples that spilled from the broken crate are picked up to bake.
         apples = [entry for entry in self.world()['ground'] if entry['item'] == 'apple']
         if apples:
             self.walk_to(apples[0]['x'], apples[0]['z'])
@@ -891,7 +886,7 @@ class Playtest:
         self.click(point)
         view = self.view()
         check(view['open'] and view['title'] == 'Stove' and len(view['other']) == 3 and view['stoveShown'],
-              'a click on the stove opens its three slots, laid out as a furnace', {'title': view['title'], 'other': view['other']})
+              'a click on the stove opens its three slots, with its two gauges', {'title': view['title'], 'other': view['other']})
         apple_slot = next((slot for slot, text in view['pack'].items() if text.startswith('Apple')), None)
         # The biggest stack of logs: the stove takes one log into its fire at once, and the rest must still show as fuel.
         log_slots = [slot for slot, text in view['pack'].items() if text.startswith('Log')]
