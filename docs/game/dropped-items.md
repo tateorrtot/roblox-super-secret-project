@@ -44,7 +44,7 @@ Two differences are left, and are Claude's call:
 ## How it is built
 - **Roblox's physics does all the motion.** We wrote no physics. The user, 2026-11-20: "I dont think its going to be reliable if you, an AI agent, make it instead of using a tried and true 10+ year old physics implementation."
 - **The rules decide where a stack starts and how fast,** and are told where each one has got to (`World.setGroundItemPosition`), as they are told where each character is.
-- **Which machine works out a part's motion is left to Roblox,** which gives a part near a player to that player's machine. Claude had first taken every part for the server, as a guard against cheating that nobody had asked for, and every thrown item drew about a third of a second late. The user felt it the first time they played, and said to go back to the default. The numbers are in `docs/research/16-dropped-items.md`.
+- **Whether the server or a client works out a part's motion is left to Roblox,** which gives a part near a player to that player's client. Claude had first taken every part for the server, as a guard against cheating that nobody had asked for, and every thrown item drew about a third of a second late. The user felt it the first time they played, and said to go back to the default. The numbers are in `docs/research/16-dropped-items.md`.
 - `docs/code/pieces.md` lists the pieces. `docs/research/16-dropped-items.md` has how Minecraft does each thing and what was measured in Roblox.
 
 ## Ideas not built, for the user to choose

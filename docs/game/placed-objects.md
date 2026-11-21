@@ -54,7 +54,7 @@ Built on 2026-11-20, on the branch `placed-objects`. How it is put together is i
 - **An item that places an object has a script of its own:** `CrateItem` and `StoveItem`, which `ItemScripts` holds. No table says which items place. The user asked why one still did, on 2026-11-20 (`docs/working/code-reviews/2026-11-20-9-simple-things-and-glue.md`).
 
 What the game still decides for every kind alike, each for the piece named:
-- **A screen is a pack and another inventory.** What a player's machine is told beyond the inventory is the kind's own (`getScreenData`), and so is how the kind's slots are laid out and what moves beside them (`StoveScreen`, on the player's machine). A screen that is not slots at all, such as a wand's, still needs more.
+- **A screen is a pack and another inventory.** What a client is told beyond the inventory is the kind's own (`getScreenData`), and so is how the kind's slots are laid out and what moves beside them (`StoveScreen`, on the client). A screen that is not slots at all, such as a wand's, still needs more.
 - **A placed object is a cube that fills one tile.**
 - **An item's script is told of one thing only: that a bare tile was interacted with.** That was all the crate and the stove needed. A wand cast at a creature, at a placed object or at nothing needs a function for each, added when the wand is.
 - **The item in hand takes no part when a placed object is interacted with or broken,** though the kind's script is handed the player and could look. Which of the two answers first, the object or the item, is not decided: nothing needs it yet.

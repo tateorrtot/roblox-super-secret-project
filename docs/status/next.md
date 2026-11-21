@@ -4,30 +4,28 @@ The work that is approved or owed, in the order Claude means to do it. What is o
 
 On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
-## 0. When the user confirms it: a plot is placed objects on one body
-Their direction of 2026-11-21, in the fifteenth review (`docs/working/code-reviews/2026-11-21-1-grids-on-bodies.md`): "In minecraft terms id think of it as "VoxelGrids on PhysicsBodies"." A tree is placed objects that hold each other up, and a cut through its foot makes what is above "a physics object" that falls. "I think the same could apply for vehicles. Or buildings." And: "who said we cant place things mid air? Or that Y is always up?" It is decided, and not designed (`docs/game/decisions.md`). What follows is Claude's reading, given to them the same day. It waits on their word (`asked-of-the-user.md`).
+## 0. A plot is placed objects on one body
+The user's direction of 2026-11-21: "In minecraft terms id think of it as "VoxelGrids on PhysicsBodies"." Claude drew its reading, and they confirmed it the same day: "Yes! That physics diagram is what I mean." Their words are in `docs/game/decisions.md`. Not built.
 
 - **Today:** a world has one plot. The plot is a flat grid of tiles, fixed in the world by `World.plotCorner`. A placed object stands on one tile of the ground, named by `tileX` and `tileZ`. Nothing moves and nothing falls.
-- **The reading:** a plot is a set of placed objects that hold together, on one body. A place on a plot is a position in the plot's own space, on three axes, so up is the plot's own up. Where the plot is in the world is its body's to say. A world has many plots.
-  - The plot of today is the case where the body is anchored.
-  - A tree, a vehicle, and a piece broken off a building are plots on bodies that are not anchored.
-  - A floor is a placed object. No layer of a plot is a floor or a level.
-  - A thing may be placed in mid-air. Whether it stays there is its plot's body's to say: on an anchored body it does.
-- **What Roblox has:** parts joined by `WeldConstraint`s are one assembly, which moves as one rigid body, and one anchored part anchors its whole assembly (`docs/roblox/facts.md`). So the body is Roblox's own. The rules simulate nothing: they keep which placed object is joined to which, and Roblox's physics owns where a body is, as it already owns where a ground item is.
-- **To measure in Studio first:** that a group of welded parts cut off from its anchored part falls as one assembly, and what a tree of a few hundred welded parts costs. Roblox's page on assemblies says neither.
-- **Choices in it, which are the user's:**
-  - What joins two placed objects: touching, or a join that the placing makes.
-  - What breaking one placed object does to what it held up. They named two answers and chose neither: it breaks off "into its own grid/plot", as in Scrap Mechanic, or "for simplicity and bug exploits" it drops as items.
-  - Whether a plot that falls keeps its placed objects whole, or sheds them as items when it lands.
-  - Who owns a body that a player set moving, and how the rules learn where it came to rest. Ground items already answer that one way.
-- **The first step, when they say yes:** a place on a plot becomes one value, a position in the plot's own space, in whole numbers on three axes for now, which only `Plot` makes and reads. A plot is given where it stands in the world, in place of `World.plotCorner`. Nothing changes in play. The step Claude offered on 2026-11-20 was a tile with a height. It kept the flat floor and added levels to it, which is the contract they then asked about.
-- **Free placement, snapping, helpers and neighbours** stand as Claude gave them on 2026-11-20. A grid is a help for the hand, and an index the code may keep for speed. Things that work together snap to sockets, and the snap is the link that the code keeps: nothing searches for a neighbour as time passes. `PathfindingService` makes its paths from the parts in the world, at any angle. Their worry was helpers and machines that work on their neighbours: "expensive and confusing".
+- **The model:** a plot is a set of placed objects that hold together, on one body. A place on a plot is a position in the plot's own space, on three axes, so up is the plot's own up. Where the plot is in the world is its body's to say. A world has many plots. The plot of today is the case where the body is anchored. A tree, a vehicle, and a piece broken off a building are plots on bodies that are not anchored. A floor is a placed object.
+- **Building and physics are two systems, and glue joins them.** Their rule: "Being able to build and physics are two unrelated things. Were basically just gluing them together. (This is important to note so it stays decoupled)".
+  - **Building** is the rules' own, in plain Luau: which placed objects a plot has, where each is in the plot's own space, and which are joined to which. It knows nothing of bodies, welds, or falling.
+  - **Physics** is Roblox's: parts joined by `WeldConstraint`s are one assembly, and one anchored part anchors its assembly.
+  - **The glue** is on the server. It makes a weld for each join and hears the building system's signals. Neither system requires the other.
+- **What is cut loose becomes a plot of its own.** Their contract: "I think it should almost always break it off into its own plot." So when a placed object goes and leaves a group that nothing joins to the rest, the building system makes that group a new plot and says so with a signal. The glue gives the new plot a body.
+- **Measured in Studio on 2026-11-21** (`docs/roblox/facts.md`): destroying one weld left the loose group as one assembly, which fell at once, and a chain of 300 welded parts fell as one body with no change in the server's frame time. Many trees at once, and a body that breaks up when it lands, are not measured.
+- **Still theirs to choose** (`asked-of-the-user.md`): what joins two placed objects, touching or a join that the placing makes; whether a thing placed in mid-air starts a plot of its own; whether a plot that falls keeps its placed objects whole; who owns a body that a player set moving; and what to call the thing, since they asked whether "Plot" is the best word.
+- **The first step:** a place on a plot becomes one value, a position in the plot's own space, in whole numbers on three axes for now, which only `Plot` makes and reads. A plot is given where it stands in the world, in place of `World.plotCorner`. Nothing changes in play. It is shared machinery, so its shape is shown to them first.
+- **Free placement, snapping, helpers and neighbours** stand as Claude gave them on 2026-11-20. A grid is a help for the hand, and an index the code may keep for speed. Things that work together snap to sockets, and the snap is the link that the code keeps: nothing searches for a neighbour as time passes. `PathfindingService` makes its paths from the parts in the world, at any angle. Their worry was helpers and things that work on their neighbours: "expensive and confusing".
 
-## 0a. When there is art: how an item looks
-Their design of 2026-11-21 (`docs/game/decisions.md`): an item looks like a 2D texture or a 3D model. Not built: there is no art.
-- **What it should leave:** each item says how it looks, in a piece of its own, as each kind of placed object has a piece that makes its Model. General code asks the item's piece for what to show in a slot, in the hand and on the ground, and knows nothing of what is in it.
-- **What Roblox has:** an `ImageLabel` shows a texture in a slot, and a `ViewportFrame` shows parts there through a camera of its own. `EditableImage` reads a texture's pixels and `EditableMesh` builds a mesh while the game runs (`docs/roblox/facts.md`). So a rule can give a texture depth: a face for each side of each solid pixel that has no solid pixel beside it.
-- **Needed from the user:** one texture and one model to build with, uploaded by them, and the specifics they offered (`asked-of-the-user.md`).
+## 0a. How an item looks
+Their design of 2026-11-21 (`docs/game/decisions.md`): an item looks like a 2D texture or a 3D model, the same in the hand and on the ground. Claude draws primitive stand-ins of its own until there is art, by their word. Not built. Claude showed them this shape on 2026-11-21, and it waits on their word.
+- **One piece for each item says how the item looks,** as each kind of placed object has a piece that makes its Model. The piece answers two questions: what a slot shows, and what the world shows, in the hand and on the ground. General code asks the piece and knows nothing of what is in it.
+- **Three small pieces that an item's look may use, and none must:** a texture shown flat in a slot; a texture given depth by rule, with a face for each side of each solid pixel that has no solid pixel beside it; and a Model shown in a slot at an angle.
+- **What Roblox has:** an `ImageLabel` shows a texture in a slot, and a `ViewportFrame` shows parts there through a camera of its own. `EditableImage` holds pixels that a script writes, and `EditableMesh` builds a mesh while the game runs. Neither needs an uploaded asset when it starts blank (`docs/roblox/facts.md`).
+- **Needed from the user:** "Allow Mesh / Image APIs" switched on, under Security in Studio's Experience Settings. Measured on 2026-11-21: without it, a script in Studio cannot write a pixel or add a vertex. A look made only of parts needs no setting.
+- **Where the pieces live is new:** the server shows an item on the ground and the client shows it in a slot, so one piece for each item must reach both. Today no folder of Roblox-side code does.
 
 ## 0b. If the user says so: what a character holds is a Roblox `Tool`
 Their proposal of 2026-11-20. Items stay a system of their own; the held tool is another; glue says which tool a selected stack puts in the hand.
@@ -40,10 +38,10 @@ The clicks on the world are input actions; E, Q, 1 to 9 and the mouse on the inv
 - **To settle first:** whether the inventory screen is a second context that takes the keys while it is open, which is what Roblox's guide means by a mode, and whether a held Ctrl is a modifier on a binding or an action of its own.
 - **Add to the play test:** a click on the world in first person, which nothing tries.
 
-## 2. Prediction on the player's machine
+## 2. Prediction on the client
 The user chose it on 2026-11-20, as our own and not Roblox's Server Authority (`docs/research/18-client-first.md`), asked that it sit on top as pieces of its own, and said yes to this plan: "Ah prediction sounds great the way you architected it! ... As long as its following the rest of the codebases standards good."
 
-- **One new piece on the player's machine, `Prediction`.** It keeps the last snapshot the server sent and the requests sent since. It gives the screen what to draw: the server's snapshot, with the unanswered requests carried out on it by the same `Requests.carryOut` the server uses.
+- **One new piece on the client, `Prediction`.** It keeps the last snapshot the server sent and the requests sent since. It gives the screen what to draw: the server's snapshot, with the unanswered requests carried out on it by the same `Requests.carryOut` the server uses.
 - **Each request goes up with a number,** and each snapshot comes down with the number of the last request it includes. The server sends when either has changed, so a request it refused is still answered.
 - **What changes in what exists:** `Main.client` sends through `Prediction` and draws what it gives. `Main.server` reads the number and sends it back. `PlayerState` gets a way to be made from a snapshot. Nothing else in the rules changes.
 - **Order:** the hotbar; then the nine inventory requests that touch nothing but the player's own inventories; then the inventory half of a drop; then a look-alike part for a thrown stack.
@@ -72,7 +70,7 @@ Each starts with one precise question to them, and is built as small pieces. The
 - A mutation run over every piece at once stalls on `Stove`: some of the bugs it plants make the loop in `advance` run until the tool's 60-second limit, one after another. `tools/mutate.py` wants a shorter limit, or a way to give one.
 - What the audits left is listed in `now.md`. None of it is urgent. The screen's drawing code is best left until the user decides whether screens are made in Studio.
 
-- **A pass over every comment and note against Godot's writing guidelines** (`docs/code/conventions.md`, "Comments"), and for the defined words: 131 places say "player's machine" where the word is client, 13 of them in files of `src`. It is one kind of change in many places, so it is one commit.
+- **What the comment pass left** (`history/2026-11-21-the-comment-pass.md`): the three faults it found in the code, which are listed in `now.md`; an example on the pages that want one; the comments in `tests`; and the `---` comments over local values in `Main.client` and `StoveScreen`, which the guide does not allow and which hold facts.
 - **The word `piece` in three type names:** `PlacedObjectPiece` in `PlotParts`, and `SelectedItemPiece` and `PlacedObjectScreenPiece` in `Main.client`. A reviewer counted it as one word for three things. The user's word for a table of one thing's functions is script, and Roblox has a `Script` of its own, so it wants their ruling.
 - **The reference on readthedocs.org,** if they want it there: it needs the repository on a host that site can read, which is theirs to set up, and a small config file. The notes would have to stay out of it: `docs/roblox/studio.md` names their account.
 - **One function for an item that places a kind,** when a third item does it. `CrateItem.interactWithTile` and `StoveItem.interactWithTile` are the same four lines.

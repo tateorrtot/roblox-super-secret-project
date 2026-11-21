@@ -9,7 +9,7 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
 - **`Inventory.countItems` and `Inventory.isEmpty` have no caller in the game** and are kept because the tests measure with them. `SaveData` has no caller until saving is built.
 - Code is grouped by game concept inside the three folders Roblox really has, not in the six layers of docs/architecture/07. `src/shared` holds the rules and no Roblox calls; tests sit outside it in `tests/`. Its folders require one way only: `items`, then `inventory`, then `players` and `stations`, with `plots` apart from all four; then `save` and `world`, then `placedObjectKinds`, and `requests` on top. `tools/requires` checks that. It found one two-way pair on 2026-11-19 (`plots` needed `world/Position` while `World` needed `plots`), and `Position` was moved to the top to undo it.
 - One global `ItemRegistry`. A stack holds its item's id as a string.
-- The screen's actions are named for what they do (`pickUpFromSlot`, `putDownInSlot`, `swapSlots`), because Minecraft on phones has no right click. The PC mouse's meaning is `InventoryControls`, on the player's machine.
+- The screen's actions are named for what they do (`pickUpFromSlot`, `putDownInSlot`, `swapSlots`), because Minecraft on phones has no right click. The PC mouse's meaning is `InventoryControls`, on the client.
 - Asking how many of an unknown item id an inventory holds (`countItems`) answers 0; adding one or making a stack of one is an error.
 - Pack 36 slots, hotbar 9: Minecraft's numbers.
 - Ground items: a pickup delay of 1.5 seconds and a pickup radius of 4 studs, and that a player keeps their pack when their character dies. The five minutes a stack lasts are the user's choice.
@@ -17,25 +17,25 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - The six speeds and heights at the top of `src/shared/world/World.luau`: a character throws from 3 studs above its feet at 24 studs a second forwards and 8 upwards, which lands about 7 studs ahead; stacks thrown from a tile, as a broken crate's are, leave at 6 outwards and 20 upwards; a pushed ground item at 6.
   - A ground item takes up a cube 1.2 studs wide, whatever its count. Pickup reaches 4 studs along the ground, 7 up from the feet and 2 down.
   - A player with no character has no screen open and can drop nothing. Losing the character closes the screen, and what was carried and does not fit the pack is dropped where the character was.
-  - The way a stack is thrown comes with the request, from the player's machine. The user chose what it is: along the ground the way the camera looks in third person, and the way the view looks, up and down as well, in first person, "just like minecraft". The rest is Claude's:
-    - The server takes any direction, and only its direction. A cheating machine can throw any way, up or down too, and no faster.
-    - The player's machine counts the camera as in first person when it is within a stud of the point it turns about. Roblox has no property for it; that distance is where Roblox's own camera scripts switch (`docs/roblox/facts.md`). A third-person camera squeezed that close by a wall behind it counts as first person too.
+  - The way a stack is thrown comes with the request, from the client. The user chose what it is: along the ground the way the camera looks in third person, and the way the view looks, up and down as well, in first person, "just like minecraft". The rest is Claude's:
+    - The server takes any direction, and only its direction. A cheating client can throw any way, up or down too, and no faster.
+    - The client counts the camera as in first person when it is within a stud of the point it turns about. Roblox has no property for it; that distance is where Roblox's own camera scripts switch (`docs/roblox/facts.md`). A third-person camera squeezed that close by a wall behind it counts as first person too.
     - In third person with the camera looking straight up or down, the throw goes the way the character faces. Roblox's own camera stops at 80 degrees, so this is for a camera of ours.
   - `GroundItems.mergeItems`, `MERGE_REACH`, `MERGE_CHECK_SECONDS`, `idsMovedSinceMerge` and `lastMergeTime` as the names in the merging of ground items. `mergeItems` does not look at every ground item each time; its comment says which.
   - A ground item is set moving once, when it is spawned. To push one out of a placed object the world removes it and spawns its stack again, so it gets a new id and its five minutes and pickup delay start over.
-  - Which machine works out a ground item's motion is left to Roblox. A cheating machine can move a part it owns, so this needs another look when plots have owners and walls.
+  - Whether the server or a client works out a ground item's motion is left to Roblox. A cheating client can move a part it owns, so this needs another look when plots have owners and walls.
   - The names `spawnStack`, `setItemPosition`, `throwStackFromCharacter`, `setCharacterPosition`, `removeCharacter`, `CHARACTER_THROW_START_HEIGHT` and `PlotCollision.pushGroundItemsOutOfTile`, chosen with readers shown names alone. The user has read the report on them and not the code.
   - `PlotCollision` as the name of the piece that pushes ground items out of a tile. Of three names tried on readers, it was the one read most nearly right.
-  - The selected hotbar slot is kept by the server alone, and the player's machine shows what the server last said. The cost is under "Known problems" in `now.md`.
+  - The selected hotbar slot is kept by the server alone, and the client shows what the server last said. The cost is under "Known problems" in `now.md`.
   - Merging is copied from Minecraft, on the user's word of 2026-11-20. Two differences are left and are Claude's: a moving ground item is looked at every tenth of a second, not only as it crosses into a new tile; and the nearest is tried first (`docs/game/dropped-items.md`).
   - A broken crate's two part stacks of one kind come out as one stack.
   - Items fall on Roblox's own gravity and tumble as any part does.
 - **Dragging a stack across slots is copied from Minecraft down to its odd corners:** a full stack of the carried kind under the drag counts for a share and gets nothing, and no more slots take part than there are items carried. Two things are not as in Minecraft, and both wait on applying the rules on the player's own machine before the server answers: a click acts when the button comes up, not when it goes down; and the slots of a drag are marked with a bright edge but do not show what each will get.
 - **Interact and break, first version:** interact is a left click or a tap, and break is a short right click (holding the right button turns Roblox's camera, so only a quick press that did not turn it counts). This follows the user's own sentence, "left click to place/interact. right click to swing or break". Break has no touch control yet, and a tap was never tried on a touch screen. How these feel is the user's to judge. They are Roblox's input actions `Interact` and `Break` since 2026-11-20, and `BreakClick` tells the short right click from a turn of the camera.
-- **The plot is a grid of 4-stud tiles with one placed object to a tile,** built on the spatial model that is still only proposed. There is one plot, shared by every player, and nobody owns what stands on it: anyone can open or break anything. Reach is 16 studs, checked on the server; a player's machine marks only what is in reach, so that a click does something exactly when something is marked. A thing cannot be placed on a tile a player stands on.
-- **Known and left for now:** reach is measured from where a player's own machine says their character is, so a cheating machine could reach anything. Nothing is gained by it while the one plot is shared by all; it needs an answer when plots have owners.
+- **The plot is a grid of 4-stud tiles with one placed object to a tile,** built on the spatial model that is still only proposed. There is one plot, shared by every player, and nobody owns what stands on it: anyone can open or break anything. Reach is 16 studs, checked on the server; a client marks only what is in reach, so that a click does something exactly when something is marked. A thing cannot be placed on a tile a player stands on.
+- **Known and left for now:** reach is measured from where a player's own client says their character is, so a cheating client could reach anything. Nothing is gained by it while the one plot is shared by all; it needs an answer when plots have owners.
 - **A broken crate or stove leaves one of the item that places it,** and what was in it. That a crate spills is the user's ("yes if you break it, it should spill contents"); that a stove does the same, and that each leaves its own item, is Claude's. Each kind says so for itself, in `ITEM_ID_WHEN_BROKEN` and its `breakPlacedObject`.
-- The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the player's machine yet; the plan the user approved is in `next.md`.
+- The server sends a player their whole inventories whenever they change, and the screen shows only what the server said. Nothing is predicted on the client yet; the plan the user approved is in `next.md`.
 - **Signals, 2026-11-20.** The user said to build them; the shape is Claude's.
   - `fire` is kept, as Roblox's word for it (`BindableEvent:Fire`). Two helpers argued for Godot's `emit`, because `Signal` is not a Roblox event. The user asked which convention it follows, and can overrule.
   - `Signal` is plain Luau with three functions: `new`, `connect` and `fire`. Callbacks run at once, inside `fire`, in the order they were connected, and a callback that fails stops the rest. There is no way to disconnect one yet, because nothing needs it.
@@ -54,6 +54,12 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **`PlacedObjectLooks` was kept apart from the kinds.** It is gone: a kind's name is in the kind's own file, and nothing of the content holds a colour.
   - **The names:** `kindId`; `tileX` and `tileZ`; `widthInTiles` and `depthInTiles`; `CHARACTER_REACH`; `PLACED_OBJECT_KIND_ID` and `ITEM_ID_WHEN_BROKEN`; `throwStacksFromTile` and its two speeds; `openPlacedObjectScreen`, `getOpenedPlacedObjectId`; `Inventory.takeEveryStack`.
   - **The work is on a branch of its own,** `placed-objects`, cut from `dropped-items`.
+- **The comment pass, 2026-11-21.** The user asked for it: "The documentation must be *good*." These details are Claude's.
+  - **How each kind of comment starts** (`docs/code/comments.md`): a signal is "Fires after ...", and then "Passes ..."; a value that a caller passes or gets is a literal, in digits and backticks.
+  - **What `tools/comments.py` fails for,** and that `lune run tools/check` runs it.
+  - **A `Note:` on four functions that take a count and do not check it,** where the checkers could state no guard that holds in every case.
+  - **The reference's links, its anchors, and its lists of what a module requires and what requires it.**
+  - **The reviews, the history, and the research keep their old words.** Only the living notes say client where they said the player's machine.
 - **Stand-ins without colour, 2026-11-21.** The user asked why there was a colour. Taking it out is Claude's answer, and these details are Claude's.
   - **Every stand-in is one grey, `Color3.fromRGB(110, 112, 120)`, with the thing's name on it.** A lit stove still glows orange: that is the stove's Model's own.
   - **Each drawing piece that needs the grey writes it,** in four places, so that no piece on the client requires one on the server.
@@ -72,9 +78,9 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **How a stove works.** The user chose the furnace form; the rest is Claude's, with placeholder numbers. A fire is lit only when there is something to cook, and once lit it burns its fuel out.
   - **The stove is one file of about 300 lines.** Its recipes and fuels are constants keyed by item id, `RECIPES` and `FUEL_SECONDS`. Its fire and its work are two small tables on the placed object, `fire` and `work`, because the plot freezes the object itself.
   - **Time reaches a placed object through its script's `advance`.** `World` fires `timePassed`. `PlacedObjectScripts.advancePlacedObjects` calls the scripts, the lowest id first. Whoever makes the world connects the two: `Main.server`.
-  - **What a player's machine is told of the placed object they have open is the script's `getScreenData`,** sent as it is. `PlayerSnapshot` moved to `requests` to ask for it.
+  - **What a client is told of the placed object they have open is the script's `getScreenData`,** sent as it is. `PlayerSnapshot` moved to `requests` to ask for it.
   - **`Crate.get` and `Stove.get`** return a kind's object by its id, and fail for anything else.
-  - **A kind's own drawing is a piece on each side.** On the server, `src/server/content/StoveModel`, which `PlotParts.update` is handed by kind id. On the player's machine, `src/client/content/StoveScreen`, which `InventoryGui.show` is handed as an `OtherLayout`. The table of each is in that side's `Main` script.
+  - **A kind's own drawing is a piece on each side.** On the server, `src/server/content/StoveModel`, which `PlotParts.update` is handed by kind id. On the client, `src/client/content/StoveScreen`, which `InventoryGui.show` is handed as an `OtherLayout`. The table of each is in that side's `Main` script.
   - **The world's signal is `timePassed`,** a noun and what happened to it, as the plot's are. It was `timePassed` for an hour, and a reader shown only the names could make nothing of it.
   - **`tools/lift_out_test.py`,** which runs each system's tests with only what it requires beside it.
 - **A crate carries its inventory, and picking up is the world's, 2026-11-20.** The direction is the user's, in their twelfth review. These details are Claude's.
@@ -97,7 +103,7 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **What an item shows while selected is a piece with `update` and `hide`,** told every frame what the pointer is over. The table of them is in `Main.client`. The user spoke of an event; this asks every frame.
   - **Only the two actions are input actions.** Where the pointer is comes from `UserInputService`, and so does a tap. The context is never disabled. The keys are not moved yet (`docs/roblox/input.md`).
   - **`BreakClick`,** and its two constants; `LocalCharacter.canReachPoint`, which says what to show and decides nothing.
-  - **A request is sent for a click at any distance,** and the rules decide. Before, the player's machine sent nothing for a click out of reach.
+  - **A request is sent for a click at any distance,** and the rules decide. Before, the client sent nothing for a click out of reach.
   - **A crate or a stove that its own `place` did not place fails by name** when it is interacted with or broken.
   - **`tools/studio.py sync` reads `default.project.json`** and makes the instances it declares.
 - **The play test moves its character off the spawn pad before it throws anything** (`docs/code/checks.md`).

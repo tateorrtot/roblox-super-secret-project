@@ -22,7 +22,7 @@ How Claude explained Roblox to the user on 2026-11-20, so that later sessions sa
 ## The one large difference
 Every Roblox game is a server and clients, always. What would be the script on an inventory screen's node in Godot is split here in two:
 - the rules, which the server runs, in `src/shared`;
-- the drawing, on the player's machine, in `src/client`.
+- the drawing, on the client, in `src/client`.
 
 ## Two things the user asked
 - **"This sounds a bit like ECS?"** It is not. Plain functions on plain tables are classes written the long way round: `Inventory.addItems(pack, ...)` is `pack.add_items(...)`. Claude offered to write them in the method form (`pack:addItems(...)`) if the user would rather read that. They have not answered.

@@ -24,7 +24,7 @@ In a file's name, the number counts the reviews of that day. For 2026-11-20 it i
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
-Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth. The fourteenth and the fifteenth came the same way, each from Claude's report on the work before.
+Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth. The fourteenth and the fifteenth came the same way, each from Claude's report on the work before. Their message after the fifteenth was direction and not a review: the reading of a plot confirmed, building and physics as two systems, and "The documentation must be *good*" (`docs/game/decisions.md`, `docs/code/comments.md`).
 
 ## What to check before showing them code
 These are Claude's readings of the fifteen reviews. The quotes are in the files.
@@ -77,7 +77,7 @@ These are Claude's readings of the fifteen reviews. The quotes are in the files.
 - **Break it up:** directory, file, function, block. The work is deciding where to cut, what to name each part, and which layer it sits on.
 - **Few indents.** Nothing nests more than two deep.
 - **The rules know nothing of the mouse, the keys or a touch screen.**
-- **Measure before showing:** `python tools/metrics.py --functions`, `python tools/unused.py`, and a names test on a fresh reader (`docs/code/names.md` says how).
+- **Measure before showing:** `python tools/comments.py`, `python tools/metrics.py --functions`, `python tools/unused.py`, and a names test on a fresh reader (`docs/code/names.md` says how).
 - **Have a helper apply their latest review to the result,** told to assume the author thinks it is mended and to quote the words each finding goes against. After the tenth, that helper found twelve things where the two ordinary reviewers found none of them.
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
