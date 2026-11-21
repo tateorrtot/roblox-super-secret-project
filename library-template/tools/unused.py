@@ -11,7 +11,7 @@ import os
 import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFINITION = re.compile(r'^function (\w+)\.(\w+)\(', re.MULTILINE)
+DEFINITION = re.compile(r'^function (\w+)\.(\w+)(?:<[^>\n]*>)?\(', re.MULTILINE)
 
 
 def read_code(path):
