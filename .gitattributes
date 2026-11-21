@@ -1,0 +1,2 @@
+# Keep every text file with Unix line endings in the working copy, as StyLua expects.
+* text=auto eol=lf

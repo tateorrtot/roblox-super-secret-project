@@ -1,0 +1,11 @@
+# This repo holds what is common to every folder here: CLAUDE.md, the session's settings, and
+# the library template. The game and each library are repos of their own, so they are not kept here.
+/*
+!/.gitignore
+!/.gitattributes
+!/CLAUDE.md
+!/.mcp.json
+!/.claude/
+/.claude/worktrees/
+!/library-template/
+/library-template/build/
