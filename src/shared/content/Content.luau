@@ -11,11 +11,11 @@ local PlacedObjectScripts = require("../requests/PlacedObjectScripts")
 
 local Content = {}
 
---- Registers everything the game has. Hands each item of `Items.ALL` to
---- `ItemRegistry.register`, which keeps its id and stack size, and to `ItemScripts.register`, as
---- the script of the item with its id. Hands each kind of `PlacedObjectKinds.ALL` to
---- `PlacedObjectScripts.register`, as the script of the kind with its `PLACED_OBJECT_KIND_ID`.
---- Fails if it is called a second time, since every id is registered already.
+--- Registers everything the game has. Hands each item of `Items.ALL` to `ItemRegistry.register`,
+--- which keeps its id and stack size, and to `ItemScripts.register`, as the script of the item with
+--- its id. Hands each kind of `PlacedObjectKinds.ALL` to `PlacedObjectScripts.register`, as the
+--- script of the kind with its `PLACED_OBJECT_KIND_ID`. Raises an error if it is called a second
+--- time, since every id is registered already.
 function Content.register()
 	for _, item in Items.ALL do
 		ItemRegistry.register(item)

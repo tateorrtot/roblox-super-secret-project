@@ -29,13 +29,13 @@ function Hotbar.new(inventory: Inventory, slotCount: number): Hotbar
 end
 
 --- Returns `true` if `slot` is a whole number from `1` to the hotbar's `slotCount`, and the
---- hotbar's inventory has that slot. Accepts a value of any type, and never fails.
+--- hotbar's inventory has that slot. Accepts a value of any type, and never raises an error.
 function Hotbar.hasSlot(hotbar: Hotbar, slot: unknown): boolean
 	return Inventory.hasSlot(hotbar.inventory, slot) and (slot :: number) <= hotbar.slotCount
 end
 
---- Makes `slot` the selected slot. Fails, and changes nothing, if `hasSlot` returns `false` for
---- `slot`.
+--- Makes `slot` the selected slot. Raises an error, and changes nothing, if `hasSlot` returns
+--- `false` for `slot`.
 function Hotbar.selectSlot(hotbar: Hotbar, slot: number)
 	assert(Hotbar.hasSlot(hotbar, slot), `the hotbar has no slot {slot}`)
 	hotbar.selectedSlot = slot

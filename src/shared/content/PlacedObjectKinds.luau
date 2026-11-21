@@ -29,8 +29,8 @@ end
 --- Every kind of placed object in the game.
 PlacedObjectKinds.ALL = table.freeze(all)
 
---- Returns the kind of placed object with the id `kindId`. Fails if the game has no kind with
---- that id.
+--- Returns the kind of placed object `kindId`. Raises an error if the game has no kind with that
+--- id.
 function PlacedObjectKinds.get(kindId: string): PlacedObjectKind
 	return kindsById[kindId] or error(`the game has no kind of placed object with the id "{kindId}"`, 2)
 end

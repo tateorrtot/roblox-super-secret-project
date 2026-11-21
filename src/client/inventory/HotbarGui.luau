@@ -98,8 +98,9 @@ local function makeSelectedItemLabel(row: Frame, slotCount: number): TextLabel
 end
 
 --- Returns a new hotbar of `slotCount` slots in a `ScreenGui` inside `parent`, with every slot
---- showing nothing. The hotbar calls `callbacks.onSlotChosen` with `slot` when the player clicks the
---- slot `slot`, and `callbacks.onPackClicked` when the player clicks the pack button.
+--- showing nothing. When the player clicks a slot, the hotbar calls `callbacks.onSlotChosen` with
+--- that slot's number. When the player clicks the pack button, the hotbar calls
+--- `callbacks.onPackClicked`.
 function HotbarGui.new(parent: Instance, slotCount: number, callbacks: Callbacks): HotbarGui
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "Hotbar"
@@ -126,7 +127,7 @@ function HotbarGui.new(parent: Instance, slotCount: number, callbacks: Callbacks
 	return { screenGui = screenGui, slots = slots, selectedItemLabel = selectedItemLabel }
 end
 
---- Shows the stack in each slot of `pack` in the hotbar's slot of the same number, gives the slot
+--- Shows the stack in each slot of `pack` in the hotbar's slot of the same number, gives
 --- `selectedSlot` a bright edge, and sets `selectedItemLabel` to the name of the item in that slot,
 --- or to empty text if it holds nothing. The hotbar shows no slot of `pack` beyond its own slots.
 function HotbarGui.update(hotbarGui: HotbarGui, pack: Inventory.Inventory, selectedSlot: number)

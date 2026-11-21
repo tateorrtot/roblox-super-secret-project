@@ -45,7 +45,7 @@ local REQUESTS_PER_SECOND = 60
 local R6_LEG_LENGTH = 2
 
 --- The piece that shows each kind of placed object in the world, by the kind's id. The script
---- fails at the start if a kind in `PlacedObjectKinds.ALL` has no piece.
+--- raises an error at the start if a kind in `PlacedObjectKinds.ALL` has no piece.
 local placedObjectPieces: { [string]: PlotParts.PlacedObjectPiece } = {
 	[Crate.PLACED_OBJECT_KIND_ID] = CrateModel,
 	[Stove.PLACED_OBJECT_KIND_ID] = StoveModel,

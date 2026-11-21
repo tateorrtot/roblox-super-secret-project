@@ -124,8 +124,8 @@ function PlaceholderWorld.build(): PlaceholderWorld
 end
 
 --- Stands a crate on the tile x `13`, z `7` of `world.plot`, with eight `"cheese"`, five `"fish"`,
---- 40 `"crystal"`, and one `"crate"` in it, and a stove on the tile x `6`, z `13`. Fails if
---- `Plot.placeObject` fails for either tile.
+--- 40 `"crystal"`, and one `"crate"` in it, and a stove on the tile x `6`, z `13`. Raises an error
+--- if `Plot.placeObject` raises an error for either tile.
 function PlaceholderWorld.placeStartingObjects(world: World.World)
 	local crateId = Crate.place(world.plot, 13, 7)
 	local inCrate = Crate.get(world.plot, crateId).inventory

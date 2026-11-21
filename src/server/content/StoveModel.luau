@@ -42,9 +42,9 @@ function StoveModel.make(): Model
 end
 
 --- Makes `model` glow if the stove's fire is burning, and stop glowing if it is out. The stove is
---- the placed object with the id `placedObjectId` on `plot`, and `model` is the Model that `make`
---- returned for it. Changes nothing if `model` shows the fire's state already. Fails if
---- `Stove.get` fails for `plot` and `placedObjectId`.
+--- the placed object `placedObjectId` on `plot`, and `model` is the Model that `make` returned for
+--- it. Changes nothing if `model` shows the fire's state already. Raises an error if `Stove.get`
+--- raises an error for `plot` and `placedObjectId`.
 function StoveModel.update(model: Model, plot: Plot.Plot, placedObjectId: number)
 	local burning = Stove.isBurning(Stove.get(plot, placedObjectId))
 	if model:GetAttribute("burning") ~= burning then

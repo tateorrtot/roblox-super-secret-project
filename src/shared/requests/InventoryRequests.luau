@@ -1,10 +1,19 @@
 --!strict
---- The requests that a client makes about its player's inventory screen and hotbar.
+--- The requests that a client makes about its player's open inventories and hotbar.
 ---
---- Each function is one request. `world` is the world and `player` is the player who asks. Every
---- argument after them is what the client sent, and may be a value of any type. A request that does
---- not fit the player's state, or whose arguments are not valid, does nothing. A player with no
---- character can open no screen and drop nothing.
+--- Each function is one request. `world` is the world, and `player` is the player whose client sent
+--- the request. Every argument after them is what that client sent, and may be a value of any type.
+--- A request that does not fit the player's state, or whose arguments are not valid, does nothing.
+--- A player with no character can open no screen and drop nothing.
+---
+--- Every request that takes a `side`, and every request that moves the carried stack, acts on the
+--- player's open screen, `PlayerState.screen`. That screen is an `InventoryScreen.InventoryScreen`:
+--- the player's pack, the inventory open beside it, if there is one, and the stack that the player
+--- carries between slots. It holds state and draws nothing.
+---
+--- A `side` and a `slot` together name one slot of the open screen. `side` is an
+--- `InventoryScreen.Side`: `"pack"` for the player's pack, or `"other"` for the inventory open
+--- beside it. `slot` is the slot's number in that inventory, counted from `1`.
 ---
 --- A request that drops takes a `direction`: the way the stack is thrown. It is a table with
 --- numbers from `-1` to `1` under `x`, `y`, and `z`, not all `0`, where `y` is upwards. Only the
@@ -71,11 +80,11 @@ function InventoryRequests.closeScreen(world: World, player: PlayerState)
 	World.closeScreen(world, player)
 end
 
---- Moves items from the slot `slot` on the side `side` of the open screen onto the carried stack,
---- as `InventoryScreen.pickUpFromSlot` does: `count` items, or all that the slot holds if `count`
---- is `nil`, but never more than the carried stack has room for. Does nothing if no screen is
---- open, if `side` and `slot` name no slot of it, or if `count` is neither `nil` nor a whole
---- number of `0` or more.
+--- Moves items from one slot of the player's open screen onto the stack that the player carries, as
+--- `InventoryScreen.pickUpFromSlot` does. `side` and `slot` name the slot, and `side` is an
+--- `InventoryScreen.Side`. Moves `count` items, or all that the slot holds if `count` is `nil`, but
+--- never more than the carried stack has room for. Does nothing if no screen is open, if `side` and
+--- `slot` name no slot of it, or if `count` is neither `nil` nor a whole number of `0` or more.
 function InventoryRequests.pickUpFromSlot(
 	_world: World,
 	player: PlayerState,
@@ -89,10 +98,11 @@ function InventoryRequests.pickUpFromSlot(
 	end
 end
 
---- Moves items from the carried stack into the slot `slot` on the side `side` of the open screen,
---- as `InventoryScreen.putDownInSlot` does: `count` items, or all that is carried if `count` is
---- `nil`, but never more than the slot has room for. Does nothing if no screen is open, if `side`
---- and `slot` name no slot of it, or if `count` is neither `nil` nor a whole number of `0` or more.
+--- Moves items from the stack that the player carries into one slot of the player's open screen, as
+--- `InventoryScreen.putDownInSlot` does. `side` and `slot` name the slot, and `side` is an
+--- `InventoryScreen.Side`. Moves `count` items, or all that is carried if `count` is `nil`, but
+--- never more than the slot has room for. Does nothing if no screen is open, if `side` and `slot`
+--- name no slot of it, or if `count` is neither `nil` nor a whole number of `0` or more.
 function InventoryRequests.putDownInSlot(
 	_world: World,
 	player: PlayerState,
@@ -106,9 +116,10 @@ function InventoryRequests.putDownInSlot(
 	end
 end
 
---- Exchanges the carried stack with the stack in the slot `slot` on the side `side` of the open
---- screen, as `InventoryScreen.swapCarriedStackWithSlot` does. Does nothing if no screen is open,
---- if `side` and `slot` name no slot of it, or if the slot does not accept the carried item.
+--- Exchanges the stack that the player carries with the stack in one slot of the player's open
+--- screen, as `InventoryScreen.swapCarriedStackWithSlot` does. `side` and `slot` name the slot, and
+--- `side` is an `InventoryScreen.Side`. Does nothing if no screen is open, if `side` and `slot`
+--- name no slot of it, or if the slot does not accept the carried item.
 function InventoryRequests.swapCarriedStackWithSlot(_world: World, player: PlayerState, side: unknown, slot: unknown)
 	local screen = findScreenWithSlot(player, side, slot)
 	if screen ~= nil and InventoryScreen.canSwapCarriedStackWithSlot(screen, side :: any, slot :: any) then
@@ -116,10 +127,10 @@ function InventoryRequests.swapCarriedStackWithSlot(_world: World, player: Playe
 	end
 end
 
---- Exchanges the stacks in the slot `slot` on the side `side` and the slot `withSlot` on the side
---- `withSide` of the open screen, as `InventoryScreen.swapSlots` does. Does nothing if no screen
---- is open, if either pair names no slot of it, or if either slot does not accept the stack in the
---- other.
+--- Exchanges the stacks in two slots of the player's open screen, as `InventoryScreen.swapSlots`
+--- does. `side` and `slot` name one slot, and `withSide` and `withSlot` name the other. `side` and
+--- `withSide` are each an `InventoryScreen.Side`. Does nothing if no screen is open, if either pair
+--- names no slot of it, or if either slot does not accept the stack in the other.
 function InventoryRequests.swapSlots(
 	_world: World,
 	player: PlayerState,
@@ -137,11 +148,17 @@ function InventoryRequests.swapSlots(
 	end
 end
 
---- Moves the stack in the slot `slot` on the side `side` of the open screen into the slots
---- `toFirstSlot` to `toLastSlot` on the side `toSide`, as `InventoryScreen.moveFromSlotToInventory`
---- does: it tops up the stacks of the same item there first, and then fills the slots that hold
---- nothing. What does not fit stays in the slot `slot`. Does nothing if no screen is open, or if
---- `side` and `slot`, `toSide` and `toFirstSlot`, or `toSide` and `toLastSlot` name no slot of it.
+--- Moves the whole stack out of one slot of the player's open screen and into a run of other slots,
+--- as `InventoryScreen.moveFromSlotToInventory` does.
+--- - `side` and `slot` name the slot that the stack moves out of. `side` is an
+--- `InventoryScreen.Side`.
+--- - `toSide`, `toFirstSlot`, and `toLastSlot` name the slots that the stack moves into: the slots
+--- numbered from `toFirstSlot` to `toLastSlot`, both included, in the inventory on `toSide`.
+---
+--- The request tops up the stacks of the same item in those slots first, and then fills the slots
+--- that hold nothing. Items that do not fit stay in `slot`. Does nothing if no screen is open, or
+--- if `side` and `slot`, `toSide` and `toFirstSlot`, or `toSide` and `toLastSlot` name no slot of
+--- it.
 function InventoryRequests.moveFromSlotToInventory(
 	_world: World,
 	player: PlayerState,
@@ -174,10 +191,11 @@ function InventoryRequests.fillCarriedStackFromAllSlots(_world: World, player: P
 	end
 end
 
---- Puts the carried stack down across `slots`, as `InventoryScreen.spreadCarriedStackOverSlots`
---- does: `countEach` items in each slot, or an equal share if `countEach` is `nil`. `slots` is a
---- list of tables, each with a `side` and a `slot`. Does nothing if no screen is open, if `slots`
---- is not a list of slots of it, if it lists more entries than the screen has slots, or if
+--- Puts the stack that the player carries down across several slots of the player's open screen, as
+--- `InventoryScreen.spreadCarriedStackOverSlots` does: `countEach` items in each slot, or an equal
+--- share if `countEach` is `nil`. `slots` is a list of tables, each an
+--- `InventoryScreen.ScreenSlot`: a `side` and a `slot`. Does nothing if no screen is open, if
+--- `slots` is not a list of slots of it, if it lists more entries than the screen has slots, or if
 --- `countEach` is neither `nil` nor a whole number of `0` or more.
 function InventoryRequests.spreadCarriedStackOverSlots(
 	_world: World,
@@ -209,11 +227,12 @@ function InventoryRequests.dropCarriedStack(world: World, player: PlayerState, d
 	end
 end
 
---- Takes `count` items out of the slot `slot` on the side `side` of the open screen, or everything
---- in the slot if `count` is `nil`, and throws them from the player's character the way
---- `direction` points, as `World.throwStackFromCharacter` does. Does nothing if no screen is open,
---- if `side` and `slot` name no slot of it, if the player has no character, if `direction` is not
---- a direction, or if `count` is neither `nil` nor a whole number of `0` or more.
+--- Takes items out of one slot of the player's open screen and throws them from the player's
+--- character the way `direction` points, as `World.throwStackFromCharacter` does. `side` and `slot`
+--- name the slot, and `side` is an `InventoryScreen.Side`. Takes `count` items, or everything in
+--- the slot if `count` is `nil`. Does nothing if no screen is open, if `side` and `slot` name no
+--- slot of it, if the player has no character, if `direction` is not a direction, or if `count` is
+--- neither `nil` nor a whole number of `0` or more.
 function InventoryRequests.dropFromSlot(
 	world: World,
 	player: PlayerState,
@@ -231,8 +250,8 @@ function InventoryRequests.dropFromSlot(
 	end
 end
 
---- Selects the slot `slot` of the player's hotbar. What it holds is then in the player's hand.
---- Does nothing if the hotbar has no such slot.
+--- Selects `slot` of the player's hotbar. What it holds is then in the player's hand. Does nothing
+--- if the hotbar has no such slot.
 function InventoryRequests.selectHotbarSlot(_world: World, player: PlayerState, slot: unknown)
 	if Hotbar.hasSlot(player.hotbar, slot) then
 		Hotbar.selectSlot(player.hotbar, slot :: number)

@@ -13,9 +13,9 @@ local CrateItem = {
 }
 
 --- Returns how many crate items were used up when someone holding the crate item interacted with
---- the tile `tileX`, `tileZ` of the world's plot. If `World.canPlaceObject` returns `true` for the
---- tile, places a crate on it as `Crate.place` does and returns `1`. Otherwise changes nothing and
---- returns `0`.
+--- the tile at `tileX`, `tileZ` of the world's plot. If `World.canPlaceObject` returns `true` for
+--- the tile, places a crate on it as `Crate.place` does and returns `1`. Otherwise changes nothing
+--- and returns `0`.
 --- Note: `interactWithTile` takes no item from anywhere.
 function CrateItem.interactWithTile(world: World.World, tileX: number, tileZ: number): number
 	if not World.canPlaceObject(world, tileX, tileZ) then

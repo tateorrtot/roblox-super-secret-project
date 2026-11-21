@@ -13,9 +13,9 @@ local StoveItem = {
 }
 
 --- Returns how many stove items were used up when someone holding the stove item interacted with
---- the tile `tileX`, `tileZ` of the world's plot. If `World.canPlaceObject` returns `true` for the
---- tile, places a stove on it as `Stove.place` does and returns `1`. Otherwise changes nothing and
---- returns `0`.
+--- the tile at `tileX`, `tileZ` of the world's plot. If `World.canPlaceObject` returns `true` for
+--- the tile, places a stove on it as `Stove.place` does and returns `1`. Otherwise changes nothing
+--- and returns `0`.
 --- Note: `interactWithTile` takes no item from anywhere.
 function StoveItem.interactWithTile(world: World.World, tileX: number, tileZ: number): number
 	if not World.canPlaceObject(world, tileX, tileZ) then

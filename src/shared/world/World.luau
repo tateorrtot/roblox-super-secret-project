@@ -158,8 +158,8 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 end
 
 --- Adds a new player with the id `playerId` to the world and returns them. The player has no
---- character. Their pack is `pack`, or an empty pack if `pack` is `nil`. Fails, and changes
---- nothing, if a player already has the id `playerId`.
+--- character. Their pack is `pack`, or an empty pack if `pack` is `nil`. Raises an error, and
+--- changes nothing, if a player already has the id `playerId`.
 function World.addPlayer(world: World, playerId: number, pack: Inventory?): PlayerState
 	assert(world.players[playerId] == nil, `player {playerId} is already in the world`)
 	local player = PlayerState.new(pack)
@@ -167,9 +167,8 @@ function World.addPlayer(world: World, playerId: number, pack: Inventory?): Play
 	return player
 end
 
---- Removes the player with the id `playerId` from the world, after closing their screen as
---- `closeScreen` does, and returns them. Returns `nil` and changes nothing if no player has the id
---- `playerId`.
+--- Removes the player `playerId` from the world, after closing their screen as `closeScreen` does,
+--- and returns them. Returns `nil` and changes nothing if no player has the id `playerId`.
 function World.removePlayer(world: World, playerId: number): PlayerState?
 	local player = world.players[playerId]
 	if player == nil then
@@ -180,8 +179,8 @@ function World.removePlayer(world: World, playerId: number): PlayerState?
 	return player
 end
 
---- Spawns `stack` as a ground item at `position`, with the spawn velocity `velocity` and the
---- world's `now` as its spawn time, as `GroundItems.spawnStack` does. Returns the ground item's id.
+--- Spawns `stack` as a ground item at `position`, as `GroundItems.spawnStack` does. Its spawn
+--- velocity is `velocity`, and its spawn time is the world's `now`. Returns the ground item's id.
 --- Note: `spawnStack` takes `stack` from nowhere.
 function World.spawnStack(world: World, stack: ItemStack, position: Position, velocity: GroundItems.Velocity): number
 	return GroundItems.spawnStack(world.groundItems, stack, position, velocity, world.now)
@@ -232,16 +231,16 @@ function World.closeScreen(world: World, player: PlayerState)
 	end
 end
 
---- Sets the position, at its feet, of the character of the player with the id `playerId` to
---- `position`, and gives the player a character if they had none. Fails if no player has that id.
+--- Sets the position, at its feet, of the character of the player `playerId` to `position`, and
+--- gives the player a character if they had none. Raises an error if no player has that id.
 function World.setCharacterPosition(world: World, playerId: number, position: Position)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	PlayerState.setCharacterPosition(player, position)
 end
 
---- Closes the screen of the player with the id `playerId`, as `closeScreen` does, and then removes
---- their character, so they have none until `setCharacterPosition` runs. Does nothing if they have
---- no character. Fails if no player has that id.
+--- Closes the screen of the player `playerId`, as `closeScreen` does, and then removes their
+--- character, so they have none until `setCharacterPosition` runs. Does nothing if they have no
+--- character. Raises an error if no player has that id.
 function World.removeCharacter(world: World, playerId: number)
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	World.closeScreen(world, player)
@@ -249,12 +248,12 @@ function World.removeCharacter(world: World, playerId: number)
 end
 
 --- Opens the player's inventory screen on their pack with `inventory` beside it, as the screen of
---- the placed object with the id `placedObjectId`. Closes any screen they had open first, as
---- `closeScreen` does. `slotAcceptsItem`, if given, takes a slot and an item's id and returns
---- `true` if that slot of `inventory` takes that item. The screen closes when
---- `Plot.removePlacedObject` removes that placed object, and when `advanceTo` finds the player's
---- character more than `SCREEN_CLOSES_BEYOND` from it. Fails, and changes nothing, if no placed
---- object has the id `placedObjectId` or if the player has no character.
+--- the placed object `placedObjectId`. Closes any screen they had open first, as `closeScreen`
+--- does. `slotAcceptsItem`, if given, takes a slot and an item's id and returns `true` if that slot
+--- of `inventory` takes that item. The screen closes when `Plot.removePlacedObject` removes that
+--- placed object, and when `advanceTo` finds the player's character more than
+--- `SCREEN_CLOSES_BEYOND` from it. Raises an error, and changes nothing, if no placed object has
+--- the id `placedObjectId` or if the player has no character.
 function World.openPlacedObjectScreen(
 	world: World,
 	player: PlayerState,
@@ -279,7 +278,7 @@ function World.getOpenedPlacedObjectId(world: World, player: PlayerState): numbe
 end
 
 --- Returns `true` if the player's character stands within `CHARACTER_REACH` of the middle of the
---- tile `tileX`, `tileZ` of the plot, along the ground. Returns `false` for a player with no
+--- tile at `tileX`, `tileZ` of the plot, along the ground. Returns `false` for a player with no
 --- character.
 function World.canReachTile(world: World, player: PlayerState, tileX: number, tileZ: number): boolean
 	local character = player.character
@@ -287,7 +286,7 @@ function World.canReachTile(world: World, player: PlayerState, tileX: number, ti
 	return character ~= nil and Position.getGroundDistance(character.position, center) <= World.CHARACTER_REACH
 end
 
---- Returns `true` if any player's character stands on the tile `tileX`, `tileZ` of the plot:
+--- Returns `true` if any player's character stands on the tile at `tileX`, `tileZ` of the plot:
 --- within `TILE_STOOD_ON_WITHIN` of its middle.
 function World.isTileStoodOn(world: World, tileX: number, tileZ: number): boolean
 	local center = tileCenter(world, tileX, tileZ)
@@ -302,7 +301,7 @@ function World.isTileStoodOn(world: World, tileX: number, tileZ: number): boolea
 	return false
 end
 
---- Returns `true` if `Plot.canPlaceObject` returns `true` for the tile `tileX`, `tileZ` of the
+--- Returns `true` if `Plot.canPlaceObject` returns `true` for the tile at `tileX`, `tileZ` of the
 --- plot, and `isTileStoodOn` returns `false` for it.
 --- Note: `Plot.placeObject` does not check `isTileStoodOn`, so it places an object on a tile that a
 --- character stands on.
@@ -311,8 +310,8 @@ function World.canPlaceObject(world: World, tileX: number, tileZ: number): boole
 end
 
 --- Spawns each stack of `stacks`, as `spawnStack` does, as a ground item that lies in the middle of
---- the cube that a placed object fills on the tile `tileX`, `tileZ` of the plot. Each ground item
---- moves up at `TILE_THROW_UPWARD_SPEED` and outwards along the ground at
+--- the cube that a placed object fills on the tile at `tileX`, `tileZ` of the plot. Each ground
+--- item moves up at `TILE_THROW_UPWARD_SPEED` and outwards along the ground at
 --- `TILE_THROW_OUTWARD_SPEED`. The first goes 2.4 radians from the direction of greater x towards
 --- greater z, and each later one 2.4 radians further round than the one before.
 --- Note: `throwStacksFromTile` takes `stacks` from nowhere.

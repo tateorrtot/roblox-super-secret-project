@@ -24,8 +24,9 @@ end
 
 --- Adds the item that `definition` describes to the registry. Copies `id` and `stackSize` into a
 --- new frozen table, so the registry keeps no other field of `definition`, and a later change to
---- `definition` does not reach the registry. Fails, and changes nothing, if `id` or `stackSize` is
---- not what `ItemDefinition` says it is, or if an item with the id `id` is registered already.
+--- `definition` does not reach the registry. Raises an error, and changes nothing, if `id` or
+--- `stackSize` is not what `ItemDefinition` says it is, or if the registry already has an item with
+--- that `id`.
 function ItemRegistry.register(definition: ItemDefinition)
 	local id = definition.id
 	assert(
@@ -37,12 +38,12 @@ function ItemRegistry.register(definition: ItemDefinition)
 	definitions[id] = table.freeze({ id = id, stackSize = definition.stackSize })
 end
 
---- Returns the definition of the item with the id `id`. Fails if no item has the id `id`.
+--- Returns the definition of the item `id`. Raises an error if no item has that id.
 function ItemRegistry.get(id: string): ItemDefinition
 	return definitions[id] or error(`no item has the id "{id}"`, 2)
 end
 
---- Returns `true` if an item with the id `id` is registered.
+--- Returns `true` if `id` is the id of a registered item.
 function ItemRegistry.has(id: string): boolean
 	return definitions[id] ~= nil
 end

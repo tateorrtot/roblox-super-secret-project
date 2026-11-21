@@ -2,13 +2,13 @@
 --- A grid of square tiles that holds placed objects, at most one to a tile.
 ---
 --- A plot is `widthInTiles` tiles along x and `depthInTiles` tiles along z. Two whole numbers name
---- a tile, each counted from `1`, so the corner tile is x `1`, z `1`. `placeObject` adds a placed
+--- a tile, each counted from `1`, so the first tile is x `1`, z `1`. `placeObject` adds a placed
 --- object to the tile that the placed object names, and `removePlacedObject` removes it. The plot
 --- fires `placedObjectAdded` or `placedObjectRemoved` after each. A plot reads only a placed
 --- object's tile. The plot keeps a placed object's other fields, `kindId` among them, and never
 --- reads them. The plot numbers placed objects from `1` in the order `placeObject` adds them, and
---- never gives an id to a second placed object. `getTileAt` returns the tile under a position in
---- the world, and `getTileCenter` returns the position of a tile's middle.
+--- never uses an id twice. `getTileAt` returns the tile under a position in the world, and
+--- `getTileCenter` returns the position of a tile's middle.
 local Position = require("../Position")
 local Signal = require("../Signal")
 
@@ -73,7 +73,7 @@ end
 
 --- Returns `true` if `tileX` and `tileZ` name one of the plot's tiles: both are whole numbers,
 --- `tileX` is from `1` to `widthInTiles`, and `tileZ` is from `1` to `depthInTiles`. Accepts a
---- value of any type for each, and never fails.
+--- value of any type for each, and never raises an error.
 function Plot.hasTile(plot: Plot, tileX: unknown, tileZ: unknown): boolean
 	return isWholeNumber(tileX)
 		and isWholeNumber(tileZ)
@@ -83,7 +83,7 @@ function Plot.hasTile(plot: Plot, tileX: unknown, tileZ: unknown): boolean
 		and (tileZ :: number) <= plot.depthInTiles
 end
 
---- Returns `true` if a placed object stands on the tile `tileX`, `tileZ`. Returns `false` for a
+--- Returns `true` if a placed object stands on the tile at `tileX`, `tileZ`. Returns `false` for a
 --- tile that the plot does not have.
 function Plot.isTileTaken(plot: Plot, tileX: number, tileZ: number): boolean
 	for _, placedObject in plot.placedObjectsById do
@@ -94,8 +94,8 @@ function Plot.isTileTaken(plot: Plot, tileX: number, tileZ: number): boolean
 	return false
 end
 
---- Returns `true` if `placeObject` would accept a placed object on the tile `tileX`, `tileZ`: the
---- plot has the tile, and no placed object stands on it.
+--- Returns `true` if `placeObject` would accept a placed object on the tile at `tileX`, `tileZ`:
+--- the plot has the tile, and no placed object stands on it.
 function Plot.canPlaceObject(plot: Plot, tileX: number, tileZ: number): boolean
 	return Plot.hasTile(plot, tileX, tileZ) and not Plot.isTileTaken(plot, tileX, tileZ)
 end
@@ -104,8 +104,8 @@ end
 --- plot keeps `placedObject` itself and not a copy, so the fields that `PlacedObject` does not list
 --- stay on it. The plot never reads those fields. Freezes `placedObject`: nothing can assign its
 --- fields afterwards, but a table that one of its fields holds can still change. Fires
---- `placedObjectAdded` after adding it. Returns the placed object's id. Fails, and changes nothing,
---- if `canPlaceObject` would return `false` for the tile.
+--- `placedObjectAdded` after adding it. Returns the placed object's id. Raises an error, and
+--- changes nothing, if `canPlaceObject` would return `false` for the tile.
 --- Note: `placeObject` does not check `placedObject.kindId`. A plot does not know which kinds
 --- exist.
 function Plot.placeObject(plot: Plot, placedObject: PlacedObject): number
@@ -119,10 +119,10 @@ function Plot.placeObject(plot: Plot, placedObject: PlacedObject): number
 	return id
 end
 
---- Removes the placed object with the id `id` from the plot and returns it. The placed object's
---- tile then holds nothing, and the plot never gives `id` to another placed object. Fires
---- `placedObjectRemoved` after removing it. Returns `nil`, changes nothing, and fires nothing if no
---- placed object has the id `id`.
+--- Removes the placed object `id` from the plot and returns it. The placed object's tile then holds
+--- nothing, and the plot never gives `id` to another placed object. Fires `placedObjectRemoved`
+--- after removing it. Returns `nil`, changes nothing, and fires nothing if no placed object has
+--- that id.
 function Plot.removePlacedObject(plot: Plot, id: number): PlacedObject?
 	local placedObject = plot.placedObjectsById[id]
 	plot.placedObjectsById[id] = nil
@@ -141,8 +141,8 @@ function Plot.getTileAt(corner: Position, position: Position): (number, number)
 		math.floor((position.z - corner.z) / Plot.TILE_SIZE) + 1
 end
 
---- Returns the middle of the tile `tileX`, `tileZ`, as a position at the height of `corner`, for a
---- plot whose tile x `1`, z `1` has its outer corner at `corner`.
+--- Returns the middle of the tile at `tileX`, `tileZ`, as a position at the height of `corner`, for
+--- a plot whose tile x `1`, z `1` has its outer corner at `corner`.
 function Plot.getTileCenter(corner: Position, tileX: number, tileZ: number): Position
 	return table.freeze({
 		x = corner.x + (tileX - 0.5) * Plot.TILE_SIZE,

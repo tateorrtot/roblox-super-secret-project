@@ -23,10 +23,10 @@ function Signal.connect<T...>(signal: Signal<T...>, callback: (T...) -> ())
 	table.insert(signal.connections, callback)
 end
 
---- Calls every callback in the signal's `connections`, in the order they were connected, and
---- passes each the values `...`. Returns after the last callback returns. Skips a callback that
---- another callback connects during the call: the next `fire` calls it. Fails if a callback fails,
---- and does not call the callbacks after it.
+--- Calls every callback in the signal's `connections`, in the order they were connected, and passes
+--- each the values `...`. Returns after the last callback returns. Skips a callback that another
+--- callback connects during the call: the next `fire` calls it. Raises an error if a callback
+--- raises one, and does not call the callbacks after it.
 function Signal.fire<T...>(signal: Signal<T...>, ...: T...)
 	local connections = signal.connections
 	for index = 1, #connections do

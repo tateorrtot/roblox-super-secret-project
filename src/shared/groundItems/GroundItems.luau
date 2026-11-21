@@ -9,9 +9,9 @@
 --- a position. `takeFromItem` takes some of a ground item's stack and leaves the rest where it
 --- lies, and `removeItem` removes a whole ground item. `removeExpiredItems` removes the ground
 --- items that have been out too long. `spawnStack` numbers ground items from `1` in the order it
---- adds them, and never gives an id to a second ground item. A time is a number of seconds, passed
---- in as `now`, from any clock that only goes forward. Positions and distances are in studs. Ground
---- items are never saved.
+--- adds them, and never uses an id twice. A time is a number of seconds, passed in as `now`, from
+--- any clock that only goes forward. Positions and distances are in studs. Ground items are never
+--- saved.
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
 
@@ -124,8 +124,8 @@ function GroundItems.new(): GroundItems
 	return { nextId = 1, itemsById = {}, idsMovedSinceMerge = {} }
 end
 
---- Adds a ground item that holds `stack`, at `position`, with the spawn velocity `velocity` and the
---- spawn time `now`. Returns its id.
+--- Adds a ground item that holds `stack` at `position`. Its spawn velocity is `velocity`, and its
+--- spawn time is `now`. Returns the ground item's id.
 --- Note: `spawnStack` takes `stack` from nowhere, so the items of `stack` exist twice if they are
 --- also left where they were.
 function GroundItems.spawnStack(
@@ -149,7 +149,7 @@ end
 
 --- Sets the position of the ground item `id` to `position`, and keeps its stack, spawn velocity,
 --- and spawn time. The ground item gets a merge check the next time `mergeItems` runs. Does nothing
---- if no ground item has the id `id`.
+--- if no ground item has that id.
 function GroundItems.setItemPosition(groundItems: GroundItems, id: number, position: Position)
 	local groundItem = groundItems.itemsById[id]
 	if groundItem == nil then
@@ -236,7 +236,7 @@ function GroundItems.mergeItems(groundItems: GroundItems, now: number)
 end
 
 --- Removes the ground item `id` from the world and returns its stack. Returns `nil` and changes
---- nothing if no ground item has the id `id`.
+--- nothing if no ground item has that id.
 function GroundItems.removeItem(groundItems: GroundItems, id: number): ItemStack?
 	local groundItem = groundItems.itemsById[id]
 	groundItems.itemsById[id] = nil
@@ -262,8 +262,8 @@ end
 --- at least the size of the ground item's stack, the ground item leaves the world and the function
 --- returns the whole stack. Otherwise the ground item stays where it is under the same id, with its
 --- spawn velocity and spawn time, and holds what is left. Returns `nil`, and changes nothing, if
---- `count` is `0`. Fails if no ground item has the id `id`. Fails, and changes nothing, if `count`
---- is below `0`, or is not a whole number and is below the size of the stack.
+--- `count` is `0`. Raises an error if no ground item has that id. Raises an error, and changes
+--- nothing, if `count` is below `0`, or is not a whole number and is below the size of the stack.
 function GroundItems.takeFromItem(groundItems: GroundItems, id: number, count: number): ItemStack?
 	local groundItem = groundItems.itemsById[id]
 	if groundItem == nil then

@@ -55,7 +55,8 @@ function PlayerState.setCharacterPosition(player: PlayerState, position: Positio
 end
 
 --- Removes the player's character, so the player has none until `setCharacterPosition` runs. Does
---- nothing if they have no character. Fails, and changes nothing, if the player has a screen open.
+--- nothing if they have no character. Raises an error, and changes nothing, if the player has a
+--- screen open.
 function PlayerState.removeCharacter(player: PlayerState)
 	if player.screen ~= nil then
 		error("a player with a screen open must keep their character", 2)
@@ -71,8 +72,8 @@ end
 
 --- Opens the player's inventory screen on their pack. If `otherInventory` is given, the screen
 --- shows that inventory beside the pack. `otherSlotAcceptsItem`, if given, takes a slot and an
---- item's id and returns `true` if that slot of `otherInventory` takes that item. Fails, and
---- changes nothing, if `canOpenScreen` would return `false`.
+--- item's id and returns `true` if that slot of `otherInventory` takes that item. Raises an error,
+--- and changes nothing, if `canOpenScreen` would return `false`.
 function PlayerState.openScreen(
 	player: PlayerState,
 	otherInventory: Inventory.Inventory?,

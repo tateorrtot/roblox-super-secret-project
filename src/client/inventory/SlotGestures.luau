@@ -55,8 +55,8 @@ function SlotGestures.new(): SlotGestures
 	return {}
 end
 
---- Begins a gesture when the mouse button `button` goes down on the slot `slot`, and discards the
---- gesture that was in progress, if there was one.
+--- Begins a gesture when `button` goes down on `slot`, and discards the gesture that was in
+--- progress, if there was one.
 function SlotGestures.beginGesture(gestures: SlotGestures, button: Button, slot: Slot)
 	gestures.gestureInProgress = { button = button, slots = { slot } }
 end
@@ -88,14 +88,14 @@ function SlotGestures.getDraggedSlots(gestures: SlotGestures): { Slot }
 	return table.clone(inProgress.slots)
 end
 
---- Ends the gesture in progress when the mouse button `button` comes up at the time `now`, in
---- seconds, over the slot `over`, or over no slot if `over` is `nil`, and returns the gesture that
---- was made. Returns `nil` and changes nothing if no gesture is in progress, or if `button` is not
---- the button that began it. Returns `nil` and ends the gesture if it began on one slot and
---- `button` came up on another, or on none, without the pointer crossing a second slot.
---- A left click without Shift is a double click if the one before it was on the same slot, within
---- `DOUBLE_CLICK_SECONDS`. A click with Shift, a right click, and a drag end the memory of the
---- click before them, and are never the first half of a double click.
+--- Ends the gesture in progress when `button` comes up at the time `now`, in seconds, over the slot
+--- `over`, or over no slot if `over` is `nil`, and returns the gesture that was made. Returns `nil`
+--- and changes nothing if no gesture is in progress, or if `button` is not the button that began
+--- it. Returns `nil` and ends the gesture if it began on one slot and `button` came up on another,
+--- or on none, without the pointer crossing a second slot. A left click without Shift is a double
+--- click if the one before it was on the same slot, within `DOUBLE_CLICK_SECONDS`. A click with
+--- Shift, a right click, and a drag end the memory of the click before them, and are never the
+--- first half of a double click.
 function SlotGestures.endGesture(
 	gestures: SlotGestures,
 	button: Button,

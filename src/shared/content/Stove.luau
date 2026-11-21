@@ -2,20 +2,18 @@
 --- A stove: a placed object that cooks one item into another while its fire burns.
 ---
 --- A stove has three slots, a fire, and the work it is doing. `INPUT_SLOT` holds what is to be
---- cooked, `FUEL_SLOT` holds fuel, and what is made collects in `OUTPUT_SLOT`. `RECIPES` says
---- what a stove cooks, and `FUEL_SECONDS` what burns in it. `place` stands a stove on a tile of a
---- plot.
+--- cooked, `FUEL_SLOT` holds fuel, and what is made collects in `OUTPUT_SLOT`. `RECIPES` says what
+--- a stove cooks, and `FUEL_SECONDS` what burns in it. `place` stands a stove on a tile of a plot.
 ---
 --- `advance`, `interact`, `getScreenData`, and `breakPlacedObject` are the stove's script.
---- `advance` burns the fire and does the work as time passes: it lights the fire only when there
---- is something to cook, and a lit fire burns its fuel out. `interact` opens the stove's slots on
---- a player's screen. `getScreenData` returns a `Progress`, from which `getFuelLeftRatio` and
+--- `advance` burns the fire and does the work as time passes: it lights the fire only when there is
+--- something to cook, and a lit fire burns its fuel out. `interact` opens the stove's slots on a
+--- player's screen. `getScreenData` returns a `Progress`, from which `getFuelLeftRatio` and
 --- `getWorkDoneRatio` read the two gauges on that screen. `breakPlacedObject` takes the stove off
---- the plot and throws a stove item, and everything that was in the stove's slots, onto the
---- ground.
+--- the plot and throws a stove item, and everything that was in the stove's slots, onto the ground.
 ---
---- Note: the script is for a stove that `place` placed. Its functions fail for a placed object of
---- another kind, and for one of the stove's kind with no fire on it.
+--- Note: the script is for a stove that `place` placed. Its functions raise an error for a placed
+--- object of another kind, and for one of the stove's kind with no fire on it.
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
 local PlayerState = require("../players/PlayerState")
@@ -26,7 +24,7 @@ local Stove = {}
 
 --- What a stove makes from one item.
 export type Recipe = {
-	--- The id of the item that the stove makes from one of the item.
+	--- The id of the item that the stove makes.
 	read output: string,
 	--- How long making it takes, in seconds.
 	read seconds: number,
@@ -107,9 +105,9 @@ Stove.FUEL_SECONDS = table.freeze({
 --- Two times that differ by less than this, in seconds, count as the same time.
 local SAME_TIME_SECONDS = 1e-9
 
---- Stands a stove on the tile `tileX`, `tileZ` of `plot`, and returns the placed object's id. The
---- stove has `SLOT_COUNT` slots on it, holding nothing, no fire, and no work begun. Fails if
---- `Plot.canPlaceObject` would return `false` for that tile.
+--- Stands a stove on the tile at `tileX`, `tileZ` of `plot`, and returns the placed object's id.
+--- The stove has `SLOT_COUNT` slots on it, holding nothing, no fire, and no work begun. Raises an
+--- error if `Plot.canPlaceObject` would return `false` for that tile.
 --- Note: `place` does not ask `World.canPlaceObject`, so a character that stands on the tile does
 --- not stop it.
 function Stove.place(plot: Plot.Plot, tileX: number, tileZ: number): number
@@ -135,8 +133,8 @@ local function getStove(plot: Plot.Plot, placedObjectId: number): Stove
 	return placedObject :: Stove
 end
 
---- Returns the stove that has the id `placedObjectId` on `plot`. Fails if no placed object has
---- that id, or if the one that has is not of the stove's kind or has no fire on it.
+--- Returns the stove `placedObjectId` on `plot`. Raises an error if no placed object has that id,
+--- or if the one that has is not of the stove's kind or has no fire on it.
 function Stove.get(plot: Plot.Plot, placedObjectId: number): Stove
 	return getStove(plot, placedObjectId)
 end
@@ -146,10 +144,9 @@ function Stove.isBurning(stove: Stove): boolean
 	return stove.fire.burnSecondsLeft > 0
 end
 
---- Returns `true` if the slot `slot` of a stove accepts the item `itemId`. The input slot accepts
---- an item that `RECIPES` has a recipe for, the fuel slot accepts an item that `FUEL_SECONDS`
---- lists, and the output slot accepts nothing. Returns `false` for a slot that a stove does not
---- have.
+--- Returns `true` if `slot` of a stove accepts the item `itemId`. The input slot accepts an item
+--- that `RECIPES` has a recipe for, the fuel slot accepts an item that `FUEL_SECONDS` lists, and
+--- the output slot accepts nothing. Returns `false` for a slot that a stove does not have.
 function Stove.slotAcceptsItem(slot: number, itemId: string): boolean
 	if slot == Stove.INPUT_SLOT then
 		return Stove.RECIPES[itemId] ~= nil
@@ -207,15 +204,15 @@ local function work(stove: Stove, recipe: Recipe, seconds: number)
 	end
 end
 
---- Burns the fire of the stove that has the id `placedObjectId` on the world's plot, and does its
---- work, for `seconds`. While the input slot holds an item that `RECIPES` has a recipe for, and the
---- output slot has room for what the recipe makes, the stove lights a fire that is out with one
---- item from the fuel slot, and works on the item in the input slot. Each time an item has been
---- worked on for its recipe's `seconds`, one of it becomes one of the recipe's `output` in the
---- output slot. A lit fire burns its fuel out even with nothing to work on. The work done on an
---- item is lost if the fire goes out for want of fuel, if the item in the input slot changes, or if
---- the output slot has no room. Fails, and changes nothing, if no placed object has that id, or if
---- the one that has is not of the stove's kind or has no fire on it.
+--- Burns the fire of the stove `placedObjectId` on the world's plot, and does its work, for
+--- `seconds`. While the input slot holds an item that `RECIPES` has a recipe for, and the output
+--- slot has room for what the recipe makes, the stove lights a fire that is out with one item from
+--- the fuel slot, and works on the item in the input slot. Each time an item has been worked on for
+--- its recipe's `seconds`, one of it becomes one of the recipe's `output` in the output slot. A lit
+--- fire burns its fuel out even with nothing to work on. The work done on an item is lost if the
+--- fire goes out for want of fuel, if the item in the input slot changes, or if the output slot has
+--- no room. Raises an error, and changes nothing, if no placed object has that id, or if the one
+--- that has is not of the stove's kind or has no fire on it.
 function Stove.advance(world: World.World, placedObjectId: number, seconds: number)
 	local stove = getStove(world.plot, placedObjectId)
 	local left = seconds
@@ -237,22 +234,21 @@ function Stove.advance(world: World.World, placedObjectId: number, seconds: numb
 	end
 end
 
---- Opens the inventory of the stove that has the id `placedObjectId` on the world's plot, beside
---- the pack on the player's screen, as `World.openPlacedObjectScreen` does. It closes any screen
---- that the player had open first. Each slot of the stove's inventory accepts what
---- `slotAcceptsItem` says it accepts. Fails, and changes nothing, if the player has no character,
---- if no placed object has that id, or if the one that has is not of the stove's kind or has no
---- fire on it.
+--- Opens the inventory of the stove `placedObjectId` on the world's plot, beside the pack on the
+--- player's screen, as `World.openPlacedObjectScreen` does. It closes any screen that the player
+--- had open first. Each slot of the stove's inventory accepts what `slotAcceptsItem` says it
+--- accepts. Raises an error, and changes nothing, if the player has no character, if no placed
+--- object has that id, or if the one that has is not of the stove's kind or has no fire on it.
 function Stove.interact(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
 	local stove = getStove(world.plot, placedObjectId)
 	World.openPlacedObjectScreen(world, player, placedObjectId, stove.inventory, Stove.slotAcceptsItem)
 end
 
---- Breaks the stove that has the id `placedObjectId` on the world's plot. Takes the stove off the
---- plot, which closes every screen that was open on it. The fuel that was burning is lost. Throws
---- one of the item `ITEM_ID_WHEN_BROKEN`, and then each stack that was in the stove's slots, from
---- the lowest slot up, from the middle of the stove's tile, upwards and outwards, each a different
---- way, as `World.throwStacksFromTile` does. Fails, and changes nothing, if no placed object has
+--- Breaks the stove `placedObjectId` on the world's plot. Takes the stove off the plot, which
+--- closes every screen that was open on it. The fuel that was burning is lost. Throws one of the
+--- item `ITEM_ID_WHEN_BROKEN`, and then each stack that was in the stove's slots, from the lowest
+--- slot up, from the middle of the stove's tile, upwards and outwards, each a different way, as
+--- `World.throwStacksFromTile` does. Raises an error, and changes nothing, if no placed object has
 --- that id, or if the one that has is not of the stove's kind or has no fire on it.
 function Stove.breakPlacedObject(world: World.World, placedObjectId: number)
 	local stove = getStove(world.plot, placedObjectId)
@@ -304,10 +300,10 @@ function Stove.getWorkDoneRatio(progress: Progress, now: number): number
 	return math.clamp(1 - (doneAt - now) / progress.workSeconds, 0, 1)
 end
 
---- Returns the progress, at `world.now`, of the stove that has the id `placedObjectId` on the
---- world's plot, as `getProgress` makes it. It is what the client is told of the stove besides
---- its inventory. Fails if no placed object has that id, or if the one that has is not of the
---- stove's kind or has no fire on it.
+--- Returns the progress, at `world.now`, of the stove `placedObjectId` on the world's plot, as
+--- `getProgress` makes it. It is what the client is told of the stove besides its inventory. Raises
+--- an error if no placed object has that id, or if the one that has is not of the stove's kind or
+--- has no fire on it.
 function Stove.getScreenData(world: World.World, placedObjectId: number): Progress
 	return Stove.getProgress(getStove(world.plot, placedObjectId), world.now)
 end

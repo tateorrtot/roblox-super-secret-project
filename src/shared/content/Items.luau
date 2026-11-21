@@ -41,7 +41,7 @@ end
 --- Every item in the game. The list is frozen.
 Items.ALL = table.freeze(all)
 
---- Returns the item with the id `itemId`. Fails if the game has no item with that id.
+--- Returns the item `itemId`. Raises an error if the game has no item with that id.
 function Items.get(itemId: string): Item
 	return itemsById[itemId] or error(`the game has no item with the id "{itemId}"`, 2)
 end

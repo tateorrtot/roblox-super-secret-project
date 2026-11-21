@@ -7,8 +7,8 @@ local Messages = require(ReplicatedStorage:WaitForChild("Shared").requests.Messa
 local Remotes = {}
 
 --- Makes one RemoteEvent for each name in `Messages.toServer` and `Messages.toClient`, puts them in
---- a Folder called `Remotes` in ReplicatedStorage, and returns them by name. Reading a name
---- from the table returned fails if no message has the name.
+--- a Folder called `Remotes` in ReplicatedStorage, and returns them by name. Reading a name from
+--- the table returned raises an error if no message has the name.
 function Remotes.create(): { [string]: RemoteEvent }
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"

@@ -12,7 +12,7 @@ local ItemScripts = {}
 --- What one item does when someone holding it acts on the world. A script has only the functions
 --- that its item has a use for. It is not told who holds the item, or where they keep it.
 export type ItemScript = {
-	--- Called when someone holding the script's item interacts with the tile `tileX`, `tileZ` of
+	--- Called when someone holding the script's item interacts with the tile at `tileX`, `tileZ` of
 	--- the plot of `world`, which is a tile that the plot has. Returns how many of the item the
 	--- interaction used up, a whole number of `0` or more. The script takes none from anywhere.
 	read interactWithTile: ((world: World.World, tileX: number, tileZ: number) -> number)?,
@@ -20,8 +20,8 @@ export type ItemScript = {
 
 local scriptsByItemId: { [string]: ItemScript } = {}
 
---- Registers `itemScript` as the script of the item with the id `itemId`. Fails, and changes
---- nothing, if no item has that id, or if that item has a script already.
+--- Registers `itemScript` as the script of the item `itemId`. Raises an error, and changes nothing,
+--- if no item has that id, or if that item has a script already.
 function ItemScripts.register(itemId: string, itemScript: ItemScript)
 	if not ItemRegistry.has(itemId) then
 		error(`no item has the id "{itemId}"`, 2)
@@ -32,7 +32,7 @@ function ItemScripts.register(itemId: string, itemScript: ItemScript)
 	scriptsByItemId[itemId] = itemScript
 end
 
---- Returns the script of the item with the id `itemId`, or `nil` if that item has none.
+--- Returns the script of the item `itemId`, or `nil` if that item has none.
 function ItemScripts.find(itemId: string): ItemScript?
 	return scriptsByItemId[itemId]
 end

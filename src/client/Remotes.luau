@@ -7,8 +7,8 @@ local Messages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local Remotes = {}
 
 --- Waits until the server has made one RemoteEvent for each name in `Messages.toServer` and
---- `Messages.toClient`, and returns them by name. Fails if the returned table is read with a name
---- that neither list has.
+--- `Messages.toClient`, and returns them by name. Raises an error if the returned table is read
+--- with a name that neither list has.
 function Remotes.waitForAll(): { [string]: RemoteEvent }
 	local folder = ReplicatedStorage:WaitForChild("Remotes")
 	local remotes: { [string]: RemoteEvent } = {}

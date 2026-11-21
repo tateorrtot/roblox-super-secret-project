@@ -16,8 +16,8 @@ export type ItemStack = {
 	read count: number,
 }
 
---- Returns a new frozen stack of `count` items with the id `itemId`. Fails if no item has the id
---- `itemId`, or if `count` is not a whole number from `1` to the item's `stackSize`.
+--- Returns a new frozen stack of `count` items with the id `itemId`. Raises an error if no item has
+--- the id `itemId`, or if `count` is not a whole number from `1` to the item's `stackSize`.
 function ItemStack.new(itemId: string, count: number): ItemStack
 	local stackSize = ItemRegistry.get(itemId).stackSize
 	if count % 1 ~= 0 or count < 1 or count > stackSize then
@@ -28,7 +28,7 @@ end
 
 --- Returns `nil` if `value` is a table whose `itemId` is the id of a registered item, and whose
 --- `count` is a whole number from `1` to that item's `stackSize`. Otherwise returns what is wrong
---- with `value`, in words. Accepts a value of any type, and never fails.
+--- with `value`, in words. Accepts a value of any type, and never raises an error.
 function ItemStack.validate(value: unknown): string?
 	if type(value) ~= "table" then
 		return "a stack must be a table; got a " .. type(value)
@@ -59,10 +59,10 @@ function ItemStack.isSameItem(a: ItemStack, b: ItemStack): boolean
 	return a.itemId == b.itemId
 end
 
---- Moves as many items as fit from `from` into `into`. Returns a new stack of the items of `into`
---- and those that moved, and then a new stack of what is left of `from`, or `nil` if all of `from`
---- moved. Changes neither argument. If `into` and `from` have different `itemId`s, moves nothing
---- and returns `into` and `from` themselves.
+--- Adds as many items of `from` as fit to `into`. Returns a new stack that holds the items of
+--- `into` and the items that moved, and then a new stack of what is left of `from`, or `nil` if all
+--- of `from` moved. Changes neither argument. If `into` and `from` have different `itemId`s, moves
+--- nothing and returns `into` and `from` themselves.
 function ItemStack.merge(into: ItemStack, from: ItemStack): (ItemStack, ItemStack?)
 	if into.itemId ~= from.itemId then
 		return into, from
@@ -76,8 +76,8 @@ function ItemStack.merge(into: ItemStack, from: ItemStack): (ItemStack, ItemStac
 end
 
 --- Takes `count` items off `stack`. Returns a stack of those items, and then a stack of the items
---- that remain, or `nil` if none remain. Leaves `stack` unchanged. Fails if `count` is not a
---- whole number from `1` to the `count` of `stack`.
+--- that remain, or `nil` if none remain. Leaves `stack` unchanged. Raises an error if `count` is
+--- not a whole number from `1` to the `count` of `stack`.
 function ItemStack.split(stack: ItemStack, count: number): (ItemStack, ItemStack?)
 	if count == stack.count then
 		return stack, nil

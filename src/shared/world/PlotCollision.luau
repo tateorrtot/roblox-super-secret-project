@@ -70,10 +70,10 @@ local function pushGroundItemOutOfTile(groundItems: GroundItems, id: number, til
 	}, now)
 end
 
---- Pushes the ground items out of the tile `tileX`, `tileZ` of `plot`, whose tile x `1`, z `1` has
---- its outer corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of a
---- stud into the cube that a placed object fills on that tile. Pushing removes the ground item and
---- spawns its stack again at the time `now`, as a new ground item with a new id. The new ground
+--- Pushes the ground items out of the tile at `tileX`, `tileZ` of `plot`, whose tile x `1`, z `1`
+--- has its outer corner at `plotCorner`. A ground item is pushed if it reaches more than a tenth of
+--- a stud into the cube that a placed object fills on that tile. Pushing removes the ground item
+--- and spawns its stack again at the time `now`, as a new ground item with a new id. The new ground
 --- item lies at the same height and at the same place along the side, touching the nearest side of
 --- the tile that has no placed object against it, and starts moving away from the tile along the
 --- ground at `PUSHED_GROUND_ITEM_SPEED`. A side at the edge of the plot has no placed object

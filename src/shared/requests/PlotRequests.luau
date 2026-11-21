@@ -42,13 +42,13 @@ local function findScriptOfPlacedObject(world: World, placedObjectId: unknown): 
 	return PlacedObjectScripts.find(placedObject.kindId)
 end
 
---- Interacts with the tile `tileX`, `tileZ` of the plot, for the player who holds the item in
+--- Interacts with the tile at `tileX`, `tileZ` of the plot, for the player who holds the item in
 --- their selected hotbar slot. Calls the `interactWithTile` of that item's script, then takes out
 --- of the slot as many items as it returned, or all that the slot holds if that is fewer. Does
 --- nothing if the slot holds nothing, if its item has no script or a script without
 --- `interactWithTile`, if `tileX` and `tileZ` name no tile of the plot, if the player has no
---- character, or if the character stands more than `World.CHARACTER_REACH` from the tile. Fails if
---- `interactWithTile` returns anything but a whole number of `0` or more.
+--- character, or if the character stands more than `World.CHARACTER_REACH` from the tile. Raises an
+--- error if `interactWithTile` returns anything but a whole number of `0` or more.
 function PlotRequests.interactWithTile(world: World, player: PlayerState, tileX: unknown, tileZ: unknown)
 	local itemScript = findScriptOfSelectedItem(player)
 	local interactWithTile = if itemScript ~= nil then itemScript.interactWithTile else nil
@@ -61,11 +61,10 @@ function PlotRequests.interactWithTile(world: World, player: PlayerState, tileX:
 	end
 end
 
---- Interacts with the placed object that has the id `placedObjectId`, for the player. Calls the
---- `interact` of the script of that placed object's kind. Does nothing if no placed object has
---- that id, if its kind has no script or a script without `interact`, if the player has no
---- character, or if the character stands more than `World.CHARACTER_REACH` from the placed
---- object's tile.
+--- Interacts with the placed object `placedObjectId`, for the player. Calls the `interact` of the
+--- script of that placed object's kind. Does nothing if no placed object has that id, if its kind
+--- has no script or a script without `interact`, if the player has no character, or if the
+--- character stands more than `World.CHARACTER_REACH` from the placed object's tile.
 function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
 	local placedObjectScript = findScriptOfPlacedObject(world, placedObjectId)
 	local interact = if placedObjectScript ~= nil then placedObjectScript.interact else nil
@@ -78,11 +77,10 @@ function PlotRequests.interactWithPlacedObject(world: World, player: PlayerState
 	end
 end
 
---- Breaks the placed object that has the id `placedObjectId`, for the player. Calls the
---- `breakPlacedObject` of the script of that placed object's kind. Does nothing if no placed
---- object has that id, if its kind has no script or a script without `breakPlacedObject`, if the
---- player has no character, or if the character stands more than `World.CHARACTER_REACH` from the
---- placed object's tile.
+--- Breaks the placed object `placedObjectId`, for the player. Calls the `breakPlacedObject` of the
+--- script of that placed object's kind. Does nothing if no placed object has that id, if its kind
+--- has no script or a script without `breakPlacedObject`, if the player has no character, or if the
+--- character stands more than `World.CHARACTER_REACH` from the placed object's tile.
 function PlotRequests.breakPlacedObject(world: World, player: PlayerState, placedObjectId: unknown)
 	local placedObjectScript = findScriptOfPlacedObject(world, placedObjectId)
 	local breakPlacedObject = if placedObjectScript ~= nil then placedObjectScript.breakPlacedObject else nil

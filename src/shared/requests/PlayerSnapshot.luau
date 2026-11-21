@@ -61,9 +61,9 @@ local function getScreenData(world: World.World, placedObjectId: number?): unkno
 	return getData(world, placedObjectId)
 end
 
---- Returns the snapshot of the player with the id `playerId`, as plain data. If the player's
---- screen is open on a placed object whose script has a `getScreenData`, calls it and passes what
---- it returns on as `screenData`, unchanged. Fails if no player has that id.
+--- Returns the snapshot of the player `playerId`, as plain data. If the player's screen is open on
+--- a placed object whose script has a `getScreenData`, calls it and passes what it returns on as
+--- `screenData`, unchanged. Raises an error if no player has that id.
 function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSnapshot
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	local screen = player.screen
@@ -86,8 +86,8 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 	}
 end
 
---- Returns the snapshot that `encoded` holds. Fails if an inventory in `encoded` cannot be
---- decoded, or if its carried stack cannot be made.
+--- Returns the snapshot that `encoded` holds. Raises an error if an inventory in `encoded` cannot
+--- be decoded, or if its carried stack cannot be made.
 --- Note: the screen that `decode` makes has no `otherSlotAcceptsItem`, so every slot of its other
 --- inventory accepts every item.
 function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
