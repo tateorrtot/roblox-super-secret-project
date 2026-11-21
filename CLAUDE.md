@@ -30,6 +30,7 @@ From https://www.gdquest.com/library/modular_game_architecture/, which Tate chos
 - **A library knows nothing of who uses it.** If it could not be copied into a different game as it is, it is wrong. It is handed what it needs: a list, a number, a rule as a function.
 - **A library requiring another library:** Tate, 2026-11-21: "okay and makes sense sometimes. It just needs to be done incredibly sparringly IF at all ever." Where one does, its `README.md` says why nothing else would do.
 - **In a library's folder, never open `main-project\` or another library's folder.** What you need is in your own folder. If it is not, say what is missing and stop.
+- **A library is designed and built by a session that was started in the library's own folder.** A helper agent of a session at `roblox\` is shown that session's memory of the game (tested on 2026-11-21), so it may review a library and may never design or build one.
 - **Inside any folder, a file requires what is in its own folder or below it, and never what is above.** This is Godot's "signal up, call down". Where that is impossible, break it and say where.
 
 ## Who you work with
