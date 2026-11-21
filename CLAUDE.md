@@ -7,6 +7,8 @@ A systemic sandbox game on Roblox, written mostly by Claude for the user. This f
 ## The brief (the user's words, 2026-11-18)
 > I want you to make a Roblox game. I'd like you to author the majority of it to test your capabilities. Your primary goal is to make as successful of a game as possible with as high of a playercount for as long as possible as reasonable.
 
+**This is the goal: a good game that many people play for a long time. Everything else is a means to it.** The user, 2026-11-21: "its important to remember the original main goal of why were doing any of this and what the goal is. Anything else is just a means to reach that goal." Before a piece of work, say how it brings that game closer. A library, a rule, or a note that does not is not built.
+
 The user is here to help with whatever Claude can't do.
 
 ## Rules that always apply
