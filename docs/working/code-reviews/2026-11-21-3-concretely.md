@@ -32,3 +32,37 @@ Of "Shall I cut Shift-click's request to the slot alone, so the server chooses w
 ## What changed
 - The comment of `InventoryRequests.moveFromSlotToInventory` is written again, with each argument on a line of its own and no noun that is not an argument, a field, a type, or a value. It is the sample: the other comments wait for the user's word on it.
 - `docs/code/comments.md` has the rule, in their words.
+
+## The same day, of the sample
+The user read the rewritten comment, and then sent three messages while Claude worked.
+
+> Ah right away this documentation is so much clearer I see what it does now! You give it an item stack, from some slot, and then it gets distrubited between toFirstSlot and toLastSlot.
+
+> Why not just feed it like a list of slots to distrubite over? Slots may not be in perfect order like 2, 3, 4? What if the player drags diagonally?
+
+Of "`world`: the `World`. This request does not read it.":
+> Is that standard...? Seems redundant
+
+Of `side: unknown, slot: unknown, toSide: unknown, toFirstSlot: unknown, toLastSlot: unknown`:
+> Why are all these DataTypes unspecified?
+
+> Yes lets refine this up to standard then we'll get the other comments, documentation, and code.
+
+Of the request change that Claude had dropped:
+> No dont drop it? Im still just not really understanding. You might be over abstracting?
+
+Of whether the comment was concrete enough:
+> its getting there
+
+Then:
+> Why not just do... Inventories Slots No sides? Something like moveFromSlotToInventory could be more so broken up as: "inside of inventory A, at this slot, grab this stack. now, in inventory B, distrubite it across these slots"
+
+And then:
+> Actually wait no thats two jobs I broke my own rules. "inside of inventory A, at this slot, grab this stack." Thats one function. "Inside inventory B, distribute an item stack across these slots" Thats another function. Dont bake it together
+
+- **The comment worked: they could say what the function does.** They read "into the slots from `toFirstSlot` to `toLastSlot`" as sharing the items out, which it does not do. The comment now says so, and names the request that does.
+- **A line for an argument that the function does not read is noise.** It is said once, in the module's description.
+- **A signature of `unknown` tells a reader nothing.** The module's description now says why: a client can send any value, and the request checks each one. Each argument's line gives the type that the check wants. Godot has the same in `_can_drop_data(at_position: Vector2, data: Variant)`.
+- **Their two functions exist:** `Inventory.takeFromSlot` and `Inventory.addStack`, which take an inventory and slots and know nothing of sides. `InventoryScreen.moveFromSlotToInventory` is the two baked into one, and it is to be taken apart. Not built: Claude showed how, and asked whether to do it now or after the comments.
+- **`side` is needed in one place only:** where a client's request comes in, since a client cannot send an inventory and must say which of its player's open inventories it means.
+

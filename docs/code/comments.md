@@ -18,7 +18,7 @@ The rules come from three places:
 
 ## What a comment says
 - **Every noun is a thing the reader can point at:** an argument, a field, a type, or a literal value, in backticks. Claude wrote "Moves the whole stack out of one slot of the player's open screen". The user, 2026-11-21: "What is the whole stack? What is one slot? [Didnt you literally define it as an argument!] ... you say things that sound good at first glance but can be done so much more concretley." It is now "Moves the `ItemStack` in `slot`", and the open screen is `player.screen`.
-- **Each argument is said to be what it is,** one to a line: its values or its type, and the field that it stands for. "`side`: `"pack"` or `"other"`. It picks the inventory that `slot` is in: `"pack"` is `player.screen.pack`".
+- **Each argument is said to be what it is,** one to a line: its type, its values, and the field that it stands for. "`side`: an `InventoryScreen.Side`, which is `"pack"` or `"other"`. It picks the inventory that `slot` is in". Where the signature says `unknown`, because a client sent the value, the line gives the type that the request checks for. An argument that the function does not read gets no line, and the module's description says once why it is there. The user, of "`world`: the `World`. This request does not read it.": "Is that standard...? Seems redundant".
 - **Everything a caller needs:** what changes, what the function returns, and what happens in each case a caller can meet.
 - **Only what is true of the code.** Read the function before writing its comment. If the comment and the code disagree, the comment changes.
 - **What is, never what was.** No history, no date, and no reason from a review.

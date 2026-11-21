@@ -1,19 +1,24 @@
 --!strict
 --- The requests that a client makes about its player's open inventories and hotbar.
 ---
---- Each function is one request. `world` is the world, and `player` is the player whose client sent
---- the request. Every argument after them is what that client sent, and may be a value of any type.
---- A request that does not fit the player's state, or whose arguments are not valid, does nothing.
---- A player with no character can open no screen and drop nothing.
+--- Each function is one request. `Requests.carryOut` calls it with the `World`, then the
+--- `PlayerState` of the player whose client sent the request, and then the values that the client
+--- sent. Each of those values is typed `unknown`: a client can send a value of any type, so the
+--- request checks every one before it uses it. A request whose values do not pass its checks does
+--- nothing. Every request takes the `World`, also a request that does not read it, so that
+--- `Requests.carryOut` calls them all the same way.
 ---
---- Every request that takes a `side`, and every request that moves the carried stack, acts on the
---- player's open screen, `PlayerState.screen`. That screen is an `InventoryScreen.InventoryScreen`:
---- the player's pack, the inventory open beside it, if there is one, and the stack that the player
---- carries between slots. It holds state and draws nothing.
+--- Most requests act on `player.screen`, the `InventoryScreen.InventoryScreen` that the player has
+--- open. It has three fields that the requests use: `pack`, which is the same `Inventory` as
+--- `player.pack`; `otherInventory`, which is a second `Inventory`, such as a crate's, or `nil`; and
+--- `carriedStack`, which is an `ItemStack` that is in neither inventory, or `nil`. It holds state
+--- and draws nothing. `openPack`, `selectHotbarSlot`, and `dropFromSelectedSlot` do not need
+--- `player.screen`. Every other request does nothing while `player.screen` is `nil`. A player with
+--- no character can open no screen and drop nothing.
 ---
---- A `side` and a `slot` together name one slot of the open screen. `side` is an
---- `InventoryScreen.Side`: `"pack"` for the player's pack, or `"other"` for the inventory open
---- beside it. `slot` is the slot's number in that inventory, counted from `1`.
+--- Two values pick one slot: a `side` and a `slot`. `side` is an `InventoryScreen.Side`: `"pack"`
+--- picks `player.screen.pack`, and `"other"` picks `player.screen.otherInventory`. `slot` is a slot
+--- number in the inventory that `side` picks, from `1` to that inventory's `slotCount`.
 ---
 --- A request that drops takes a `direction`: the way the stack is thrown. It is a table with
 --- numbers from `-1` to `1` under `x`, `y`, and `z`, not all `0`, where `y` is upwards. Only the
@@ -148,16 +153,20 @@ function InventoryRequests.swapSlots(
 	end
 end
 
---- Moves the `ItemStack` in `slot` into the slots from `toFirstSlot` to `toLastSlot`.
---- - `world`: the `World`. This request does not read it.
+--- Moves the `ItemStack` in `slot` into the slots numbered from `toFirstSlot` to `toLastSlot`.
+--- Fills those slots in order, and does not share the items out evenly between them. To share a
+--- stack out, the request is `spreadCarriedStackOverSlots`, which takes the carried stack and a
+--- list of slots.
 --- - `player`: the player whose client sent the request. The request acts on `player.screen`.
---- - `side`: `"pack"` or `"other"`. It picks the inventory that `slot` is in: `"pack"` is
---- `player.screen.pack`, and `"other"` is `player.screen.otherInventory`.
---- - `slot`: a slot number in that inventory.
---- - `toSide`: `"pack"` or `"other"`. It picks the inventory that the stack moves into, as `side`
---- does.
---- - `toFirstSlot`, `toLastSlot`: slot numbers in the inventory that `toSide` picks. The target
---- slots are the slots numbered from `toFirstSlot` to `toLastSlot`, both included.
+--- - `side`: an `InventoryScreen.Side`, which is `"pack"` or `"other"`. It picks the inventory that
+--- `slot` is in: `"pack"` picks `player.screen.pack`, and `"other"` picks
+--- `player.screen.otherInventory`.
+--- - `slot`: a `number`. A slot number in the inventory that `side` picks.
+--- - `toSide`: an `InventoryScreen.Side`. It picks the inventory that the stack moves into, as
+--- `side` does.
+--- - `toFirstSlot`, `toLastSlot`: each a `number`. Slot numbers in the inventory that `toSide`
+--- picks. The target slots are the slots numbered from `toFirstSlot` to `toLastSlot`, both
+--- included.
 ---
 --- Moves as many of the stack's `count` items as fit. First, adds items to each target slot that
 --- holds an `ItemStack` with the same `itemId`, until that stack reaches its item's `stackSize`.
