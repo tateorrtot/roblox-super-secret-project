@@ -36,6 +36,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `placedObject`, `placedObjectId` | A thing standing on a plot, and its id. The name is the user's, 2026-11-20: "I like PlacedObject!" Never "block", and never "placed item": "Who said it had anything to do with an item." |
 | `kindId` | The id of a kind, on a thing of that kind: a placed object's is its kind of placed object, such as `"crate"`. A kind's own module names it in full, `PLACED_OBJECT_KIND_ID`, since a cold reader asked "kind of what?" |
 | `client`, `server` | Roblox's own words for a player's copy of the game and for the one copy that decides. Never "the player's machine" |
+| `Variant<T>` | A value that a client sent. To the type checker it is `unknown`: it may be of any type until the request has checked it. `T` is the type that the check wants. The word is Roblox's and Godot's for a value of any type, and the user's: "youre saying these things are variants!" |
 | `content` | The game's own items and kinds of placed object: the folder `src/shared/content`, and the folders of that name on the server and the client. The user's word |
 | `stove` | The game's placed object that cooks. Never "furnace", which is Minecraft's word for its own: "a furnace and a stove mean the same thing two words for the same script" |
 | `Model` | Roblox's own: a thing in the world made of parts, which is what a scene is in Godot. How a kind of placed object looks is a Model that the kind's own piece makes |

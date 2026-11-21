@@ -68,7 +68,7 @@ Godot's rules. Each pair is a comment of `Plot` before and after the pass of 202
 ## What a page needs
 The user opened one method's page on 2026-11-21 and could not read it: "what the hell is a side", and of the code spans, "they look like broken hyperlinks. That repeat the word before them sometimes?" Their words are in `docs/working/code-reviews/2026-11-21-2-what-is-a-side.md`.
 - **A page uses no word that it does not explain or link.** A reader lands on one method and reads nothing else. Where an argument's type does not say what the argument is, the comment says so, or names the type in full so that the page links to it: "`side` is an `InventoryScreen.Side`".
-- **The sample is `InventoryRequests.moveFromSlotToInventory`,** written to the two rules at the top of "What a comment says". The other comments are not yet brought to them: that waits on the user's word on the sample.
+- **Three pages are written to the two rules at the top of "What a comment says":** `InventoryRequests`, `PlotRequests`, and the functions `takeFromSlot`, `putInSlot`, `addItems`, and `addStack` of `Inventory`. `InventoryRequests.moveFromSlotToInventory` was the sample, and the user said of it "this documentation is so much clearer". The other comments are not yet brought to the two rules.
 - **An example is a file in `demos`, named for its module:** `demos/Plot.luau`. `lune run tools/check` runs every one, and the module's page shows the file with what it prints. Writing one is also the test of the interface: if the example is hard to write, the interface is hard to use.
 
 ## Layout

@@ -54,6 +54,13 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **`PlacedObjectLooks` was kept apart from the kinds.** It is gone: a kind's name is in the kind's own file, and nothing of the content holds a colour.
   - **The names:** `kindId`; `tileX` and `tileZ`; `widthInTiles` and `depthInTiles`; `CHARACTER_REACH`; `PLACED_OBJECT_KIND_ID` and `ITEM_ID_WHEN_BROKEN`; `throwStacksFromTile` and its two speeds; `openPlacedObjectScreen`, `getOpenedPlacedObjectId`; `Inventory.takeEveryStack`.
   - **The work is on a branch of its own,** `placed-objects`, cut from `dropped-items`.
+- **The split of `moveFromSlotToInventory`, 2026-11-21.** The user said how: two functions, and glue. These details are Claude's.
+  - **The request keeps its name and is the glue.** It takes `toSlots`, a list of slot numbers, where it took a first and a last.
+  - **A list from a client may have no more entries than the inventory has slots,** and may name a slot twice.
+  - **The rule that a stack never goes into the slot it came from is gone.** If that slot is listed, what is left over goes back into it, which is where it would have stayed.
+  - **`Variant<T>` is written out in each of the two request modules,** since a type that both export from a third file would need that file.
+  - **The private helpers `findInventoryOnSide`, `isListOfSlots`, and `getSlotsAccepting`,** in `InventoryRequests`.
+  - **The stove's five checks of the old function are gone, and so is one kind of turn in two random runs.** The request's own tests move a stack into a slot that accepts it, with a made-up oven.
 - **The comment pass, 2026-11-21.** The user asked for it: "The documentation must be *good*." These details are Claude's.
   - **How each kind of comment starts** (`docs/code/comments.md`): a signal is "Fires after ...", and then "Passes ..."; a value that a caller passes or gets is a literal, in digits and backticks.
   - **What `tools/comments.py` fails for,** and that `lune run tools/check` runs it.

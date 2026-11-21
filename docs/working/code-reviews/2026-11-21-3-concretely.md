@@ -66,3 +66,24 @@ And then:
 - **Their two functions exist:** `Inventory.takeFromSlot` and `Inventory.addStack`, which take an inventory and slots and know nothing of sides. `InventoryScreen.moveFromSlotToInventory` is the two baked into one, and it is to be taken apart. Not built: Claude showed how, and asked whether to do it now or after the comments.
 - **`side` is needed in one place only:** where a client's request comes in, since a client cannot send an inventory and must say which of its player's open inventories it means.
 
+## Their word on the plan
+Claude showed how it would take the function apart. The user:
+> Yes! Do that thats the pattern for code im looking for! This is much better code!
+
+Of the signature, which still read `side: unknown, slot: unknown`:
+> I feel like it should always be referenced what these things like. I know this method is going away but in other methods, what the heck is a side? is it a table? Let me click on it and view it. Whats toFirstSlot? Is it a slot? Is that a table let me see it! Is it a number? If so, what kind? A float?
+
+Of "it turns `side` and `toSide` into the two inventories":
+> Yeah I kinda hate SIDE as a concept as a whole i just dont understand where it came from.
+
+Of why the values are typed `unknown`:
+> ohh that makes more sense I see! youre saying these things are variants!
+
+Of whether to take the function apart now or to finish the comments first:
+> Yes to both
+
+- **The pattern they want in code:** a function does one job. Where a player's action needs two jobs, glue calls the two functions one after the other. `InventoryScreen.moveFromSlotToInventory` is gone, and the request calls `Inventory.takeFromSlot` and `Inventory.addStack`.
+- **A signature says what each value is, and each type can be clicked.** A value that a client sent is typed `Variant<T>`: it is `unknown` to the type checker, and `T` is the type that the request checks for. The word is theirs, and both Roblox's and Godot's references use it for a value of any type.
+- **They do not understand `side`, and do not like it.** It came from Claude: a client cannot send an inventory, so it sends a word for one of its player's two open inventories, and Claude took the word from where the two are drawn on the screen. Nine functions of `InventoryScreen` still take it, and two more take a list of slots that each name one.
+- **Built:** the split; a list of slots in the request; `Variant`; and the comments of `InventoryRequests`, `PlotRequests`, and four functions of `Inventory`, to the standard of the sample. Not built: the comments of the other modules.
+
