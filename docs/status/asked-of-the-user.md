@@ -29,7 +29,7 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **In Studio, select `Workspace` and set `PlayerScriptsUseInputActionSystem` to `Enabled`,** if they want Roblox's own movement and camera to run on input actions too. Roblox's guide recommends it, a script cannot read or set it, and the game's own actions work either way (`docs/roblox/input.md`).
 - **For saving, when it is the next piece:** publish the place and switch on Studio's access (the steps are in `docs/roblox/studio.md`), and a clear yes to downloading ProfileStore, which the survey in docs/research/13 recommends wrapping behind a module of ours.
 - **One Blockbench model with a stepped animation,** in `assets/`, as glTF or FBX plus the `.bbmodel`, to test the art pipeline.
-- **In Studio, switch on "Allow Mesh / Image APIs":** File, Experience Settings, Security. It lets a script write the pixels of a stand-in texture and build a mesh from them. Without it a script in Studio can do neither (`docs/roblox/facts.md`). It is a security setting of their place, so it is theirs to switch.
+- **In Studio, switch on "Allow Mesh / Image APIs":** it is on the Security tab of Experience Settings. It lets a script write the pixels of a stand-in texture and build a mesh from them. Without it a script in Studio can do neither (`docs/roblox/facts.md`). It is a security setting of their place, so it is theirs to switch.
 - **Real art for the items, when they want it.** Until then Claude draws primitive stand-ins of its own, by their word of 2026-11-21. No stand-in may reach the public.
 - **A budget** for a small ad test, and for the 1,000 Robux fee that lets under-16s see the game later.
 - **Whether they have a cheap Android phone to test on.**
