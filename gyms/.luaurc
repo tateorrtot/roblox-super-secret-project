@@ -1,0 +1,6 @@
+{
+	"aliases": {
+		"inventory": "../../inventory/src",
+		"drops": "../../ground-items/src"
+	}
+}

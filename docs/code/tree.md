@@ -41,14 +41,15 @@ items and moving them around
 
 | Part | Layer | Built |
 |---|---|---|
-| `inventory` | Library, in the folder `inventory` beside this repo | Started on the night of 2026-11-21, by a session that was told nothing of this game. Its page is the README of that folder |
-| `ground-items` | Library, in the folder `ground-items` beside this repo | Started the same night, the same way |
+| `inventory` | Library, in the folder `inventory` beside this repo | Built on the night of 2026-11-21, by a session that was told nothing of this game: `Stack`, `Slot`, `Inventory`. Reviewed and mended. Its page is the README of that folder, and the user has not read it yet |
+| `ground-items` | Library, in the folder `ground-items` beside this repo | Built the same night, the same way: `Drop`, `Ground`. Reviewed and mended |
 | Kinds, a character's items, what a person asks for, dropping and picking up, the door | Systems | Not built on the libraries. Today's `src/shared` does these jobs in `ItemRegistry`, `PlayerState`, `InventoryScreen`, `InventoryRequests`, `World`, and `PlayerSnapshot` |
 | The UI | UI | Today's `src/client` |
 | Each kind of item | Content | Today's `src/shared/content/Items.luau` |
 
 - **Each system above is glue:** it calls one function of a library, then another. The user's pattern, 2026-11-21: ""inside of inventory A, at this slot, grab this stack." Thats one function. "Inside inventory B, distribute an item stack across these slots" Thats another function. Dont bake it together".
 - **The door and saving are on no branch of the user's tree.** They are drawn here under the branch that uses them, and may be a branch of their own.
+- **Tried in a gym:** `gyms/items` joins the two libraries into a pack, a hotbar, a held stack, a crate, a stove with rules, a mover, a helper, dropping, picking up, and saving, with about 95 lines of glue. Every step held.
 - **This repo's `src` is not rewritten yet.** It moves onto the libraries after the user has read them.
 
 ## Objects in the world that can be broken or placed
