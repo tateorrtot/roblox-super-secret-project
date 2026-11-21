@@ -28,8 +28,8 @@ local Inventory = require(Shared.inventory.Inventory)
 local InventoryScreen = require(Shared.inventory.InventoryScreen)
 local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local PlayerState = require(Shared.players.PlayerState)
-local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
-local StationProgress = require(Shared.stations.StationProgress)
+local PlayerSnapshot = require(Shared.requests.PlayerSnapshot)
+local Stove = require(Shared.content.Stove)
 local StoveItem = require(Shared.content.StoveItem)
 
 local BreakClick = require(script.Parent.world.BreakClick)
@@ -222,21 +222,22 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 			screen.otherInventory,
 			otherName,
 			screen.carriedStack,
-			snapshot.stationProgress ~= nil
+			kindId == Stove.PLACED_OBJECT_KIND_ID
 		)
 	end
 end)
 
--- A station's gauges move with time alone, so they are drawn here every frame from the times in
--- the snapshot, and the server sends nothing while a station only burns and works.
+-- A stove's gauges move with time alone, so they are drawn here every frame from the times that
+-- the stove's script put in the snapshot, and the server sends nothing while a stove only burns
+-- and works.
 RunService.RenderStepped:Connect(function()
-	local progress = snapshot.stationProgress
-	if progress ~= nil then
+	if snapshot.placedObjectKindId == Stove.PLACED_OBJECT_KIND_ID and snapshot.screenData ~= nil then
+		local progress = snapshot.screenData :: Stove.Progress
 		local now = os.clock() + worldClockLead
-		InventoryGui.setStationGauges(
+		InventoryGui.setStoveGauges(
 			inventoryGui,
-			StationProgress.getFuelLeftRatio(progress, now),
-			StationProgress.getWorkDoneRatio(progress, now)
+			Stove.getFuelLeftRatio(progress, now),
+			Stove.getWorkDoneRatio(progress, now)
 		)
 	end
 end)

@@ -60,10 +60,13 @@ do -- interactWithTile
 			and placed.tileZ == 1,
 		"interactWithTile: a stove stands on the tile, in a world with no player to hold the item"
 	)
-	local station = world.stations[placedObjectId]
+	local stove = Stove.get(world.plot, placedObjectId)
 	check(
-		station ~= nil and station.kindId == Stove.STATION_KIND_ID and Inventory.isEmpty(station.inventory),
-		"interactWithTile: placed as Stove.place does, as a station whose slots hold nothing"
+		stove == placed :: any
+			and stove.inventory.slotCount == Stove.SLOT_COUNT
+			and Inventory.isEmpty(stove.inventory)
+			and not Stove.isBurning(stove),
+		"interactWithTile: placed as Stove.place does, with SLOT_COUNT slots holding nothing and no fire"
 	)
 	check(usedUp == 1, "interactWithTile: returns 1, since one stove item was used up")
 	check(next(world.groundItems.itemsById) == nil, "interactWithTile: and nothing is left lying on the ground")

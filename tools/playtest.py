@@ -45,7 +45,7 @@ local view = {
 	held = hotbarGui.Row.Held.Text,
 	title = panel.Title.Text,
 	carried = iconText(inventoryGui.Carried:FindFirstChild("StackIcon")),
-	stationShown = panel.FireGauge.Visible,
+	stoveShown = panel.FireGauge.Visible,
 	fire = panel.FireGauge.Fill.Size.Y.Scale,
 	work = panel.WorkGauge.Fill.Size.X.Scale,
 	outsideX = math.max(8, panel.AbsolutePosition.X - 40),
@@ -888,7 +888,7 @@ class Playtest:
         check(on_screen, 'the stove is in view from beside it', point)
         self.click(point)
         view = self.view()
-        check(view['open'] and view['title'] == 'Stove' and len(view['other']) == 3 and view['stationShown'],
+        check(view['open'] and view['title'] == 'Stove' and len(view['other']) == 3 and view['stoveShown'],
               'a click on the stove opens its three slots, laid out as a furnace', {'title': view['title'], 'other': view['other']})
         apple_slot = next((slot for slot, text in view['pack'].items() if text.startswith('Apple')), None)
         # The biggest stack of logs: the stove takes one log into its fire at once, and the rest must still show as fuel.

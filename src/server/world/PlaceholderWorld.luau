@@ -122,12 +122,12 @@ end
 --- once, on the world made over the plot that `build` returned.
 function PlaceholderWorld.placeStartingObjects(world: World.World)
 	local crateId = Crate.place(world.plot, 13, 7)
-	local inCrate = (world.plot.placedObjectsById[crateId] :: Crate.Crate).inventory
+	local inCrate = Crate.get(world.plot, crateId).inventory
 	Inventory.addItems(inCrate, "cheese", 8)
 	Inventory.addItems(inCrate, "fish", 5)
 	Inventory.addItems(inCrate, "crystal", 40)
 	Inventory.addItems(inCrate, "crate", 1)
-	Stove.place(world, 6, 13)
+	Stove.place(world.plot, 6, 13)
 end
 
 --- Adds a few items to `pack`, so that a new player's hotbar is not bare.

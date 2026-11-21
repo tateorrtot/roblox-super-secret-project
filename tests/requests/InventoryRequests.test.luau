@@ -2,7 +2,6 @@
 -- Tests for InventoryRequests. Run from the repository root: lune run tests/requests/InventoryRequests.test.luau
 
 local Check = require("../Check")
-local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryRequests = require("../../src/shared/requests/InventoryRequests")
@@ -12,20 +11,16 @@ local ItemStack = require("../../src/shared/items/ItemStack")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
-local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
-local Station = require("../../src/shared/stations/Station")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
-FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
 ItemRegistry.register({ id = "stove", stackSize = 1 })
 ItemRegistry.register({ id = "crate", stackSize = 1 })
 ItemRegistry.register({ id = "oven", stackSize = 1 })
-RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fish", seconds = 8 })
 
 local itemIds = { "log", "fish", "cooked_fish", "stove", "crate", "oven" }
 local at = Position.new
@@ -70,14 +65,9 @@ local function carriedBy(state: PlayerState.PlayerState): ItemStack.ItemStack?
 	return screenOf(state).carriedStack
 end
 
--- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
--- if it has neither.
+-- The inventory that a placed object has on it. Nil if it has none.
 local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
-	local station = world.stations[placedObjectId]
 	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
-	if station ~= nil then
-		return station.inventory
-	end
 	return if placedObject ~= nil then placedObject.inventory else nil
 end
 
@@ -86,31 +76,29 @@ local function insideOf(world: World.World, placedObjectId: number): Inventory.I
 	return findInside(world, placedObjectId) :: Inventory.Inventory
 end
 
--- Stands an object of the kind `kindId` on a tile of the world's plot. An oven is made a station,
--- and any other kind has an inventory of 3 slots on it.
+-- Stands an object of the kind `kindId` on a tile of the world's plot, with an inventory of 3 slots
+-- on it.
 local function place(world: World.World, kindId: string, tileX: number, tileZ: number): number
-	if kindId == "oven" then
-		local ovenId = Plot.placeObject(world.plot, { kindId = kindId, tileX = tileX, tileZ = tileZ })
-		World.addStation(world, ovenId, Station.new("oven", Inventory.new(3)))
-		return ovenId
-	end
 	local placedObject = { kindId = kindId, tileX = tileX, tileZ = tileZ, inventory = Inventory.new(3) }
 	return Plot.placeObject(world.plot, placedObject)
 end
 
--- Opens a placed object on a player's screen, beside their pack. The slots of one that is a station
--- take only what a station's slots take.
+-- The slot rule of an oven: slot 1 takes only fish, slot 2 takes only logs, and slot 3 takes nothing.
+local function ovenSlotAcceptsItem(slot: number, itemId: string): boolean
+	return (slot == 1 and itemId == "fish") or (slot == 2 and itemId == "log")
+end
+
+-- Opens a placed object on a player's screen, beside their pack. The slots of an oven take only what
+-- ovenSlotAcceptsItem says, and those of any other kind take anything.
 local function open(world: World.World, state: PlayerState.PlayerState, placedObjectId: number)
-	local ovenSlotAcceptsItem = function(slot: number, itemId: string): boolean
-		return Station.slotAcceptsItem("oven", slot, itemId)
-	end
-	local isStation = world.stations[placedObjectId] ~= nil
+	local placedObject = world.plot.placedObjectsById[placedObjectId]
+	local isOven = placedObject.kindId == "oven"
 	World.openPlacedObjectScreen(
 		world,
 		state,
 		placedObjectId,
 		insideOf(world, placedObjectId),
-		if isStation then ovenSlotAcceptsItem else nil
+		if isOven then ovenSlotAcceptsItem else nil
 	)
 end
 

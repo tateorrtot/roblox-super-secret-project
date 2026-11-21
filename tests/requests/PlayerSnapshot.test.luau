@@ -1,32 +1,39 @@
 --!strict
--- Tests for PlayerSnapshot. Run from the repository root: lune run tests/world/PlayerSnapshot.test.luau
+-- Tests for PlayerSnapshot. Run from the repository root: lune run tests/requests/PlayerSnapshot.test.luau
 
 local Check = require("../Check")
-local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Hotbar = require("../../src/shared/inventory/Hotbar")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
-local PlayerSnapshot = require("../../src/shared/world/PlayerSnapshot")
+local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
+local PlayerSnapshot = require("../../src/shared/requests/PlayerSnapshot")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
-local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
-local Station = require("../../src/shared/stations/Station")
-local StationProgress = require("../../src/shared/stations/StationProgress")
 local World = require("../../src/shared/world/World")
 
 local check = Check.that
 
 ItemRegistry.register({ id = "log", stackSize = 16 })
-FuelRegistry.register({ item = "log", seconds = 16 })
 ItemRegistry.register({ id = "fish", stackSize = 8 })
 ItemRegistry.register({ id = "apple", stackSize = 16 })
-ItemRegistry.register({ id = "crate", stackSize = 1 })
-ItemRegistry.register({ id = "cooked_fish", stackSize = 8 })
-ItemRegistry.register({ id = "oven", stackSize = 1 })
-RecipeRegistry.register({ station = "oven", input = "fish", output = "cooked_fish", seconds = 8 })
+
+-- The kinds of placed object the tests use, all made up. "chest" has no script. "bell" has a script
+-- with a getScreenData that returns `bellData` and notes each call. "drum" has a script with no
+-- getScreenData.
+local bellData = { rings = 3, tones = { "low", "high" } }
+local bellCalls: { { world: World.World, placedObjectId: number } } = {}
+PlacedObjectScripts.register("bell", {
+	getScreenData = function(world, placedObjectId)
+		table.insert(bellCalls, { world = world, placedObjectId = placedObjectId })
+		return bellData
+	end,
+})
+PlacedObjectScripts.register("drum", {
+	interact = function() end,
+})
 
 local at = Position.new
 
@@ -70,20 +77,10 @@ local function is(stack: ItemStack.ItemStack?, itemId: string, count: number): b
 	return stack ~= nil and stack.itemId == itemId and stack.count == count
 end
 
--- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
--- if it has neither.
-local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
-	local station = world.stations[placedObjectId]
-	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
-	if station ~= nil then
-		return station.inventory
-	end
-	return if placedObject ~= nil then placedObject.inventory else nil
-end
-
--- The inventory inside a placed object that is known to have one.
+-- The inventory that a placed object that is known to have one has on it.
 local function insideOf(world: World.World, placedObjectId: number): Inventory.Inventory
-	return findInside(world, placedObjectId) :: Inventory.Inventory
+	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
+	return placedObject.inventory
 end
 
 -- Opens a player's screen on the inventory inside a placed object, with no rule for its slots.
@@ -91,20 +88,20 @@ local function openOn(world: World.World, state: PlayerState.PlayerState, placed
 	World.openPlacedObjectScreen(world, state, placedObjectId, insideOf(world, placedObjectId))
 end
 
--- A world with a crate holding 5 fish on tile 2, 2 and an oven on tile 4, 2. Player 1 stands near them
--- with 12 logs and 4 apples in their pack.
-local function newWorld(): (World.World, number, number)
+-- A world with a chest holding 5 fish on tile 2, 2, a bell on tile 4, 2 and a drum on tile 1, 5, each
+-- with an inventory. Player 1 stands near them with 12 logs and 4 apples in their pack.
+local function newWorld(): (World.World, number, number, number)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 0)
-	local crate = { kindId = "crate", tileX = 2, tileZ = 2, inventory = Inventory.new(27) }
-	local crateId = Plot.placeObject(world.plot, crate)
-	Inventory.setStack(insideOf(world, crateId), 1, ItemStack.new("fish", 5))
-	local ovenId = Plot.placeObject(world.plot, { kindId = "oven", tileX = 4, tileZ = 2 })
-	World.addStation(world, ovenId, Station.new("oven", Inventory.new(3)))
+	local chestId =
+		Plot.placeObject(world.plot, { kindId = "chest", tileX = 2, tileZ = 2, inventory = Inventory.new(27) })
+	Inventory.setStack(insideOf(world, chestId), 1, ItemStack.new("fish", 5))
+	local bellId = Plot.placeObject(world.plot, { kindId = "bell", tileX = 4, tileZ = 2, inventory = Inventory.new(3) })
+	local drumId = Plot.placeObject(world.plot, { kindId = "drum", tileX = 1, tileZ = 5, inventory = Inventory.new(2) })
 	local state = World.addPlayer(world, 1)
 	Inventory.setStack(state.pack, 1, ItemStack.new("log", 12))
 	Inventory.setStack(state.pack, 7, ItemStack.new("apple", 4))
 	World.setCharacterPosition(world, 1, at(6, 0, 0))
-	return world, crateId, ovenId
+	return world, chestId, bellId, drumId
 end
 
 do -- no screen open
@@ -127,10 +124,7 @@ do -- no screen open
 
 	local view = PlayerSnapshot.decode(encoded)
 	check(view.screen == nil, "decode: a view with no screen has no screen")
-	check(
-		view.placedObjectKindId == nil and view.stationProgress == nil,
-		"decode: and no placed object and no progress"
-	)
+	check(view.placedObjectKindId == nil and view.screenData == nil, "decode: and no placed object and no screen data")
 	check(sameInventory(view.pack, world.players[1].pack), "decode: the pack is what the player holds")
 	check(view.pack ~= world.players[1].pack, "decode: but is a copy of it")
 	check(
@@ -161,8 +155,8 @@ do -- the pack open alone
 			and screen.otherInventory == nil
 			and screen.placedObjectKindId == nil
 			and screen.carriedStack == nil
-			and screen.stationProgress == nil,
-		"encode: with nothing beside the pack, nothing carried and no progress"
+			and screen.screenData == nil,
+		"encode: with nothing beside the pack, nothing carried and no screen data"
 	)
 	check(isPlain(encoded), "encode: all of it is plain data")
 
@@ -173,10 +167,7 @@ do -- the pack open alone
 		view.screen ~= nil and view.screen.otherInventory == nil and view.screen.carriedStack == nil,
 		"decode: with nothing beside it and nothing carried"
 	)
-	check(
-		view.placedObjectKindId == nil and view.stationProgress == nil,
-		"decode: and no placed object and no progress"
-	)
+	check(view.placedObjectKindId == nil and view.screenData == nil, "decode: and no placed object and no screen data")
 	check(sameInventory(view.pack, state.pack), "decode: the pack is what the player holds")
 	Hotbar.selectSlot(state.hotbar, 6)
 	local reselected = PlayerSnapshot.encode(world, 1)
@@ -213,13 +204,13 @@ do -- the pack open alone, with a stack carried
 	)
 end
 
-do -- a crate open
-	local world, crateId = newWorld()
+do -- a chest open
+	local world, chestId = newWorld()
 	local state = world.players[1]
-	openOn(world, state, crateId)
+	openOn(world, state, chestId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.placedObjectKindId == "crate", "encode: says what kind of placed object is open")
+	check(screen ~= nil and screen.placedObjectKindId == "chest", "encode: says what kind of placed object is open")
 	check(
 		screen ~= nil
 			and screen.otherInventory ~= nil
@@ -228,15 +219,15 @@ do -- a crate open
 		"encode: and what is in it"
 	)
 	check(
-		screen ~= nil and screen.carriedStack == nil and screen.stationProgress == nil,
-		"encode: with nothing carried, and no progress for a crate"
+		screen ~= nil and screen.carriedStack == nil and screen.screenData == nil,
+		"encode: with nothing carried, and no screen data for a kind with no script"
 	)
 	check(isPlain(encoded), "encode: all of it is plain data")
 
 	local view = PlayerSnapshot.decode(encoded)
 	check(
-		view.placedObjectKindId == "crate" and view.stationProgress == nil,
-		"decode: knows it is a crate, and has no progress"
+		view.placedObjectKindId == "chest" and view.screenData == nil,
+		"decode: knows it is a chest, and has no screen data"
 	)
 	check(
 		view.screen ~= nil
@@ -245,13 +236,13 @@ do -- a crate open
 				view.screen.otherInventory,
 				(state.screen :: InventoryScreen.InventoryScreen).otherInventory :: Inventory.Inventory
 			),
-		"decode: the screen shows what is in the crate"
+		"decode: the screen shows what is in the chest"
 	)
 	check(view.screen ~= nil and view.screen.pack == view.pack, "decode: beside the pack of the view")
 	check(
 		view.screen ~= nil
 			and view.screen.otherInventory ~= (state.screen :: InventoryScreen.InventoryScreen).otherInventory,
-		"decode: as a copy, not the crate itself"
+		"decode: as a copy, not the chest itself"
 	)
 
 	-- With the fish carried.
@@ -259,7 +250,7 @@ do -- a crate open
 	local carrying = PlayerSnapshot.encode(world, 1)
 	check(
 		carrying.screen ~= nil and carrying.screen.carriedStack ~= nil and carrying.screen.carriedStack.count == 4,
-		"encode: shows the stack being carried out of the crate"
+		"encode: shows the stack being carried out of the chest"
 	)
 	check(isPlain(carrying), "encode: and it is plain data")
 	local carryingView = PlayerSnapshot.decode(carrying)
@@ -268,66 +259,48 @@ do -- a crate open
 			and is(carryingView.screen.carriedStack, "fish", 4)
 			and carryingView.screen.otherInventory ~= nil
 			and is(Inventory.getStack(carryingView.screen.otherInventory, 1), "fish", 1),
-		"decode: gives back the stack carried and what was left in the crate"
+		"decode: gives back the stack carried and what was left in the chest"
 	)
-	check(carryingView.placedObjectKindId == "crate", "decode: and the kind of placed object")
+	check(carryingView.placedObjectKindId == "chest", "decode: and the kind of placed object")
 end
 
-do -- an oven open
-	local world, _, ovenId = newWorld()
+do -- a bell open, a kind whose script has a getScreenData
+	local world, _, bellId = newWorld()
 	local state = world.players[1]
-	local inside = insideOf(world, ovenId)
-	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
-	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	openOn(world, state, ovenId)
+	local inside = insideOf(world, bellId)
+	Inventory.setStack(inside, 1, ItemStack.new("fish", 3))
+	openOn(world, state, bellId)
 
-	local idle = PlayerSnapshot.encode(world, 1)
-	check(
-		idle.screen ~= nil
-			and idle.screen.stationProgress ~= nil
-			and idle.screen.stationProgress.fuelBurnsOutAt == nil
-			and idle.screen.stationProgress.workDoneAt == nil,
-		"encode: an oven that has not been lit has a progress with no fire and no work"
-	)
-
-	World.advanceTo(world, 4)
+	local callsBefore = #bellCalls
 	local encoded = PlayerSnapshot.encode(world, 1)
 	local screen = encoded.screen
-	check(screen ~= nil and screen.placedObjectKindId == "oven", "encode: says an oven is open")
+	check(screen ~= nil and screen.placedObjectKindId == "bell", "encode: says a bell is open")
 	check(
-		screen ~= nil
-			and screen.stationProgress ~= nil
-			and screen.stationProgress.fuelBurnsOutAt == 16
-			and screen.stationProgress.workDoneAt == 8,
-		"encode: with the times at which the log burns out and the fish is done"
+		screen ~= nil and screen.screenData == bellData,
+		"encode: the screen data is what the getScreenData of the script of the kind returned, as it was returned"
 	)
 	check(
-		screen ~= nil
-			and screen.stationProgress ~= nil
-			and math.abs(StationProgress.getFuelLeftRatio(screen.stationProgress, 4) - 0.75) < 1e-6
-			and math.abs(StationProgress.getWorkDoneRatio(screen.stationProgress, 4) - 0.5) < 1e-6,
-		"encode: from which the fire is three quarters left and the fish half done"
+		#bellCalls == callsBefore + 1
+			and bellCalls[#bellCalls].world == world
+			and bellCalls[#bellCalls].placedObjectId == bellId,
+		"encode: calls the getScreenData of the script once, with the world and the id of the placed object that the screen is open on"
 	)
 	check(
-		screen ~= nil and screen.otherInventory ~= nil and #screen.otherInventory.stacks == 2,
-		"encode: and what is in the oven, a log having been burnt"
+		screen ~= nil and screen.otherInventory ~= nil and #screen.otherInventory.stacks == 1,
+		"encode: and what is in the bell"
 	)
 	check(isPlain(encoded), "encode: all of it is plain data")
+	PlayerSnapshot.encode(world, 1)
+	check(#bellCalls == callsBefore + 2, "encode: calls the getScreenData again for each encode")
 
 	local view = PlayerSnapshot.decode(encoded)
-	check(view.placedObjectKindId == "oven", "decode: knows it is an oven")
-	check(
-		view.stationProgress ~= nil
-			and view.stationProgress.fuelBurnsOutAt == 16
-			and view.stationProgress.fuelBurnSeconds == 16
-			and view.stationProgress.workDoneAt == 8
-			and view.stationProgress.workSeconds == 8,
-		"decode: gives back the progress"
-	)
+	check(view.placedObjectKindId == "bell", "decode: knows it is a bell")
+	check(view.screenData == bellData, "decode: gives back the screen data")
 	check(
 		view.screen ~= nil and view.screen.otherInventory ~= nil and sameInventory(view.screen.otherInventory, inside),
-		"decode: and what is in the oven"
+		"decode: and what is in the bell"
 	)
+	check(#bellCalls == callsBefore + 2, "decode: does not call the getScreenData")
 
 	-- Carrying a stack too.
 	InventoryScreen.pickUpFromSlot(state.screen :: InventoryScreen.InventoryScreen, "pack", 7)
@@ -335,68 +308,32 @@ do -- an oven open
 	check(
 		both.screen ~= nil
 			and is(both.screen.carriedStack, "apple", 4)
-			and both.stationProgress ~= nil
-			and both.placedObjectKindId == "oven",
-		"decode: an oven open and a stack carried come back together"
+			and both.screenData == bellData
+			and both.placedObjectKindId == "bell",
+		"decode: a bell open and a stack carried come back together"
 	)
 end
 
-do -- a player watching a lit oven is told again only when something happens
-	-- Describes any plain value as text, the same text for the same value.
-	local function describe(value: any): string
-		if type(value) ~= "table" then
-			return tostring(value)
-		end
-		local keys = {}
-		for key in value do
-			table.insert(keys, tostring(key))
-		end
-		table.sort(keys)
-		local parts = {}
-		for _, key in keys do
-			local child = value[key]
-			if child == nil then
-				child = value[tonumber(key) :: number]
-			end
-			table.insert(parts, key .. "=" .. describe(child))
-		end
-		return "{" .. table.concat(parts, ",") .. "}"
-	end
-
-	local world, _, ovenId = newWorld()
-	local inside = insideOf(world, ovenId)
-	Inventory.setStack(inside, Station.INPUT_SLOT, ItemStack.new("fish", 3))
-	Inventory.setStack(inside, Station.FUEL_SLOT, ItemStack.new("log", 4))
-	openOn(world, world.players[1], ovenId)
-
-	local told = describe(PlayerSnapshot.encode(world, 1))
-	World.advanceTo(world, 0.1)
-	local lit = describe(PlayerSnapshot.encode(world, 1))
-	check(lit ~= told, "encode: what a player is told changes when the oven is lit")
-
-	local changes = 0
-	told = lit
-	for tick = 2, 79 do
-		World.advanceTo(world, tick / 10)
-		local now = describe(PlayerSnapshot.encode(world, 1))
-		if now ~= told then
-			changes += 1
-			told = now
-		end
-	end
+do -- a drum open, a kind whose script has no getScreenData
+	local world, _, _, drumId = newWorld()
+	openOn(world, world.players[1], drumId)
+	local encoded = PlayerSnapshot.encode(world, 1)
+	local screen = encoded.screen
 	check(
-		changes == 0,
-		`encode: what a player is told does not change while the oven only burns and works; it changed {changes} times in 78 tenths of a second`
+		screen ~= nil and screen.placedObjectKindId == "drum" and screen.screenData == nil,
+		"encode: a kind whose script has no getScreenData has no screen data"
 	)
-
-	World.advanceTo(world, 8.1)
-	check(describe(PlayerSnapshot.encode(world, 1)) ~= told, "encode: and changes again when a fish is done")
+	local view = PlayerSnapshot.decode(encoded)
+	check(
+		view.placedObjectKindId == "drum" and view.screenData == nil,
+		"decode: and the view has none, with the kind still known"
+	)
 end
 
 do -- the placed object is not on the plot any more
-	local world, crateId = newWorld()
-	openOn(world, world.players[1], crateId)
-	Plot.removePlacedObject(world.plot, crateId)
+	local world, chestId = newWorld()
+	openOn(world, world.players[1], chestId)
+	Plot.removePlacedObject(world.plot, chestId)
 	local encoded = PlayerSnapshot.encode(world, 1)
 	check(
 		encoded.screen == nil,
@@ -446,9 +383,9 @@ do -- a player that is not in the world, and data that cannot be read
 end
 
 do -- whatever the world holds, a view decodes to the same
-	local world, crateId, ovenId = newWorld()
+	local world, chestId, bellId = newWorld()
 	local state = world.players[1]
-	local ids = { crateId, ovenId }
+	local ids = { chestId, bellId }
 	local seed = 77
 	local function random(limit: number): number
 		seed = (seed * 16807) % 2147483647

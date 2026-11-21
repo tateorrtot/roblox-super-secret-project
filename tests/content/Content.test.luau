@@ -6,8 +6,6 @@ local Check = require("../Check")
 local Content = require("../../src/shared/content/Content")
 local Crate = require("../../src/shared/content/Crate")
 local CrateItem = require("../../src/shared/content/CrateItem")
-local FuelDefinitions = require("../../src/shared/content/FuelDefinitions")
-local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
 local Items = require("../../src/shared/content/Items")
@@ -19,10 +17,8 @@ local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScrip
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
-local RecipeDefinitions = require("../../src/shared/content/RecipeDefinitions")
-local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
 local Requests = require("../../src/shared/requests/Requests")
-local Station = require("../../src/shared/stations/Station")
+local Signal = require("../../src/shared/Signal")
 local Stove = require("../../src/shared/content/Stove")
 local StoveItem = require("../../src/shared/content/StoveItem")
 local World = require("../../src/shared/world/World")
@@ -49,16 +45,14 @@ do -- register
 			'register: the item "' .. item.id .. '" is registered as the script of the item with its id'
 		)
 	end
-	for _, recipe in RecipeDefinitions do
-		local found = RecipeRegistry.find(recipe.station, recipe.input)
+	for inputId, recipe in Stove.RECIPES do
 		check(
-			found ~= nil and found.output == recipe.output,
-			'register: the recipe for "' .. recipe.input .. '" is registered'
+			ItemRegistry.has(inputId) and ItemRegistry.has(recipe.output),
+			'RECIPES: the recipe for "' .. inputId .. '" is between items that are registered'
 		)
 	end
-	for _, fuel in FuelDefinitions do
-		local found = FuelRegistry.find(fuel.item)
-		check(found ~= nil and found.seconds == fuel.seconds, 'register: the fuel "' .. fuel.item .. '" is registered')
+	for itemId in Stove.FUEL_SECONDS do
+		check(ItemRegistry.has(itemId), 'FUEL_SECONDS: the fuel "' .. itemId .. '" is an item that is registered')
 	end
 	check(
 		ItemScripts.find(CrateItem.id) == CrateItem :: any and ItemScripts.find(StoveItem.id) == StoveItem :: any,
@@ -131,14 +125,9 @@ local function onGround(world: World.World, itemId: string): number
 	return count
 end
 
--- The inventory that a placed object has on it, or the inventory of the station it was made. Nil
--- if it has neither.
+-- The inventory that a placed object has on it. Nil if it has none.
 local function findInside(world: World.World, placedObjectId: number): Inventory.Inventory?
-	local station = world.stations[placedObjectId]
 	local placedObject = world.plot.placedObjectsById[placedObjectId] :: any
-	if station ~= nil then
-		return station.inventory
-	end
 	return if placedObject ~= nil then placedObject.inventory else nil
 end
 
@@ -165,9 +154,15 @@ end
 -- A world at time 100 with a plot of 6 by 6 tiles whose corner is at the origin, so that the middle of
 -- tile x, z is at x * 4 - 2, z * 4 - 2. Nothing stands on it. Players 1, 2 and 3 stand at 6, 0, 0, at
 -- 10, 0, 10 and at 20, 0, 20, and each has a crate in hotbar slot 1, a stove in slot 2, 12 logs in
--- slot 3, 5 fish in slot 4 and 4 cheeses in slot 5.
-local function newWorld(): (World.World, PlayerState.PlayerState)
+-- slot 3, 5 fish in slot 4 and 4 cheeses in slot 5. Time is wired as the server wires it: when the
+-- world is moved on, what stands on the plot is advanced. `isWired` false leaves that out.
+local function newWorld(isWired: boolean?): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
+	if isWired ~= false then
+		Signal.connect(world.advanced, function(seconds: number)
+			PlacedObjectScripts.advancePlacedObjects(world, seconds)
+		end)
+	end
 	for playerId, position in { at(6, 0, 0), at(10, 0, 10), at(20, 0, 20) } do
 		local player = World.addPlayer(world, playerId)
 		Inventory.setStack(player.pack, 1, ItemStack.new("crate", 1))
@@ -231,31 +226,48 @@ do -- the stove item and the stove, through the requests
 	local stoveId = world.plot.nextId - 1
 	local stove = world.plot.placedObjectsById[stoveId]
 	check(
-		stove ~= nil and stove.kindId == Stove.PLACED_OBJECT_KIND_ID and world.stations[stoveId] ~= nil,
-		"interactWithTile: with the stove item in the selected hotbar slot, a stove stands on the tile, as a station"
+		stove ~= nil and stove.kindId == Stove.PLACED_OBJECT_KIND_ID and Stove.get(world.plot, stoveId) == stove :: any,
+		"interactWithTile: with the stove item in the selected hotbar slot, a stove stands on the tile, as Stove.place makes one"
 	)
 	check(Inventory.getStack(player.pack, 2) == nil, "interactWithTile: and the stove item has left the slot")
 
 	carryOut(world, 1, "interactWithPlacedObject", stoveId)
 	local screen = player.screen :: InventoryScreen.InventoryScreen
 	check(
-		screen ~= nil and screen.otherInventory == world.stations[stoveId].inventory,
+		screen ~= nil and screen.otherInventory == Stove.get(world.plot, stoveId).inventory,
 		"interactWithPlacedObject: the stove's slots open on the player's screen"
 	)
 	check(
 		screen ~= nil
-			and InventoryScreen.slotAcceptsItem(screen, "other", Station.INPUT_SLOT, "fish")
-			and not InventoryScreen.slotAcceptsItem(screen, "other", Station.INPUT_SLOT, "cheese"),
+			and InventoryScreen.slotAcceptsItem(screen, "other", Stove.INPUT_SLOT, "fish")
+			and not InventoryScreen.slotAcceptsItem(screen, "other", Stove.INPUT_SLOT, "cheese"),
 		"interactWithPlacedObject: and its input slot takes only what the stove has a recipe for"
 	)
 	carryOut(world, 1, "closeScreen")
 
 	carryOut(world, 1, "breakPlacedObject", stoveId)
-	check(
-		world.plot.placedObjectsById[stoveId] == nil and world.stations[stoveId] == nil,
-		"breakPlacedObject: the stove is off the plot, and is a station no longer"
-	)
+	check(world.plot.placedObjectsById[stoveId] == nil, "breakPlacedObject: the stove is off the plot")
 	check(onGround(world, "stove") == 1, "breakPlacedObject: a stove item lies on the ground")
+end
+
+do -- time, wired as the server wires it
+	local function cookedFish(isWired: boolean): number
+		local world = newWorld(isWired)
+		local stoveId = Stove.place(world.plot, 4, 4)
+		local inventory = Stove.get(world.plot, stoveId).inventory
+		Inventory.setStack(inventory, Stove.INPUT_SLOT, ItemStack.new("fish", 1))
+		Inventory.setStack(inventory, Stove.FUEL_SLOT, ItemStack.new("log", 1))
+		World.advanceTo(world, 108)
+		return Inventory.countItems(inventory, "cooked_fish")
+	end
+	check(
+		cookedFish(true) == 1,
+		"advanceTo: with time wired as the server wires it, a stove holding fish and logs has cooked a fish when the world is moved on 8 seconds"
+	)
+	check(
+		cookedFish(false) == 0,
+		"advanceTo: without that wiring, the stove has cooked nothing when the world is moved on 8 seconds"
+	)
 end
 
 do -- an item that has no script
@@ -274,13 +286,13 @@ end
 local function getConservedCounts(world: World.World): { [string]: number }
 	local counts: { [string]: number } = {}
 	local burnedOrCooked: { [string]: boolean } = {}
-	for _, recipe in RecipeDefinitions do
-		counts[recipe.input .. " and " .. recipe.output] = inWorld(world, recipe.input) + inWorld(world, recipe.output)
-		burnedOrCooked[recipe.input] = true
+	for inputId, recipe in Stove.RECIPES do
+		counts[inputId .. " and " .. recipe.output] = inWorld(world, inputId) + inWorld(world, recipe.output)
+		burnedOrCooked[inputId] = true
 		burnedOrCooked[recipe.output] = true
 	end
-	for _, fuel in FuelDefinitions do
-		burnedOrCooked[fuel.item] = true
+	for itemId in Stove.FUEL_SECONDS do
+		burnedOrCooked[itemId] = true
 	end
 	for _, item in Items.ALL do
 		if not burnedOrCooked[item.id] then
@@ -293,8 +305,8 @@ end
 -- How many items that burn the world holds in all.
 local function countFuels(world: World.World): number
 	local count = 0
-	for _, fuel in FuelDefinitions do
-		count += inWorld(world, fuel.item)
+	for itemId in Stove.FUEL_SECONDS do
+		count += inWorld(world, itemId)
 	end
 	return count
 end
@@ -358,9 +370,9 @@ do -- whatever players' machines send, nothing raises an error and no item is ma
 		local world = newWorld()
 		local crateId = Crate.place(world.plot, 2, 2)
 		Inventory.addItems(findInside(world, crateId) :: Inventory.Inventory, "fish", 5)
-		local stoveId = Stove.place(world, 4, 4)
-		Inventory.setStack(world.stations[stoveId].inventory, Station.INPUT_SLOT, ItemStack.new("fish", 3))
-		Inventory.setStack(world.stations[stoveId].inventory, Station.FUEL_SLOT, ItemStack.new("log", 2))
+		local stoveId = Stove.place(world.plot, 4, 4)
+		Inventory.setStack(Stove.get(world.plot, stoveId).inventory, Stove.INPUT_SLOT, ItemStack.new("fish", 3))
+		Inventory.setStack(Stove.get(world.plot, stoveId).inventory, Stove.FUEL_SLOT, ItemStack.new("log", 2))
 		local conserved = getConservedCounts(world)
 		local fuels = countFuels(world)
 		local now = 100

@@ -6,8 +6,8 @@
 local Inventory = require("../inventory/Inventory")
 local InventoryScreen = require("../inventory/InventoryScreen")
 local ItemStack = require("../items/ItemStack")
-local StationProgress = require("../stations/StationProgress")
-local World = require("./World")
+local PlacedObjectScripts = require("./PlacedObjectScripts")
+local World = require("../world/World")
 
 local PlayerSnapshot = {}
 
@@ -23,9 +23,10 @@ export type EncodedSnapshot = {
 		--- `"crate"`. `nil` when the pack is open alone.
 		placedObjectKindId: string?,
 		carriedStack: { itemId: string, count: number }?,
-		--- How far the fire and the work have got, as times on the world's clock. `nil` unless
-		--- `otherInventory` is a station's inventory.
-		stationProgress: StationProgress.StationProgress?,
+		--- What the script of that placed object's kind has to tell of it besides
+		--- `otherInventory`: what its `getScreenData` returned. `nil` when the pack is open alone,
+		--- and when the script has no `getScreenData`.
+		screenData: unknown?,
 	}?,
 }
 
@@ -38,13 +39,28 @@ export type PlayerSnapshot = {
 	--- The id of the kind of the placed object that the screen was opened on, such as `"crate"`.
 	--- `nil` when the pack is open alone.
 	placedObjectKindId: string?,
-	--- How far the fire and the work have got, as times on the world's clock. `nil` unless that
-	--- placed object is a station.
-	stationProgress: StationProgress.StationProgress?,
+	--- What the script of that placed object's kind has to tell of it besides the inventory on
+	--- the screen: what its `getScreenData` returned on the server. `nil` when the pack is open
+	--- alone, and when the script has no `getScreenData`.
+	screenData: unknown?,
 }
 
---- Returns what to tell the machine of the player with the id `playerId`, as plain data. Fails if
---- no player has that id.
+local function getScreenData(world: World.World, placedObjectId: number?): unknown
+	if placedObjectId == nil then
+		return nil
+	end
+	local placedObjectScript = PlacedObjectScripts.findOfPlacedObject(world, placedObjectId)
+	local getData = if placedObjectScript ~= nil then placedObjectScript.getScreenData else nil
+	if getData == nil then
+		return nil
+	end
+	return getData(world, placedObjectId)
+end
+
+--- Returns what to tell the machine of the player with the id `playerId`, as plain data. If their
+--- screen is open on a placed object, the script of that placed object's kind is asked what else
+--- to tell: its `getScreenData`, if it has one, is called, and what it returns is sent as it is.
+--- Fails if no player has that id.
 function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSnapshot
 	local player = assert(world.players[playerId], `no player has the id {playerId}`)
 	local screen = player.screen
@@ -54,7 +70,6 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 	end
 	local placedObjectId = World.getOpenedPlacedObjectId(world, player)
 	local placedObject = if placedObjectId then world.plot.placedObjectsById[placedObjectId] else nil
-	local station = if placedObjectId then world.stations[placedObjectId] else nil
 	local carried = screen.carriedStack
 	return {
 		pack = Inventory.encode(player.pack),
@@ -63,7 +78,7 @@ function PlayerSnapshot.encode(world: World.World, playerId: number): EncodedSna
 			otherInventory = if screen.otherInventory then Inventory.encode(screen.otherInventory) else nil,
 			placedObjectKindId = if placedObject then placedObject.kindId else nil,
 			carriedStack = if carried then { itemId = carried.itemId, count = carried.count } else nil,
-			stationProgress = if station then StationProgress.new(station, world.now) else nil,
+			screenData = getScreenData(world, placedObjectId),
 		},
 	}
 end
@@ -88,7 +103,7 @@ function PlayerSnapshot.decode(encoded: EncodedSnapshot): PlayerSnapshot
 		selectedHotbarSlot = encoded.selectedHotbarSlot,
 		screen = screen,
 		placedObjectKindId = encodedScreen.placedObjectKindId,
-		stationProgress = encodedScreen.stationProgress,
+		screenData = encodedScreen.screenData,
 	}
 end
 

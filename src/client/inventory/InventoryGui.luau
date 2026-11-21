@@ -4,9 +4,9 @@
 ---
 --- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are
 --- its bottom row, a little apart from the rest. The carried stack follows the pointer. When the
---- other inventory is a station's, its first slot is drawn above its second, with a fire gauge
+--- other inventory is a stove's, its first slot is drawn above its second, with a fire gauge
 --- between them, and its third slot to the right, past a work gauge. `show` draws,
---- `setStationGauges` fills the two gauges, `setHighlightedSlots` brightens slots and `hide` closes
+--- `setStoveGauges` fills the two gauges, `setHighlightedSlots` brightens slots and `hide` closes
 --- the screen. The screen changes no inventory: it reports what the player does on its slots through
 --- its `callbacks`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -66,12 +66,12 @@ export type InventoryGui = {
 	pointerConnection: RBXScriptConnection?,
 	--- The slot the pointer is over, or `nil` when it is over none.
 	hoveredSlot: { side: Side, slot: number }?,
-	--- Whether the other inventory is drawn as a station's.
-	showsStation: boolean,
-	--- The parts that are only there for a station: the fill of its fire gauge, the fill of its
+	--- Whether the other inventory is drawn as a stove's.
+	showsStove: boolean,
+	--- The parts that are only there for a stove: the fill of its fire gauge, the fill of its
 	--- work gauge, and every part in `all`: the two gauges, then the words beside its input, fuel
 	--- and output slots.
-	read stationParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
+	read stoveParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
 }
 
 local COLUMNS = 9
@@ -138,13 +138,13 @@ local function placeRows(slots: { SlotGui.SlotGui }, first: number, count: numbe
 	return if rows > 0 then rows * step - GAP else 0
 end
 
-local function placeStation(inventoryGui: InventoryGui, top: number): number
+local function placeStove(inventoryGui: InventoryGui, top: number): number
 	local step = SlotGui.SIZE + GAP
 	local function cell(column: number, row: number): Vector2
 		return Vector2.new(PADDING + (column - 1) * step, top + (row - 1) * step)
 	end
 	local slots = inventoryGui.otherSlots
-	local parts = inventoryGui.stationParts
+	local parts = inventoryGui.stoveParts
 	local input, fuel, output = cell(3, 1), cell(3, 3), cell(7, 2)
 	slots[1].button.Position = UDim2.fromOffset(input.X, input.Y)
 	slots[2].button.Position = UDim2.fromOffset(fuel.X, fuel.Y)
@@ -174,11 +174,11 @@ local function layOut(inventoryGui: InventoryGui)
 	local hotbarSlotCount = math.min(inventoryGui.hotbarSlotCount, #packSlots)
 	local top = PADDING + TITLE_HEIGHT
 	inventoryGui.packTitle.Visible = #otherSlots > 0
-	for _, part in inventoryGui.stationParts.all do
-		part.Visible = inventoryGui.showsStation
+	for _, part in inventoryGui.stoveParts.all do
+		part.Visible = inventoryGui.showsStove
 	end
-	if inventoryGui.showsStation then
-		top += placeStation(inventoryGui, top) + HOTBAR_GAP
+	if inventoryGui.showsStove then
+		top += placeStove(inventoryGui, top) + HOTBAR_GAP
 		inventoryGui.packTitle.Position = UDim2.fromOffset(PADDING, top)
 		top += TITLE_HEIGHT
 	elseif #otherSlots > 0 then
@@ -397,9 +397,9 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	makeHint(panel)
 	local fireGauge, fireFill = makeFireGauge(panel)
 	local workGauge, workFill = makeWorkGauge(panel)
-	local stationParts: { GuiObject } = { fireGauge, workGauge }
+	local stoveParts: { GuiObject } = { fireGauge, workGauge }
 	for _, label in makeSlotWords(panel) do
-		table.insert(stationParts, label)
+		table.insert(stoveParts, label)
 	end
 	local carriedFrame, carriedIcon = makeCarried(screenGui)
 
@@ -415,33 +415,33 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 		otherSlots = {},
 		carriedIcon = carriedIcon,
 		carriedFrame = carriedFrame,
-		showsStation = false,
-		stationParts = { fireFill = fireFill, workFill = workFill, all = stationParts },
+		showsStove = false,
+		stoveParts = { fireFill = fireFill, workFill = workFill, all = stoveParts },
 	}
 end
 
 --- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
 --- there is one, and `otherInventory` above the pack if there is one. `otherInventoryName` is
---- written over the other inventory and is not used when there is none. If `otherIsStation` is
---- `true` and `otherInventory` has three slots, they are drawn as a station's input, fuel and
---- output, with the two gauges, which `setStationGauges` fills.
+--- written over the other inventory and is not used when there is none. If `otherIsStove` is
+--- `true` and `otherInventory` has three slots, they are drawn as a stove's input, fuel and
+--- output, with the two gauges, which `setStoveGauges` fills.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
 	otherInventory: Inventory.Inventory?,
 	otherInventoryName: string,
 	carriedStack: ItemStack.ItemStack?,
-	otherIsStation: boolean
+	otherIsStove: boolean
 )
 	inventoryGui.title.Text = if otherInventory ~= nil then otherInventoryName else PACK_NAME
 	local otherSlotCount = if otherInventory ~= nil then otherInventory.slotCount else 0
-	local showsStation = otherIsStation and otherSlotCount == 3
+	local showsStove = otherIsStove and otherSlotCount == 3
 	if
 		#inventoryGui.packSlots ~= pack.slotCount
 		or #inventoryGui.otherSlots ~= otherSlotCount
-		or inventoryGui.showsStation ~= showsStation
+		or inventoryGui.showsStove ~= showsStove
 	then
-		inventoryGui.showsStation = showsStation
+		inventoryGui.showsStove = showsStove
 		resizeSlots(inventoryGui, inventoryGui.packSlots, "pack", pack.slotCount)
 		resizeSlots(inventoryGui, inventoryGui.otherSlots, "other", otherSlotCount)
 		layOut(inventoryGui)
@@ -461,10 +461,10 @@ end
 
 --- Fills the fire gauge as far as `fuelLeftRatio` says and the work gauge as far as `workDoneRatio`
 --- says, each a number from 0, which is empty, to 1, which is full. The gauges are seen only while
---- the other inventory is drawn as a station's.
-function InventoryGui.setStationGauges(inventoryGui: InventoryGui, fuelLeftRatio: number, workDoneRatio: number)
-	inventoryGui.stationParts.fireFill.Size = UDim2.fromScale(1, math.clamp(fuelLeftRatio, 0, 1))
-	inventoryGui.stationParts.workFill.Size = UDim2.fromScale(math.clamp(workDoneRatio, 0, 1), 1)
+--- the other inventory is drawn as a stove's.
+function InventoryGui.setStoveGauges(inventoryGui: InventoryGui, fuelLeftRatio: number, workDoneRatio: number)
+	inventoryGui.stoveParts.fireFill.Size = UDim2.fromScale(1, math.clamp(fuelLeftRatio, 0, 1))
+	inventoryGui.stoveParts.workFill.Size = UDim2.fromScale(math.clamp(workDoneRatio, 0, 1), 1)
 end
 
 --- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An

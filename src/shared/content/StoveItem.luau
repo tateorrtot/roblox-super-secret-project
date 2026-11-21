@@ -22,7 +22,7 @@ function StoveItem.interactWithTile(world: World.World, tileX: number, tileZ: nu
 	if not World.canPlaceObject(world, tileX, tileZ) then
 		return 0
 	end
-	Stove.place(world, tileX, tileZ)
+	Stove.place(world.plot, tileX, tileZ)
 	return 1
 end
 

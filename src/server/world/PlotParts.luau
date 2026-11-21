@@ -7,16 +7,15 @@
 --- none for one that was removed. The slab is tagged `Plot` and has the attributes `widthInTiles`
 --- and `depthInTiles`, and `cornerX`, `cornerY` and `cornerZ`, the plot's corner as
 --- `Plot.getTileAt` wants it. Each block has the attribute `placedObjectId`, the id of its placed
---- object, and the attribute `burning`, which is `true` while the block is a station whose fire is
---- burning. The blocks are placeholders until placed objects have models, and the plot must lie
---- square to the world's x and z axes.
+--- object. What a kind of placed object shows beyond its block is a piece of that kind's own,
+--- which `update` is handed and calls. The blocks are placeholders until placed objects have
+--- models, and the plot must lie square to the world's x and z axes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlacedObjectLooks = require(Shared.content.PlacedObjectLooks)
 local Plot = require(Shared.plots.Plot)
-local Station = require(Shared.stations.Station)
 
 local PlotParts = {}
 
@@ -29,6 +28,13 @@ export type PlotParts = {
 	read folder: Folder,
 	--- The block that shows each placed object, by the placed object's id.
 	read partsById: { [number]: Part },
+}
+
+--- What one kind of placed object shows on its block beyond the block itself.
+export type PlacedObjectPiece = {
+	--- Called each time the blocks are updated, with the block of one placed object of the kind,
+	--- the plot that placed object stands on, and its id.
+	update: (part: Part, plot: Plot.Plot, placedObjectId: number) -> (),
 }
 
 local function makeLabel(part: Part, text: string, side: number)
@@ -129,24 +135,6 @@ function PlotParts.new(slab: Part, plot: Plot.Plot): PlotParts
 	return { slab = slab, corner = corner, folder = folder, partsById = {} }
 end
 
-local function showFire(part: Part, burning: boolean)
-	local color = PlacedObjectLooks[part.Name].color
-	local unlit = Color3.fromRGB(color[1], color[2], color[3])
-	part.Color = if burning then unlit:Lerp(Color3.fromRGB(255, 140, 40), 0.6) else unlit
-	part.Material = if burning then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	local light = part:FindFirstChild("Fire")
-	if burning and light == nil then
-		local fire = Instance.new("PointLight")
-		fire.Name = "Fire"
-		fire.Color = Color3.fromRGB(255, 160, 70)
-		fire.Range = 14
-		fire.Brightness = 1.5
-		fire.Parent = part
-	elseif not burning and light ~= nil then
-		light:Destroy()
-	end
-end
-
 local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
 	for id, placedObject in plot.placedObjectsById do
 		if plotParts.partsById[id] == nil then
@@ -155,14 +143,6 @@ local function addMissingParts(plotParts: PlotParts, plot: Plot.Plot)
 			plotParts.partsById[id] = part
 			part.Parent = plotParts.folder
 		end
-	end
-end
-
-local function showFireIfChanged(part: Part, station: Station.Station?)
-	local burning = station ~= nil and Station.isBurning(station)
-	if part:GetAttribute("burning") ~= burning then
-		part:SetAttribute("burning", burning)
-		showFire(part, burning)
 	end
 end
 
@@ -175,19 +155,23 @@ local function removeStaleParts(plotParts: PlotParts, plot: Plot.Plot)
 	end
 end
 
-local function showFires(plotParts: PlotParts, stations: { [number]: Station.Station })
+local function updatePieces(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: { [string]: PlacedObjectPiece })
 	for id, part in plotParts.partsById do
-		showFireIfChanged(part, stations[id])
+		local piece = piecesByKindId[plot.placedObjectsById[id].kindId]
+		if piece ~= nil then
+			piece.update(part, plot, id)
+		end
 	end
 end
 
 --- Makes the blocks match what is placed on `plot` now: a new block for each placed object that has
---- none, and no block for an item that is gone. Each station's block glows while its fire is
---- burning. `stations` holds the station of each placed object that has one, by placed object id.
-function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, stations: { [number]: Station.Station })
+--- none, and no block for one that is gone. Then, for each placed object whose kind has a piece in
+--- `piecesByKindId`, which is keyed by the kind's id, that piece's `update` is called with the
+--- placed object's block, `plot` and the placed object's id.
+function PlotParts.update(plotParts: PlotParts, plot: Plot.Plot, piecesByKindId: { [string]: PlacedObjectPiece })
 	addMissingParts(plotParts, plot)
 	removeStaleParts(plotParts, plot)
-	showFires(plotParts, stations)
+	updatePieces(plotParts, plot, piecesByKindId)
 end
 
 return PlotParts

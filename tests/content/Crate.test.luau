@@ -37,7 +37,7 @@ end
 
 -- The inventory of the crate that has the id `crateId` on a world's plot.
 local function inventoryOf(world: World.World, crateId: number): Inventory.Inventory
-	return (world.plot.placedObjectsById[crateId] :: Crate.Crate).inventory
+	return Crate.get(world.plot, crateId).inventory
 end
 
 -- How many ground items a world has.
@@ -92,7 +92,6 @@ do -- place
 		inventory ~= nil and inventory.slotCount == Crate.SLOT_COUNT and Inventory.isEmpty(inventory),
 		"place: the crate has an inventory of SLOT_COUNT slots on it, holding nothing"
 	)
-	check(world.stations[id] == nil, "place: a crate is no station")
 
 	local second = Crate.place(world.plot, 1, 1)
 	check(
@@ -121,6 +120,42 @@ do -- place
 		"place: fails on a tile the plot does not have, saying so"
 	)
 	check(placedCount(world) == 2 and world.plot.nextId == second + 1, "place: a placing that fails places nothing")
+end
+
+do -- get
+	local world, _, crateId = newWorld()
+	local got = Crate.get(world.plot, crateId)
+	check(
+		got == world.plot.placedObjectsById[crateId] :: any and got.inventory.slotCount == Crate.SLOT_COUNT,
+		"get: returns the crate that Crate.place placed, the very table on the plot, with its inventory on it"
+	)
+	local otherId = Crate.place(world.plot, 3, 3)
+	check(
+		Crate.get(world.plot, otherId) ~= got and Crate.get(world.plot, crateId) == got,
+		"get: each id gives its own crate"
+	)
+	local message = "the placed object 99 is not a crate that Crate.place placed"
+	check(
+		Check.raises(message, function()
+			Crate.get(world.plot, 99)
+		end),
+		"get: fails for an id that no placed object has"
+	)
+	local bareId = Plot.placeObject(world.plot, { kindId = Crate.PLACED_OBJECT_KIND_ID, tileX = 1, tileZ = 1 })
+	check(
+		Check.raises("the placed object " .. bareId .. " is not a crate that Crate.place placed", function()
+			Crate.get(world.plot, bareId)
+		end),
+		"get: fails for a placed object of the crate's kind that has no inventory on it"
+	)
+	local barrelId =
+		Plot.placeObject(world.plot, { kindId = "barrel", tileX = 1, tileZ = 2, inventory = Inventory.new(3) })
+	check(
+		Check.raises("the placed object " .. barrelId .. " is not a crate that Crate.place placed", function()
+			Crate.get(world.plot, barrelId)
+		end),
+		"get: fails for a placed object of another kind that has an inventory on it"
+	)
 end
 
 do -- interact

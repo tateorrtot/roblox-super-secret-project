@@ -4,8 +4,8 @@
 --- The rules are in ReplicatedStorage.Shared, and one World holds the whole game. This script
 --- tells the World what happens: a player joins or leaves, where each character is, where
 --- Roblox's physics has carried each ground item, what a player's machine asks for, and that time
---- has passed. Then it draws the World, and tells each player's machine what
---- that player holds.
+--- has passed. When time passes in the World, the script of each placed object is told. Then
+--- this script draws the World, and tells each player's machine what that player holds.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,9 +14,12 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Content = require(Shared.content.Content)
-local PlayerSnapshot = require(Shared.world.PlayerSnapshot)
+local PlacedObjectScripts = require(Shared.requests.PlacedObjectScripts)
+local PlayerSnapshot = require(Shared.requests.PlayerSnapshot)
 local Position = require(Shared.Position)
 local Requests = require(Shared.requests.Requests)
+local Signal = require(Shared.Signal)
+local Stove = require(Shared.content.Stove)
 local World = require(Shared.world.World)
 
 local CollisionGroups = require(script.Parent.world.CollisionGroups)
@@ -24,6 +27,7 @@ local GroundItemParts = require(script.Parent.world.GroundItemParts)
 local PlaceholderWorld = require(script.Parent.world.PlaceholderWorld)
 local PlotParts = require(script.Parent.world.PlotParts)
 local Remotes = require(script.Parent.Remotes)
+local StoveGlow = require(script.Parent.content.StoveGlow)
 
 --- How long the server waits between advancing the World, in seconds.
 local SECONDS_BETWEEN_ADVANCES = 0.1
@@ -36,6 +40,11 @@ local REQUESTS_PER_SECOND = 60
 --- character's `HipHeight` says this already, and an R6 character's `HipHeight` is 0.
 local R6_LEG_LENGTH = 2
 
+--- The piece of each kind of placed object that shows more than its block, by the kind's id.
+local placedObjectPieces: { [string]: PlotParts.PlacedObjectPiece } = {
+	[Stove.PLACED_OBJECT_KIND_ID] = StoveGlow,
+}
+
 Content.register()
 
 CollisionGroups.register()
@@ -44,6 +53,9 @@ local placeholder = PlaceholderWorld.build()
 local plotParts = PlotParts.new(placeholder.slab, placeholder.plot)
 local groundItemParts = GroundItemParts.new(Workspace)
 local world = World.new(placeholder.plot, plotParts.corner, os.clock())
+Signal.connect(world.advanced, function(seconds: number)
+	PlacedObjectScripts.advancePlacedObjects(world, seconds)
+end)
 PlaceholderWorld.placeStartingObjects(world)
 
 --- What each player's machine was last told, as text, to tell whether it has changed since.
@@ -109,7 +121,7 @@ end
 
 local function showWorldToPlayers()
 	needsShow = false
-	PlotParts.update(plotParts, world.plot, world.stations)
+	PlotParts.update(plotParts, world.plot, placedObjectPieces)
 	GroundItemParts.update(groundItemParts, world.groundItems)
 	for _, player in Players:GetPlayers() do
 		if world.players[player.UserId] ~= nil then

@@ -57,6 +57,12 @@ local function getCrate(plot: Plot.Plot, placedObjectId: number): Crate
 	return placedObject :: Crate
 end
 
+--- Returns the crate that has the id `placedObjectId` on `plot`. Fails if no placed object has
+--- that id, or if the one that has is not of the crate's kind or has no inventory on it.
+function Crate.get(plot: Plot.Plot, placedObjectId: number): Crate
+	return getCrate(plot, placedObjectId)
+end
+
 --- A player interacts with the crate that has the id `placedObjectId` on the world's plot. The
 --- crate's inventory opens on the player's screen, beside their pack, in place of any screen they
 --- had open, and every slot of it takes every item. Fails if the player has no character. Fails if
