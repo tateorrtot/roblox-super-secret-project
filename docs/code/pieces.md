@@ -18,8 +18,8 @@ GLUE: joins systems, and holds no thing of the game
   world        World            one running game: the plot, the ground items, the players, picking up,
                                 and `timePassed`, the signal that says so
                PlotCollision    what gives way when an object is placed: ground items leave the tile
-  requests     InventoryRequests, PlotRequests, Requests, Messages   what a player's machine may ask for
-               PlayerSnapshot                                        what a player's machine is told
+  requests     InventoryRequests, PlotRequests, Requests, Messages   what a client may ask for
+               PlayerSnapshot                                        what a client is told
                ItemScripts, PlacedObjectScripts                      the script of each item and of each kind of
                                                                      placed object, which the glue calls
   save         SaveData         a player's pack as stored data. Nothing stores it yet
@@ -36,8 +36,8 @@ THINGS: the game's own, each in one place
 `python tools/delete_directory_test.py` shows it holds: deleting `content` breaks none of the rules, deleting a system breaks only what is built on it, and no system breaks one beside it. `docs/code/requires.svg` is the chart of every require, drawn from the code by `lune run tools/requires --chart`.
 
 ## The Roblox side
-- **The server** is `src/server`. `Main.server.luau` is the only Script. It registers the content, tells the `World` what happens, draws it, and sends each player their snapshot. It limits each machine to 60 requests a second. `GroundItemParts` and `PlotParts` draw placeholder blocks, `CollisionGroups` lets ground items pass through each other and through characters, `PlaceholderWorld` is the grey plot, and `Remotes` makes the messages.
-- **The player's machine** is `src/client`. `Main.client.luau` is the only LocalScript, and joins the rest.
+- **The server** is `src/server`. `Main.server.luau` is the only Script. It registers the content, tells the `World` what happens, draws it, and sends each player their snapshot. It limits each client to 60 requests a second. `GroundItemParts` and `PlotParts` draw placeholder blocks, `CollisionGroups` lets ground items pass through each other and through characters, `PlaceholderWorld` is the grey plot, and `Remotes` makes the messages.
+- **The client** is `src/client`. `Main.client.luau` is the only LocalScript, and joins the rest.
   - `inventory`: `InventoryGui`, `HotbarGui`, `SlotGui` and `StackIcon` draw. `SlotGestures` and `InventoryControls` are plain Luau, tested in `tests/client`, and turn mouse and keys on the screen into requests.
   - `world`: `PlotPointer` says what a point of the screen is over. `BreakClick` tells a click of the Break action from a turn of the camera. `PlacementGhost` draws a see-through block on a tile. `LocalCharacter` says whether the character reaches a point, for drawing only.
   - `content`: `CrateItemGhost` and `StoveItemGhost` are what each of those items shows while selected. `StoveScreen` lays out a stove's three slots and fills its two gauges; `InventoryGui` is handed it and does not know what a stove is.
@@ -45,7 +45,7 @@ THINGS: the game's own, each in one place
 - **The input actions** `Interact` and `Break` are Instances under `ReplicatedStorage.Inputs.World`, declared in `default.project.json` (`docs/roblox/input.md`).
 
 ## How an interaction reaches the thing's own script
-1. On the player's machine, Roblox fires the input action `Interact`. `Main.client.luau` asks `PlotPointer` what the pointer is over, and sends `interactWithPlacedObject` or `interactWithTile`. A click of `Break` sends `breakPlacedObject`.
+1. On the client, Roblox fires the input action `Interact`. `Main.client.luau` asks `PlotPointer` what the pointer is over, and sends `interactWithPlacedObject` or `interactWithTile`. A click of `Break` sends `breakPlacedObject`.
 2. `PlotRequests` checks what was sent and what is about the player: that they have a character, and that it reaches the tile or the placed object.
    - For a placed object: it asks `PlacedObjectScripts` for the script of the object's kind, and calls its `interact` or `breakPlacedObject`.
    - For a tile: it asks `ItemScripts` for the script of the item in the selected hotbar slot, calls its `interactWithTile`, and takes out of that slot as many items as the script says were used up.
@@ -58,7 +58,7 @@ Nothing happens for a thing with no script, or whose script lacks the function. 
 Every frame `Main.client.luau` asks what the pointer is over, and tells the piece of the item in the selected hotbar slot, if that item has one: `update` with the target, and `hide` once when the item is selected no longer. `CrateItemGhost.update` shows a see-through crate on a bare tile within reach. The table of pieces is in `Main.client.luau`.
 
 ## How a click on the inventory screen becomes a change
-On the player's machine:
+On the client:
 1. `InventoryGui` reports that a slot was pressed.
 2. `SlotGestures` works out which gesture it was: a click, a double click or a drag.
 3. `InventoryControls` works out which request that gesture asks for.
@@ -66,15 +66,15 @@ On the player's machine:
 
 On the server:
 5. `Main.server.luau` hands it to `Requests.carryOut`.
-6. `InventoryRequests` checks what the machine sent, and calls the operation.
+6. `InventoryRequests` checks what the client sent, and calls the operation.
 7. `InventoryScreen` moves the items, through `Inventory`.
-8. `PlayerSnapshot.encode` makes what the player's machine is told, and the screen redraws from it.
+8. `PlayerSnapshot.encode` makes what the client is told, and the screen redraws from it.
 
 ## How a dropped stack moves
-1. A request such as `dropFromSelectedSlot` comes with the way to throw, which the player's machine takes from its camera: along the ground in third person, and up and down as well in first person. It takes the stack out of the pack and calls `World.throwStackFromCharacter`.
+1. A request such as `dropFromSelectedSlot` comes with the way to throw, which the client takes from its camera: along the ground in third person, and up and down as well in first person. It takes the stack out of the pack and calls `World.throwStackFromCharacter`.
 2. That works out where the stack starts and how fast, and calls `World.spawnStack`, which makes a ground item.
 3. `GroundItemParts.update` makes a part for it, at its position and moving at the velocity it was spawned with.
-4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks which machine works the motion out.
+4. Roblox's physics moves the part, and shows that to every player. We wrote no physics, and Roblox picks whether the server or a client works the motion out.
 5. Ten times a second `Main.server.luau` asks `GroundItemParts.getMovedPositions` where the parts have got to and tells `World.setGroundItemPosition`.
 6. `World.advanceTo` then runs `GroundItems.mergeItems` (`docs/game/dropped-items.md`).
 
@@ -91,6 +91,6 @@ A world fires `timePassed` each time `World.advanceTo` moves it on, with the sec
 ## What is not yet a system of its own
 `World` is the only piece of the rules that knows `players`, `plots` and `groundItems` together. It holds rules that could live in smaller pieces: reach, picking up, and when a screen on a placed object closes. The user said to leave it as one piece of glue for now. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list, and `docs/game/placed-objects.md` ends with what the game still decides for every kind of placed object.
 
-Nothing on the server knows that a mouse exists. Nothing is applied on the player's machine before the server answers (`docs/status/next.md`).
+Nothing on the server knows that a mouse exists. Nothing is applied on the client before the server answers (`docs/status/next.md`).
 
 Later: a plot of one's own, walls and floors, conditions, creatures, people, carriers, places, bodies and needs.

@@ -260,7 +260,7 @@ return "turned"
 TILE_SIZE = 4
 ITEM_SIZE = 1.2
 
-# Counts, on the player's machine, how many times the server tells it what the player holds in the
+# Counts, on the client, how many times the server tells it what the player holds in the
 # next %d seconds, and leaves the count as the attribute SnapshotsCounted on the player.
 COUNT_SNAPSHOTS = '''
 local player = game:GetService("Players").LocalPlayer
@@ -303,7 +303,7 @@ end
 return string.format("%f,%f,%f", velocity.X, velocity.Y, velocity.Z)
 '''
 
-# Watches, on the player's machine, for the next press of Q, and leaves which way the camera looked
+# Watches, on the client, for the next press of Q, and leaves which way the camera looked
 # at that moment, and how far it was from the point it turns about, as attributes on the player.
 WATCH_NEXT_DROP_KEY = '''
 local player = game:GetService("Players").LocalPlayer

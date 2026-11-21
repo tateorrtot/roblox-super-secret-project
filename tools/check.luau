@@ -24,9 +24,12 @@
 	6. Notes: `tools/notes.py` finds that every path the notes mention exists,
 	   and that `CLAUDE.md` and the topic files under `docs` have not grown
 	   too long to read at a glance.
-	7. Tests: every file in `tests` whose name ends in `.test.luau` runs and
+	7. Comments: `tools/comments.py` finds that every module, public function,
+	   exported type, field of an exported type and constant in `src` has a
+	   comment, and that no comment uses a word the rules ban.
+	8. Tests: every file in `tests` whose name ends in `.test.luau` runs and
 	   exits without an error.
-	8. Demos: every file in `demos` runs and exits without an error.
+	9. Demos: every file in `demos` runs and exits without an error.
 
 	The process exits with code 1 if any check failed.
 
@@ -99,6 +102,7 @@ end
 run("requires", "lune", { "run", "tools/requires" })
 run("members", "python", { "tools/members.py" })
 run("notes", "python", { "tools/notes.py" })
+run("comments", "python", { "tools/comments.py" })
 
 local tests = findFiles("tests", ".test.luau")
 for _, test in tests do

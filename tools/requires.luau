@@ -313,7 +313,7 @@ local CAPTION_WIDTH = 470
 local CAPTION = {
 	"An arrow means requires.",
 	"A require that the arrows already imply through another box is not drawn.",
-	"Grey is the rules, blue the server, green the player's machine.",
+	"Grey is the rules, blue the server, green the client.",
 	"Drawn from the code by: lune run tools/requires --chart",
 }
 local FILLS = { shared = "#f4f3ee", server = "#e6f1fb", client = "#e1f5ee" }
