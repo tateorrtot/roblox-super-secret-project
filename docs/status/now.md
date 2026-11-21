@@ -97,7 +97,7 @@ Found by the reviewer who applied the user's test, and left. Each is a place whe
 - **The faint block shows on tiles the server will refuse,** such as the one the player stands on.
 - **A ground item's block that falls out of the world is not noticed.** Roblox destroys the part, and the ground item stays in the rules until its five minutes are up. It cannot happen on the placeholder map.
 - **Merging compares every ground item that was spawned or moved with every other,** ten times a second, and one that lies still every two seconds. Measured in Lune on 2026-11-20 with every item moving: 0.3 milliseconds a pass at 100 items, 2.4 at 300, and 27 at 1,000 (`build/merge_pass_cost.luau`).
-- **Left from the coupling review** (`docs/code/reviews/16-coupling-review-2026-11-20.md`), with when each is due in `next.md`: request names spelled as strings in `Main.client`; `StationProgress` not checking the fire; `Main.client` reading the slot under the pointer from a drawing piece.
+- **Left from the coupling review** (`docs/code/reviews/16-coupling-review-2026-11-20.md`), with when each is due in `next.md`: request names spelled as strings in `Main.client`; `Stove.getProgress` not checking the fire; `Main.client` reading the slot under the pointer from a drawing piece.
 - **Left from the audits:** `PlaceholderWorld` keeps a timer in a module variable; `Plot.getTileAt` and `Plot.getTileCenter` take a corner where they could take the plot; `Inventory.addItems` returns how many went in while `Inventory.addStack` returns what did not fit.
 
 ## Not built
