@@ -15,7 +15,7 @@ The user, of the class reference: "The documentation must be *good*. Its a tool 
 | Comments rewritten by the helpers | 382, and 39 added where there was none |
 | Statements in the old comments that the code did not bear out | 87, corrected by the writers |
 | Things the checkers found in the new comments | 64, all fixed: 20 untrue, 12 facts lost, 14 rules broken, 17 hard to read, 1 other |
-| Things the checkers could not settle | 14: 4 mended by Claude with a `Note:`, 10 left (below) |
+| Things the checkers could not settle | 14: 1 mended by Claude, with a `Note:` on four functions, and 13 left (below) |
 | Comments Claude changed after its own read | 14 |
 | Sentences that look passive, by `python tools/comments.py --report` | 108 of about 1,330. Before: 250 of about 1,247 |
 
@@ -28,7 +28,13 @@ None of it is mended: the pass changed no code. Each is in `../now.md`.
 - `ScreenScale.applyTo` keeps every `UIScale` it has made, also after its GuiObject is destroyed.
 
 ## What was left
-- **Ten things the checkers could not settle from the code.** Seven are facts about Roblox that a comment states and the code cannot show, such as that a finger on a touch screen counts as the left button. They stand as they were. Three are wordings that no rule decides, such as whether a count of items passed to a function is a literal.
+- **Thirteen things the checkers could not settle.** Claude first reported ten, and "mostly facts about Roblox": both were wrong, and the user asked what they were.
+  - Three are facts about Roblox that a comment states and the code cannot show: that Roblox's input actions have no tap, that a modal button frees the pointer in first person, and that a finger on a touch screen counts as the left button.
+  - Four are statements that depend on another module, which the checker of that group did not open: what `Inventory.addItems` does for the five files that call it, that `CrateItem.interactWithTile` runs on the server, what "equal shares" means in `InventoryControls`, and whether `PlaceholderWorld`'s starting items always fit.
+  - One is a guard that holds only sometimes: `InventoryScreen.spreadCarriedStackOverSlots` fails for a slot the screen lacks only if it reaches that slot.
+  - One cannot be shown from its own file: "Nothing else in the game knows what a crate looks like", in `CrateModel` and `StoveModel`.
+  - Three are wordings: a heavy sentence in `World.setCharacterPosition`, whether a count of items is a literal, and the `---` comments over local values (below).
+  - One is not about a comment: `Direction` assigns its own `read` fields.
 - **`---` comments over local values in `Main.client` and `StoveScreen`.** The guide says a private helper gets none. They hold facts, the check accepts them, and Claude left them.
 - **No page has an example,** and the tests' own comments were not part of the pass.
 - **The records keep their old words:** the reviews, the history, and the research still say "the player's machine". The living notes do not.

@@ -21,11 +21,18 @@ The user's direction of 2026-11-21: "In minecraft terms id think of it as "Voxel
 
 ## 0a. How an item looks
 Their design of 2026-11-21 (`docs/game/decisions.md`): an item looks like a 2D texture or a 3D model, the same in the hand and on the ground. Claude draws primitive stand-ins of its own until there is art, by their word. Not built. Claude showed them this shape on 2026-11-21, and it waits on their word.
-- **One piece for each item says how the item looks,** as each kind of placed object has a piece that makes its Model. The piece answers two questions: what a slot shows, and what the world shows, in the hand and on the ground. General code asks the piece and knows nothing of what is in it.
+- **One ModuleScript for each item says how the item looks,** as each kind of placed object has a ModuleScript that makes its Model. It has two functions: one returns what a slot shows, and one returns what the world shows, in the hand and on the ground. General code calls them and knows nothing of what they make. Claude first called this "a look piece", and the user asked what that was.
 - **Three small pieces that an item's look may use, and none must:** a texture shown flat in a slot; a texture given depth by rule, with a face for each side of each solid pixel that has no solid pixel beside it; and a Model shown in a slot at an angle.
 - **What Roblox has:** an `ImageLabel` shows a texture in a slot, and a `ViewportFrame` shows parts there through a camera of its own. `EditableImage` holds pixels that a script writes, and `EditableMesh` builds a mesh while the game runs. Neither needs an uploaded asset when it starts blank (`docs/roblox/facts.md`).
 - **Needed from the user:** "Allow Mesh / Image APIs" switched on, under Security in Studio's Experience Settings. Measured on 2026-11-21: without it, a script in Studio cannot write a pixel or add a vertex. A look made only of parts needs no setting.
 - **Where the pieces live is new:** the server shows an item on the ground and the client shows it in a slot, so one piece for each item must reach both. Today no folder of Roblox-side code does.
+
+## 0c. What the sixteenth review left
+Their words are in `docs/working/code-reviews/2026-11-21-2-what-is-a-side.md`. None of this is built.
+- **A smaller request for a quick move.** `InventoryRequests.moveFromSlotToInventory` is what Shift and a click sends. The client works out which slots the stack should go to and sends five values: the slot it comes from, and a run of slots to go into. The server only checks that those slots exist. If the server chose where the stack goes, the request would take the slot alone, and about twenty lines would move from `InventoryControls`, on the client, into the rules. Minecraft's server decides it the same way.
+- **The words `screen` and `side`.** `InventoryScreen` is what a player has open: their pack, perhaps another inventory, and the stack they carry. It is kept on the server and draws nothing, and its name reads as a GUI. `side` says which of its inventories a slot is in, `"pack"` or `"other"`, and reads as a side of the player. Roblox and Godot have no word for the thing. Bukkit's `InventoryView` is the same thing, with a top and a bottom inventory. The words are theirs to choose.
+- **The pages, by the cold readers' measure** (`now.md`): a page that explains the words every page uses, such as pack, hotbar, slot, stack and carried stack, which each page links to; shorter sentences in `Stove.advance` and `InventoryScreen.spreadCarriedStackOverSlots`; and an example for each module that has none.
+
 
 ## 0b. If the user says so: what a character holds is a Roblox `Tool`
 Their proposal of 2026-11-20. Items stay a system of their own; the held tool is another; glue says which tool a selected stack puts in the hand.
