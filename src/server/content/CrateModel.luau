@@ -10,11 +10,9 @@ local PlaceholderBlock = require(script.Parent.Parent.world.PlaceholderBlock)
 
 local CrateModel = {}
 
-local COLOR = Color3.fromRGB(170, 130, 80)
-
 --- Returns a new Model that shows one crate, standing on its pivot.
 function CrateModel.make(): Model
-	return PlaceholderBlock.make(Crate.NAME, COLOR)
+	return PlaceholderBlock.make(Crate.NAME)
 end
 
 return CrateModel

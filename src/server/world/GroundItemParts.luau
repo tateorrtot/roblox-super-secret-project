@@ -1,8 +1,8 @@
 --!strict
 --- Shows the stacks loose in the world as blocks, which Roblox's physics moves.
 ---
---- Each ground item gets one small block in the colour of its item, with a label that says what it
---- is and how many. `update` makes the blocks match a `GroundItems` as it is now: a block for each
+--- Each ground item gets one small, plain grey block, with a label that says what it is and how
+--- many. `update` makes the blocks match a `GroundItems` as it is now: a block for each
 --- new ground item, a changed label when a stack grew or shrank, and no block for what is gone. A
 --- new block starts where its ground item is, moving as fast as the ground item was spawned. After
 --- that it is an ordinary unanchored part: Roblox's physics makes it fall, land and come to rest,
@@ -20,6 +20,9 @@ local Items = require(Shared.content.Items)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 
 local GroundItemParts = {}
+
+--- The colour of every ground item's block: a plain grey, until items have models.
+local PLACEHOLDER_COLOR = Color3.fromRGB(110, 112, 120)
 
 export type GroundItemParts = {
 	--- The folder that holds the blocks.
@@ -59,7 +62,6 @@ end
 
 local function makePart(groundItem: GroundItems.GroundItem): Part
 	local itemId = groundItem.stack.itemId
-	local look = Items.get(itemId)
 	local width = GroundItems.ITEM_WIDTH
 	local position = groundItem.position
 	local part = Instance.new("Part")
@@ -70,7 +72,7 @@ local function makePart(groundItem: GroundItems.GroundItem): Part
 	part.CanQuery = false
 	part.CanTouch = false
 	part.Material = Enum.Material.SmoothPlastic
-	part.Color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
+	part.Color = PLACEHOLDER_COLOR
 	makeLabel(part)
 	showCount(part, itemId, groundItem.stack.count)
 	return part

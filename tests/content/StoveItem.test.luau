@@ -34,7 +34,7 @@ end
 do -- the stove item as names
 	check(StoveItem.id == "stove", 'id: the stove item is the item "stove"')
 	check(StoveItem.stackSize == 1, "stackSize: one stove item to a slot")
-	check(StoveItem.name == "Stove" and #StoveItem.color == 3, "name, color: it is shown as a stove, in a colour")
+	check(StoveItem.name == "Stove", 'name: it is shown as "Stove"')
 	check(Stove.ITEM_ID_WHEN_BROKEN == StoveItem.id, "id: it is the item that a broken stove leaves")
 end
 

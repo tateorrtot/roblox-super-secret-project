@@ -14,7 +14,7 @@ local Stove = require(Shared.content.Stove)
 
 local StoveModel = {}
 
-local UNLIT_COLOR = Color3.fromRGB(60, 60, 70)
+local UNLIT_COLOR = PlaceholderBlock.COLOR
 local LIT_COLOR = UNLIT_COLOR:Lerp(Color3.fromRGB(255, 140, 40), 0.6)
 
 local function showFire(block: BasePart, burning: boolean)
@@ -35,7 +35,7 @@ end
 
 --- Returns a new Model that shows one stove, with no fire, standing on its pivot.
 function StoveModel.make(): Model
-	return PlaceholderBlock.make(Stove.NAME, UNLIT_COLOR)
+	return PlaceholderBlock.make(Stove.NAME)
 end
 
 --- Makes `model` glow if the fire of the stove that has the id `placedObjectId` on `plot` is

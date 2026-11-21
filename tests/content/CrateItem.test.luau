@@ -35,7 +35,7 @@ do -- the crate item as names
 	check(CrateItem.id == "crate", 'id: the crate item is the item "crate"')
 	check(Crate.ITEM_ID_WHEN_BROKEN == CrateItem.id, "id: it is the item that a broken crate leaves")
 	check(CrateItem.stackSize == 1, "stackSize: one crate item to a slot")
-	check(CrateItem.name == "Crate" and #CrateItem.color == 3, "name, color: it is shown as a crate, in a colour")
+	check(CrateItem.name == "Crate", 'name: it is shown as "Crate"')
 end
 
 do -- the crate item as the script of its item

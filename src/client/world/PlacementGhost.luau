@@ -1,8 +1,8 @@
 --!strict
 --- A see-through block that shows where an object would stand on a tile.
 ---
---- `show` puts the block on a tile in a colour, and `hide` takes it away. It is only a picture on
---- this player's machine: showing it places nothing.
+--- `show` puts the block on a tile, and `hide` takes it away. It is only a picture on this
+--- client: showing it places nothing.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -37,15 +37,15 @@ function PlacementGhost.new(): PlacementGhost
 	part.CastShadow = false
 	part.Size = Vector3.new(side, side, side)
 	part.Material = Enum.Material.SmoothPlastic
+	part.Color = Color3.fromRGB(110, 112, 120)
 	part.Transparency = 0.45
 	makeOutline(part)
 	return { part = part }
 end
 
---- Shows the ghost in the colour `color`, standing on the tile whose middle is at `tileCenter`.
-function PlacementGhost.show(ghost: PlacementGhost, color: Color3, tileCenter: Vector3)
+--- Shows the ghost standing on the tile whose middle is at `tileCenter`.
+function PlacementGhost.show(ghost: PlacementGhost, tileCenter: Vector3)
 	local part = ghost.part
-	part.Color = color
 	part.Position = tileCenter + Vector3.new(0, part.Size.Y / 2, 0)
 	part.Parent = Workspace
 end

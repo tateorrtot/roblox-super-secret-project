@@ -8,6 +8,9 @@ local Plot = require(ReplicatedStorage:WaitForChild("Shared").plots.Plot)
 
 local PlaceholderBlock = {}
 
+--- The colour of every placeholder block: a plain grey, whatever the block stands in for.
+PlaceholderBlock.COLOR = Color3.fromRGB(110, 112, 120)
+
 local function makeLabel(block: Part, text: string)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
@@ -28,10 +31,10 @@ local function makeLabel(block: Part, text: string)
 end
 
 --- Returns a new Model that holds one anchored block, a tile wide, deep and tall, in the colour
---- `color`, with `name` written above it. The block is the Model's `PrimaryPart` and is called
+--- `COLOR`, with `name` written above it. The block is the Model's `PrimaryPart` and is called
 --- `Block`. The Model's pivot is the middle of the block's underside, so a Model pivoted to a
 --- point stands on that point.
-function PlaceholderBlock.make(name: string, color: Color3): Model
+function PlaceholderBlock.make(name: string): Model
 	local side = Plot.TILE_SIZE
 	local block = Instance.new("Part")
 	block.Name = "Block"
@@ -41,7 +44,7 @@ function PlaceholderBlock.make(name: string, color: Color3): Model
 	block.Material = Enum.Material.SmoothPlastic
 	block.TopSurface = Enum.SurfaceType.Smooth
 	block.BottomSurface = Enum.SurfaceType.Smooth
-	block.Color = color
+	block.Color = PlaceholderBlock.COLOR
 	makeLabel(block, name)
 	local model = Instance.new("Model")
 	block.Parent = model

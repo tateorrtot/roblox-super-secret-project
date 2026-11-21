@@ -10,19 +10,6 @@ local StoveItem = require("../../src/shared/content/StoveItem")
 
 local check = Check.that
 
--- True if `color` is three whole numbers from 0 to 255.
-local function isColor(color: unknown): boolean
-	if type(color) ~= "table" or #color ~= 3 then
-		return false
-	end
-	for _, part in color :: { unknown } do
-		if type(part) ~= "number" or part ~= math.floor(part) or part < 0 or part > 255 then
-			return false
-		end
-	end
-	return true
-end
-
 do -- ALL
 	check(#Items.ALL > 0, "ALL: there is at least one item")
 	check(table.isfrozen(Items.ALL), "ALL: the list cannot be changed")
@@ -32,11 +19,8 @@ do -- ALL
 		end)
 		check(problem == nil, "ALL: item " .. index .. " is one the registry accepts: " .. tostring(problem))
 		check(type(item.name) == "string" and #item.name > 0, 'ALL: the item "' .. item.id .. '" has a name')
-		check(isColor(item.color), 'ALL: the colour of "' .. item.id .. '" is three whole numbers from 0 to 255')
-		check(
-			table.isfrozen(item) and table.isfrozen(item.color),
-			'ALL: the item "' .. item.id .. '" never changes: its table and its colour are frozen'
-		)
+		check((item :: any).color == nil, 'ALL: the item "' .. item.id .. '" has no colour: how it looks is not here')
+		check(table.isfrozen(item), 'ALL: the item "' .. item.id .. '" never changes: its table is frozen')
 	end
 	check(#ItemRegistry.getAll() == #Items.ALL, "ALL: every item has an id of its own")
 	check(

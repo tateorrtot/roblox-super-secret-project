@@ -2,12 +2,10 @@
 --- Every item in the game.
 ---
 --- An item is one table. It holds the item's id and stack size, which `ItemRegistry` keeps, its
---- name and colour, which are how it is shown, and whichever functions of
---- `ItemScripts.ItemScript` it has a use for: what happens when someone holding it acts on the
---- world. An item with such a function is written in a file of its own, as `CrateItem` is. The
---- others are written here. `ALL` lists every item, and `get` returns one by its id. An item never
---- changes: its table and its colour are frozen. The names and colours are placeholders until the
---- items have art.
+--- name, and whichever functions of `ItemScripts.ItemScript` it has a use for: what happens when
+--- someone holding it acts on the world. An item with such a function is written in a file of its
+--- own, as `CrateItem` is. The others are written here. `ALL` lists every item, and `get` returns
+--- one by its id. An item never changes: its table is frozen. How an item looks is not here.
 local CrateItem = require("./CrateItem")
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemScripts = require("../requests/ItemScripts")
@@ -16,30 +14,27 @@ local StoveItem = require("./StoveItem")
 local Items = {}
 
 --- One item of the game: what `ItemRegistry.ItemDefinition` and `ItemScripts.ItemScript` list,
---- and how the item is shown.
+--- and the item's name.
 export type Item = ItemRegistry.ItemDefinition & ItemScripts.ItemScript & {
 	--- The name shown for the item.
 	read name: string,
-	--- The colour of the item's placeholder block, as red, green and blue, each from 0 to 255.
-	read color: { number },
 }
 
 local all: { Item } = {
-	{ id = "log", stackSize = 16, name = "Log", color = { 133, 94, 66 } },
-	{ id = "stone", stackSize = 16, name = "Stone", color = { 128, 128, 128 } },
-	{ id = "crystal", stackSize = 32, name = "Crystal", color = { 150, 110, 220 } },
-	{ id = "apple", stackSize = 16, name = "Apple", color = { 200, 50, 50 } },
-	{ id = "fish", stackSize = 8, name = "Fish", color = { 90, 150, 200 } },
-	{ id = "cheese", stackSize = 8, name = "Cheese", color = { 235, 200, 80 } },
-	{ id = "cooked_fish", stackSize = 8, name = "Cooked fish", color = { 205, 140, 85 } },
-	{ id = "baked_apple", stackSize = 16, name = "Baked apple", color = { 165, 85, 45 } },
+	{ id = "log", stackSize = 16, name = "Log" },
+	{ id = "stone", stackSize = 16, name = "Stone" },
+	{ id = "crystal", stackSize = 32, name = "Crystal" },
+	{ id = "apple", stackSize = 16, name = "Apple" },
+	{ id = "fish", stackSize = 8, name = "Fish" },
+	{ id = "cheese", stackSize = 8, name = "Cheese" },
+	{ id = "cooked_fish", stackSize = 8, name = "Cooked fish" },
+	{ id = "baked_apple", stackSize = 16, name = "Baked apple" },
 	StoveItem,
 	CrateItem,
 }
 
 local itemsById: { [string]: Item } = {}
 for _, item in all do
-	table.freeze(item.color)
 	table.freeze(item)
 	itemsById[item.id] = item
 end

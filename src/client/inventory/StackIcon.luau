@@ -1,6 +1,6 @@
 --!strict
---- The picture of a stack on the screen: a block in the item's colour with the item's name across
---- it and the count in the corner.
+--- The picture of a stack on the screen: a plain grey block with the item's name across it and the
+--- count in the corner.
 ---
 --- `setStack` makes it show a stack, or nothing. A stack of one shows no count. The block stands in
 --- for an icon until items have art.
@@ -30,6 +30,7 @@ function StackIcon.new(parent: Instance): StackIcon
 	block.Position = UDim2.fromScale(0.5, 0.5)
 	block.Size = UDim2.new(1, -10, 1, -10)
 	block.BorderSizePixel = 0
+	block.BackgroundColor3 = Color3.fromRGB(110, 112, 120)
 	block.Visible = false
 
 	local corner = Instance.new("UICorner")
@@ -75,9 +76,7 @@ function StackIcon.setStack(icon: StackIcon, stack: ItemStack.ItemStack?)
 		icon.block.Visible = false
 		return
 	end
-	local look = Items.get(stack.itemId)
-	icon.block.BackgroundColor3 = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
-	icon.nameLabel.Text = look.name
+	icon.nameLabel.Text = Items.get(stack.itemId).name
 	icon.countLabel.Text = if stack.count > 1 then tostring(stack.count) else ""
 	icon.block.Visible = true
 end

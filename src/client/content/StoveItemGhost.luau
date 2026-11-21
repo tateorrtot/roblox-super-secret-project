@@ -14,7 +14,6 @@ local StoveItem = require(Shared.content.StoveItem)
 
 local StoveItemGhost = {}
 
-local COLOR = Color3.fromRGB(60, 60, 70)
 local ghost = PlacementGhost.new()
 ghost.part:SetAttribute("itemId", StoveItem.id)
 
@@ -22,7 +21,7 @@ ghost.part:SetAttribute("itemId", StoveItem.id)
 --- player's character reaches. Hides the ghost if it is anything else, or `nil`.
 function StoveItemGhost.update(pointerTarget: PlotPointer.Target?)
 	if pointerTarget ~= nil and pointerTarget.kind == "tile" and LocalCharacter.canReachPoint(pointerTarget.center) then
-		PlacementGhost.show(ghost, COLOR, pointerTarget.center)
+		PlacementGhost.show(ghost, pointerTarget.center)
 	else
 		PlacementGhost.hide(ghost)
 	end

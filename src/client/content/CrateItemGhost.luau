@@ -14,7 +14,6 @@ local PlotPointer = require(script.Parent.Parent.world.PlotPointer)
 
 local CrateItemGhost = {}
 
-local COLOR = Color3.fromRGB(170, 130, 80)
 local ghost = PlacementGhost.new()
 ghost.part:SetAttribute("itemId", CrateItem.id)
 
@@ -22,7 +21,7 @@ ghost.part:SetAttribute("itemId", CrateItem.id)
 --- player's character reaches. Hides the ghost if it is anything else, or `nil`.
 function CrateItemGhost.update(pointerTarget: PlotPointer.Target?)
 	if pointerTarget ~= nil and pointerTarget.kind == "tile" and LocalCharacter.canReachPoint(pointerTarget.center) then
-		PlacementGhost.show(ghost, COLOR, pointerTarget.center)
+		PlacementGhost.show(ghost, pointerTarget.center)
 	else
 		PlacementGhost.hide(ghost)
 	end
