@@ -25,7 +25,7 @@ Of "Shall I cut Shift-click's request to the slot alone, so the server chooses w
 
 > Like... why are you saying cut this thing?
 
-- **Declined, and not built.** The request keeps its seven values.
+- **Declined, and not built.** They took the refusal back within the hour: "No dont drop it? Im still just not really understanding" (below). It is not decided.
 - **Claude asked them to rule on a change to code that they could not yet read.** A proposal comes after the reader can follow what is there, and it says why in one plain sentence. Claude's reason was that they had called the signature "over the top", and it never said so.
 - **On the delay:** it would add none, since the client sends one message and gets one answer either way. Claude said so and left the request as it is.
 
