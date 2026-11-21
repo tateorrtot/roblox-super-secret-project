@@ -14,6 +14,7 @@ local ItemScripts = require("../../src/shared/requests/ItemScripts")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local PlacedObjectLooks = require("../../src/shared/content/PlacedObjectLooks")
 local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
+local PlayerSnapshot = require("../../src/shared/requests/PlayerSnapshot")
 local PlayerState = require("../../src/shared/players/PlayerState")
 local Plot = require("../../src/shared/plots/Plot")
 local Position = require("../../src/shared/Position")
@@ -48,11 +49,11 @@ do -- register
 	for inputId, recipe in Stove.RECIPES do
 		check(
 			ItemRegistry.has(inputId) and ItemRegistry.has(recipe.output),
-			'RECIPES: the recipe for "' .. inputId .. '" is between items that are registered'
+			'register: the recipe for "' .. inputId .. '" is between items that are registered'
 		)
 	end
 	for itemId in Stove.FUEL_SECONDS do
-		check(ItemRegistry.has(itemId), 'FUEL_SECONDS: the fuel "' .. itemId .. '" is an item that is registered')
+		check(ItemRegistry.has(itemId), 'register: the fuel "' .. itemId .. '" is an item that is registered')
 	end
 	check(
 		ItemScripts.find(CrateItem.id) == CrateItem :: any and ItemScripts.find(StoveItem.id) == StoveItem :: any,
@@ -159,7 +160,7 @@ end
 local function newWorld(isWired: boolean?): (World.World, PlayerState.PlayerState)
 	local world = World.new(Plot.new(6, 6), at(0, 0, 0), 100)
 	if isWired ~= false then
-		Signal.connect(world.advanced, function(seconds: number)
+		Signal.connect(world.timePassed, function(seconds: number)
 			PlacedObjectScripts.advancePlacedObjects(world, seconds)
 		end)
 	end
@@ -427,6 +428,61 @@ do -- whatever players' machines send, nothing raises an error and no item is ma
 	check(somePlaced, "random run: an object was placed by a player, so that was tried")
 	check(someTakenOff, "random run: a crate was taken off the plot, so that was tried")
 	check(someBurned, "random run: a stove burned fuel, so that was tried")
+end
+
+do -- a player watching a lit stove is told again only when something happens
+	-- Describes any plain value as text, the same text for the same value.
+	local function describe(value: any): string
+		if type(value) ~= "table" then
+			return tostring(value)
+		end
+		local keys = {}
+		for key in value do
+			table.insert(keys, tostring(key))
+		end
+		table.sort(keys)
+		local parts = {}
+		for _, key in keys do
+			local child = value[key]
+			if child == nil then
+				child = value[tonumber(key) :: number]
+			end
+			table.insert(parts, key .. "=" .. describe(child))
+		end
+		return "{" .. table.concat(parts, ",") .. "}"
+	end
+
+	-- Player 1 stands at 6, 0, 0, in reach of a stove on tile 2, 2 that holds 3 fish and 4 logs, and
+	-- has its screen open.
+	local world, player = newWorld()
+	local stoveId = Stove.place(world.plot, 2, 2)
+	local slots = Stove.get(world.plot, stoveId).inventory
+	Inventory.setStack(slots, Stove.INPUT_SLOT, ItemStack.new("fish", 3))
+	Inventory.setStack(slots, Stove.FUEL_SLOT, ItemStack.new("log", 4))
+	Stove.interact(world, player, stoveId)
+
+	local told = describe(PlayerSnapshot.encode(world, 1))
+	World.advanceTo(world, 100.1)
+	local lit = describe(PlayerSnapshot.encode(world, 1))
+	check(lit ~= told, "getScreenData: what a player's machine is told changes when the stove is lit")
+
+	local changes = 0
+	told = lit
+	for tick = 2, 79 do
+		World.advanceTo(world, 100 + tick / 10)
+		local now = describe(PlayerSnapshot.encode(world, 1))
+		if now ~= told then
+			changes += 1
+			told = now
+		end
+	end
+	check(
+		changes == 0,
+		`getScreenData: what a player's machine is told does not change while the stove only burns and works; it changed {changes} times in 78 tenths of a second`
+	)
+
+	World.advanceTo(world, 108.1)
+	check(describe(PlayerSnapshot.encode(world, 1)) ~= told, "getScreenData: and it changes again when a fish is done")
 end
 
 Check.finish("Content")

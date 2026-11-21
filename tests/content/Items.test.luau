@@ -33,6 +33,10 @@ do -- ALL
 		check(problem == nil, "ALL: item " .. index .. " is one the registry accepts: " .. tostring(problem))
 		check(type(item.name) == "string" and #item.name > 0, 'ALL: the item "' .. item.id .. '" has a name')
 		check(isColor(item.color), 'ALL: the colour of "' .. item.id .. '" is three whole numbers from 0 to 255')
+		check(
+			table.isfrozen(item) and table.isfrozen(item.color),
+			'ALL: the item "' .. item.id .. '" never changes: its table and its colour are frozen'
+		)
 	end
 	check(#ItemRegistry.getAll() == #Items.ALL, "ALL: every item has an id of its own")
 	check(

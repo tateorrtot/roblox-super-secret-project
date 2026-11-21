@@ -3,9 +3,11 @@
 Run from the repository root: python tools/unused.py
 A function a test calls but the game does not is still listed: it was built ahead of need.
 The request functions are called by name through Requests, so they are left out. So are the
-functions of the scripts of the game's own things, which the requests call through ItemScripts and
-PlacedObjectScripts, and the two functions of what an item shows while selected, which Main.client
-calls through its table of those pieces.
+functions of the scripts of the game's own things, which the glue calls through ItemScripts and
+PlacedObjectScripts, the functions of what an item shows while selected and of how a kind's screen is
+laid out, which Main.client and InventoryGui call through Main.client's tables of those pieces, and
+the function of what a kind of placed object shows on its block, which PlotParts calls through the
+table that Main.server hands it.
 """
 import os
 import re
@@ -13,8 +15,9 @@ import re
 DEFINITION = re.compile(r'^function (\w+)\.(\w+)\(', re.MULTILINE)
 CALLED_BY_NAME = {'InventoryRequests', 'PlotRequests'}
 CALLED_THROUGH_A_TABLE = {
-    'src/shared/content/': {'interact', 'breakPlacedObject', 'interactWithTile'},
-    'src/client/content/': {'update', 'hide'},
+    'src/shared/content/': {'interact', 'breakPlacedObject', 'interactWithTile', 'advance', 'getScreenData'},
+    'src/client/content/': {'update', 'hide', 'place'},
+    'src/server/content/': {'update'},
 }
 
 sources = {}

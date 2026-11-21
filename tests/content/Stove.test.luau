@@ -48,7 +48,7 @@ end
 -- server connects it.
 local function newConnectedWorld(plot: Plot.Plot, now: number): World.World
 	local world = World.new(plot, at(0, 0, 0), now)
-	Signal.connect(world.advanced, function(seconds: number)
+	Signal.connect(world.timePassed, function(seconds: number)
 		PlacedObjectScripts.advancePlacedObjects(world, seconds)
 	end)
 	return world
@@ -140,6 +140,7 @@ do -- the rows of RECIPES and FUEL_SECONDS
 			Items.get(recipe.output)
 		end) == nil, `RECIPES: the output "{recipe.output}" of "{itemId}" is an item of the game`)
 		check(recipe.output ~= itemId, `RECIPES: "{itemId}" becomes a different item`)
+		check(table.isfrozen(recipe), `RECIPES: the recipe for "{itemId}" never changes`)
 		check(
 			recipe.seconds > 0 and recipe.seconds < math.huge,
 			`RECIPES: the work on "{itemId}" takes a finite number of seconds above 0`
@@ -234,6 +235,8 @@ do -- get
 	check(Stove.get(plot, stoveId).kindId == "stove", "get: the stove that has the id")
 	local bell = placeBellWithFire(plot, 1, 1)
 	local bare = Plot.placeObject(plot, { kindId = Stove.PLACED_OBJECT_KIND_ID, tileX = 3, tileZ = 3 })
+	local fireless = { kindId = Stove.PLACED_OBJECT_KIND_ID, tileX = 4, tileZ = 4, inventory = Inventory.new(3) }
+	local firelessId = Plot.placeObject(plot, fireless)
 	local function refuses(id: number, what: string)
 		check(
 			Check.raises(`the placed object {id} is not a stove that Stove.place placed`, function()
@@ -244,7 +247,8 @@ do -- get
 	end
 	refuses(99, "an id that no placed object has")
 	refuses(bell, "a placed object of another kind, even with a fire field on it")
-	refuses(bare, "a placed object of the stove's kind with no fire on it")
+	refuses(bare, "a placed object of the stove's kind with nothing on it")
+	refuses(firelessId, "a placed object of the stove's kind that has slots on it and no fire")
 end
 
 do -- a placed stove cooks as the world's time passes
@@ -884,7 +888,7 @@ do -- breakPlacedObject
 	World.advanceTo(world, 54)
 	check(
 		Stove.isBurning(stove) and is(Inventory.getStack(slots, FUEL), "log", 3),
-		"breakPlacedObject: (set up) the stove is lit, and one log is burning"
+		"advance: (set up for breakPlacedObject) the stove is lit, and one log is burning"
 	)
 	local watcher = World.addPlayer(world, 2)
 	World.setCharacterPosition(world, 2, at(10, 0, 10))
@@ -1003,7 +1007,7 @@ do -- what the stove's functions fail for
 		world.plot.placedObjectsById[bell] ~= nil
 			and world.plot.placedObjectsById[bare] ~= nil
 			and groundItemCount(world) == 0,
-		"breakPlacedObject: and leaves each standing, with nothing thrown"
+		"advance, interact, breakPlacedObject, getScreenData: none of those failures took a placed object off the plot or threw anything"
 	)
 end
 

@@ -42,6 +42,7 @@ local PlotPointer = require(script.Parent.world.PlotPointer)
 local Remotes = require(script.Parent.Remotes)
 local SlotGestures = require(script.Parent.inventory.SlotGestures)
 local StoveItemGhost = require(script.Parent.content.StoveItemGhost)
+local StoveScreen = require(script.Parent.content.StoveScreen)
 
 Content.register()
 
@@ -58,6 +59,19 @@ type SelectedItemPiece = {
 local selectedItemPieces: { [string]: SelectedItemPiece } = {
 	[CrateItem.id] = CrateItemGhost,
 	[StoveItem.id] = StoveItemGhost,
+}
+
+--- How the screen of one kind of placed object is laid out, and what moves on it.
+type PlacedObjectScreenPiece = InventoryGui.OtherLayout & {
+	--- Called every frame while the screen of a placed object of the kind is open, with what the
+	--- kind's script told this machine of that placed object, and the time on the world's clock.
+	update: (screenData: unknown, now: number) -> (),
+}
+
+--- The piece of each kind of placed object whose screen is more than rows of slots, by the kind's
+--- id.
+local placedObjectScreenPieces: { [string]: PlacedObjectScreenPiece } = {
+	[Stove.PLACED_OBJECT_KIND_ID] = StoveScreen,
 }
 
 local remotes = Remotes.waitForAll()
@@ -222,23 +236,19 @@ remotes.snapshotChanged.OnClientEvent:Connect(function(encoded: PlayerSnapshot.E
 			screen.otherInventory,
 			otherName,
 			screen.carriedStack,
-			kindId == Stove.PLACED_OBJECT_KIND_ID
+			if kindId ~= nil then placedObjectScreenPieces[kindId] else nil
 		)
 	end
 end)
 
--- A stove's gauges move with time alone, so they are drawn here every frame from the times that
--- the stove's script put in the snapshot, and the server sends nothing while a stove only burns
--- and works.
+-- What moves on a screen with time alone, such as a stove's gauges, is drawn here every frame by
+-- the kind's own piece, from what the kind's script put in the snapshot. The server sends nothing
+-- while time only passes.
 RunService.RenderStepped:Connect(function()
-	if snapshot.placedObjectKindId == Stove.PLACED_OBJECT_KIND_ID and snapshot.screenData ~= nil then
-		local progress = snapshot.screenData :: Stove.Progress
-		local now = os.clock() + worldClockLead
-		InventoryGui.setStoveGauges(
-			inventoryGui,
-			Stove.getFuelLeftRatio(progress, now),
-			Stove.getWorkDoneRatio(progress, now)
-		)
+	local kindId = snapshot.placedObjectKindId
+	local piece = if kindId ~= nil then placedObjectScreenPieces[kindId] else nil
+	if piece ~= nil then
+		piece.update(snapshot.screenData, os.clock() + worldClockLead)
 	end
 end)
 remotes.askForSnapshot:FireServer()

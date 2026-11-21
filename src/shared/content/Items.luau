@@ -5,8 +5,9 @@
 --- name and colour, which are how it is shown, and whichever functions of
 --- `ItemScripts.ItemScript` it has a use for: what happens when someone holding it acts on the
 --- world. An item with such a function is written in a file of its own, as `CrateItem` is. The
---- others are written here. `ALL` lists every item, and `get` returns one by its id. The names
---- and colours are placeholders until the items have art.
+--- others are written here. `ALL` lists every item, and `get` returns one by its id. An item never
+--- changes: its table and its colour are frozen. The names and colours are placeholders until the
+--- items have art.
 local CrateItem = require("./CrateItem")
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemScripts = require("../requests/ItemScripts")
@@ -38,10 +39,12 @@ local all: { Item } = {
 
 local itemsById: { [string]: Item } = {}
 for _, item in all do
+	table.freeze(item.color)
+	table.freeze(item)
 	itemsById[item.id] = item
 end
 
---- Every item in the game, in the order they are written.
+--- Every item in the game.
 Items.ALL = table.freeze(all)
 
 --- Returns the item with the id `itemId`. Fails if the game has no item with that id.

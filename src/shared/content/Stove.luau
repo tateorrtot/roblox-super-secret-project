@@ -89,8 +89,8 @@ Stove.SLOT_COUNT = 3
 --- What a stove cooks: the recipe for each item that it cooks, by that item's id. One of the item
 --- is used each time, and one of the recipe's output is made. These rows are placeholders.
 Stove.RECIPES = table.freeze({
-	fish = { output = "cooked_fish", seconds = 8 },
-	apple = { output = "baked_apple", seconds = 6 },
+	fish = table.freeze({ output = "cooked_fish", seconds = 8 }),
+	apple = table.freeze({ output = "baked_apple", seconds = 6 }),
 } :: { [string]: Recipe })
 
 --- What burns in a stove's fire: how long one of each item burns, in seconds, by that item's id.
@@ -99,8 +99,8 @@ Stove.FUEL_SECONDS = table.freeze({
 	log = 16,
 } :: { [string]: number })
 
---- Two times closer together than this, in seconds, count as the same time.
-local SAME_TIME = 1e-9
+--- Two times closer together than this count as the same time.
+local SAME_TIME_SECONDS = 1e-9
 
 --- Places a stove on the tile `tileX`, `tileZ` of `plot`, and returns the placed object's id. The
 --- stove has `SLOT_COUNT` slots on it, holding nothing, no fire, and no work begun. Fails if
@@ -149,7 +149,7 @@ function Stove.slotAcceptsItem(slot: number, itemId: string): boolean
 	return slot == Stove.FUEL_SLOT and Stove.FUEL_SECONDS[itemId] ~= nil
 end
 
-local function findWorkableItem(stove: Stove): (string?, Recipe?)
+local function findItemToWorkOn(stove: Stove): (string?, Recipe?)
 	local input = Inventory.getStack(stove.inventory, Stove.INPUT_SLOT)
 	local recipe = if input then Stove.RECIPES[input.itemId] else nil
 	if input == nil or recipe == nil then
@@ -184,7 +184,7 @@ end
 
 local function burn(stove: Stove, seconds: number)
 	stove.fire.burnSecondsLeft -= seconds
-	if stove.fire.burnSecondsLeft < SAME_TIME then
+	if stove.fire.burnSecondsLeft < SAME_TIME_SECONDS then
 		stove.fire.burnSecondsLeft = 0
 		stove.fire.burnSecondsTotal = 0
 	end
@@ -192,7 +192,7 @@ end
 
 local function work(stove: Stove, recipe: Recipe, seconds: number)
 	stove.work.workedSeconds += seconds
-	if stove.work.workedSeconds >= recipe.seconds - SAME_TIME then
+	if stove.work.workedSeconds >= recipe.seconds - SAME_TIME_SECONDS then
 		Inventory.takeFromSlot(stove.inventory, Stove.INPUT_SLOT, 1)
 		Inventory.putInSlot(stove.inventory, Stove.OUTPUT_SLOT, ItemStack.new(recipe.output, 1))
 		stove.work.workedSeconds = 0
@@ -212,7 +212,7 @@ function Stove.advance(world: World.World, placedObjectId: number, seconds: numb
 	local stove = getStove(world.plot, placedObjectId)
 	local left = seconds
 	while left > 0 do
-		local itemId, recipe = findWorkableItem(stove)
+		local itemId, recipe = findItemToWorkOn(stove)
 		setWorkingOn(stove, itemId)
 		local isLit = Stove.isBurning(stove) or (recipe ~= nil and light(stove))
 		if not isLit then
@@ -261,7 +261,7 @@ end
 --- millisecond, so that a progress made later equals this one, field for field, as long as the
 --- stove has only burnt and worked in between.
 function Stove.getProgress(stove: Stove, now: number): Progress
-	local itemId, recipe = findWorkableItem(stove)
+	local itemId, recipe = findItemToWorkOn(stove)
 	local isBurning = Stove.isBurning(stove)
 	local isWorking = recipe ~= nil and itemId == stove.work.itemId
 	return table.freeze({

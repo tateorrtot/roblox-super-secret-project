@@ -71,7 +71,9 @@ end
 --- Tells the script of each placed object on the plot of `world` that `seconds` have passed: its
 --- `advance`, if it has one, is called with the placed object's id and `seconds`. The placed
 --- objects are told one at a time, the lowest id first. One that was taken off the plot by then
---- is not told, and one that was placed during the call is not told until the next call.
+--- is not told, and one that was placed during the call is not told until the next call. If an
+--- `advance` fails, the error passes out of this call, and the placed objects after that one are
+--- not told.
 function PlacedObjectScripts.advancePlacedObjects(world: World.World, seconds: number)
 	local placedObjectIds = {}
 	for placedObjectId in world.plot.placedObjectsById do

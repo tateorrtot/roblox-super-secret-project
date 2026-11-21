@@ -38,6 +38,8 @@ local function iconText(icon)
 	return if count == "" then icon.ItemName.Text else icon.ItemName.Text .. " " .. count
 end
 local panel = inventoryGui.Panel
+local fireGauge = panel:FindFirstChild("FireGauge")
+local workGauge = panel:FindFirstChild("WorkGauge")
 local view = {
 	ready = true,
 	open = inventoryGui.Enabled,
@@ -45,9 +47,9 @@ local view = {
 	held = hotbarGui.Row.Held.Text,
 	title = panel.Title.Text,
 	carried = iconText(inventoryGui.Carried:FindFirstChild("StackIcon")),
-	stoveShown = panel.FireGauge.Visible,
-	fire = panel.FireGauge.Fill.Size.Y.Scale,
-	work = panel.WorkGauge.Fill.Size.X.Scale,
+	stoveShown = fireGauge ~= nil and fireGauge.Visible,
+	fire = if fireGauge ~= nil then fireGauge.Fill.Size.Y.Scale else 0,
+	work = if workGauge ~= nil then workGauge.Fill.Size.X.Scale else 0,
 	outsideX = math.max(8, panel.AbsolutePosition.X - 40),
 	outsideY = panel.AbsolutePosition.Y + 120,
 	hotbar = {},

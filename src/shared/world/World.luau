@@ -12,7 +12,7 @@
 --- `Plot.placeObject` and `Plot.removePlacedObject`. When an object is placed, the world pushes
 --- the ground items out of its tile. When one is taken off, the world closes every screen open on
 --- it. A world knows nothing else of what stands on its plot. Each time it is moved on it fires
---- `advanced`, with the seconds that passed, for whatever does something as time passes.
+--- `timePassed`, with the seconds that passed, for whatever does something as time passes.
 local Direction = require("../Direction")
 local GroundItems = require("../groundItems/GroundItems")
 local Inventory = require("../inventory/Inventory")
@@ -43,7 +43,7 @@ export type World = {
 	--- Every player in the world, by id. On Roblox the id is the UserId.
 	read players: { [number]: PlayerState },
 	--- Fired by `advanceTo` when the world has been moved on, with the seconds that passed.
-	read advanced: Signal.Signal<number>,
+	read timePassed: Signal.Signal<number>,
 	--- The id of the placed object that each open inventory screen was opened on, by the screen. A
 	--- screen that is open on a pack alone has no entry.
 	read placedObjectIdsByScreen: { [InventoryScreen]: number },
@@ -142,7 +142,7 @@ function World.new(plot: Plot.Plot, plotCorner: Position, now: number): World
 		plotCorner = plotCorner,
 		groundItems = GroundItems.new(),
 		players = {},
-		advanced = Signal.new(),
+		timePassed = Signal.new(),
 		placedObjectIdsByScreen = {},
 		now = now,
 	}
@@ -363,9 +363,11 @@ end
 ---   the same ground item, and one that none of fitted is left as it was. If their screen is open
 ---   on a placed object that they stand more than `SCREEN_CLOSES_BEYOND` from, it is then closed,
 ---   as `closeScreen` does.
---- - `advanced` is fired, with the seconds that have passed since the time `advanceTo` was last
+--- - `timePassed` is fired, with the seconds that have passed since the time `advanceTo` was last
 ---   given: 0 if `now` is no later than that time.
 --- - Ground items that have been in the world too long are removed.
+--- Note: if a callback connected to `timePassed` fails, the error passes out of `advanceTo`. The
+--- world is at the time `now` by then, and what comes after `timePassed` in this list is not done.
 function World.advanceTo(world: World, now: number)
 	local elapsed = math.max(now - world.now, 0)
 	world.now = now
@@ -375,7 +377,7 @@ function World.advanceTo(world: World, now: number)
 		pickUpNearbyStacks(world, player)
 		closeScreenIfOutOfReach(world, player)
 	end
-	Signal.fire(world.advanced, elapsed)
+	Signal.fire(world.timePassed, elapsed)
 	GroundItems.removeExpiredItems(world.groundItems, now)
 end
 

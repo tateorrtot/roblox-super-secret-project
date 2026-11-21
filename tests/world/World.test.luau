@@ -189,10 +189,10 @@ do -- a new world
 	check(next(world.players) == nil, "new: has no players")
 	check(next(world.groundItems.itemsById) == nil, "new: has nothing on the ground")
 	local connected = 0
-	for _ in world.advanced.connections do
+	for _ in world.timePassed.connections do
 		connected += 1
 	end
-	check(connected == 0, "advanced: a new world has the signal, and nothing is connected to it")
+	check(connected == 0, "timePassed: a new world has the signal, and nothing is connected to it")
 end
 
 do -- players come and go
@@ -1116,39 +1116,39 @@ do -- time passing: screens close
 	)
 end
 
-do -- time passing: advanced is fired
+do -- time passing: timePassed is fired
 	local world = newWorld()
 	local given: { number } = {}
-	Signal.connect(world.advanced, function(seconds: number)
+	Signal.connect(world.timePassed, function(seconds: number)
 		table.insert(given, seconds)
 	end)
 	World.advanceTo(world, 104)
 	check(
 		#given == 1 and given[1] == 4,
-		"advanceTo: fires advanced once, with the seconds since the time advanceTo was last given"
+		"advanceTo: fires timePassed once, with the seconds since the time advanceTo was last given"
 	)
 	World.advanceTo(world, 105.5)
-	check(#given == 2 and given[2] == 1.5, "advanceTo: fires advanced again with the seconds since the call before")
+	check(#given == 2 and given[2] == 1.5, "advanceTo: fires timePassed again with the seconds since the call before")
 	World.advanceTo(world, 105.5)
 	check(
 		#given == 3 and given[3] == 0,
-		"advanceTo: fires advanced with 0 when now is equal to the time it was last given"
+		"advanceTo: fires timePassed with 0 when now is equal to the time it was last given"
 	)
 	World.advanceTo(world, 103)
 	check(
 		#given == 4 and given[4] == 0 and world.now == 103,
-		"advanceTo: fires advanced with 0 when now is earlier than the time it was last given"
+		"advanceTo: fires timePassed with 0 when now is earlier than the time it was last given"
 	)
 	World.advanceTo(world, 104)
 	check(#given == 5 and given[5] == 1, "advanceTo: counts the seconds from the earlier time that was given last")
 	local second: { number } = {}
-	Signal.connect(world.advanced, function(seconds: number)
+	Signal.connect(world.timePassed, function(seconds: number)
 		table.insert(second, seconds)
 	end)
 	World.advanceTo(world, 106)
 	check(#given == 6 and #second == 1 and second[1] == 2, "advanceTo: fires every callback connected, each once")
 
-	-- The state of the world as a callback of advanced finds it.
+	-- The state of the world as a callback of timePassed finds it.
 	local seen = newWorld()
 	local seenPlayer = seen.players[1]
 	local apple = World.spawnStack(seen, ItemStack.new("apple", 3), at(7, 0, 1), STILL)
@@ -1157,20 +1157,20 @@ do -- time passing: advanced is fired
 	openOn(screenWorld, screenPlayer, screenIds.crate)
 	World.setCharacterPosition(screenWorld, 1, at(6, 0, 6 + World.SCREEN_CLOSES_BEYOND + 1))
 	local pickedUp, screenClosed, oldStillThere = false, false, false
-	Signal.connect(seen.advanced, function()
+	Signal.connect(seen.timePassed, function()
 		pickedUp = Inventory.countItems(seenPlayer.pack, "apple") == 3 and seen.groundItems.itemsById[apple] == nil
 		oldStillThere = seen.groundItems.itemsById[old] ~= nil
 	end)
-	Signal.connect(screenWorld.advanced, function()
+	Signal.connect(screenWorld.timePassed, function()
 		screenClosed = screenPlayer.screen == nil and World.getOpenedPlacedObjectId(screenWorld, screenPlayer) == nil
 	end)
 	World.advanceTo(seen, 100 + GroundItems.LIFETIME_SECONDS)
 	World.advanceTo(screenWorld, 101)
-	check(pickedUp, "advanceTo: a player who stood on a ground item has picked it up when advanced is fired")
-	check(screenClosed, "advanceTo: a screen that was out of reach is closed when advanced is fired")
+	check(pickedUp, "advanceTo: a player who stood on a ground item has picked it up when timePassed is fired")
+	check(screenClosed, "advanceTo: a screen that was out of reach is closed when timePassed is fired")
 	check(
 		oldStillThere and seen.groundItems.itemsById[old] == nil,
-		"advanceTo: a ground item old enough to expire is still there when advanced is fired, and removed after"
+		"advanceTo: a ground item old enough to expire is still there when timePassed is fired, and removed after"
 	)
 end
 

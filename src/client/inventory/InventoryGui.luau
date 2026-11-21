@@ -3,12 +3,11 @@
 --- being carried.
 ---
 --- The other inventory, such as a crate's, is drawn above the pack, and the pack's hotbar slots are
---- its bottom row, a little apart from the rest. The carried stack follows the pointer. When the
---- other inventory is a stove's, its first slot is drawn above its second, with a fire gauge
---- between them, and its third slot to the right, past a work gauge. `show` draws,
---- `setStoveGauges` fills the two gauges, `setHighlightedSlots` brightens slots and `hide` closes
---- the screen. The screen changes no inventory: it reports what the player does on its slots through
---- its `callbacks`.
+--- its bottom row, a little apart from the rest. The carried stack follows the pointer. The other
+--- inventory's slots are drawn in rows, unless `show` is handed an `OtherLayout`, a piece that lays
+--- them out its own way and may draw more beside them. `show` draws, `setHighlightedSlots`
+--- brightens slots and `hide` closes the screen. The screen changes no inventory: it reports what
+--- the player does on its slots through its `callbacks`.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -40,6 +39,17 @@ export type Callbacks = {
 	onCloseClicked: () -> (),
 }
 
+--- How the other inventory is laid out when it is not rows of slots, and what is drawn beside it.
+export type OtherLayout = {
+	--- Puts `slots`, the other inventory's slots in order, where they belong on `panel`, and shows
+	--- whatever else the layout draws there. `origin` is the top left corner of the space on the
+	--- panel that is the other inventory's, and `step` is the distance from one slot to the next.
+	--- Returns how tall the space is that it took.
+	place: (panel: Frame, slots: { SlotGui.SlotGui }, origin: Vector2, step: number) -> number,
+	--- Hides whatever else the layout draws.
+	hide: () -> (),
+}
+
 export type InventoryGui = {
 	--- The ScreenGui that holds the whole screen. It is enabled while the screen is open.
 	read screenGui: ScreenGui,
@@ -66,12 +76,8 @@ export type InventoryGui = {
 	pointerConnection: RBXScriptConnection?,
 	--- The slot the pointer is over, or `nil` when it is over none.
 	hoveredSlot: { side: Side, slot: number }?,
-	--- Whether the other inventory is drawn as a stove's.
-	showsStove: boolean,
-	--- The parts that are only there for a stove: the fill of its fire gauge, the fill of its
-	--- work gauge, and every part in `all`: the two gauges, then the words beside its input, fuel
-	--- and output slots.
-	read stoveParts: { fireFill: Frame, workFill: Frame, all: { GuiObject } },
+	--- The piece that lays out the other inventory, or `nil` while it is drawn in rows.
+	otherLayout: OtherLayout?,
 }
 
 local COLUMNS = 9
@@ -81,8 +87,6 @@ local TITLE_HEIGHT = 26
 local HOTBAR_GAP = 10
 local HINT_HEIGHT = 46
 local PACK_NAME = "Pack"
-local FIRE_GAUGE_SIZE = Vector2.new(14, 40)
-local WORK_GAUGE_HEIGHT = 12
 
 local function isMouseButtonDown(): boolean
 	return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
@@ -138,51 +142,18 @@ local function placeRows(slots: { SlotGui.SlotGui }, first: number, count: numbe
 	return if rows > 0 then rows * step - GAP else 0
 end
 
-local function placeStove(inventoryGui: InventoryGui, top: number): number
-	local step = SlotGui.SIZE + GAP
-	local function cell(column: number, row: number): Vector2
-		return Vector2.new(PADDING + (column - 1) * step, top + (row - 1) * step)
-	end
-	local slots = inventoryGui.otherSlots
-	local parts = inventoryGui.stoveParts
-	local input, fuel, output = cell(3, 1), cell(3, 3), cell(7, 2)
-	slots[1].button.Position = UDim2.fromOffset(input.X, input.Y)
-	slots[2].button.Position = UDim2.fromOffset(fuel.X, fuel.Y)
-	slots[3].button.Position = UDim2.fromOffset(output.X, output.Y)
-
-	local between = cell(3, 2)
-	local fireGauge = parts.fireFill.Parent :: Frame
-	fireGauge.Position = UDim2.fromOffset(
-		between.X + (SlotGui.SIZE - FIRE_GAUGE_SIZE.X) / 2,
-		between.Y + (SlotGui.SIZE - FIRE_GAUGE_SIZE.Y) / 2
-	)
-	local workGauge = parts.workFill.Parent :: Frame
-	local workLeft = cell(4, 2).X + 6
-	workGauge.Position = UDim2.fromOffset(workLeft, between.Y + (SlotGui.SIZE - WORK_GAUGE_HEIGHT) / 2)
-	workGauge.Size = UDim2.fromOffset(output.X - 10 - workLeft, WORK_GAUGE_HEIGHT)
-
-	local words = { parts.all[3], parts.all[4], parts.all[5] }
-	words[1].Position = UDim2.fromOffset(cell(1, 1).X, input.Y)
-	words[2].Position = UDim2.fromOffset(cell(1, 3).X, fuel.Y)
-	words[3].Position = UDim2.fromOffset(cell(8, 2).X + 4, output.Y)
-	return 3 * step - GAP
-end
-
 local function layOut(inventoryGui: InventoryGui)
 	local packSlots = inventoryGui.packSlots
 	local otherSlots = inventoryGui.otherSlots
 	local hotbarSlotCount = math.min(inventoryGui.hotbarSlotCount, #packSlots)
 	local top = PADDING + TITLE_HEIGHT
 	inventoryGui.packTitle.Visible = #otherSlots > 0
-	for _, part in inventoryGui.stoveParts.all do
-		part.Visible = inventoryGui.showsStove
-	end
-	if inventoryGui.showsStove then
-		top += placeStove(inventoryGui, top) + HOTBAR_GAP
-		inventoryGui.packTitle.Position = UDim2.fromOffset(PADDING, top)
-		top += TITLE_HEIGHT
-	elseif #otherSlots > 0 then
-		top += placeRows(otherSlots, 1, #otherSlots, top) + HOTBAR_GAP
+	if #otherSlots > 0 then
+		local otherLayout = inventoryGui.otherLayout
+		local height = if otherLayout ~= nil
+			then otherLayout.place(inventoryGui.panel, otherSlots, Vector2.new(PADDING, top), SlotGui.SIZE + GAP)
+			else placeRows(otherSlots, 1, #otherSlots, top)
+		top += height + HOTBAR_GAP
 		inventoryGui.packTitle.Position = UDim2.fromOffset(PADDING, top)
 		top += TITLE_HEIGHT
 	end
@@ -315,60 +286,6 @@ local function makeHint(panel: Frame)
 	hint.Parent = panel
 end
 
-local function makeGauge(panel: Frame, name: string, fill: Color3): (Frame, Frame)
-	local gauge = Instance.new("Frame")
-	gauge.Name = name
-	gauge.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
-	gauge.BorderSizePixel = 0
-	gauge.Visible = false
-	gauge.Parent = panel
-	local gaugeFill = Instance.new("Frame")
-	gaugeFill.Name = "Fill"
-	gaugeFill.BackgroundColor3 = fill
-	gaugeFill.BorderSizePixel = 0
-	gaugeFill.Parent = gauge
-	return gauge, gaugeFill
-end
-
-local function makeFireGauge(panel: Frame): (Frame, Frame)
-	local fireGauge, fireFill = makeGauge(panel, "FireGauge", Color3.fromRGB(255, 150, 50))
-	fireGauge.Size = UDim2.fromOffset(FIRE_GAUGE_SIZE.X, FIRE_GAUGE_SIZE.Y)
-	fireFill.AnchorPoint = Vector2.new(0, 1)
-	fireFill.Position = UDim2.fromScale(0, 1)
-	fireFill.Size = UDim2.fromScale(1, 0)
-	return fireGauge, fireFill
-end
-
-local function makeWorkGauge(panel: Frame): (Frame, Frame)
-	local workGauge, workFill = makeGauge(panel, "WorkGauge", Color3.fromRGB(225, 225, 230))
-	workFill.Size = UDim2.fromScale(0, 1)
-	return workGauge, workFill
-end
-
-local function makeSlotWords(panel: Frame): { TextLabel }
-	local slotWords = {
-		{ "In", Enum.TextXAlignment.Right },
-		{ "Fuel", Enum.TextXAlignment.Right },
-		{ "Out", Enum.TextXAlignment.Left },
-	}
-	local labels = {}
-	for _, word in slotWords do
-		local label = Instance.new("TextLabel")
-		label.Name = word[1] .. "Word"
-		label.Size = UDim2.fromOffset(2 * (SlotGui.SIZE + GAP) - 12, SlotGui.SIZE)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamMedium
-		label.TextSize = 13
-		label.TextXAlignment = word[2] :: Enum.TextXAlignment
-		label.TextColor3 = Color3.fromRGB(165, 166, 175)
-		label.Text = word[1] :: string
-		label.Visible = false
-		label.Parent = panel
-		table.insert(labels, label)
-	end
-	return labels
-end
-
 local function makeCarried(screenGui: ScreenGui): (Frame, StackIcon.StackIcon)
 	local carriedFrame = Instance.new("Frame")
 	carriedFrame.Name = "Carried"
@@ -395,12 +312,6 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 	local packTitle = makePackTitle(panel, title)
 	makeCloseButton(panel, callbacks)
 	makeHint(panel)
-	local fireGauge, fireFill = makeFireGauge(panel)
-	local workGauge, workFill = makeWorkGauge(panel)
-	local stoveParts: { GuiObject } = { fireGauge, workGauge }
-	for _, label in makeSlotWords(panel) do
-		table.insert(stoveParts, label)
-	end
 	local carriedFrame, carriedIcon = makeCarried(screenGui)
 
 	screenGui.Parent = parent
@@ -415,33 +326,35 @@ function InventoryGui.new(parent: Instance, hotbarSlotCount: number, callbacks: 
 		otherSlots = {},
 		carriedIcon = carriedIcon,
 		carriedFrame = carriedFrame,
-		showsStove = false,
-		stoveParts = { fireFill = fireFill, workFill = workFill, all = stoveParts },
 	}
 end
 
 --- Opens the screen, or redraws it if it is open, showing `pack`, `carriedStack` at the pointer if
 --- there is one, and `otherInventory` above the pack if there is one. `otherInventoryName` is
---- written over the other inventory and is not used when there is none. If `otherIsStove` is
---- `true` and `otherInventory` has three slots, they are drawn as a stove's input, fuel and
---- output, with the two gauges, which `setStoveGauges` fills.
+--- written over the other inventory and is not used when there is none. The other inventory's
+--- slots are drawn in rows, or laid out by `otherLayout` if one is given: its `place` is called
+--- with the panel and the slots. A layout that was used before, and is not the one given now, has
+--- its `hide` called first.
 function InventoryGui.show(
 	inventoryGui: InventoryGui,
 	pack: Inventory.Inventory,
 	otherInventory: Inventory.Inventory?,
 	otherInventoryName: string,
 	carriedStack: ItemStack.ItemStack?,
-	otherIsStove: boolean
+	otherLayout: OtherLayout?
 )
 	inventoryGui.title.Text = if otherInventory ~= nil then otherInventoryName else PACK_NAME
 	local otherSlotCount = if otherInventory ~= nil then otherInventory.slotCount else 0
-	local showsStove = otherIsStove and otherSlotCount == 3
+	local formerLayout = inventoryGui.otherLayout
 	if
 		#inventoryGui.packSlots ~= pack.slotCount
 		or #inventoryGui.otherSlots ~= otherSlotCount
-		or inventoryGui.showsStove ~= showsStove
+		or formerLayout ~= otherLayout
 	then
-		inventoryGui.showsStove = showsStove
+		if formerLayout ~= nil and formerLayout ~= otherLayout then
+			formerLayout.hide()
+		end
+		inventoryGui.otherLayout = otherLayout
 		resizeSlots(inventoryGui, inventoryGui.packSlots, "pack", pack.slotCount)
 		resizeSlots(inventoryGui, inventoryGui.otherSlots, "other", otherSlotCount)
 		layOut(inventoryGui)
@@ -457,14 +370,6 @@ function InventoryGui.show(
 	StackIcon.setStack(inventoryGui.carriedIcon, carriedStack)
 	followPointer(inventoryGui)
 	inventoryGui.screenGui.Enabled = true
-end
-
---- Fills the fire gauge as far as `fuelLeftRatio` says and the work gauge as far as `workDoneRatio`
---- says, each a number from 0, which is empty, to 1, which is full. The gauges are seen only while
---- the other inventory is drawn as a stove's.
-function InventoryGui.setStoveGauges(inventoryGui: InventoryGui, fuelLeftRatio: number, workDoneRatio: number)
-	inventoryGui.stoveParts.fireFill.Size = UDim2.fromScale(1, math.clamp(fuelLeftRatio, 0, 1))
-	inventoryGui.stoveParts.workFill.Size = UDim2.fromScale(math.clamp(workDoneRatio, 0, 1), 1)
 end
 
 --- Gives the slots named in `screenSlots` a bright edge, and every other slot its plain edge. An
