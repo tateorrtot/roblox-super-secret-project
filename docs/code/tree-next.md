@@ -52,6 +52,7 @@ a vehicle
 - **What the driver wants is one small value:** throttle, brake, steer. A person and a helper's brain both make one, so a helper can drive.
 - **Nothing that exists drives a body that a player built.** Every chassis found needs wheels with fixed names, such as `FL`, `FR`, `RL`, `RR` (`docs/research/25-library-audit-vehicles.md`). A-Chassis is the one maintained kit, and is a whole car with gauges and sounds.
 - **Roblox does the physics:** a `HingeConstraint` as each wheel's motor, a spring for each wheel, and the driver's client as the body's network owner (`docs/research/23-roblox-first-placing-and-joining.md`).
+- **Tried in a gym, and the idea holds** (`gyms/vehicles`). One function of 80 lines, which knows no Roblox instance, drove two bodies of welded blocks with wheels at uneven places: one with two steering wheels, one that turns as a tank does. A wheel must not collide with the body that it is on. A block cut loose at speed became a body of its own, and the vehicle drove on.
 - **This waits on the objects branch.** Its five open decisions in `tree.md` come first, since a vehicle is made of what that branch places and joins.
 
 ## What was looked up for these
