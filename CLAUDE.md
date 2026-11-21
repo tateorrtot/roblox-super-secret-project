@@ -28,6 +28,7 @@ From https://www.gdquest.com/library/modular_game_architecture/, which Tate chos
 | Gyms | `main-project\` | Experiments | Nothing outside a gym refers to it |
 
 - **A library knows nothing of who uses it.** If it could not be copied into a different game as it is, it is wrong. It is handed what it needs: a list, a number, a rule as a function.
+- **The game uses a library's own code, and never a copy that has drifted.** Tate, 2026-11-21: "If you dont have the same code/directories/scripts as the library. Youre not using the library youre using some weird fork inspired by it." The game holds a clone of each library inside itself, and does not climb out of its folder to reach one.
 - **A library requiring another library:** Tate, 2026-11-21: "okay and makes sense sometimes. It just needs to be done incredibly sparringly IF at all ever." Where one does, its `README.md` says why nothing else would do.
 - **In a library's folder, never open `main-project\` or another library's folder.** What you need is in your own folder. If it is not, say what is missing and stop.
 - **A library is designed and built by a session that was started in the library's own folder.** A helper agent of a session at `roblox\` is shown that session's memory of the game (tested on 2026-11-21), so it may review a library and may never design or build one.
@@ -45,11 +46,12 @@ Tate (@tateorrtot) is an experienced programmer and Godot architect who is new t
 ## How anything here is made
 1. **Top down.** Break the problem into parts, and each part again, until a part is small and needs nothing of the rest. Never list parts by reading the code that exists: "Bottom up produces these webs."
 2. **A page before code.** A library's `README.md` says what it is and why it exists, the cases it serves, its name and the names rejected, each decision with its reason, its files, its signatures, its rules of use, and what is open. Tate reads the page first.
-3. **One job each.** A function does one thing, every time. Two jobs are two functions, and whoever uses them calls them in turn. A check is a separate `can...` or `is...`.
-4. **No contract nobody asked for.** Count what a type has room for (one, two, "someone is there") and ask who said so. Never invent a concept to route between two things: pass the thing itself.
-5. **Roblox first, then a library that exists.** Before building a thing, say what Roblox already has for it and why that will not do. Then look for a library that already does it. Tate, 2026-11-21: "if a library existing with everything I want lets use it ... If not custom. If youre unsure, custom." Judge a library by its source, not its README.
-6. **Checked, and said plainly.** The folder's own check must pass. A passing check says that the code does what was written. It never says that the design is right: a reader does that.
-7. **Names, code, and comments** follow `docs/names.md`, `docs/conventions.md`, and `docs/comments.md` of the folder you are in. Read them before changing code.
+3. **One problem each.** Before a library, a module, or a system is made, say the one problem that it solves. Tate, 2026-11-21: "what problem (notice its problem not probemS plural... that should go for a lot of things that are made) theyre trying to solve". If the answer is two problems, it is two things.
+4. **One job each.** A function does one thing, every time. Two jobs are two functions, and whoever uses them calls them in turn. A check is a separate `can...` or `is...`.
+5. **No contract nobody asked for.** Count what a type has room for (one, two, "someone is there") and ask who said so. Never invent a concept to route between two things: pass the thing itself.
+6. **Roblox first, then a library that exists.** Before building a thing, say what Roblox already has for it and why that will not do. Then look for a library that already does it. Tate, 2026-11-21: "if a library existing with everything I want lets use it ... If not custom. If youre unsure, custom." Judge a library by its source, not its README.
+7. **Checked, and said plainly.** The folder's own check must pass. A passing check says that the code does what was written. It never says that the design is right: a reader does that.
+8. **Names, code, and comments** follow `docs/names.md`, `docs/conventions.md`, and `docs/comments.md` of the folder you are in. Read them before changing code.
 
 ## Always
 - **Commit as work is done. Push nothing unless asked.**
