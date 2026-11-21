@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code thirteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code fourteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 The number in a file's name counts the reviews of 2026-11-20, so it is one less than the review's place in this list.
 
@@ -16,6 +16,7 @@ The number in a file's name counts the reviews of 2026-11-20, so it is one less 
 | 8 | `2026-11-20-7-the-item-decides.md` | "Shouldnt it be the item itself that determines what happens when it breaks?" Composition, not inheritance. "You cant just... invent nouns out of nowhere". Roblox's word, or Godot's. "Did you fix what they found?" |
 | 9 | `2026-11-20-8-two-systems.md` | Items and placed objects are "two v e r y different systems that shouldnt rely on or mention eachother". Glue lives outside both. Roblox's style. "Why? Just why this class name?" A question they could not read: "Uh what? Im confused" |
 | 10 | `2026-11-20-9-simple-things-and-glue.md` | "why do PlaceableItems still exist". Items, and events that code is attached to: "Just keep it generic." "Systems shouldnt know about eachother. Dont pull out abstractions." Compose with glue; the FoxFabric-addon test; "You dont make something for every combination" |
+| 14 | `2026-11-20-13-contained-spaghetti.md` | "who said colour? Are you coupling visuals to logic?" How a thing looks is a black box. "so i said the plots are 3D did i not...?" One noun for one thing. Systems, and content that glues them "in a messy frenzy". "again making up a lot of words to say other simple already defined things" |
 | 13 | `2026-11-20-12-content-in-one-place.md` | "Systems being decoupled - fantastic. Pieces of content being scattered - not great." A stove is not every station: "youve now contracted all "stations" to have its spaghetii". "I dont see tileY". Free placement, and the worry about helpers and machines. "I thought you already did this?" |
 | 12 | `2026-11-20-11-where-is-the-item.md` | "Does CrateItem not like, extend Item?" An item's id, stack size and look were not in its file. "what is a station...? ... Is it defined in the codebase? If it is, where? Why?" A crate composed with an inventory: "fantastic". The rigid grid is "Bloxburg's greatest flaw" |
 | 11 | `2026-11-20-10-who-said.md` | "who said an item was always going to be tied to a player. Or a hotbar?" Things stay dumb. The tool in the hand is not the item. Glue is fine; one module requiring another is not. "who said tiles werent 3D?" Two sentences they could not read |
@@ -25,7 +26,11 @@ Their message between the seventh and the eighth was answers and not a review: s
 Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth.
 
 ## What to check before showing them code
-These are Claude's readings of the thirteen reviews. The quotes are in the files.
+These are Claude's readings of the fourteen reviews. The quotes are in the files.
+
+- **Use the defined word.** Client, server, content, stove, Model. Not "the player's machine", "the game's own things", or a title of Claude's own. Godot's writing guidelines hold for comments and notes (`docs/code/conventions.md`).
+- **How a thing looks is a black box.** No rule, and no general drawing code, says what a thing looks like: not a colour, not a cube.
+- **"Who said X?" is a decision.** They asked who said tiles were not 3D, Claude filed it as a question, and two reviews later: "so i said the plots are 3D did i not...?"
 
 - **Say of each thing whether it is built or only proposed, in those words.** Claude wrote "What I'd change" beside work that was done, and they took it as done: "I thought you already did this?" When they have said yes to a direction, build it.
 - **Decouple the systems. Keep each piece of content in one place.** "Systems being decoupled - fantastic. Pieces of content being scattered - not great." A content file may be long and coupled; a system may not know another system.

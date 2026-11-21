@@ -58,5 +58,5 @@ What the game still decides for every kind alike, each for the piece named:
 - **A placed object is a cube that fills one tile.**
 - **An item's script is told of one thing only: that a bare tile was interacted with.** That was all the crate and the stove needed. A wand cast at a creature, at a placed object or at nothing needs a function for each, added when the wand is.
 - **The item in hand takes no part when a placed object is interacted with or broken,** though the kind's script is handed the player and could look. Which of the two answers first, the object or the item, is not decided: nothing needs it yet.
-- **A kind's name and colour are a row in `PlacedObjectLooks`,** apart from the kind's own file. What it shows beyond its block is its own piece (`StoveGlow`).
+- **How a kind looks is its own piece on the server,** `CrateModel` and `StoveModel`, which make a `Model`: a black box to everything else. Until there is art each is a plain block. A Model is still put on one tile, standing on its pivot, and nothing yet lets a kind be larger or turned.
 - **A break is at once.** A kind can leave what it likes, and nothing yet takes time or a tool.

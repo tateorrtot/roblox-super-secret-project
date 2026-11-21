@@ -35,6 +35,10 @@ How things in the code are named. The user reads an outline of bare names, with 
 | `player` | A `PlayerState`, in the rules |
 | `placedObject`, `placedObjectId` | A thing standing on a plot, and its id. The name is the user's, 2026-11-20: "I like PlacedObject!" Never "block", and never "placed item": "Who said it had anything to do with an item." |
 | `kindId` | The id of a kind, on a thing of that kind: a placed object's is its kind of placed object, such as `"crate"`. A kind's own module names it in full, `PLACED_OBJECT_KIND_ID`, since a cold reader asked "kind of what?" |
+| `client`, `server` | Roblox's own words for a player's copy of the game and for the one copy that decides. Never "the player's machine" |
+| `content` | The game's own items and kinds of placed object: the folder `src/shared/content`, and the folders of that name on the server and the client. The user's word |
+| `stove` | The game's placed object that cooks. Never "furnace", which is Minecraft's word for its own: "a furnace and a stove mean the same thing two words for the same script" |
+| `Model` | Roblox's own: a thing in the world made of parts, which is what a scene is in Godot. How a kind of placed object looks is a Model that the kind's own piece makes |
 | `script` | The functions that say what one thing of the game does when a player acts: an item's is an `ItemScript`, and a kind of placed object's a `PlacedObjectScript`. The word is the user's: "Placed items kinda each get their own class / script." It is a table of functions and not Roblox's `Script`, which is an Instance: a reviewer flagged that, and the user has not ruled on it |
 | `tileX`, `tileZ` | The numbers of a plot's tile along x and along z, from 1. `...InTiles` is a length counted in tiles: `widthInTiles` |
 | `position` | A point in the world, `{ x, y, z }` in studs. A character's is at its feet; a ground item's is the middle of its underside |

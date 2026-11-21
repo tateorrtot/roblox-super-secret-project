@@ -54,6 +54,13 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **`PlacedObjectLooks` is kept apart from the kinds.** An item's name and colour are in the item's own table since 2026-11-20.
   - **The names:** `kindId`; `tileX` and `tileZ`; `widthInTiles` and `depthInTiles`; `CHARACTER_REACH`; `PLACED_OBJECT_KIND_ID` and `ITEM_ID_WHEN_BROKEN`; `throwStacksFromTile` and its two speeds; `openPlacedObjectScreen`, `getOpenedPlacedObjectId`; `Inventory.takeEveryStack`.
   - **The work is on a branch of its own,** `placed-objects`, cut from `dropped-items`.
+- **A Model for each kind, and a class reference, 2026-11-20.** The direction is the user's, in their fourteenth review. These details are Claude's.
+  - **How a kind looks is a `Model` that the kind's own piece makes,** `CrateModel` and `StoveModel`, with `make` and an `update` that a kind may leave out. `PlotParts` names the Model for its kind, gives it the attribute `placedObjectId`, and puts its pivot on the middle of the tile.
+  - **`PlaceholderBlock`,** the plain block with a name over it that both pieces use until there is art.
+  - **A kind's `NAME` is in its own file,** and its item takes its name from there. `PlacedObjectKinds.ALL` and `PlacedObjectKinds.get` mirror `Items`.
+  - **A ghost's colour is the ghost's own,** so the crate's colour is written on the server and again on the client.
+  - **`Main.server` fails at the start if a kind has no piece that shows it.**
+  - **The class reference is made by `tools/reference.py` and MkDocs,** in the theme of Read the Docs, and is not kept in git. Its sections are `shared`, `server` and `client`, and a page is laid out as Godot's are. The four notes on the code in `docs/code` are in it too, as its contributing pages.
 - **One table for each item, and a stove that carries what it is made of, 2026-11-20.** The direction is the user's, in their thirteenth review. These details are Claude's.
   - **`Items.ALL` and `Items.get`,** in `content`. An item that only lies in a slot is a row there, and one that does something is a file of its own that the list names. `Items.Item` is the type of an item's table.
   - **Every item is registered as the script of its own id,** so an item with no function has a script with none.
@@ -64,7 +71,7 @@ Decisions Claude made without asking. Each stands until the user says otherwise.
   - **Time reaches a placed object through its script's `advance`.** `World` fires `timePassed`. `PlacedObjectScripts.advancePlacedObjects` calls the scripts, the lowest id first. Whoever makes the world connects the two: `Main.server`.
   - **What a player's machine is told of the placed object they have open is the script's `getScreenData`,** sent as it is. `PlayerSnapshot` moved to `requests` to ask for it.
   - **`Crate.get` and `Stove.get`** return a kind's object by its id, and fail for anything else.
-  - **A kind's own drawing is a piece on each side.** On the server, `src/server/content/StoveGlow`, which `PlotParts.update` is handed by kind id. On the player's machine, `src/client/content/StoveScreen`, which `InventoryGui.show` is handed as an `OtherLayout`. The table of each is in that side's `Main` script.
+  - **A kind's own drawing is a piece on each side.** On the server, `src/server/content/StoveModel`, which `PlotParts.update` is handed by kind id. On the player's machine, `src/client/content/StoveScreen`, which `InventoryGui.show` is handed as an `OtherLayout`. The table of each is in that side's `Main` script.
   - **The world's signal is `timePassed`,** a noun and what happened to it, as the plot's are. It was `timePassed` for an hour, and a reader shown only the names could make nothing of it.
   - **`tools/lift_out_test.py`,** which runs each system's tests with only what it requires beside it.
 - **A crate carries its inventory, and picking up is the world's, 2026-11-20.** The direction is the user's, in their twelfth review. These details are Claude's.

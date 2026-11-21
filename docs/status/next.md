@@ -12,7 +12,7 @@ On 2026-11-20 they said they lean to free placement: "I think the freeform place
 - **Helpers:** Roblox's `PathfindingService` makes its paths from the parts in the world, at any angle, so free placement does not stand in its way. Whether it is cheap enough for many helpers is to be measured when helpers are built. The other way is a coarse grid worked out from the boxes, which the player never sees.
 - **So the grid stays, in two new jobs:** a help for the hand, and an index the code may keep for speed. It stops being the rule for where a thing may stand.
 - **What Roblox has:** every part has a `CFrame` and a `Size`, and `Workspace:GetPartBoundsInBox` says what a box overlaps. The rules are plain Luau with no Roblox calls, so either the overlap test is ours, about thirty lines for boxes turned about the vertical, or the server's Roblox side answers it.
-- **The first step, if they say yes:** where a placed object stands becomes one value that only `Plot` looks inside, with a height. Today `tileX` and `tileZ` pass through twelve files and there is no `tileY`. They have pointed at the flat grid three times.
+- **The first step, if they say yes:** a tile becomes one value, with a height, which only `Plot` makes and reads: `Crate.place(plot, tile)` where today it is `Crate.place(plot, tileX, tileZ)`. Nothing changes in play. After it, letting the pointer pick the top of what stands there, and then a free position and a turn in place of whole numbers, are changes to `Plot`, the pointer and the drawing, and not to twelve files. Explained to them on 2026-11-20: "I think I want this but I want to verify".
 
 ## 0b. If the user says so: what a character holds is a Roblox `Tool`
 Their proposal of 2026-11-20. Items stay a system of their own; the held tool is another; glue says which tool a selected stack puts in the hand.
@@ -57,7 +57,9 @@ Each starts with one precise question to them, and is built as small pieces. The
 - A mutation run over every piece at once stalls on `Stove`: some of the bugs it plants make the loop in `advance` run until the tool's 60-second limit, one after another. `tools/mutate.py` wants a shorter limit, or a way to give one.
 - What the audits left is listed in `now.md`. None of it is urgent. The screen's drawing code is best left until the user decides whether screens are made in Studio.
 
-- **A kind's name and colour into the kind's own file.** They are rows in `PlacedObjectLooks`, as an item's were in `ItemLooks`.
+- **A pass over every comment and note against Godot's writing guidelines** (`docs/code/conventions.md`, "Comments"), and for the defined words: 131 places say "player's machine" where the word is client, 13 of them in files of `src`. It is one kind of change in many places, so it is one commit.
+- **The word `piece` in three type names:** `PlacedObjectPiece` in `PlotParts`, and `SelectedItemPiece` and `PlacedObjectScreenPiece` in `Main.client`. A reviewer counted it as one word for three things. The user's word for a table of one thing's functions is script, and Roblox has a `Script` of its own, so it wants their ruling.
+- **The reference on readthedocs.org,** if they want it there: it needs the repository on a host that site can read, which is theirs to set up, and a small config file. The notes would have to stay out of it: `docs/roblox/studio.md` names their account.
 - **One function for an item that places a kind,** when a third item does it. `CrateItem.interactWithTile` and `StoveItem.interactWithTile` are the same four lines.
 - **The id of the item that a broken crate leaves is written twice:** in `CrateItem` and in `Crate.ITEM_ID_WHEN_BROKEN`. The two files cannot require each other. The same holds for the stove.
 

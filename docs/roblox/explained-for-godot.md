@@ -7,6 +7,7 @@ How Claude explained Roblox to the user on 2026-11-20, so that later sessions sa
 | An Instance | A Node |
 | The DataModel (`game`) | The SceneTree |
 | A ModuleScript | A script used as a library. `require` is `preload`, and the module runs once |
+| A `Model` | A scene instance: a thing in the world made of parts, with a pivot. How a kind of placed object looks is a Model, which the kind's own piece makes, and nothing else knows what is in it |
 | A Script or LocalScript | A script that is itself a node in the tree, not attached to one |
 | Luau has no `class` and no `extends` | GDScript's `extends Item`. A module returns a table of constants and functions. A thing "is an item" by having the fields a registry asks for, and the type checker says so where it is registered. Inheritance can be imitated with metatables, as JavaScript does with prototypes, and many Roblox projects do. This one does not. Roblox's own classes, such as `Part`, cannot be extended at all |
 | An Instance with Attributes, and a script beneath it | A Resource or a scene with exported variables, edited in the Inspector. It is Roblox's own way to give a thing properties. The game's items are tables in code, because the rules are tested outside Studio |

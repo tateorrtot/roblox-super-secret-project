@@ -27,9 +27,9 @@ GLUE: joins systems, and holds no thing of the game
 THINGS: the game's own, each in one place
   content      Items                 every item, one table each: id, stack size, name, colour, what it does
                CrateItem, StoveItem  an item that does something, in a file of its own
-               Crate                 the crate, placed: its inventory, its screen, what breaking it leaves
+               Crate                 the crate, placed: its name, its inventory, its screen, what breaking it leaves
                Stove                 the stove, placed: its slots, recipes, fuels, fire and cooking, its gauges
-               PlacedObjectLooks     the name and colour of each kind of placed object, until there is art
+               PlacedObjectKinds     every kind of placed object, as one list
                Content               registers all of the above
 ```
 
@@ -41,7 +41,7 @@ THINGS: the game's own, each in one place
   - `inventory`: `InventoryGui`, `HotbarGui`, `SlotGui` and `StackIcon` draw. `SlotGestures` and `InventoryControls` are plain Luau, tested in `tests/client`, and turn mouse and keys on the screen into requests.
   - `world`: `PlotPointer` says what a point of the screen is over. `BreakClick` tells a click of the Break action from a turn of the camera. `PlacementGhost` draws a see-through block on a tile. `LocalCharacter` says whether the character reaches a point, for drawing only.
   - `content`: `CrateItemGhost` and `StoveItemGhost` are what each of those items shows while selected. `StoveScreen` lays out a stove's three slots and fills its two gauges; `InventoryGui` is handed it and does not know what a stove is.
-- **A kind's own drawing on the server** is in `src/server/content`: `StoveGlow` makes a stove's block glow while its fire burns. `PlotParts` calls it, and does not know what a stove is.
+- **How a kind of placed object looks** is in `src/server/content`: `CrateModel` and `StoveModel` each make their kind's `Model`, and `StoveModel` makes it glow while the stove's fire burns. `PlotParts` puts each Model on its tile and does not know what is in it. `PlaceholderBlock` is the plain block each uses until there is art.
 - **The input actions** `Interact` and `Break` are Instances under `ReplicatedStorage.Inputs.World`, declared in `default.project.json` (`docs/roblox/input.md`).
 
 ## How an interaction reaches the thing's own script

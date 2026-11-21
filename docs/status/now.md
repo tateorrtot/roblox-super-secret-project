@@ -7,13 +7,14 @@ As of the end of 2026-11-20. This file holds only what is true now. What is over
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | On the branch `placed-objects`, cut from `dropped-items`, which was cut from `first-pieces`. None is merged, and nothing is pushed |
-| **Checked** | `lune run tools/check` passes, with 2,273 test checks. The play test passed 93 of 93 in Studio on the last commit |
+| **Checked** | `lune run tools/check` passes, with 2,285 test checks. The play test passed 93 of 93 in Studio on the last commit that touched the server or the client |
 | **Not checked** | A phone. A gamepad. Two players. A real server. How a thrown item looks from another player's machine |
 | **Waiting on the user** | To read the code. Then their feedback on the game. The open questions are in `asked-of-the-user.md` |
 | **Approved, not built** | Prediction on the player's machine (`next.md`) |
 
 ## With the user
-- **They have reviewed the code thirteen times,** twelve of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **They have reviewed the code fourteen times,** thirteen of them on 2026-11-20. Their words are in `docs/working/code-reviews/`, and the page there lists what to check before showing them code.
+- **The fourteenth said the shape they want, whole:** strong systems, and content that glues them together, one thing to a script. It asked who said colour: how a thing looks is a black box, and each kind of placed object now has a piece that makes its own Model. They said plots are 3D, which Claude had filed as a question. They asked for a way to browse the code as documentation, and it is built (`docs/code/checks.md`). And they told Claude to use the defined words and Godot's writing guidelines, after its titles for the reference's sections. Claude explained the first step to 3D plots, and it waits on their word (`asked-of-the-user.md`).
 - **The thirteenth gave a rule and two yeses.** "Systems being decoupled - fantastic. Pieces of content being scattered - not great." Yes to one table for each item, and yes to the stove carrying what it is made of. Both are built (`history/2026-11-20-item-tables-and-the-stove.md`). They thought both were built already: Claude had written "What I'd do" beside work that was done. They lean to free placement with snapping as an option, and asked what it does to helpers and to machines that work on their neighbours. Claude answered and asked whether to take the first step (`asked-of-the-user.md`).
 - **The twelfth was of Claude's answers to the eleventh.** They approved a crate carrying its own inventory, asked what a station is, why `CrateItem` did not hold the crate item's id, stack size and look, and whether picking up could leave the ground items' module. All of it is built.
 - **The eleventh was of one script, `CrateItem`:** "who said an item was always going to be tied to a player. Or a hotbar?" It now knows neither. In the same message they proposed that what a character holds be a Roblox `Tool`, apart from the items, and asked who said tiles were flat. Neither is built, and each waits on their word (`asked-of-the-user.md`).
@@ -42,14 +43,16 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 - **Break.** A short right click on a crate or a stove breaks it. It comes off the plot and leaves a crate or a stove on the ground as an item, thrown upwards and a little outwards, and so is each stack that was in it. Holding the right button, or turning the camera with it, breaks nothing.
 
 ## What has been checked
-- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,273 test checks in 29 files, and the demo.
+- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,285 test checks in 29 files, and the demo.
 - **The folders are systems, glue and things** (`docs/code/pieces.md`). `python tools/delete_directory_test.py`: deleting `content` breaks none of the rules, and deleting a system breaks only the glue and the things built on it. `python tools/lift_out_test.py`: each of the five systems passes its own tests in a folder that holds only it and what it requires.
 - **A script is held to its functions by the type checker.** A stove whose `interact` took a string was refused at the line that registers it.
 - **Mutation testing** of each piece changed on 2026-11-20 leaves only changes no caller could see. The last run of each: `Stove` 187 of 193, `Crate` 33 of 33, `CrateItem` 10 of 10, `StoveItem` 10 of 10, `Items` 11 of 11, `ItemRegistry` 34 of 41, `Content` 6 of 6, `Plot` 80 of 81, `GroundItems` 140 of 141, `World` 146 of 148, `PlacedObjectScripts` 29 of 29, `PlayerSnapshot` 35 of 38, `PlotRequests` 46 of 46, `ItemScripts` 14 of 14, `InventoryRequests` 136 of 140, `PlayerState` 36 of 36, `Inventory` 202 of 209, `Direction` 13 of 13, `PlotCollision` 80 of 81, `Signal` 22 of 22.
-- **The play test** (`python tools/playtest.py`) passed 93 of 93 in Studio on 2026-11-20, on the last commit. It drives a test character through every action in the list above, checks what the item in hand shows and what the outline is around, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
+- **The play test** (`python tools/playtest.py`) passed 93 of 93 in Studio on 2026-11-20, after each kind of placed object was given its own Model. It drives a test character through every action in the list above, checks what the item in hand shows and what the outline is around, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
 - **Six classes were read by helpers shown nothing but their names,** and three reviewers read the work. 28 findings: 14 mended, 1 corrected in the notes, 13 left. What was left is below, and the whole account is in `history/2026-11-20-scripts-and-input.md`. The user is stricter than any reader: the names are for their read.
 - **The crate and the pick-up were reviewed by two helpers, and three classes read cold:** 16 findings, 7 mended, 8 left, 1 not agreed with (`history/2026-11-20-crate-and-pick-up.md`).
-- **The item tables and the stove were reviewed by three helpers, and four classes read cold:** 27 findings, 12 mended, 11 left, 4 not agreed with (`history/2026-11-20-item-tables-and-the-stove.md`). What was left is below.
+- **The item tables and the stove were reviewed by three helpers, and four classes read cold:** 27 findings, 12 mended, 11 left, 4 not agreed with (`history/2026-11-20-item-tables-and-the-stove.md`).
+- **The Models were reviewed by two helpers:** 19 findings, 5 mended, 12 left, 2 not agreed with (`history/2026-11-20-models-and-the-reference.md`). What was left is below.
+- **The class reference** is made by `python tools/reference.py` from the comments in the code: 53 modules, and the four notes on the code as its contributing pages.
 - **The server's and the client's scripts** were type-checked by hand with Roblox's definitions: six reports in one place, all older than this work (`docs/code/checks.md`).
 - **What Roblox's input actions do** was measured in Studio before they were used (`docs/roblox/input.md`).
 - **By hand, on 2026-11-19,** driving a test character through Studio's connector: that a player keeps their pack when their character dies; that ground items vanish after five minutes; that a player who leaves while carrying a stack causes no error.
@@ -69,9 +72,12 @@ Found by the reviewer who applied the user's test, and left. Each is a place whe
 - **How far a character reaches is one number in the request, for every thing.**
 - **The two ghosts on the player's machine each ask reach for themselves,** while the server asks it once in the request. `Main.client` already works out what is in reach, for the outline.
 - **A tile is two loose numbers, `tileX` and `tileZ`, in twelve files,** and a placed object is a cube on one whole-numbered tile. There is no `tileY`, as the user noticed: they have pointed at the flat grid three times, and they lean to free placement (`next.md`).
-- **A kind's name and colour are a row in `PlacedObjectLooks`,** apart from the kind's own file, and the same name and colour are written again on its item. An item's are in the item's own table now.
+- **An item has a `color` on its table,** and the slots and the ground items draw every item as a block of that colour with its name. It is the same contract that a kind of placed object had. It stands in for the texture the user said an item has, and whether it goes is asked of them.
+- **A crate's colour is written three times:** on its item, in its Model's piece on the server, and in its ghost's piece on the client. The stove's too.
+- **A kind's Model stands on one tile.** `PlotParts` puts its pivot on the tile's middle, and nothing lets a kind be larger, or turned.
+- **A ghost is a see-through block,** not the kind's own Model.
 - **The id of the item that a broken crate leaves is written twice:** in `CrateItem` and in `Crate.ITEM_ID_WHEN_BROKEN`. The two files cannot require each other. The same holds for the stove.
-- **Three hand-written lists name the game's things, one on each side:** `Content.register` for the rules, a table in `Main.server` for what a kind shows on its block, and two in `Main.client` for what an item shows while selected and how a kind's screen is laid out.
+- **Hand-written lists name the content on each side:** `Items.ALL` and `PlacedObjectKinds.ALL` in the rules, a table in `Main.server` of the pieces that make each kind's Model, and two in `Main.client`. `Main.server` fails at the start if a kind has no piece.
 - **`CrateItem.interactWithTile` and `StoveItem.interactWithTile` are the same four lines,** and so are the two ghosts but for the kind. One shared function, when a third item places.
 - **A stove cooks only if whoever makes a world connects `timePassed`** to `PlacedObjectScripts.advancePlacedObjects`. `Main.server` does, and a test says what happens without it.
 - **A placed object of the stove's kind with no fire on it stops the world's tick,** loudly, on every pass. Only a mistake in the code can make one: `Stove.place` is the one way a stove is made.

@@ -6,7 +6,10 @@ Only what is still open. When they answer, the answer goes where it belongs and 
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - **Whether the keys move onto Roblox's input actions next, before prediction** (`next.md`). Asked on 2026-11-20.
 - **Whether the scripts read right to them:** `ItemScripts` and `PlacedObjectScripts`, and the game's things in `src/shared/content`. The names and shapes that are Claude's are in `claudes-calls.md`, with the four names a cold reader doubted in `history/2026-11-20-scripts-and-input.md`.
-- **Whether where a placed object stands becomes a free position, with snapping as a help,** beginning with one value that only `Plot` looks inside (`next.md`). They lean that way, and asked for Claude's thoughts on what it does to helpers and to machines that work on their neighbours, which they have. Asked on 2026-11-20.
+- **Whether to make a tile one value with a height,** which only `Plot` makes and reads, as the first step to 3D plots and to free placement (`next.md`). Claude explained it with the code before and after on 2026-11-20, when they said "I think I want this but I want to verify".
+- **What 3D means in play.** Claude takes "plots are 3D" to mean that a placed object can stand on top of another, or on a floor above. Whether a thing may float, or falls when what is under it goes, is theirs to say.
+- **Whether an item's colour should go the way a kind's went.** `Items.Item` has a `color` for every item, and the slots and the ground items draw from it. It stands in for the texture they said an item has. If it goes, each item's icon and its look on the ground become pieces of the item's own.
+- **What to call a table of one thing's drawing functions.** The code says `piece` in three type names (`next.md`).
 - **Whether to try a Roblox `Tool` for what the character holds,** as they proposed. The first step is a short measurement in Studio of what Roblox's documentation leaves unsaid (`docs/roblox/input.md`).
 - **Whether `Crate` should be `CratePlacedObject`,** to pair with `CrateItem`. They asked whether `CrateItem` is the best name.
 - **A name for `InventoryControls`.** `UseAndHit` went when the clicks on the world moved to Roblox's input actions, and the same may be true of this one when the keys move.

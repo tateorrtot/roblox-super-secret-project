@@ -13,6 +13,7 @@ How the code is checked. Every command runs from the top of the repository.
 | `python tools/outline.py` | Every public function and constant, with `--names` for bare names |
 | `python tools/bare_names.py <Module>` | One class as a names test shows it: its name and its members' names, and nothing else |
 | `lune run tools/requires --chart` | Draws what requires what as a chart, `docs/code/requires.svg`. The check fails if the chart no longer matches the code |
+| `python tools/reference.py` | Writes the class reference: a page for each module, from the comments in the code. `python -m mkdocs serve -f build/reference/mkdocs.yml` then serves it to a browser |
 | `python tools/delete_directory_test.py` | Deletes each directory of the rules in a scratch copy, and lists what else stops working |
 | `python tools/lift_out_test.py` | Copies each system into an empty folder with only what it requires, and runs its tests there. On 2026-11-20 all five passed alone: `items` with nothing, `inventory` with `items`, `plots` with `Position` and `Signal`, `groundItems` with `items` and `Position`, `players` with `inventory`, `items` and `Position` |
 | `python tools/faces.py <out.txt> <modules...>` | The public face of modules: comments, types and signatures, with no bodies |
