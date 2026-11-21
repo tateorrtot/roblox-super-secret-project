@@ -4,26 +4,18 @@ The work that is approved or owed, in the order Claude means to do it. What is o
 
 On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
-## First: name the systems
-The user, 2026-11-21: "Lets identify our systems first." They asked whether each system would be written the same as an isolated, generic library in a repo of its own. It would not (`docs/working/code-reviews/2026-11-21-5-would-you-do-it-the-same.md`), and they are weighing that route: a repo and a session for each system, or the game written by hand. Nothing below this section is built before the list is theirs. Claude's list, given to them that day:
+## First: the tree, from the top down
+The user, 2026-11-21: "Bottom up is NOT the way to make this. Top down is. Bottom up produces these webs. You start at the top and work down. ... You figure it out from the start." Claude's list of ten systems was read off the code that exists, and is withdrawn (`docs/working/code-reviews/2026-11-21-6-top-down.md`). The top of the tree is theirs, and nothing below this section is built before the branch it hangs on is broken down with them:
 
-| System | Its one job | Needs |
-|---|---|---|
-| signal | A list of callbacks to call | Nothing |
-| items | What a kind of item is, and a stack: a kind and a count | Nothing |
-| inventory | Numbered slots that each hold a stack or nothing | items |
-| selection | One selected number out of N | Nothing |
-| carried stack | A stack held outside any inventory, and the moves between it and a slot | inventory |
-| building | Things placed at places, and which is joined to which | signal |
-| ground items | Stacks that lie in a world: where, since when, which merge, which are in reach | items |
-| scripts by id | A table of functions for each id, found by the id | Nothing |
-| requests | Check the values that a client sent, and call the function they name | Nothing |
-| save | A value to plain data and back, with a version | Nothing |
+1. **"The issue of items and moving them around":** inventories, hotbars, items, ground items.
+2. **"Objects in the world that can be broken or placed":** placed objects; a collection of placed objects, which has no name yet; and a plot, "some kinda constraint on placing things. Like a certain area you can build in". Today's `Plot` is all three in one module.
+3. **Entities, "things that "move"":** players, and NPCs: helpers, animals, quest givers. Parked: "this one is complex maybe dont worry about it yet".
 
-- **Not systems, but this game's glue and content:** `World`, `PlayerState`, `PlotCollision`, the two `Main` scripts, `InventoryControls`, and everything in `content`.
-- **On the Roblox side, three more:** the drawing of a grid of slots with its clicks and drags; what a point on the screen is over in the world; and, not built, welds for what building says is joined.
-- **Where today's code is not that list:** five modules keep a list for every user; eleven numbers of this game are inside systems; `ItemScripts` requires `World`, and `PlacedObjectScripts` requires `World` and `PlayerState`; `Inventory` and `ItemStack` read `stackSize` from the list that `ItemRegistry` keeps; `World` requires 10 modules and is required by 10 files; `Hotbar` is selection with an inventory it does not need; `InventoryScreen` is carried stack, a player's open inventories, and a stove's rule in one table.
-
+- **Their guideline for folders, from Godot's "signal up - call down":** a folder may depend on the folders inside it, and never relies on the scripts above it. "I just want to try and avoid climing up directories for things." They are not sure of it: "Maybe thats not a great way to do it - idk." On that day 67 of the 85 requires in `src/shared` climbed out of their folder.
+- **In the code today, and on no branch of their tree:** what a client asks and is told (`requests`), saving (`save`), the stove's cooking as time passes, and everything on the Roblox side that draws or reads input.
+- **They are weighing a repo and a session for each system.** Claude offered to try one overnight: one leaf, built from a one-page spec by a session that is told nothing of this game.
+- **Their drafts for FoxFabric** are in `docs/research/21-foxfabric-drafts.md`. The spec for Modifiers there is the form they write an addon in, before code.
+- **What today's code has that a library would not,** measured the same day: five modules keep one list for every user; eleven numbers of this game are inside systems; `Inventory` and `ItemStack` read `stackSize` from the list that `ItemRegistry` keeps; `World` requires 10 modules and is required by 10 files; `InventoryScreen` is a carried stack, a player's open inventories, and a stove's rule in one table.
 
 ## 0. A plot is placed objects on one body
 The user's direction of 2026-11-21: "In minecraft terms id think of it as "VoxelGrids on PhysicsBodies"." Claude drew its reading, and they confirmed it the same day: "Yes! That physics diagram is what I mean." Their words are in `docs/game/decisions.md`. Not built.
