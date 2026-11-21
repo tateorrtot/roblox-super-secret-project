@@ -7,7 +7,7 @@ As of 2026-11-21. This file holds only what is true now. What is over is in `his
 |---|---|
 | **Playable** | A first loop on grey boxes, for PC |
 | **Code** | On the branch `placed-objects`, cut from `dropped-items`, which was cut from `first-pieces`. None is merged, and nothing is pushed |
-| **Checked** | `lune run tools/check` passes, with 2,285 test checks. The play test passed 93 of 93 in Studio on the last commit that touched the server or the client |
+| **Checked** | `lune run tools/check` passes, with 2,208 test checks. The play test passed 93 of 93 in Studio on the last commit that touched the server or the client. A cold review on 2026-11-21 found 87 things: 16 mended, 54 left (`docs/code/reviews/18-cold-review-2026-11-21.md`) |
 | **Not checked** | A phone. A gamepad. Two players. A real server. How a thrown item looks from another client |
 | **Waiting on the user** | To read the code. Then their feedback on the game. The open questions are in `asked-of-the-user.md` |
 | **Approved, not built** | Prediction on the client (`next.md`) |
@@ -41,11 +41,11 @@ Press Play in Studio and you appear by a grey plot, with a hotbar along the bott
 - **Break.** A short right click on a crate or a stove breaks it. It comes off the plot and leaves a crate or a stove on the ground as an item, thrown upwards and a little outwards, and so is each stack that was in it. Holding the right button, or turning the camera with it, breaks nothing.
 
 ## What has been checked
-- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,285 test checks in 29 files, and the demo.
+- **The rules:** `lune run tools/check` passes: format, lint, strict types, requires, members, notes, 2,208 test checks, and the demos.
 - **The folders are systems, glue and things** (`docs/code/pieces.md`). `python tools/delete_directory_test.py`: deleting `content` breaks none of the rules, and deleting a system breaks only the glue and the things built on it. `python tools/lift_out_test.py`: each of the five systems passes its own tests in a folder that holds only it and what it requires.
 - **A script is held to its functions by the type checker.** A stove whose `interact` took a string was refused at the line that registers it.
 - **Mutation testing** of each piece changed on 2026-11-20 leaves only changes no caller could see. The last run of each: `Stove` 187 of 193, `Crate` 33 of 33, `CrateItem` 10 of 10, `StoveItem` 10 of 10, `Items` 10 of 10, `ItemRegistry` 34 of 41, `Content` 5 of 5, `Plot` 80 of 81, `GroundItems` 140 of 141, `World` 146 of 148, `PlacedObjectScripts` 29 of 29, `PlayerSnapshot` 35 of 38, `PlotRequests` 46 of 46, `ItemScripts` 14 of 14, `InventoryRequests` 136 of 140, `PlayerState` 36 of 36, `Inventory` 202 of 209, `Direction` 13 of 13, `PlotCollision` 80 of 81, `Signal` 22 of 22.
-- **The play test** (`python tools/playtest.py`) passed 93 of 93 in Studio on 2026-11-21, after `moveFromSlotToInventory` was taken apart. It drives a test character through every action in the list above, checks what the item in hand shows and what the outline is around, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
+- **The play test** (`python tools/playtest.py`) passed 93 of 93 in Studio on 2026-11-21, after the mends that followed the cold review of that day. It drives a test character through every action in the list above, checks what the item in hand shows and what the outline is around, and reads the velocity a thrown block starts with in third person and in first (`docs/code/checks.md`).
 - **Six classes were read by helpers shown nothing but their names,** and three reviewers read the work. 28 findings: 14 mended, 1 corrected in the notes, 13 left. What was left is below, and the whole account is in `history/2026-11-20-scripts-and-input.md`. The user is stricter than any reader: the names are for their read.
 - **The crate and the pick-up were reviewed by two helpers, and three classes read cold:** 16 findings, 7 mended, 8 left, 1 not agreed with (`history/2026-11-20-crate-and-pick-up.md`).
 - **The item tables and the stove were reviewed by three helpers, and four classes read cold:** 27 findings, 12 mended, 11 left, 4 not agreed with (`history/2026-11-20-item-tables-and-the-stove.md`).

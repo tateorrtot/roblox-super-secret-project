@@ -48,6 +48,7 @@ With a context made at edit time under `ReplicatedStorage`, and Studio's connect
 
 ## Not tried
 - **A touch screen.** Whether a tap also fires an action bound to `MouseLeftButton`, which would interact twice.
+- **Measured on 2026-11-21, and so no longer open: a click that a `GuiButton` takes does not fire an action bound to `MouseLeftButton`.** In a play test (`build/hotbar_click_probe.py`), a click on the open world fired `Interact.Pressed` once. A click on a slot of the hotbar selected the slot and fired it no more, and neither did a click on the pack button. Two reviewers had doubted it.
 - **First person,** where Roblox locks the mouse to the middle of the screen: what a `ViewportPosition` action holds there. The play test throws in first person and does not click.
 - **A gamepad.** No binding is declared: there is no pointer to say what is interacted with.
 - **`InputActionLabel`,** which would show the player which button interacts.
