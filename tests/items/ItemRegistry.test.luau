@@ -69,22 +69,20 @@ do -- what register refuses
 		check(refuses({ id = "odd", stackSize = badSize }), "register: refuses a stack size of " .. tostring(badSize))
 	end
 	check(refuses({ id = "odd" }), "register: refuses an item type with no stack size")
-	check(
-		refuses({ id = "odd", stackSize = 16, stacksize = 4 }),
-		"register: refuses a field item definitions do not have"
-	)
 	check(ItemRegistry.has("odd") == false, "register: nothing refused was registered")
 	check(#ItemRegistry.getAll() == 3, "register: the registry still has only the three good item types")
 end
 
-do -- fields that item definitions once had
-	for _, gone in { "placeable", "slotCount", "burnSeconds" } do
-		check(
-			refuses({ id = "odd", stackSize = 1, [gone] = true }),
-			"register: refuses the field " .. gone .. ", which item definitions do not have"
-		)
-	end
-	check(not ItemRegistry.has("odd"), "register: a refused definition is not registered")
+do -- a table with more fields than an item definition has
+	local whole = { id = "lantern", stackSize = 4, name = "Lantern", glows = true }
+	ItemRegistry.register(whole)
+	local kept = ItemRegistry.get("lantern") :: any
+	check(kept.id == "lantern" and kept.stackSize == 4, "register: a table with more fields is registered")
+	check(
+		kept ~= whole and kept.name == nil and kept.glows == nil,
+		"register: and the registry keeps only its id and its stack size"
+	)
+	check(not table.isfrozen(whole), "register: the table it was given is left as it was")
 end
 
 do -- ids that are fine

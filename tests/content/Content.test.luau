@@ -10,7 +10,7 @@ local FuelDefinitions = require("../../src/shared/content/FuelDefinitions")
 local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
-local ItemDefinitions = require("../../src/shared/content/ItemDefinitions")
+local Items = require("../../src/shared/content/Items")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemScripts = require("../../src/shared/requests/ItemScripts")
 local ItemStack = require("../../src/shared/items/ItemStack")
@@ -39,10 +39,14 @@ local itemIdWhenBroken = {
 
 do -- register
 	check(Check.errorFrom(Content.register) == nil, "register: registers everything without an error")
-	for _, definition in ItemDefinitions do
+	for _, item in Items.ALL do
 		check(
-			ItemRegistry.has(definition.id) and ItemRegistry.get(definition.id).stackSize == definition.stackSize,
-			'register: the item "' .. definition.id .. '" is registered'
+			ItemRegistry.has(item.id) and ItemRegistry.get(item.id).stackSize == item.stackSize,
+			'register: the item "' .. item.id .. '" is registered, with its stack size'
+		)
+		check(
+			ItemScripts.find(item.id) == item :: any,
+			'register: the item "' .. item.id .. '" is registered as the script of the item with its id'
 		)
 	end
 	for _, recipe in RecipeDefinitions do
@@ -57,12 +61,8 @@ do -- register
 		check(found ~= nil and found.seconds == fuel.seconds, 'register: the fuel "' .. fuel.item .. '" is registered')
 	end
 	check(
-		ItemScripts.find(CrateItem.ITEM_ID) == CrateItem :: any,
-		"register: the crate item's script is registered for the crate item"
-	)
-	check(
-		ItemScripts.find(StoveItem.ITEM_ID) == StoveItem :: any,
-		"register: the stove item's script is registered for the stove item"
+		ItemScripts.find(CrateItem.id) == CrateItem :: any and ItemScripts.find(StoveItem.id) == StoveItem :: any,
+		"register: the crate item and the stove item are each the script of their own item"
 	)
 	check(
 		PlacedObjectScripts.find(Crate.PLACED_OBJECT_KIND_ID) == Crate :: any,
@@ -72,9 +72,10 @@ do -- register
 		PlacedObjectScripts.find(Stove.PLACED_OBJECT_KIND_ID) == Stove :: any,
 		"register: the stove's script is registered for the stove's kind"
 	)
+	local logScript = ItemScripts.find("log")
 	check(
-		ItemScripts.find("log") == nil and PlacedObjectScripts.find("log") == nil,
-		"register: an item that only lies in a slot has no script"
+		logScript ~= nil and logScript.interactWithTile == nil and PlacedObjectScripts.find("log") == nil,
+		"register: an item that only lies in a slot has no function for a tile, and is no kind of placed object"
 	)
 	check(
 		Check.errorFrom(Content.register) ~= nil,
@@ -281,9 +282,9 @@ local function getConservedCounts(world: World.World): { [string]: number }
 	for _, fuel in FuelDefinitions do
 		burnedOrCooked[fuel.item] = true
 	end
-	for _, definition in ItemDefinitions do
-		if not burnedOrCooked[definition.id] then
-			counts[definition.id] = inWorld(world, definition.id)
+	for _, item in Items.ALL do
+		if not burnedOrCooked[item.id] then
+			counts[item.id] = inWorld(world, item.id)
 		end
 	end
 	return counts

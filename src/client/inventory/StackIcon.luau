@@ -7,7 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local ItemLooks = require(Shared.content.ItemLooks)
+local Items = require(Shared.content.Items)
 local ItemStack = require(Shared.items.ItemStack)
 
 local StackIcon = {}
@@ -75,7 +75,7 @@ function StackIcon.setStack(icon: StackIcon, stack: ItemStack.ItemStack?)
 		icon.block.Visible = false
 		return
 	end
-	local look = ItemLooks[stack.itemId]
+	local look = Items.get(stack.itemId)
 	icon.block.BackgroundColor3 = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
 	icon.nameLabel.Text = look.name
 	icon.countLabel.Text = if stack.count > 1 then tostring(stack.count) else ""

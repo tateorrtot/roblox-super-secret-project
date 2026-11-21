@@ -1,31 +1,31 @@
 --!strict
---- Everything the game has in it: its items, its recipes, its fuels, the scripts of its items and
---- the scripts of its kinds of placed object.
+--- Everything the game has in it: its items, its recipes, its fuels and the scripts of its kinds
+--- of placed object.
 ---
 --- `register` hands each one to the registry that the rules read it from. This is the one list of
 --- what is in the game: the rules name none of it.
 local Crate = require("./Crate")
-local CrateItem = require("./CrateItem")
 local FuelDefinitions = require("./FuelDefinitions")
 local FuelRegistry = require("../stations/FuelRegistry")
-local ItemDefinitions = require("./ItemDefinitions")
 local ItemRegistry = require("../items/ItemRegistry")
 local ItemScripts = require("../requests/ItemScripts")
+local Items = require("./Items")
 local PlacedObjectScripts = require("../requests/PlacedObjectScripts")
 local RecipeDefinitions = require("./RecipeDefinitions")
 local RecipeRegistry = require("../stations/RecipeRegistry")
 local Stove = require("./Stove")
-local StoveItem = require("./StoveItem")
 
 local Content = {}
 
---- Registers everything the game has: each row of `ItemDefinitions`, of `RecipeDefinitions` and
---- of `FuelDefinitions`, the script of the crate item and of the stove item, and the script of the
+--- Registers everything the game has. Each item of `Items.ALL` is handed to `ItemRegistry`, which
+--- keeps its id and stack size, and to `ItemScripts`, as the script of the item with its id. Each
+--- row of `RecipeDefinitions` and of `FuelDefinitions` is registered, and so is the script of the
 --- crate and of the stove. It is called once, before the rules are used. Fails if it is called a
 --- second time, since everything is registered already.
 function Content.register()
-	for _, definition in ItemDefinitions do
-		ItemRegistry.register(definition)
+	for _, item in Items.ALL do
+		ItemRegistry.register(item)
+		ItemScripts.register(item.id, item)
 	end
 	for _, recipe in RecipeDefinitions do
 		RecipeRegistry.register(recipe)
@@ -33,8 +33,6 @@ function Content.register()
 	for _, fuel in FuelDefinitions do
 		FuelRegistry.register(fuel)
 	end
-	ItemScripts.register(CrateItem.ITEM_ID, CrateItem)
-	ItemScripts.register(StoveItem.ITEM_ID, StoveItem)
 	PlacedObjectScripts.register(Crate.PLACED_OBJECT_KIND_ID, Crate)
 	PlacedObjectScripts.register(Stove.PLACED_OBJECT_KIND_ID, Stove)
 end

@@ -29,13 +29,20 @@ def sheet_for(path):
     for found in re.finditer(r'^export type (\w+)(?:<[^>\n]*>)? = \{ (.*) \}$', text, re.MULTILINE):
         types.append((found.start(), found.group(1), re.findall(r'(?:^|, )(?:read )?(\w+): ', found.group(2))))
     # A type may also be another type with more fields: `export type Crate = Plot.PlacedObject & {`.
-    extended = r'^export type (\w+)(?:<[^>\n]*>)? = ([\w.]+) & \{\n(.*?)^\}'
+    extended = r'^export type (\w+)(?:<[^>\n]*>)? = ((?:[\w.]+ & )+)\{\n(.*?)^\}'
     for found in re.finditer(extended, text, re.MULTILINE | re.DOTALL):
         fields = re.findall(r'^\t(?:read )?(\w+): ', found.group(3), re.MULTILINE)
-        types.append((found.start(), f'{found.group(1)} is a {found.group(2)}, and', fields))
+        bases = ' and a '.join(found.group(2)[:-3].split(' & '))
+        types.append((found.start(), f'{found.group(1)} is a {bases}, and', fields))
     for _, name, fields in sorted(types):
         if fields:
             lines.append(f'  a {name} has: ' + ', '.join(fields))
+    # A module may be one table that is written with its fields: `local CrateItem = {` and then `id = "crate",`.
+    written = re.search(r'^local ' + module + r' = \{\n(.*?)^\}', text, re.MULTILINE | re.DOTALL)
+    if written:
+        fields = re.findall(r'^\t(\w+) = ', written.group(1), re.MULTILINE)
+        if fields:
+            lines.append('  fields: ' + ', '.join(fields))
     constants = re.findall(r'^' + module + r'\.([A-Z][A-Z0-9_]*) = ', text, re.MULTILINE)
     if constants:
         lines.append('  constants: ' + ', '.join(constants))

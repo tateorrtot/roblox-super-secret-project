@@ -56,8 +56,8 @@ type SelectedItemPiece = {
 
 --- The piece of each item that shows something while it is selected, by the item's id.
 local selectedItemPieces: { [string]: SelectedItemPiece } = {
-	[CrateItem.ITEM_ID] = CrateItemGhost,
-	[StoveItem.ITEM_ID] = StoveItemGhost,
+	[CrateItem.id] = CrateItemGhost,
+	[StoveItem.id] = StoveItemGhost,
 }
 
 local remotes = Remotes.waitForAll()

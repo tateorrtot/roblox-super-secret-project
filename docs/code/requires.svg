@@ -1,33 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 1472" width="612" height="1472" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 1456" width="612" height="1456" font-family="Segoe UI, Helvetica, Arial, sans-serif">
 <title>What requires what in src</title>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="#73726c" stroke-width="1.5"/></marker></defs>
-<rect width="612" height="1472" fill="#ffffff"/>
-<path d="M361 408 C361 493 383 512 383 597" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect width="612" height="1456" fill="#ffffff"/>
+<path d="M361 408 C361 486 383 503 383 581" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M215 72 C215 99 110 106 110 133" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M253 72 C253 99 286 106 286 133" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M87 208 C87 266 100 278 100 336 L100 536 C100 563 212 570 212 597" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M87 208 C87 266 100 278 100 336 L100 520 C100 547 212 554 212 581" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M133 208 C133 264 170 277 170 333" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M312 272 C312 299 361 306 361 333" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M260 272 C260 299 207 306 207 333" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M212 704 C212 746 357 755 357 797" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M480 392 C480 484 423 505 423 597" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M212 688 C212 730 357 739 357 781" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M480 392 C480 477 423 496 423 581" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M397 72 C397 101 566 107 566 136 L566 272 C566 299 480 306 480 333" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M359 72 C359 99 462 106 462 133" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <path d="M462 240 C462 282 244 291 244 333" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M207 536 C207 563 343 570 343 597" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M371 1176 C371 1218 382 1227 382 1269" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M313 1176 C313 1218 267 1227 267 1269" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M110 1208 C110 1235 226 1242 226 1269" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M201 1008 C201 1058 222 1070 222 1120 L222 1208 C222 1235 359 1242 359 1269" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M155 1008 C155 1057 84 1068 84 1117" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M518 1176 C518 1218 405 1227 405 1269" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M383 736 C383 763 399 770 399 797" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M229 856 C229 898 155 907 155 949" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M350 1056 C350 1083 136 1090 136 1117" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M391 888 C391 917 458 923 458 952 L458 1056 C458 1083 342 1090 342 1117" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M340 888 C340 915 201 922 201 949" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M416 888 C416 917 498 923 498 952 L498 1056 C498 1083 518 1090 518 1117" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
-<path d="M365 888 C365 915 350 922 350 949" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M207 520 C207 547 343 554 343 581" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M371 1160 C371 1202 382 1211 382 1253" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M313 1160 C313 1202 267 1211 267 1253" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M110 1192 C110 1219 226 1226 226 1253" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M201 992 C201 1042 222 1054 222 1104 L222 1192 C222 1219 359 1226 359 1253" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M155 992 C155 1041 84 1052 84 1101" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M518 1160 C518 1202 405 1211 405 1253" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M383 720 C383 747 399 754 399 781" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M229 840 C229 882 155 891 155 933" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M350 1040 C350 1067 136 1074 136 1101" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M391 872 C391 901 458 907 458 936 L458 1040 C458 1067 342 1074 342 1101" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M340 872 C340 899 201 906 201 933" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M416 872 C416 901 498 907 498 936 L498 1040 C498 1067 518 1074 518 1101" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M365 872 C365 899 350 906 350 933" fill="none" stroke="#73726c" stroke-width="1.2" marker-end="url(#arrow)"/>
 <rect x="308" y="336" width="105" height="72" rx="5" fill="#e1f5ee" stroke="#1d9e75"/>
 <text x="322" y="356" font-size="14" font-weight="600" fill="#2c2c2a">client</text>
 <text x="322" y="380" font-size="12" fill="#5f5e5a">Remotes</text>
@@ -46,12 +46,12 @@
 <text x="222" y="228" font-size="12" fill="#5f5e5a">SlotGestures</text>
 <text x="222" y="244" font-size="12" fill="#5f5e5a">SlotGui</text>
 <text x="222" y="260" font-size="12" fill="#5f5e5a">StackIcon</text>
-<rect x="148" y="600" width="126" height="104" rx="5" fill="#e1f5ee" stroke="#1d9e75"/>
-<text x="162" y="620" font-size="14" font-weight="600" fill="#2c2c2a">client/world</text>
-<text x="162" y="644" font-size="12" fill="#5f5e5a">BreakClick</text>
-<text x="162" y="660" font-size="12" fill="#5f5e5a">LocalCharacter</text>
-<text x="162" y="676" font-size="12" fill="#5f5e5a">PlacementGhost</text>
-<text x="162" y="692" font-size="12" fill="#5f5e5a">PlotPointer</text>
+<rect x="148" y="584" width="126" height="104" rx="5" fill="#e1f5ee" stroke="#1d9e75"/>
+<text x="162" y="604" font-size="14" font-weight="600" fill="#2c2c2a">client/world</text>
+<text x="162" y="628" font-size="12" fill="#5f5e5a">BreakClick</text>
+<text x="162" y="644" font-size="12" fill="#5f5e5a">LocalCharacter</text>
+<text x="162" y="660" font-size="12" fill="#5f5e5a">PlacementGhost</text>
+<text x="162" y="676" font-size="12" fill="#5f5e5a">PlotPointer</text>
 <rect x="442" y="336" width="77" height="56" rx="5" fill="#e6f1fb" stroke="#378add"/>
 <text x="456" y="356" font-size="14" font-weight="600" fill="#2c2c2a">server</text>
 <text x="456" y="380" font-size="12" fill="#5f5e5a">Remotes</text>
@@ -63,65 +63,64 @@
 <text x="406" y="196" font-size="12" fill="#5f5e5a">GroundItemParts</text>
 <text x="406" y="212" font-size="12" fill="#5f5e5a">PlaceholderWorld</text>
 <text x="406" y="228" font-size="12" fill="#5f5e5a">PlotParts</text>
-<rect x="336" y="1272" width="91" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="350" y="1292" font-size="14" font-weight="600" fill="#2c2c2a">shared</text>
-<text x="350" y="1316" font-size="12" fill="#5f5e5a">Direction</text>
-<text x="350" y="1332" font-size="12" fill="#5f5e5a">Position</text>
-<text x="350" y="1348" font-size="12" fill="#5f5e5a">Signal</text>
-<rect x="134" y="336" width="147" height="200" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<rect x="336" y="1256" width="91" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="350" y="1276" font-size="14" font-weight="600" fill="#2c2c2a">shared</text>
+<text x="350" y="1300" font-size="12" fill="#5f5e5a">Direction</text>
+<text x="350" y="1316" font-size="12" fill="#5f5e5a">Position</text>
+<text x="350" y="1332" font-size="12" fill="#5f5e5a">Signal</text>
+<rect x="134" y="336" width="147" height="184" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
 <text x="148" y="356" font-size="14" font-weight="600" fill="#2c2c2a">shared/content</text>
 <text x="148" y="380" font-size="12" fill="#5f5e5a">Content</text>
 <text x="148" y="396" font-size="12" fill="#5f5e5a">Crate</text>
 <text x="148" y="412" font-size="12" fill="#5f5e5a">CrateItem</text>
 <text x="148" y="428" font-size="12" fill="#5f5e5a">FuelDefinitions</text>
-<text x="148" y="444" font-size="12" fill="#5f5e5a">ItemDefinitions</text>
-<text x="148" y="460" font-size="12" fill="#5f5e5a">ItemLooks</text>
-<text x="148" y="476" font-size="12" fill="#5f5e5a">PlacedObjectLooks</text>
-<text x="148" y="492" font-size="12" fill="#5f5e5a">RecipeDefinitions</text>
-<text x="148" y="508" font-size="12" fill="#5f5e5a">Stove</text>
-<text x="148" y="524" font-size="12" fill="#5f5e5a">StoveItem</text>
-<rect x="256" y="1120" width="172" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="270" y="1140" font-size="14" font-weight="600" fill="#2c2c2a">shared/groundItems</text>
-<text x="270" y="1164" font-size="12" fill="#5f5e5a">GroundItems</text>
-<rect x="32" y="1120" width="156" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="46" y="1140" font-size="14" font-weight="600" fill="#2c2c2a">shared/inventory</text>
-<text x="46" y="1164" font-size="12" fill="#5f5e5a">Hotbar</text>
-<text x="46" y="1180" font-size="12" fill="#5f5e5a">Inventory</text>
-<text x="46" y="1196" font-size="12" fill="#5f5e5a">InventoryScreen</text>
-<rect x="184" y="1272" width="124" height="72" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="198" y="1292" font-size="14" font-weight="600" fill="#2c2c2a">shared/items</text>
-<text x="198" y="1316" font-size="12" fill="#5f5e5a">ItemRegistry</text>
-<text x="198" y="1332" font-size="12" fill="#5f5e5a">ItemStack</text>
-<rect x="108" y="952" width="140" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="122" y="972" font-size="14" font-weight="600" fill="#2c2c2a">shared/players</text>
-<text x="122" y="996" font-size="12" fill="#5f5e5a">PlayerState</text>
-<rect x="456" y="1120" width="124" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="470" y="1140" font-size="14" font-weight="600" fill="#2c2c2a">shared/plots</text>
-<text x="470" y="1164" font-size="12" fill="#5f5e5a">Plot</text>
-<rect x="302" y="600" width="161" height="136" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="316" y="620" font-size="14" font-weight="600" fill="#2c2c2a">shared/requests</text>
-<text x="316" y="644" font-size="12" fill="#5f5e5a">InventoryRequests</text>
-<text x="316" y="660" font-size="12" fill="#5f5e5a">ItemScripts</text>
-<text x="316" y="676" font-size="12" fill="#5f5e5a">Messages</text>
-<text x="316" y="692" font-size="12" fill="#5f5e5a">PlacedObjectScripts</text>
-<text x="316" y="708" font-size="12" fill="#5f5e5a">PlotRequests</text>
-<text x="316" y="724" font-size="12" fill="#5f5e5a">Requests</text>
-<rect x="171" y="800" width="116" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="185" y="820" font-size="14" font-weight="600" fill="#2c2c2a">shared/save</text>
-<text x="185" y="844" font-size="12" fill="#5f5e5a">SaveData</text>
-<rect x="276" y="952" width="148" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="290" y="972" font-size="14" font-weight="600" fill="#2c2c2a">shared/stations</text>
-<text x="290" y="996" font-size="12" fill="#5f5e5a">FuelRegistry</text>
-<text x="290" y="1012" font-size="12" fill="#5f5e5a">RecipeRegistry</text>
-<text x="290" y="1028" font-size="12" fill="#5f5e5a">Station</text>
-<text x="290" y="1044" font-size="12" fill="#5f5e5a">StationProgress</text>
-<rect x="315" y="800" width="126" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
-<text x="329" y="820" font-size="14" font-weight="600" fill="#2c2c2a">shared/world</text>
-<text x="329" y="844" font-size="12" fill="#5f5e5a">PlayerSnapshot</text>
-<text x="329" y="860" font-size="12" fill="#5f5e5a">PlotCollision</text>
-<text x="329" y="876" font-size="12" fill="#5f5e5a">World</text>
-<text x="32" y="1390" font-size="12" fill="#5f5e5a">An arrow means requires.</text>
-<text x="32" y="1408" font-size="12" fill="#5f5e5a">A require that the arrows already imply through another box is not drawn.</text>
-<text x="32" y="1426" font-size="12" fill="#5f5e5a">Grey is the rules, blue the server, green the player's machine.</text>
-<text x="32" y="1444" font-size="12" fill="#5f5e5a">Drawn from the code by: lune run tools/requires --chart</text>
+<text x="148" y="444" font-size="12" fill="#5f5e5a">Items</text>
+<text x="148" y="460" font-size="12" fill="#5f5e5a">PlacedObjectLooks</text>
+<text x="148" y="476" font-size="12" fill="#5f5e5a">RecipeDefinitions</text>
+<text x="148" y="492" font-size="12" fill="#5f5e5a">Stove</text>
+<text x="148" y="508" font-size="12" fill="#5f5e5a">StoveItem</text>
+<rect x="256" y="1104" width="172" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="270" y="1124" font-size="14" font-weight="600" fill="#2c2c2a">shared/groundItems</text>
+<text x="270" y="1148" font-size="12" fill="#5f5e5a">GroundItems</text>
+<rect x="32" y="1104" width="156" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="46" y="1124" font-size="14" font-weight="600" fill="#2c2c2a">shared/inventory</text>
+<text x="46" y="1148" font-size="12" fill="#5f5e5a">Hotbar</text>
+<text x="46" y="1164" font-size="12" fill="#5f5e5a">Inventory</text>
+<text x="46" y="1180" font-size="12" fill="#5f5e5a">InventoryScreen</text>
+<rect x="184" y="1256" width="124" height="72" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="198" y="1276" font-size="14" font-weight="600" fill="#2c2c2a">shared/items</text>
+<text x="198" y="1300" font-size="12" fill="#5f5e5a">ItemRegistry</text>
+<text x="198" y="1316" font-size="12" fill="#5f5e5a">ItemStack</text>
+<rect x="108" y="936" width="140" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="122" y="956" font-size="14" font-weight="600" fill="#2c2c2a">shared/players</text>
+<text x="122" y="980" font-size="12" fill="#5f5e5a">PlayerState</text>
+<rect x="456" y="1104" width="124" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="470" y="1124" font-size="14" font-weight="600" fill="#2c2c2a">shared/plots</text>
+<text x="470" y="1148" font-size="12" fill="#5f5e5a">Plot</text>
+<rect x="302" y="584" width="161" height="136" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="316" y="604" font-size="14" font-weight="600" fill="#2c2c2a">shared/requests</text>
+<text x="316" y="628" font-size="12" fill="#5f5e5a">InventoryRequests</text>
+<text x="316" y="644" font-size="12" fill="#5f5e5a">ItemScripts</text>
+<text x="316" y="660" font-size="12" fill="#5f5e5a">Messages</text>
+<text x="316" y="676" font-size="12" fill="#5f5e5a">PlacedObjectScripts</text>
+<text x="316" y="692" font-size="12" fill="#5f5e5a">PlotRequests</text>
+<text x="316" y="708" font-size="12" fill="#5f5e5a">Requests</text>
+<rect x="171" y="784" width="116" height="56" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="185" y="804" font-size="14" font-weight="600" fill="#2c2c2a">shared/save</text>
+<text x="185" y="828" font-size="12" fill="#5f5e5a">SaveData</text>
+<rect x="276" y="936" width="148" height="104" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="290" y="956" font-size="14" font-weight="600" fill="#2c2c2a">shared/stations</text>
+<text x="290" y="980" font-size="12" fill="#5f5e5a">FuelRegistry</text>
+<text x="290" y="996" font-size="12" fill="#5f5e5a">RecipeRegistry</text>
+<text x="290" y="1012" font-size="12" fill="#5f5e5a">Station</text>
+<text x="290" y="1028" font-size="12" fill="#5f5e5a">StationProgress</text>
+<rect x="315" y="784" width="126" height="88" rx="5" fill="#f4f3ee" stroke="#8c8a82"/>
+<text x="329" y="804" font-size="14" font-weight="600" fill="#2c2c2a">shared/world</text>
+<text x="329" y="828" font-size="12" fill="#5f5e5a">PlayerSnapshot</text>
+<text x="329" y="844" font-size="12" fill="#5f5e5a">PlotCollision</text>
+<text x="329" y="860" font-size="12" fill="#5f5e5a">World</text>
+<text x="32" y="1374" font-size="12" fill="#5f5e5a">An arrow means requires.</text>
+<text x="32" y="1392" font-size="12" fill="#5f5e5a">A require that the arrows already imply through another box is not drawn.</text>
+<text x="32" y="1410" font-size="12" fill="#5f5e5a">Grey is the rules, blue the server, green the player's machine.</text>
+<text x="32" y="1428" font-size="12" fill="#5f5e5a">Drawn from the code by: lune run tools/requires --chart</text>
 </svg>

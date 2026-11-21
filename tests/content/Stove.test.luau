@@ -7,7 +7,7 @@ local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
 local GroundItems = require("../../src/shared/groundItems/GroundItems")
 local Inventory = require("../../src/shared/inventory/Inventory")
 local InventoryScreen = require("../../src/shared/inventory/InventoryScreen")
-local ItemDefinitions = require("../../src/shared/content/ItemDefinitions")
+local Items = require("../../src/shared/content/Items")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local ItemStack = require("../../src/shared/items/ItemStack")
 local PlacedObjectScripts = require("../../src/shared/requests/PlacedObjectScripts")
@@ -24,7 +24,7 @@ local check = Check.that
 local at = Position.new
 
 -- The game's own items and recipes: a stove cooks by the recipes written for it.
-for _, definition in ItemDefinitions do
+for _, definition in Items.ALL do
 	ItemRegistry.register(definition)
 end
 for _, recipe in RecipeDefinitions do

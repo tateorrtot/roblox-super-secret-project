@@ -14,7 +14,7 @@ local World = require("../../src/shared/world/World")
 local check = Check.that
 local at = Position.new
 
-ItemRegistry.register({ id = "stove", stackSize = 1 })
+ItemRegistry.register(StoveItem)
 
 -- How many placed objects stand on a world's plot.
 local function placedCount(world: World.World): number
@@ -32,13 +32,15 @@ local function newWorld(): World.World
 end
 
 do -- the stove item as names
-	check(StoveItem.ITEM_ID == "stove", 'ITEM_ID: the stove item is the item "stove"')
-	check(Stove.ITEM_ID_WHEN_BROKEN == StoveItem.ITEM_ID, "ITEM_ID: it is the item that a broken stove leaves")
+	check(StoveItem.id == "stove", 'id: the stove item is the item "stove"')
+	check(StoveItem.stackSize == 1, "stackSize: one stove item to a slot")
+	check(StoveItem.name == "Stove" and #StoveItem.color == 3, "name, color: it is shown as a stove, in a colour")
+	check(Stove.ITEM_ID_WHEN_BROKEN == StoveItem.id, "id: it is the item that a broken stove leaves")
 end
 
 do -- the stove item as the script of its item
-	ItemScripts.register(StoveItem.ITEM_ID, StoveItem)
-	local registered = ItemScripts.find(StoveItem.ITEM_ID)
+	ItemScripts.register(StoveItem.id, StoveItem)
+	local registered = ItemScripts.find(StoveItem.id)
 	check(
 		registered ~= nil and registered.interactWithTile == StoveItem.interactWithTile,
 		"interactWithTile: is what the registered stove item does when someone holding it interacts with a tile"

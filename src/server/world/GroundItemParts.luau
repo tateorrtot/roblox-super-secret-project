@@ -15,7 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GroundItems = require(Shared.groundItems.GroundItems)
-local ItemLooks = require(Shared.content.ItemLooks)
+local Items = require(Shared.content.Items)
 
 local CollisionGroups = require(script.Parent.CollisionGroups)
 
@@ -50,7 +50,7 @@ local function makeLabel(part: Part)
 end
 
 local function showCount(part: Part, itemId: string, count: number)
-	local name = ItemLooks[itemId].name
+	local name = Items.get(itemId).name
 	local label = part:FindFirstChild("Label") :: BillboardGui
 	local text = label:FindFirstChild("Text") :: TextLabel
 	text.Text = if count > 1 then string.format("%s ×%d", name, count) else name
@@ -59,7 +59,7 @@ end
 
 local function makePart(groundItem: GroundItems.GroundItem): Part
 	local itemId = groundItem.stack.itemId
-	local look = ItemLooks[itemId]
+	local look = Items.get(itemId)
 	local width = GroundItems.ITEM_WIDTH
 	local position = groundItem.position
 	local part = Instance.new("Part")

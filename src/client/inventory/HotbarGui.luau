@@ -9,7 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Inventory = require(Shared.inventory.Inventory)
-local ItemLooks = require(Shared.content.ItemLooks)
+local Items = require(Shared.content.Items)
 
 local ScreenScale = require(script.Parent.Parent.ScreenScale)
 local SlotGui = require(script.Parent.SlotGui)
@@ -130,7 +130,7 @@ function HotbarGui.update(hotbarGui: HotbarGui, pack: Inventory.Inventory, selec
 		SlotGui.setSelected(slotGui, slot == selectedSlot)
 	end
 	local held = Inventory.getStack(pack, selectedSlot)
-	hotbarGui.selectedItemLabel.Text = if held ~= nil then ItemLooks[held.itemId].name else ""
+	hotbarGui.selectedItemLabel.Text = if held ~= nil then Items.get(held.itemId).name else ""
 end
 
 --- Shows the hotbar if `visible` is `true`, and hides it if not.

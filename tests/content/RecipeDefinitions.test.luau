@@ -4,7 +4,7 @@
 local Check = require("../Check")
 local FuelDefinitions = require("../../src/shared/content/FuelDefinitions")
 local FuelRegistry = require("../../src/shared/stations/FuelRegistry")
-local ItemDefinitions = require("../../src/shared/content/ItemDefinitions")
+local Items = require("../../src/shared/content/Items")
 local ItemRegistry = require("../../src/shared/items/ItemRegistry")
 local RecipeDefinitions = require("../../src/shared/content/RecipeDefinitions")
 local RecipeRegistry = require("../../src/shared/stations/RecipeRegistry")
@@ -12,7 +12,7 @@ local Station = require("../../src/shared/stations/Station")
 
 local check = Check.that
 
-for _, definition in ItemDefinitions do
+for _, definition in Items.ALL do
 	ItemRegistry.register(definition)
 end
 

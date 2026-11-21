@@ -14,7 +14,7 @@ local World = require("../../src/shared/world/World")
 local check = Check.that
 local at = Position.new
 
-ItemRegistry.register({ id = "crate", stackSize = 1 })
+ItemRegistry.register(CrateItem)
 
 -- How many placed objects stand on a world's plot.
 local function placedCount(world: World.World): number
@@ -32,13 +32,15 @@ local function newWorld(): World.World
 end
 
 do -- the crate item as names
-	check(CrateItem.ITEM_ID == "crate", 'ITEM_ID: the crate item is the item "crate"')
-	check(Crate.ITEM_ID_WHEN_BROKEN == CrateItem.ITEM_ID, "ITEM_ID: it is the item that a broken crate leaves")
+	check(CrateItem.id == "crate", 'id: the crate item is the item "crate"')
+	check(Crate.ITEM_ID_WHEN_BROKEN == CrateItem.id, "id: it is the item that a broken crate leaves")
+	check(CrateItem.stackSize == 1, "stackSize: one crate item to a slot")
+	check(CrateItem.name == "Crate" and #CrateItem.color == 3, "name, color: it is shown as a crate, in a colour")
 end
 
 do -- the crate item as the script of its item
-	ItemScripts.register(CrateItem.ITEM_ID, CrateItem)
-	local registered = ItemScripts.find(CrateItem.ITEM_ID)
+	ItemScripts.register(CrateItem.id, CrateItem)
+	local registered = ItemScripts.find(CrateItem.id)
 	check(
 		registered ~= nil and registered.interactWithTile == CrateItem.interactWithTile,
 		"interactWithTile: is what the registered crate item does when someone holding it interacts with a tile"

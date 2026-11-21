@@ -1,14 +1,17 @@
 --!strict
 --- The stove item: an item that is stood on a tile of the plot as a stove.
 ---
+--- The table holds the item's id, its stack size, and the name and colour it is shown with.
 --- `interactWithTile` is what happens when someone holding the stove item interacts with a tile.
 local Stove = require("./Stove")
 local World = require("../world/World")
 
-local StoveItem = {}
-
---- The id of the stove item.
-StoveItem.ITEM_ID = "stove"
+local StoveItem = {
+	id = "stove",
+	stackSize = 1,
+	name = "Stove",
+	color = { 60, 60, 70 },
+}
 
 --- Someone holding the stove item interacts with the tile `tileX`, `tileZ` of the world's plot. If
 --- `World.canPlaceObject` says that an object can be placed on the tile, a stove is placed on it as

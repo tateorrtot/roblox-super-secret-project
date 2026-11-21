@@ -16,36 +16,25 @@ export type ItemDefinition = {
 }
 
 local definitions: { [string]: ItemDefinition } = {}
-local FIELDS = { id = true, stackSize = true }
 
 local function isCount(value: unknown): boolean
 	return type(value) == "number" and value >= 1 and value < math.huge and value % 1 == 0
 end
 
-local function findUnknownField(definition: ItemDefinition): unknown
-	for field in definition :: { [unknown]: unknown } do
-		if not FIELDS[field :: string] then
-			return field
-		end
-	end
-	return nil
-end
-
---- Adds a copy of `definition` to the registry. The copy is frozen, and changing `definition`
---- afterwards changes nothing. Fails if a field is not what `ItemDefinition` says it must be, if
---- the table has a field that `ItemDefinition` does not list, or if an item with that id is
---- already registered.
+--- Adds the item that `definition` describes to the registry. Only the two fields of
+--- `ItemDefinition` are copied, into a table that is frozen. So `definition` may be a table with
+--- more fields, which the registry does not keep, and changing it afterwards changes nothing.
+--- Fails if `id` or `stackSize` is not what `ItemDefinition` says it must be, or if an item with
+--- that id is already registered.
 function ItemRegistry.register(definition: ItemDefinition)
 	local id = definition.id
-	local unknownField = findUnknownField(definition)
 	assert(
 		string.match(id, "^[a-z][a-z0-9_]*$"),
 		`id "{id}" is not lowercase letters, digits and underscores, starting with a letter`
 	)
 	assert(isCount(definition.stackSize), `"{id}" needs a stackSize that is a whole number, 1 or more`)
-	assert(unknownField == nil, `"{id}" has a field item definitions do not have: {unknownField}`)
 	assert(definitions[id] == nil, `there is already an item with the id "{id}"`)
-	definitions[id] = table.freeze(table.clone(definition))
+	definitions[id] = table.freeze({ id = id, stackSize = definition.stackSize })
 end
 
 --- Returns the definition of the item with the id `id`. Fails if no item has that id.
