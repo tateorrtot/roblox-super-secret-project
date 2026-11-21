@@ -3,6 +3,7 @@
 Only what is still open. When they answer, the answer goes where it belongs and the line leaves this file.
 
 ## About the code
+- **Where the record of a thing in the world is kept:** in a Luau table that the server draws parts from, as today, or in the part itself, with tags and attributes on it. Asked plainly on 2026-11-21, after another model's brief proposed tags and attributes (`docs/game/products-for-people.md`), and after a cold review found faults that come from keeping two records (`docs/code/reviews/18-cold-review-2026-11-21.md`). Claude's view: the part, for anything that physics moves, and a table only for what Roblox has no place for, such as a slot, a recipe, or a stove's fire. No code moves until they answer.
 - **To read the code,** and give their verdict on the names Claude chose (listed in `claudes-calls.md`).
 - **Whether the keys move onto Roblox's input actions next, before prediction** (`next.md`). Asked on 2026-11-20.
 - **Whether the scripts read right to them:** `ItemScripts` and `PlacedObjectScripts`, and the game's things in `src/shared/content`. The names and shapes that are Claude's are in `claudes-calls.md`, with the four names a cold reader doubted in `history/2026-11-20-scripts-and-input.md`.
