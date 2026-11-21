@@ -5,11 +5,10 @@
 --- two whole numbers counted from 1, so the corner tile is x 1, z 1. Each tile holds one placed
 --- object or nothing. `placeObject` stands an object on a tile and `removePlacedObject` takes it
 --- off, and the plot fires a signal for each: `placedObjectAdded` and `placedObjectRemoved`. A
---- plot reads two things of a placed object: which kind it is, and which tile it stands on.
---- Whatever else a placed object has on it is for whoever placed it, and the plot keeps it
---- without looking. Placed objects are numbered from 1 in the order they were placed, and a number
---- is never used twice. `getTileAt` and `getTileCenter` turn a position in the world into a tile
---- and back.
+--- plot reads one thing of a placed object: which tile it stands on. Whatever else a placed object
+--- has on it, the id of its kind among it, is for others, and the plot keeps it without looking.
+--- Placed objects are numbered from 1 in the order they were placed, and a number is never used
+--- twice. `getTileAt` and `getTileCenter` turn a position in the world into a tile and back.
 local Position = require("../Position")
 local Signal = require("../Signal")
 
@@ -18,8 +17,10 @@ local Plot = {}
 --- A point in the world, in studs.
 export type Position = Position.Position
 
---- One object standing on a tile. These three fields are what a plot reads of it, and they never
---- change while it stands there. It may have more fields, which are its kind's own.
+--- One object standing on a tile. A plot reads `tileX` and `tileZ` of it. `kindId` is there for
+--- whoever must tell one kind of placed object from another: a plot never reads it. A placed
+--- object may have more fields, which are its kind's own. It is frozen when it is placed, so no
+--- field of it is assigned again.
 export type PlacedObject = {
 	--- The id of the kind of object it is, such as `"crate"`.
 	read kindId: string,
@@ -100,16 +101,18 @@ end
 --- Places `placedObject` on the tile it names, `placedObject.tileX`, `placedObject.tileZ`, and
 --- returns the id it is given. The plot keeps `placedObject` itself and not a copy, so a table
 --- with more fields than `PlacedObject` lists stands on the plot whole: the plot never reads the
---- others, and whoever placed it finds them on it again. Fires `placedObjectAdded` once the object
---- stands there. Fails if `canPlaceObject` would return `false` for that tile: a tile holds one
---- placed object.
+--- others, and whoever placed it finds them on it again. The plot freezes `placedObject`: none of
+--- its fields can be assigned from then on, though a table that one of them holds can still
+--- change. Fires `placedObjectAdded` once the object stands there. Fails, leaving `placedObject`
+--- as it was, if `canPlaceObject` would return `false` for that tile: a tile holds one placed
+--- object.
 --- Note: `placedObject.kindId` is not checked. A plot does not know which kinds there are.
 function Plot.placeObject(plot: Plot, placedObject: PlacedObject): number
 	if not Plot.canPlaceObject(plot, placedObject.tileX, placedObject.tileZ) then
 		error(`nothing can be placed on the tile {placedObject.tileX}, {placedObject.tileZ}`, 2)
 	end
 	local id = plot.nextId
-	plot.placedObjectsById[id] = placedObject
+	plot.placedObjectsById[id] = table.freeze(placedObject)
 	plot.nextId = id + 1
 	Signal.fire(plot.placedObjectAdded, id, placedObject)
 	return id

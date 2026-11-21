@@ -51,7 +51,8 @@ end
 --- A player interacts with the stove that has the id `placedObjectId`. The slots of the stove's
 --- station open on the player's screen, beside their pack, in place of any screen they had open.
 --- The input slot takes only what a stove has a recipe for, the fuel slot takes only what burns,
---- and nothing can be put in the output slot. Fails if the player has no character.
+--- and nothing can be put in the output slot. Fails if the player has no character, or if the
+--- placed object with that id was not made a station, as `place` makes a stove.
 function Stove.interact(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
 	local station = getStation(world, placedObjectId)
 	World.openPlacedObjectScreen(world, player, placedObjectId, station.inventory, slotAcceptsItem)
@@ -61,7 +62,8 @@ end
 --- which closes every screen that was open on it and puts its fire out: the fuel that was burning
 --- is lost. One of the item `ITEM_ID_WHEN_BROKEN`, and then each stack that was in the stove's
 --- slots from the lowest slot up, is thrown onto the ground from the middle of the stove's tile,
---- upwards and outwards, each a different way.
+--- upwards and outwards, each a different way. Fails, changing nothing, if the placed object with
+--- that id was not made a station, as `place` makes a stove.
 function Stove.breakPlacedObject(world: World.World, placedObjectId: number)
 	local station = getStation(world, placedObjectId)
 	local placedObject = world.plot.placedObjectsById[placedObjectId]

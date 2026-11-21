@@ -5,13 +5,13 @@
 --- A ground item is a stack, the position it is at, the velocity it was spawned with and the time
 --- it was spawned. `spawnStack` makes one. Nothing here moves a ground item afterwards:
 --- `setItemPosition` records where it has got to. `mergeItems` makes ground items of the same item
---- that are close together into one. `getItemIdsInPickupReach` says which ground items can be
---- picked up from a position, and `setItemStack` changes what one holds, so that whoever picks one
---- up can leave on the ground what they had no room for. `removeItem` takes one out of the world,
---- and `removeExpiredItems` removes the ones that have been out too long. Ground items are
---- numbered from 1 in the order they were spawned, and a number is never used twice. Time is a
---- number of seconds, passed in as `now`, from any clock that only goes forward. Positions and
---- distances are in studs. Ground items are never saved.
+--- that are close together into one. `getIdsInPickupReach` says which ground items are in pickup
+--- reach of a position. `takeFromItem` takes some of a ground item's stack and leaves the rest
+--- where it lies, and `removeItem` takes a whole ground item out of the world.
+--- `removeExpiredItems` removes the ones that have been out too long. Ground items are numbered
+--- from 1 in the order they were spawned, and a number is never used twice. Time is a number of
+--- seconds, passed in as `now`, from any clock that only goes forward. Positions and distances are
+--- in studs. Ground items are never saved.
 local ItemStack = require("../items/ItemStack")
 local Position = require("../Position")
 
@@ -25,8 +25,8 @@ export type Position = Position.Position
 --- How fast a thing moves along each axis, in studs a second. `y` is upwards.
 export type Velocity = { read x: number, read y: number, read z: number }
 
---- One stack loose in the world. It never changes: when its position or its stack is set, a new
---- ground item takes its place under the same id.
+--- One stack loose in the world. It never changes: when its position is set, or part of its stack
+--- is taken, a new ground item takes its place under the same id.
 export type GroundItem = {
 	read stack: ItemStack,
 	--- Where it is: the middle of its underside.
@@ -56,8 +56,8 @@ export type GroundItems = {
 --- How long a ground item lasts before `removeExpiredItems` removes it, in seconds.
 GroundItems.LIFETIME_SECONDS = 300
 
---- How long after it was spawned a ground item is left out of what `getItemIdsInPickupReach`
---- returns, in seconds.
+--- How long after it was spawned a ground item is left out of what `getIdsInPickupReach` returns,
+--- in seconds.
 GroundItems.PICKUP_DELAY_SECONDS = 1.5
 
 --- How near a position must be to a ground item, along the ground, for the ground item to be in
@@ -245,7 +245,7 @@ end
 --- id. A ground item is in pickup reach if it is within `PICKUP_RADIUS` of `position` along the
 --- ground, and no more than `PICKUP_REACH_UP` above it or `PICKUP_REACH_DOWN` below it. A ground
 --- item spawned less than `PICKUP_DELAY_SECONDS` before `now` is left out.
-function GroundItems.getItemIdsInPickupReach(groundItems: GroundItems, position: Position, now: number): { number }
+function GroundItems.getIdsInPickupReach(groundItems: GroundItems, position: Position, now: number): { number }
 	local ids = {}
 	for _, id in idsNearestFirst(groundItems, position, isInPickupReach) do
 		if now - groundItems.itemsById[id].spawnTime >= GroundItems.PICKUP_DELAY_SECONDS then
@@ -255,22 +255,32 @@ function GroundItems.getItemIdsInPickupReach(groundItems: GroundItems, position:
 	return ids
 end
 
---- Makes the ground item `id` hold `stack`, and discards the stack it held. It stays where it is
---- under the same id, with the velocity and the time it was spawned with. If `stack` is `nil`, the
---- ground item is taken out of the world. Does nothing if no ground item has that id.
-function GroundItems.setItemStack(groundItems: GroundItems, id: number, stack: ItemStack?)
+--- Takes up to `count` items out of the ground item `id` and returns them as a stack. If that is
+--- all it held, the ground item is gone from the world. Otherwise it stays where it is under the
+--- same id, with the velocity and the time it was spawned with, holding what is left. Returns
+--- `nil`, changing nothing, if `count` is 0. Fails if no ground item has that id, or if `count` is
+--- not a whole number of 0 or more.
+function GroundItems.takeFromItem(groundItems: GroundItems, id: number, count: number): ItemStack?
 	local groundItem = groundItems.itemsById[id]
 	if groundItem == nil then
-		return
+		error(`no ground item has the id {id}`, 2)
 	end
-	groundItems.itemsById[id] = if stack == nil
-		then nil
-		else table.freeze({
-			stack = stack,
-			position = groundItem.position,
-			spawnVelocity = groundItem.spawnVelocity,
-			spawnTime = groundItem.spawnTime,
-		})
+	local stack = groundItem.stack
+	if count == 0 then
+		return nil
+	end
+	if count >= stack.count then
+		groundItems.itemsById[id] = nil
+		return stack
+	end
+	local taken = ItemStack.new(stack.itemId, count)
+	groundItems.itemsById[id] = table.freeze({
+		stack = ItemStack.new(stack.itemId, stack.count - count),
+		position = groundItem.position,
+		spawnVelocity = groundItem.spawnVelocity,
+		spawnTime = groundItem.spawnTime,
+	})
+	return taken
 end
 
 --- Removes every ground item that was spawned `LIFETIME_SECONDS` or more before `now`. Their

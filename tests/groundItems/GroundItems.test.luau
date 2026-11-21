@@ -36,10 +36,10 @@ local function dropAt(
 	return GroundItems.spawnStack(ground, stack, position, STILL, now)
 end
 
--- The ids that `getItemIdsInPickupReach` returns for a position at a time, in its order, as text:
+-- The ids that `getIdsInPickupReach` returns for a position at a time, in its order, as text:
 -- "3 1 2", or "" for none.
 local function inReach(ground: GroundItems.GroundItems, position: GroundItems.Position, now: number): string
-	return table.concat(GroundItems.getItemIdsInPickupReach(ground, position, now), " ")
+	return table.concat(GroundItems.getIdsInPickupReach(ground, position, now), " ")
 end
 
 -- How many ground items there are.
@@ -85,7 +85,7 @@ do -- nothing on the ground
 	local ground = GroundItems.new()
 	check(ground.nextId == 1, "new: the first ground item will be number 1")
 	check(groundItemCount(ground) == 0, "new: nothing is on the ground")
-	check(inReach(ground, at(0, 0, 0), 100) == "", "getItemIdsInPickupReach: none when nothing is on the ground")
+	check(inReach(ground, at(0, 0, 0), 100) == "", "getIdsInPickupReach: none when nothing is on the ground")
 	GroundItems.removeExpiredItems(ground, 1000)
 	check(
 		groundItemCount(ground) == 0 and ground.nextId == 1,
@@ -353,10 +353,10 @@ do -- merging: which ground items are checked
 	local part = dropAt(ground, ItemStack.new("log", 3), at(1, 0, 0), 1)
 	GroundItems.mergeItems(ground, 1)
 	check(groundItemCount(ground) == 2, "mergeItems: (set up) a full stack and a part stack side by side stay two")
-	GroundItems.setItemStack(ground, full, ItemStack.new("log", 10))
+	GroundItems.takeFromItem(ground, full, 6)
 	check(
 		holds(ground, full, "log", 10) and holds(ground, part, "log", 3),
-		"mergeItems: (set up) the full stack is set to six fewer"
+		"mergeItems: (set up) six are taken out of the full stack"
 	)
 	GroundItems.mergeItems(ground, 1.6)
 	GroundItems.mergeItems(ground, 1.99)
@@ -376,7 +376,7 @@ do -- merging: which ground items are checked
 	local phasedFull = dropAt(phased, ItemStack.new("log", 16), at(0, 0, 0), 0)
 	local phasedPart = dropAt(phased, ItemStack.new("log", 3), at(1, 0, 0), 1)
 	GroundItems.mergeItems(phased, 2)
-	GroundItems.setItemStack(phased, phasedFull, ItemStack.new("log", 10))
+	GroundItems.takeFromItem(phased, phasedFull, 6)
 	GroundItems.mergeItems(phased, 2.99)
 	check(
 		holds(phased, phasedFull, "log", 10) and holds(phased, phasedPart, "log", 3),
@@ -394,7 +394,7 @@ do -- merging: which ground items are checked
 	local quarterFull = dropAt(quarter, ItemStack.new("log", 16), at(0, 0, 0), 0.25)
 	local quarterPart = dropAt(quarter, ItemStack.new("log", 3), at(1, 0, 0), 0.25)
 	GroundItems.mergeItems(quarter, 0.25)
-	GroundItems.setItemStack(quarter, quarterFull, ItemStack.new("log", 10))
+	GroundItems.takeFromItem(quarter, quarterFull, 6)
 	GroundItems.mergeItems(quarter, 2.125)
 	check(
 		holds(quarter, quarterFull, "log", 10) and holds(quarter, quarterPart, "log", 3),
@@ -411,7 +411,7 @@ do -- merging: which ground items are checked
 	local backFull = dropAt(back, ItemStack.new("log", 16), at(0, 0, 0), 0)
 	local backPart = dropAt(back, ItemStack.new("log", 3), at(1, 0, 0), 0)
 	GroundItems.mergeItems(back, 9)
-	GroundItems.setItemStack(back, backFull, ItemStack.new("log", 10))
+	GroundItems.takeFromItem(back, backFull, 6)
 	GroundItems.mergeItems(back, 9)
 	check(
 		holds(back, backFull, "log", 10) and holds(back, backPart, "log", 3),
@@ -517,43 +517,43 @@ do -- in pickup reach: the delay, the radius and the reach up and down
 	local ground = GroundItems.new()
 	dropAt(ground, ItemStack.new("log", 5), at(10, 0, 0), 12)
 
-	check(inReach(ground, at(9, 0, 0), 12) == "", "getItemIdsInPickupReach: not in the moment it was dropped")
+	check(inReach(ground, at(9, 0, 0), 12) == "", "getIdsInPickupReach: not in the moment it was dropped")
 	check(
 		inReach(ground, at(9, 0, 0), 12 + DELAY - 0.01) == "",
-		"getItemIdsInPickupReach: not just before the delay is over"
+		"getIdsInPickupReach: not just before the delay is over"
 	)
-	check(inReach(ground, at(9, 0, 0), 12 + DELAY) == "1", "getItemIdsInPickupReach: from the moment the delay is over")
+	check(inReach(ground, at(9, 0, 0), 12 + DELAY) == "1", "getIdsInPickupReach: from the moment the delay is over")
 	check(
 		inReach(ground, at(10 + RADIUS + 0.01, 0, 0), 100) == "",
-		"getItemIdsInPickupReach: not from just beyond the radius"
+		"getIdsInPickupReach: not from just beyond the radius"
 	)
 	check(
 		inReach(ground, at(10, BELOW + 0.01, 0), 100) == "",
-		"getItemIdsInPickupReach: not a ground item just more than the reach below the position"
+		"getIdsInPickupReach: not a ground item just more than the reach below the position"
 	)
 	check(
 		inReach(ground, at(10, -ABOVE - 0.01, 0), 100) == "",
-		"getItemIdsInPickupReach: not a ground item just more than the reach above the position"
+		"getIdsInPickupReach: not a ground item just more than the reach above the position"
 	)
 	check(
 		inReach(ground, at(10 - 3, 0, 3), 100) == "",
-		"getItemIdsInPickupReach: the distance along the ground is measured in a straight line"
+		"getIdsInPickupReach: the distance along the ground is measured in a straight line"
 	)
 	check(
 		holds(ground, 1, "log", 5) and groundItemCount(ground) == 1 and ground.nextId == 2,
-		"getItemIdsInPickupReach: changes nothing"
+		"getIdsInPickupReach: changes nothing"
 	)
-	table.insert(GroundItems.getItemIdsInPickupReach(ground, at(9, 0, 0), 100), 7)
-	check(inReach(ground, at(9, 0, 0), 100) == "1", "getItemIdsInPickupReach: returns a new list each time")
+	table.insert(GroundItems.getIdsInPickupReach(ground, at(9, 0, 0), 100), 7)
+	check(inReach(ground, at(9, 0, 0), 100) == "1", "getIdsInPickupReach: returns a new list each time")
 end
 
 do -- in pickup reach: measured along the ground and in height, between any two positions
 	local ground = GroundItems.new()
 	dropAt(ground, ItemStack.new("log", 1), at(10, 5, -7), 0)
-	check(inReach(ground, at(-10, 5, -7), 10) == "", "getItemIdsInPickupReach: not from 20 studs away along x")
-	check(inReach(ground, at(10, -5, -7), 10) == "", "getItemIdsInPickupReach: not from 10 studs below it")
-	check(inReach(ground, at(10, 5, 7), 10) == "", "getItemIdsInPickupReach: not from 14 studs away along z")
-	check(inReach(ground, at(11, 4, -6), 10) == "1", "getItemIdsInPickupReach: from a step away on every axis")
+	check(inReach(ground, at(-10, 5, -7), 10) == "", "getIdsInPickupReach: not from 20 studs away along x")
+	check(inReach(ground, at(10, -5, -7), 10) == "", "getIdsInPickupReach: not from 10 studs below it")
+	check(inReach(ground, at(10, 5, 7), 10) == "", "getIdsInPickupReach: not from 14 studs away along z")
+	check(inReach(ground, at(11, 4, -6), 10) == "1", "getIdsInPickupReach: from a step away on every axis")
 end
 
 do -- in pickup reach: equally near ground items come in the order they were dropped, whatever their ids
@@ -568,7 +568,7 @@ do -- in pickup reach: equally near ground items come in the order they were dro
 	end
 	check(
 		dropped[1] == 101 and inReach(ground, at(1, 0, 0), LIFETIME + 10) == table.concat(dropped, " "),
-		"getItemIdsInPickupReach: 40 stoves in one spot come first dropped first"
+		"getIdsInPickupReach: 40 stoves in one spot come first dropped first"
 	)
 end
 
@@ -580,7 +580,7 @@ do -- in pickup reach: the edge of the radius, several at once, and the nearest 
 	dropAt(ground, ItemStack.new("log", 7), at(RADIUS + 3, 0, 0), 0)
 	check(
 		inReach(ground, at(0, 0, 0), 10) == `{under} {east} {north}`,
-		"getItemIdsInPickupReach: everything exactly at the edge of reach, the nearest first, and nothing beyond it"
+		"getIdsInPickupReach: everything exactly at the edge of reach, the nearest first, and nothing beyond it"
 	)
 
 	local tied = GroundItems.new()
@@ -589,7 +589,7 @@ do -- in pickup reach: the edge of the radius, several at once, and the nearest 
 	local near = dropAt(tied, ItemStack.new("fish", 8), at(1, 0, 0), 0)
 	check(
 		inReach(tied, at(0, 0, 0), 10) == `{near} {first} {second}`,
-		"getItemIdsInPickupReach: of two equally near, the one dropped first comes first"
+		"getIdsInPickupReach: of two equally near, the one dropped first comes first"
 	)
 end
 
@@ -600,7 +600,7 @@ do -- in pickup reach: reaching up and down
 	dropAt(ground, ItemStack.new("stove", 1), at(0, -BELOW - 0.01, 0), 0)
 	check(
 		inReach(ground, at(0, 0, 0), 10) == tostring(onTop),
-		"getItemIdsInPickupReach: one as high as the reach goes, and as far off, but not one just above the reach or just below it"
+		"getIdsInPickupReach: one as high as the reach goes, and as far off, but not one just above the reach or just below it"
 	)
 
 	local stacked = GroundItems.new()
@@ -608,50 +608,76 @@ do -- in pickup reach: reaching up and down
 	local lower = dropAt(stacked, ItemStack.new("fish", 8), at(0, 1, 0), 0)
 	check(
 		inReach(stacked, at(0, 0, 0), 10) == `{lower} {higher}`,
-		"getItemIdsInPickupReach: of two straight above, the nearer in height comes first"
+		"getIdsInPickupReach: of two straight above, the nearer in height comes first"
 	)
 end
 
-do -- setting what a ground item holds
+do -- taking items out of a ground item
 	local ground = GroundItems.new()
 	local id = GroundItems.spawnStack(ground, ItemStack.new("log", 16), at(2, 0, 0), { x = 24, y = 8, z = 0 }, 5)
 	local other = dropAt(ground, ItemStack.new("fish", 3), at(1, 0, 0), 5)
 	local before = ground.itemsById[id]
-	local rest = ItemStack.new("log", 10)
-	GroundItems.setItemStack(ground, id, rest)
+	local taken = GroundItems.takeFromItem(ground, id, 6)
 	local after = ground.itemsById[id]
-	check(after ~= nil and after.stack == rest, "setItemStack: the ground item holds the stack given")
+	check(
+		taken ~= nil and taken.itemId == "log" and taken.count == 6,
+		"takeFromItem: returns the items taken, as a stack"
+	)
+	check(holds(ground, id, "log", 10), "takeFromItem: the ground item holds what is left, under the same id")
 	check(
 		after.position == before.position and after.spawnVelocity == before.spawnVelocity and after.spawnTime == 5,
-		"setItemStack: it lies where it was, with the velocity and the time it was spawned with"
+		"takeFromItem: it lies where it was, with the velocity and the time it was spawned with"
 	)
-	check(table.isfrozen(after), "setItemStack: the ground item is still a frozen value")
-	check(before.stack.count == 16, "setItemStack: the ground item it replaced is unchanged")
-	check(ground.nextId == 3 and groundItemCount(ground) == 2, "setItemStack: uses no new id")
-	check(holds(ground, other, "fish", 3), "setItemStack: the others are as they were")
+	check(table.isfrozen(after), "takeFromItem: the ground item is still a frozen value")
+	check(before.stack.count == 16, "takeFromItem: the ground item it replaced is unchanged")
+	check(ground.nextId == 3 and groundItemCount(ground) == 2, "takeFromItem: uses no new id")
+	check(holds(ground, other, "fish", 3), "takeFromItem: the others are as they were")
 
-	GroundItems.setItemStack(ground, id, ItemStack.new("stove", 1))
-	check(holds(ground, id, "stove", 1), "setItemStack: the stack given may be of another item")
-
-	GroundItems.setItemStack(ground, 77, ItemStack.new("log", 1))
 	check(
-		groundItemCount(ground) == 2 and ground.itemsById[77] == nil,
-		"setItemStack: does nothing when no ground item has the id"
+		GroundItems.takeFromItem(ground, id, 0) == nil and ground.itemsById[id] == after,
+		"takeFromItem: nil for a count of 0, and the ground item is left as it was"
+	)
+	check(
+		Check.raises("no ground item has the id 77", function()
+			GroundItems.takeFromItem(ground, 77, 1)
+		end),
+		"takeFromItem: fails when no ground item has the id"
+	)
+	check(
+		Check.raises("no ground item has the id 77", function()
+			GroundItems.takeFromItem(ground, 77, 0)
+		end),
+		"takeFromItem: and fails for it with a count of 0 too"
+	)
+	check(
+		Check.errorFrom(function()
+				GroundItems.takeFromItem(ground, id, 2.5)
+			end) ~= nil
+			and Check.errorFrom(function()
+				GroundItems.takeFromItem(ground, id, -1)
+			end) ~= nil
+			and ground.itemsById[id] == after,
+		"takeFromItem: fails for a count that is not a whole number of 0 or more, changing nothing"
 	)
 
-	GroundItems.setItemStack(ground, id, nil)
+	local nearlyAll = GroundItems.takeFromItem(ground, id, 9)
 	check(
-		ground.itemsById[id] == nil and groundItemCount(ground) == 1,
-		"setItemStack: nil takes the ground item out of the world"
+		nearlyAll ~= nil and nearlyAll.count == 9 and holds(ground, id, "log", 1),
+		"takeFromItem: all but one leaves a ground item that holds one"
 	)
-	GroundItems.setItemStack(ground, id, nil)
+	local last = GroundItems.takeFromItem(ground, id, 1)
 	check(
-		groundItemCount(ground) == 1 and holds(ground, other, "fish", 3),
-		"setItemStack: nil for an id that no ground item has changes nothing"
+		last ~= nil and last.count == 1 and ground.itemsById[id] == nil and groundItemCount(ground) == 1,
+		"takeFromItem: taking all that it holds takes the ground item out of the world"
+	)
+	local whole = GroundItems.takeFromItem(ground, other, 50)
+	check(
+		whole ~= nil and whole.itemId == "fish" and whole.count == 3 and groundItemCount(ground) == 0,
+		"takeFromItem: a count above what it holds takes what it holds"
 	)
 	check(
 		dropAt(ground, ItemStack.new("log", 1), at(9, 0, 0), 0) == 3,
-		"setItemStack: the id of one taken out is not used again"
+		"takeFromItem: the id of one taken out is not used again"
 	)
 end
 
@@ -670,11 +696,11 @@ do -- lying too long
 
 	local partly = GroundItems.new()
 	local partlyId = dropAt(partly, ItemStack.new("log", 16), at(0, 0, 0), 0)
-	GroundItems.setItemStack(partly, partlyId, ItemStack.new("log", 10))
+	GroundItems.takeFromItem(partly, partlyId, 6)
 	GroundItems.removeExpiredItems(partly, LIFETIME)
 	check(
 		groundItemCount(partly) == 0,
-		"removeExpiredItems: a ground item whose stack was set does not last longer for it"
+		"removeExpiredItems: a ground item that part was taken out of does not last longer for it"
 	)
 end
 
@@ -742,7 +768,7 @@ do -- taking one out of the world
 	check(dropAt(ground, ItemStack.new("log", 1), at(9, 0, 0), 0) == 3, "removeItem: the id is not used again")
 end
 
-do -- many random drops, moves, merges, set stacks and expiries: no item is made, and none is lost but by expiring or by a stack set smaller
+do -- many random drops, moves, merges, takings and expiries: no item is made, and none is lost except by expiring
 	local seed = 20261119
 	local function random(limit: number): number
 		seed = (seed * 16807) % 2147483647
@@ -793,11 +819,10 @@ do -- many random drops, moves, merges, set stacks and expiries: no item is made
 				local to = at(random(12), random(3) * 0.75, random(12))
 				GroundItems.setItemPosition(ground, random(math.max(ground.nextId - 1, 1)), to)
 			elseif action <= 9 then
-				for _, id in GroundItems.getItemIdsInPickupReach(ground, at(random(12), 0, random(12)), now) do
-					local stack = ground.itemsById[id].stack
-					local left = random(stack.count + 1) - 1
-					takenAway[stack.itemId] += stack.count - left
-					GroundItems.setItemStack(ground, id, if left > 0 then ItemStack.new(stack.itemId, left) else nil)
+				for _, id in GroundItems.getIdsInPickupReach(ground, at(random(12), 0, random(12)), now) do
+					local itemId = ground.itemsById[id].stack.itemId
+					local taken = GroundItems.takeFromItem(ground, id, random(stackSizes[itemId] + 2) - 1)
+					takenAway[itemId] += if taken ~= nil then taken.count else 0
 				end
 			else
 				local before: { [string]: number } = {}
@@ -838,10 +863,7 @@ do -- many random drops, moves, merges, set stacks and expiries: no item is made
 			allMerged = false
 		end
 	end
-	check(
-		allConserved,
-		"random play: every item dropped was taken away by a stack set smaller, is on the ground, or expired"
-	)
+	check(allConserved, "random play: every item dropped was taken, is on the ground, or expired")
 	check(allValid, "random play: every ground item holds a real stack under an id already given out")
 	check(
 		allMerged,

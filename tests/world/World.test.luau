@@ -1127,8 +1127,8 @@ do -- time passing: picking up into a pack with too little room
 	)
 	World.advanceTo(world, 11)
 	check(
-		groundItemCount(world) == 1 and is(world.groundItems.itemsById[far].stack, "log", 10),
-		"advanceTo: a ground item that none of fits stays on the ground whole"
+		groundItemCount(world) == 1 and world.groundItems.itemsById[far] == rest,
+		"advanceTo: a ground item that none of fits is left as it was"
 	)
 	check(
 		is(Inventory.getStack(pack, 1), "log", 16) and is(Inventory.getStack(pack, 2), "fish", 8),

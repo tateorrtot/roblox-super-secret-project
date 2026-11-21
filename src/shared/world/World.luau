@@ -348,9 +348,10 @@ local function pickUpNearbyStacks(world: World, player: PlayerState)
 	if character == nil then
 		return
 	end
-	for _, id in GroundItems.getItemIdsInPickupReach(world.groundItems, character.position, world.now) do
-		local leftover = Inventory.addStack(player.pack, world.groundItems.itemsById[id].stack)
-		GroundItems.setItemStack(world.groundItems, id, leftover)
+	for _, id in GroundItems.getIdsInPickupReach(world.groundItems, character.position, world.now) do
+		local stack = world.groundItems.itemsById[id].stack
+		local added = Inventory.addItems(player.pack, stack.itemId, stack.count)
+		GroundItems.takeFromItem(world.groundItems, id, added)
 	end
 end
 
@@ -373,11 +374,12 @@ end
 ---   one that has been in the world for another `GroundItems.MERGE_CHECK_SECONDS`. Of two whose
 ---   stacks fit in one stack, the bigger takes in the smaller, and stays where it is.
 --- - Each player with a character, the one with the lowest id first, picks up the ground items
----   that `GroundItems.getItemIdsInPickupReach` returns for where their character stands, in the
----   order it returns them. The stack of each goes into their pack as `Inventory.addStack` adds
----   it, and what does not fit stays on the ground, in the same ground item. If their screen is
----   open on a placed object that they stand more than `SCREEN_CLOSES_BEYOND` from, it is then
----   closed, as `closeScreen` does.
+---   that `GroundItems.getIdsInPickupReach` returns for where their character stands, in the
+---   order it returns them. As many of each one's stack go into their pack as `Inventory.addItems`
+---   adds, and those are taken out of the ground item. What did not fit stays on the ground, in
+---   the same ground item, and one that none of fitted is left as it was. If their screen is open
+---   on a placed object that they stand more than `SCREEN_CLOSES_BEYOND` from, it is then closed,
+---   as `closeScreen` does.
 --- - Every station burns and works for the time that has passed. If `now` is earlier than the
 ---   time `advanceTo` was last given, no time passes for the stations.
 --- - Ground items that have been in the world too long are removed.

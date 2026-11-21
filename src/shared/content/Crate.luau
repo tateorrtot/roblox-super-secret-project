@@ -7,9 +7,8 @@
 --- second takes the crate off the plot and throws a crate item and everything that was in the
 --- crate onto the ground.
 ---
---- Note: `interact` and `breakPlacedObject` are for a crate that `place` placed. A placed object
---- of the crate's kind that was put on the plot with no inventory on it is no `Crate`, and both
---- fail for it.
+--- Note: `interact` and `breakPlacedObject` are for a crate that `place` placed. Both fail for a
+--- placed object of another kind, and for one of the crate's kind with no inventory on it.
 local Inventory = require("../inventory/Inventory")
 local ItemStack = require("../items/ItemStack")
 local PlayerState = require("../players/PlayerState")
@@ -18,9 +17,10 @@ local World = require("../world/World")
 
 local Crate = {}
 
---- A crate standing on a plot: a placed object, and the inventory that is in it.
+--- A crate standing on a plot: a placed object of the crate's kind, and the inventory that is in
+--- it.
 export type Crate = Plot.PlacedObject & {
-	--- What the crate holds. A crate has the same inventory for as long as it stands.
+	--- What the crate holds.
 	read inventory: Inventory.Inventory,
 }
 
@@ -47,16 +47,21 @@ function Crate.place(plot: Plot.Plot, tileX: number, tileZ: number): number
 end
 
 local function getCrate(plot: Plot.Plot, placedObjectId: number): Crate
-	local crate = plot.placedObjectsById[placedObjectId] :: Crate?
-	if crate == nil or crate.inventory == nil then
+	local placedObject = plot.placedObjectsById[placedObjectId]
+	local isCrate = placedObject ~= nil
+		and placedObject.kindId == Crate.PLACED_OBJECT_KIND_ID
+		and (placedObject :: any).inventory ~= nil
+	if not isCrate then
 		error(`the placed object {placedObjectId} is not a crate that Crate.place placed`, 3)
 	end
-	return crate
+	return placedObject :: Crate
 end
 
 --- A player interacts with the crate that has the id `placedObjectId` on the world's plot. The
 --- crate's inventory opens on the player's screen, beside their pack, in place of any screen they
---- had open, and every slot of it takes every item. Fails if the player has no character.
+--- had open, and every slot of it takes every item. Fails if the player has no character. Fails if
+--- no placed object has that id, or if the one that has is not of the crate's kind or has no
+--- inventory on it.
 function Crate.interact(world: World.World, player: PlayerState.PlayerState, placedObjectId: number)
 	local crate = getCrate(world.plot, placedObjectId)
 	World.openPlacedObjectScreen(world, player, placedObjectId, crate.inventory)
@@ -66,7 +71,8 @@ end
 --- off the plot, which closes every screen that was open on it. One of the item
 --- `ITEM_ID_WHEN_BROKEN`, and then each stack that was in the crate from the lowest slot up, is
 --- thrown onto the ground from the middle of the crate's tile, upwards and outwards, each a
---- different way. The crate's inventory then holds nothing.
+--- different way. The crate's inventory then holds nothing. Fails, changing nothing, if no placed
+--- object has that id, or if the one that has is not of the crate's kind or has no inventory on it.
 function Crate.breakPlacedObject(world: World.World, placedObjectId: number)
 	local crate = getCrate(world.plot, placedObjectId)
 	local stacks = Inventory.takeEveryStack(crate.inventory)

@@ -296,4 +296,31 @@ do -- a placed object of the crate's kind that has no inventory on it
 	)
 end
 
+do -- a placed object of another kind that has an inventory on it
+	local world, player = newWorld()
+	local barrelInventory = Inventory.new(3)
+	Inventory.addItems(barrelInventory, "fish", 2)
+	local barrel = { kindId = "barrel", tileX = 1, tileZ = 1, inventory = barrelInventory }
+	local barrelId = Plot.placeObject(world.plot, barrel)
+	local message = "the placed object " .. barrelId .. " is not a crate that Crate.place placed"
+	check(
+		Check.raises(message, function()
+			Crate.interact(world, player, barrelId)
+		end) and player.screen == nil,
+		"interact: fails for a placed object of another kind, though it has an inventory on it"
+	)
+	check(
+		Check.raises(message, function()
+			Crate.breakPlacedObject(world, barrelId)
+		end),
+		"breakPlacedObject: fails for a placed object of another kind, though it has an inventory on it"
+	)
+	check(
+		world.plot.placedObjectsById[barrelId] ~= nil
+			and groundItemCount(world) == 0
+			and Inventory.countItems(barrelInventory, "fish") == 2,
+		"breakPlacedObject: and leaves it standing with what it held, and nothing thrown"
+	)
+end
+
 Check.finish("Crate")

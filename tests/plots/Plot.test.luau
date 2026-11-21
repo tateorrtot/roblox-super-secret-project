@@ -65,6 +65,7 @@ do -- placing
 		placed == given and (placed :: any).lit == true,
 		"placeObject: the plot keeps the table it was given, with a field on it that a plot does not read"
 	)
+	check(table.isfrozen(given), "placeObject: and freezes it, so that no field of it is assigned again")
 
 	check(not Plot.canPlaceObject(plot, 2, 3), "canPlaceObject: false for a tile that is taken")
 	check(
@@ -74,6 +75,11 @@ do -- placing
 		"placeObject: fails on a tile that is taken"
 	)
 	check(placedCount(plot) == 1 and plot.nextId == 2, "placeObject: a placing that fails changes nothing")
+	local refused = { kindId = "crate", tileX = 2, tileZ = 3 }
+	Check.errorFrom(function()
+		Plot.placeObject(plot, refused)
+	end)
+	check(not table.isfrozen(refused), "placeObject: a placing that fails leaves the table it was given as it was")
 	check(Plot.canPlaceObject(plot, 3, 2), "canPlaceObject: x and z are not swapped")
 
 	local crate = Plot.placeObject(plot, { kindId = "crate", tileX = 1, tileZ = 1 })
