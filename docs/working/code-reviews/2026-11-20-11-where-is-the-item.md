@@ -30,9 +30,11 @@ The user read Claude's answers to the eleventh review, and asked about four thin
 
 > But... what is a station...? What? Is it defined in the codebase? If it is, where? Why? Isnt a station just something that may happen to fall out as a more concept than literal named thing in the codebase?
 
-- **The word was theirs, for an idea:** "a station is kinda like a black box" (`docs/game/placed-objects.md`). Claude made it a folder, a type, two registries keyed by "kind of station", a store in `World` and a field in what a player's machine is told.
+- **This is the second time they have asked.** Claude named a furnace `Station` on 2026-11-19. In their seventh review: "What is a station? Im actually a bit confused right now you mightve made something really rigid." Claude wrote down then that `Station` is a furnace under a general name, and left the name in the code.
+- **The word is in a folder, a type, two registries keyed by "kind of station", a store in `World`, and a field in what a player's machine is told.**
 - **What the code holds is a furnace:** a fire, three slots and a recipe worked over time. Nothing in it is more general than that, and one kind of placed object uses it.
-- **A word for a category is not put in the code before there are things in the category.** A thing is named for what it is. They had said to leave `Station` until a second process showed what the kinds share; they did not say to keep the name.
+- **A word for a category is not put in the code before there are things in the category.** A thing is named for what it is.
+- **A thing they have asked about once is mended, not written down and left.**
 
 ## Ground items and inventories
 > Does GroundItems being glued to inventory make sense. Should/can we pull it out.

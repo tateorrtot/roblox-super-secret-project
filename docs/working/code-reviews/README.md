@@ -27,7 +27,7 @@ Their message after the ninth was direction and not a review: "Good. Good. and g
 These are Claude's readings of the twelve reviews. The quotes are in the files.
 
 - **Say where every fact of a thing lives.** They looked in `CrateItem` for the crate item's stack size, and it was a row in another file. A thing spread over files and joined by a string is hard to find, however decoupled the files are.
-- **No noun for a category before the category has things in it.** `Station` was their word for an idea, and Claude made it a folder and a type for one furnace: "the noun station would be more like a vague idea than actually in the codebase?" Name a piece for what it is.
+- **No noun for a category before the category has things in it.** Claude named one furnace `Station`. They asked what a station is in the seventh review and again in the twelfth, because Claude had written the fault down and left the name: "the noun station would be more like a vague idea than actually in the codebase?" Name a piece for what it is, and mend what they ask about the first time.
 
 - **Read each class alone,** as `python tools/bare_names.py <Module>` prints it: its name and its members' names, and nothing else. Each name must say what it is, or what it acts on and where. If you would have to ask "... what?", so will they. A guess is a failure.
 - **A class is a noun.** If no noun works, the class is wrong.
