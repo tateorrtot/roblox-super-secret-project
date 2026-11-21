@@ -4,6 +4,27 @@ The work that is approved or owed, in the order Claude means to do it. What is o
 
 On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
+## First: name the systems
+The user, 2026-11-21: "Lets identify our systems first." They asked whether each system would be written the same as an isolated, generic library in a repo of its own. It would not (`docs/working/code-reviews/2026-11-21-5-would-you-do-it-the-same.md`), and they are weighing that route: a repo and a session for each system, or the game written by hand. Nothing below this section is built before the list is theirs. Claude's list, given to them that day:
+
+| System | Its one job | Needs |
+|---|---|---|
+| signal | A list of callbacks to call | Nothing |
+| items | What a kind of item is, and a stack: a kind and a count | Nothing |
+| inventory | Numbered slots that each hold a stack or nothing | items |
+| selection | One selected number out of N | Nothing |
+| carried stack | A stack held outside any inventory, and the moves between it and a slot | inventory |
+| building | Things placed at places, and which is joined to which | signal |
+| ground items | Stacks that lie in a world: where, since when, which merge, which are in reach | items |
+| scripts by id | A table of functions for each id, found by the id | Nothing |
+| requests | Check the values that a client sent, and call the function they name | Nothing |
+| save | A value to plain data and back, with a version | Nothing |
+
+- **Not systems, but this game's glue and content:** `World`, `PlayerState`, `PlotCollision`, the two `Main` scripts, `InventoryControls`, and everything in `content`.
+- **On the Roblox side, three more:** the drawing of a grid of slots with its clicks and drags; what a point on the screen is over in the world; and, not built, welds for what building says is joined.
+- **Where today's code is not that list:** five modules keep a list for every user; eleven numbers of this game are inside systems; `ItemScripts` requires `World`, and `PlacedObjectScripts` requires `World` and `PlayerState`; `Inventory` and `ItemStack` read `stackSize` from the list that `ItemRegistry` keeps; `World` requires 10 modules and is required by 10 files; `Hotbar` is selection with an inventory it does not need; `InventoryScreen` is carried stack, a player's open inventories, and a stove's rule in one table.
+
+
 ## 0. A plot is placed objects on one body
 The user's direction of 2026-11-21: "In minecraft terms id think of it as "VoxelGrids on PhysicsBodies"." Claude drew its reading, and they confirmed it the same day: "Yes! That physics diagram is what I mean." Their words are in `docs/game/decisions.md`. Not built.
 

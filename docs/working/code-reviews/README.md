@@ -1,6 +1,6 @@
 # The user's reviews of the code
 
-The user has reviewed the code eighteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
+The user has reviewed the code nineteen times. Each file here is one review, in their words, with what Claude took from it. Read this page before showing them code; read a review when you need their exact words.
 
 In a file's name, the number counts the reviews of that day. For 2026-11-20 it is one less than the review's place in this list.
 
@@ -24,13 +24,18 @@ In a file's name, the number counts the reviews of that day. For 2026-11-20 it i
 | 16 | `2026-11-21-2-what-is-a-side.md` | "What is "a look piece". be more concrete youre talking very lofty and abstract." One page of the reference, read for the first time: "what the hell is a side", code that looked like "broken hyperlinks", each word said twice. "this is slop lol". A request of seven values: "Why so over the top." |
 | 17 | `2026-11-21-3-concretely.md` | "I think you might've just done it again." A comment whose nouns point at nothing: "What is one slot? [Didnt you literally define it as an argument!]" "you say things that sound good at first glance but can be done so much more concretley." A change they could not follow: "why are you saying cut this thing?" |
 | 18 | `2026-11-21-4-who-said-two.md` | "Who said only two open inventories wtf? What about panels of inventories open." A hopper, a funnel: inventories that work on each other with no player. "You make things that DONT know about eachother. You dont make up some random concepts like "side"." "Side is awful." |
+| 19 | `2026-11-21-5-would-you-do-it-the-same.md` | "If I had you making each system for this game as seperate, fully isolated, generic, reusable libraries/addons (like foxfabric) would you do it the same?" It would not. "A human would not build a game by making it all at once." "Lets identify our systems first." Three modules in one folder that are "vastly seperate things" |
 
 Their message between the seventh and the eighth was answers and not a review: signals approved, merging to follow Minecraft, and "quality is a lot more important than speed!" (`docs/working/engineering-rules.md`).
 
 Their message after the ninth was direction and not a review: "Good. Good. and good." to the three steps of the split, "I like PlacedObject!", and a script for each kind of placed object (`docs/game/placed-objects.md`). The tenth came from the report on that work, not from the code. The eleventh came from reading one script, `CrateItem`: the first of the new code they have read. The twelfth came from Claude's answers to the eleventh, and the thirteenth from its answers to the twelfth. The fourteenth and the fifteenth came the same way, each from Claude's report on the work before. Their message after the fifteenth was direction and not a review: the reading of a plot confirmed, building and physics as two systems, and "The documentation must be *good*" (`docs/game/decisions.md`, `docs/code/comments.md`).
 
 ## What to check before showing them code
-These are Claude's readings of the eighteen reviews. The quotes are in the files.
+These are Claude's readings of the nineteen reviews. The quotes are in the files.
+
+- **Would this be written the same as a library in a repo of its own, by a session that had never heard of this game?** That is the user's test for every system. A list that the module keeps for everyone, a number of this game, a word of one of its users, a type from the glue: each is a no.
+- **Break the problem down before any code, and show the tree.** "Problem solving is recursive. You take a problem, break it up. Then take those problems, and break them up." Claude's cut followed what the game needed next, and the parts were then joined through `World` and `PlayerState`: "a spiderweb". Taking `side` out changed 14 files. A change to one leaf changes that leaf.
+- **Passing checks say that the code does what Claude wrote.** They do not say that what Claude wrote is right. Never report tests, mutation testing or the play test as if they covered the design.
 
 - **Count what a type has room for, and ask who said so.** `InventoryScreen` had two inventories, `pack` and `otherInventory`, because the one case Claude was building had two: "Who said only two open inventories wtf?" One of a thing, two of a thing, and "a player is there" are each a contract. Write the least code, and not the least world.
 - **Run the thing with no player.** A hopper took a stack from a crate and added it to a stove with `Inventory`'s two functions, and the stove's rule for its slots did not apply, because the rule was a field of a player's screen. A rule of a thing lives with the thing.
@@ -95,4 +100,4 @@ These are Claude's readings of the eighteen reviews. The quotes are in the files
 - **Have a helper apply their latest review to the result,** told to assume the author thinks it is mended and to quote the words each finding goes against. After the tenth, that helper found twelve things where the two ordinary reviewers found none of them.
 - **Explain Roblox by its Godot counterpart** (`docs/roblox/explained-for-godot.md`).
 
-Each of the eighteen reviews found something the checks before it had passed. Expect a nineteenth.
+Each of the nineteen reviews found something the checks before it had passed. Expect a twentieth.
