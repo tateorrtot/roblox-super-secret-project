@@ -6,7 +6,7 @@ How things in the code are named. The user reads an outline of bare names, with 
 **A file is one thing, named for it with a noun.** `Inventory`, `ItemStack`. No project prefix.
 
 **A function's name says what it acts on, and where.** Read alone, with no arguments and no comment, `Module.name` tells a stranger what the function does.
-- A bare verb means the whole of the thing the file is named for. `Station.advance` advances the station. `Inventory.encode` encodes the inventory.
+- A bare verb means the whole of the thing the file is named for. `Crate.get` gets the crate. `Inventory.encode` encodes the inventory.
 - Anything else names its object, and the place when there is one. `Hotbar.selectSlot`, `Plot.placeObject`, `World.throwStackFromCharacter`, `InventoryScreen.pickUpFromSlot`, `InventoryScreen.swapCarriedStackWithSlot`.
 - A noun in a name is a part of the thing, or something the caller passes or gets back. A name with `Stack` in it takes or returns a stack. One with `Slot` takes a slot.
 - Arguments come in the order the name gives them: the thing first, then where, then how much.

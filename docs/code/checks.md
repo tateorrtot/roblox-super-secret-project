@@ -14,6 +14,7 @@ How the code is checked. Every command runs from the top of the repository.
 | `python tools/bare_names.py <Module>` | One class as a names test shows it: its name and its members' names, and nothing else |
 | `lune run tools/requires --chart` | Draws what requires what as a chart, `docs/code/requires.svg`. The check fails if the chart no longer matches the code |
 | `python tools/delete_directory_test.py` | Deletes each directory of the rules in a scratch copy, and lists what else stops working |
+| `python tools/lift_out_test.py` | Copies each system into an empty folder with only what it requires, and runs its tests there. On 2026-11-20 all five passed alone: `items` with nothing, `inventory` with `items`, `plots` with `Position` and `Signal`, `groundItems` with `items` and `Position`, `players` with `inventory`, `items` and `Position` |
 | `python tools/faces.py <out.txt> <modules...>` | The public face of modules: comments, types and signatures, with no bodies |
 | `lune run tools/requires` | What requires what in `src`, read from the code |
 | `python tools/members.py` | That every member and message the server's and client's scripts use exists |
@@ -43,7 +44,7 @@ Use it when the user asks which scripts and directories are coupled to which, an
 - It first stands the test character on open ground, 10 studs past the spawn pad. A player spawns at a random spot on the pad, which is a stud high, and a block thrown from some of those spots clips the pad's edge as it falls and tumbles about 20 studs, where on open ground it comes to rest after 7.6. That spoiled one run on 2026-11-20 with four failures that had nothing to do with the code (`build/throw_from_places.py` shows it on demand).
 - One step sends every request with nonsense, as a tampered machine might, and checks that nothing breaks.
 - Another asks the server outright to interact with a crate and to break it from out of reach, checks that it refuses, and checks that the same request from within reach is carried out.
-- A third counts how many times a player watching a lit stove is told what they hold, in three seconds. It was 27 before `StationProgress`, and must be 3 or fewer.
+- A third counts how many times a player watching a lit stove is told what they hold, in three seconds. It was 27 before the gauges were sent as times, and must be 3 or fewer.
 - It waits for thrown stacks to come to rest before it looks at them, and places a crate on a log to see the log pushed out.
 - Its last steps tilt the camera and read the velocity a thrown block starts with: along the ground in third person however the camera is tilted, and the way the view looks in first person, up and then down. The camera's look is read at the moment Q goes down, so a mouse that moves cannot spoil the check.
 - It is PC only.

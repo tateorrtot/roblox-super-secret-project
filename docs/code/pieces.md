@@ -7,31 +7,30 @@ The folders of `src/shared` are of three sorts (`conventions.md`, "Simple things
 
 ```
 SYSTEMS: each does one job and knows no other system
-  items        ItemRegistry, ItemStack              every item by id; a count of one item
+  items        ItemRegistry, ItemStack              every item by id, with its stack size; a count of one item
   inventory    Inventory, InventoryScreen, Hotbar   slots that hold stacks; what a player has open; the selected slot
   plots        Plot                                 a grid of tiles and the objects placed on it
-  stations     Station, StationProgress,            a fire and a recipe worked over time: a furnace, and no more
-               RecipeRegistry, FuelRegistry         general than that; which item cooks into which, and what burns
   groundItems  GroundItems                          stacks loose in the world: spawned, merged, taken from, expired
   players      PlayerState                          one player: pack, hotbar, open screen, where their character is
   (top level)  Position, Direction, Signal          a point; a way; the callbacks a thing calls when it changes
 
 GLUE: joins systems, and holds no thing of the game
   world        World            one running game: the plot, the ground items, the players, picking up,
-                                and the station that each stove was made
+                                and `timePassed`, the signal that says so
                PlotCollision    what gives way when an object is placed: ground items leave the tile
-               PlayerSnapshot   what a player's machine is told
   requests     InventoryRequests, PlotRequests, Requests, Messages   what a player's machine may ask for
+               PlayerSnapshot                                        what a player's machine is told
                ItemScripts, PlacedObjectScripts                      the script of each item and of each kind of
-                                                                     placed object, which the requests call
+                                                                     placed object, which the glue calls
   save         SaveData         a player's pack as stored data. Nothing stores it yet
 
-THINGS: the game's own, and the one place that names them
-  content      Crate, Stove                         a kind of placed object each: what it has on it, and its script
-               CrateItem, StoveItem                 an item's script each
-               ItemDefinitions, RecipeDefinitions, FuelDefinitions   written rows, placeholders
-               ItemLooks, PlacedObjectLooks         how each is shown while it has no art
-               Content                              registers all of the above
+THINGS: the game's own, each in one place
+  content      Items                 every item, one table each: id, stack size, name, colour, what it does
+               CrateItem, StoveItem  an item that does something, in a file of its own
+               Crate                 the crate, placed: its inventory, its screen, what breaking it leaves
+               Stove                 the stove, placed: its slots, recipes, fuels, fire and cooking, its gauges
+               PlacedObjectLooks     the name and colour of each kind of placed object, until there is art
+               Content               registers all of the above
 ```
 
 `python tools/delete_directory_test.py` shows it holds: deleting `content` breaks none of the rules, deleting a system breaks only what is built on it, and no system breaks one beside it. `docs/code/requires.svg` is the chart of every require, drawn from the code by `lune run tools/requires --chart`.
@@ -41,7 +40,8 @@ THINGS: the game's own, and the one place that names them
 - **The player's machine** is `src/client`. `Main.client.luau` is the only LocalScript, and joins the rest.
   - `inventory`: `InventoryGui`, `HotbarGui`, `SlotGui` and `StackIcon` draw. `SlotGestures` and `InventoryControls` are plain Luau, tested in `tests/client`, and turn mouse and keys on the screen into requests.
   - `world`: `PlotPointer` says what a point of the screen is over. `BreakClick` tells a click of the Break action from a turn of the camera. `PlacementGhost` draws a see-through block on a tile. `LocalCharacter` says whether the character reaches a point, for drawing only.
-  - `content`: `CrateItemGhost` and `StoveItemGhost` are what each of those items shows while selected.
+  - `content`: `CrateItemGhost` and `StoveItemGhost` are what each of those items shows while selected. `StoveScreen` lays out a stove's three slots and fills its two gauges; `InventoryGui` is handed it and does not know what a stove is.
+- **A kind's own drawing on the server** is in `src/server/content`: `StoveGlow` makes a stove's block glow while its fire burns. `PlotParts` calls it, and does not know what a stove is.
 - **The input actions** `Interact` and `Break` are Instances under `ReplicatedStorage.Inputs.World`, declared in `default.project.json` (`docs/roblox/input.md`).
 
 ## How an interaction reaches the thing's own script
@@ -84,10 +84,12 @@ On the server:
 `World.advanceTo` asks `GroundItems.getIdsInPickupReach` for the ground items in pickup reach of each character, nearest first. For each one it adds the stack to the player's pack with `Inventory.addItems`, and takes as many as went in out of the ground item with `GroundItems.takeFromItem`. `groundItems` and `inventory` do not require each other.
 
 ## How one rule tells another
-`Plot.placeObject` and `Plot.removePlacedObject` fire the plot's two signals, `placedObjectAdded` and `placedObjectRemoved`. The world connected to both when it was made: for an object placed it pushes ground items out of the tile, and for one taken off it closes the screens open on it and drops the station it was made. The plot knows nothing of screens, stations, inventories or ground items.
+`Plot.placeObject` and `Plot.removePlacedObject` fire the plot's two signals, `placedObjectAdded` and `placedObjectRemoved`. The world connected to both when it was made: for an object placed it pushes ground items out of the tile, and for one taken off it closes the screens open on it. The plot knows nothing of screens, inventories or ground items.
+
+A world fires `timePassed` each time `World.advanceTo` moves it on, with the seconds that passed. `Main.server` connected `PlacedObjectScripts.advancePlacedObjects` to it, which calls the `advance` of the script of each placed object, the lowest id first. That is how a stove cooks: `World` does not know that stoves exist.
 
 ## What is not yet a system of its own
-`World` is the only piece of the rules that knows `players`, `plots`, `stations` and `groundItems` together. It holds rules that could live in smaller pieces: reach, picking up, and that every stove's station is kept and advanced. The user said to leave it as one piece of glue for now. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list, and `docs/game/placed-objects.md` ends with what the game still decides for every kind of placed object.
+`World` is the only piece of the rules that knows `players`, `plots` and `groundItems` together. It holds rules that could live in smaller pieces: reach, picking up, and when a screen on a placed object closes. The user said to leave it as one piece of glue for now. `docs/code/reviews/16-coupling-review-2026-11-20.md` has the list, and `docs/game/placed-objects.md` ends with what the game still decides for every kind of placed object.
 
 Nothing on the server knows that a mouse exists. Nothing is applied on the player's machine before the server answers (`docs/status/next.md`).
 

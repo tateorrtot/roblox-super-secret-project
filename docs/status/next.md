@@ -4,31 +4,20 @@ The work that is approved or owed, in the order Claude means to do it. What is o
 
 On 2026-11-20 items and placed objects were split into two systems, and then, after the user's tenth review, each thing was given a script of its own and the clicks on the world moved to Roblox's input actions (`history/2026-11-20-scripts-and-input.md`). The user has read none of it yet.
 
-## 0. The stove carries what it is made of, and `station` leaves the code
-The user approved the first half on 2026-11-20, and it is built: a crate carries its inventory. Of the second half they asked what a station is, and why the code has the word. Claude asked whether this or 0a comes first (`asked-of-the-user.md`).
-- **What it should leave:** a stove that `Stove.place` builds as a placed object with its fire and its three slots on it; `World` with no store of stations and no loop over them; the furnace named for what it is; no "kind of station".
-- **Time:** a kind's script may have a function that is called when time passes, as a Godot node may have `_process`. Who calls it is the one choice in it.
-- **It is shared machinery,** so its shape is shown to the user before it is written.
-- **Later, with screens:** what a player's machine is told of a stove, and the glow, become the stove's own.
-
-## 0a. If the user says so: one table for each item
-Proposed on 2026-11-20, when they looked in `CrateItem` for the crate item's stack size and did not find it.
-- **An item is one table:** its id, its stack size, its name and colour, and its functions if it has any. One that does something has a file of its own, and the rest are rows in one list.
-- `Content.register` hands each registry the part it keeps. `ItemDefinitions`, `ItemLooks` and the `ITEM_ID` constants go.
-- **Roblox's own answer** is an Instance with Attributes and a script beneath it, edited in Studio as a Godot resource is in the Inspector. It will not do while the rules are plain Luau, tested outside Studio, and the place is not saved.
+## 0. When the user decides it: where a placed object stands
+On 2026-11-20 they said they lean to free placement: "I think the freeform placement is generally better with optional grid snapping." And they named their worry: "NPCs and doing things like complex automation or checking neighbouring cells sounds expensive and confusing." They had already said the grid should be "a pure guideline rather than a set boundary" (`docs/game/decisions.md`). Claude asked whether to take the first step (`asked-of-the-user.md`). Claude's thoughts, as given to them:
+- **Free placement is the rule, and a grid is a help.** A placed object has a position, a turn and a size, and it can stand where its box overlaps no other. Snapping to a grid, to a neighbour's edge or to a socket happens on the player's machine while they choose the spot. The server asks only whether the box is free.
+- **It is not expensive if nothing searches as time passes.** A neighbour is looked for when something is placed, moved or taken off, and the link is kept. A machine reads its link when it works. One placement is checked against the other objects of one plot: a few hundred comparisons.
+- **It is confusing only if "over" and "in front of" are left to be guessed.** Things that work together have sockets, as in ARK and in the Create mod: a basin has one above it, and a mixer set down near it snaps on. The snap is the link. The player sees it, and the code keeps it. A thing that works with nothing goes anywhere.
+- **Helpers:** Roblox's `PathfindingService` makes its paths from the parts in the world, at any angle, so free placement does not stand in its way. Whether it is cheap enough for many helpers is to be measured when helpers are built. The other way is a coarse grid worked out from the boxes, which the player never sees.
+- **So the grid stays, in two new jobs:** a help for the hand, and an index the code may keep for speed. It stops being the rule for where a thing may stand.
+- **What Roblox has:** every part has a `CFrame` and a `Size`, and `Workspace:GetPartBoundsInBox` says what a box overlaps. The rules are plain Luau with no Roblox calls, so either the overlap test is ours, about thirty lines for boxes turned about the vertical, or the server's Roblox side answers it.
+- **The first step, if they say yes:** where a placed object stands becomes one value that only `Plot` looks inside, with a height. Today `tileX` and `tileZ` pass through twelve files and there is no `tileY`. They have pointed at the flat grid three times.
 
 ## 0b. If the user says so: what a character holds is a Roblox `Tool`
 Their proposal of 2026-11-20. Items stay a system of their own; the held tool is another; glue says which tool a selected stack puts in the hand.
 - **First, measure in Studio** the five things Roblox's documentation leaves unsaid (`docs/roblox/input.md`). It takes the mouse for a few minutes.
 - It would give a thing shown in the hand to every player, and `Activated` on a mouse, a touch screen and a gamepad, which the game's own input does not cover.
-
-## 0c. When the user decides it: where a placed object stands
-They asked how free placement would work, and called the rigid grid Bloxburg's greatest flaw. They had already said the grid should be "a pure guideline rather than a set boundary" (`docs/game/decisions.md`).
-- **Free placement:** a placed object has a position, a turn and a size, and it can stand where its box overlaps no other. Snapping to a grid, to a neighbour's edge or to a socket is a help for the hand, worked out on the player's machine. The server asks only whether the box is free.
-- **A finer grid** keeps whole numbers and right angles: smaller cells, and an object that covers several.
-- **What Roblox has:** every part has a `CFrame` and a `Size`, and `Workspace:GetPartBoundsInBox` says what a box overlaps. The rules are plain Luau with no Roblox calls, so either the overlap test is ours, about thirty lines for boxes turned about the vertical, or the server's Roblox side answers it.
-- **What it costs:** "what stands over this" and "what is in front of this", which the processes they want lean on, are neighbouring cells on a grid, and a search in a box without one. Helpers walking a plot need another way to find their path.
-- **The first step is the same either way:** where a placed object stands becomes one value that only `Plot` looks inside. Today `tileX` and `tileZ` pass through twelve files.
 
 ## 1. The keys onto Roblox's input actions
 The clicks on the world are input actions; E, Q, 1 to 9 and the mouse on the inventory screen still go through `UserInputService` (`docs/roblox/input.md`).
@@ -62,11 +51,15 @@ Each starts with one precise question to them, and is built as small pieces. The
 - **The server's and the client's scripts in `lune run tools/check`.** They can be type-checked now, and a run on 2026-11-20 found nothing new: seven reports in two places, both older (`docs/roblox/studio.md`). Mend those two, then add the check.
 - **A pass over the names the audit of 2026-11-20 found,** in what was not rewritten: `Main.server`, `Main.client`, `PlaceholderWorld` and the private helpers. The list is in `docs/code/reviews/17-audit-after-the-eighth-review-2026-11-20.md`.
 - **`PlaceholderWorld`'s starting crate, stove and items** belong with the game's things in `src/shared/content`, or go with the placeholder map.
-- **Five comments in the systems that use the game's own things as examples:** `ItemRegistry`, `Plot`, `Station`, `RecipeRegistry` and `PlayerSnapshot`.
+- **Three comments in the systems and the glue that use the game's own things as examples:** `ItemRegistry`, `Plot` and `PlayerSnapshot`.
 - **A phone.** Whether a tap also fires the input action bound to the left mouse button, which would interact twice.
-- `StationProgress` should check the fire before it says a station is working. A few lines, with the next change to stations.
-- A mutation run over every piece at once stalls on `Station`: some of the bugs it plants make a loop run until the tool's 60-second limit, one after another. `tools/mutate.py` wants a shorter limit, or a way to give one.
+- `Stove.getProgress` should check the fire before it says a stove is working. A few lines.
+- A mutation run over every piece at once stalls on `Stove`: some of the bugs it plants make the loop in `advance` run until the tool's 60-second limit, one after another. `tools/mutate.py` wants a shorter limit, or a way to give one.
 - What the audits left is listed in `now.md`. None of it is urgent. The screen's drawing code is best left until the user decides whether screens are made in Studio.
+
+- **A kind's name and colour into the kind's own file.** They are rows in `PlacedObjectLooks`, as an item's were in `ItemLooks`.
+- **One function for an item that places a kind,** when a third item does it. `CrateItem.interactWithTile` and `StoveItem.interactWithTile` are the same four lines.
+- **The id of the item that a broken crate leaves is written twice:** in `CrateItem` and in `Crate.ITEM_ID_WHEN_BROKEN`. The two files cannot require each other. The same holds for the stove.
 
 ## 6. Later
 First things to prototype on a real phone: the inventory screen by touch; handling and carrying; walking on a moving deck; an intercepted delivery becoming a real object; demonstrating a route by touch; a deck of a few hundred welded pieces.
